@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transit-hide-and-seek.example/schemas/ruleset.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rulesetId",
+    "packId",
+    "name",
+    "supportedModes",
+    "scaleDefinitions",
+    "phasePolicies",
+    "questionPolicies",
+    "cardPolicies",
+    "locationPolicies",
+    "chatPolicies",
+    "visibilityPolicies",
+    "winConditions",
+    "sourceProvenance"
+  ],
+  "properties": {
+    "rulesetId": {
+      "type": "string"
+    },
+    "packId": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "supportedModes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "online",
+          "local_nearby",
+          "single_device_referee"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "scaleDefinitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "scale",
+          "label"
+        ],
+        "properties": {
+          "scale": {
+            "$ref": "./common.schema.json#/$defs/scaleKey"
+          },
+          "label": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "phasePolicies": {
+      "type": "object"
+    },
+    "questionPolicies": {
+      "type": "object"
+    },
+    "cardPolicies": {
+      "type": "object"
+    },
+    "locationPolicies": {
+      "type": "object"
+    },
+    "chatPolicies": {
+      "type": "object"
+    },
+    "visibilityPolicies": {
+      "type": "object"
+    },
+    "winConditions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "transportNotes": {
+      "type": "object"
+    },
+    "sourceProvenance": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/sourceProvenance"
+      }
+    }
+  }
+}

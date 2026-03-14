@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transit-hide-and-seek.example/schemas/question-category.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "categoryId",
+    "packId",
+    "name",
+    "resolverKind",
+    "promptTemplate",
+    "drawRule",
+    "defaultTimerPolicy",
+    "defaultAnswerSchema",
+    "visibilityPolicy",
+    "scaleSet",
+    "sourceProvenance"
+  ],
+  "properties": {
+    "categoryId": {
+      "type": "string"
+    },
+    "packId": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "resolverKind": {
+      "type": "string",
+      "enum": [
+        "nearest_feature_match",
+        "comparative_distance",
+        "hotter_colder",
+        "threshold_distance",
+        "nearest_candidate",
+        "photo_challenge",
+        "custom"
+      ]
+    },
+    "promptTemplate": {
+      "type": "string"
+    },
+    "drawRule": {
+      "type": "object",
+      "required": [
+        "drawCount",
+        "pickCount",
+        "rawText"
+      ],
+      "properties": {
+        "drawCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "pickCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rawText": {
+          "type": "string"
+        }
+      }
+    },
+    "defaultTimerPolicy": {
+      "$ref": "./common.schema.json#/$defs/timerPolicyRef"
+    },
+    "defaultAnswerSchema": {
+      "type": "object"
+    },
+    "visibilityPolicy": {
+      "$ref": "./common.schema.json#/$defs/visibilityPolicyRef"
+    },
+    "scaleSet": {
+      "$ref": "./common.schema.json#/$defs/scaleSet"
+    },
+    "defaultConstraintRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "sourceProvenance": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/sourceProvenance"
+      }
+    }
+  }
+}

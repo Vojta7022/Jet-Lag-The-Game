@@ -1,0 +1,6 @@
+{
+  "name": "@transit-hide-and-seek/geo",
+  "private": true,
+  "type": "module",
+  "description": "Bounded playable-region and feature-layer foundations for the geospatial engine."
+}

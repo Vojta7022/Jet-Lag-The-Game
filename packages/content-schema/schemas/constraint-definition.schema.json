@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transit-hide-and-seek.example/schemas/constraint-definition.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "constraintId",
+    "packId",
+    "name",
+    "kind",
+    "inputSchema",
+    "outputArtifactKinds",
+    "confidencePolicy",
+    "explanationTemplate",
+    "visibilityPolicy",
+    "sourceProvenance"
+  ],
+  "properties": {
+    "constraintId": {
+      "type": "string"
+    },
+    "packId": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "inside_polygon",
+        "outside_polygon",
+        "within_distance",
+        "beyond_distance",
+        "nearest_feature_match",
+        "comparative_distance",
+        "hotter_colder",
+        "same_admin_region",
+        "nearest_candidate",
+        "metadata_only",
+        "photo_evidence",
+        "custom"
+      ]
+    },
+    "inputSchema": {
+      "type": "object"
+    },
+    "outputArtifactKinds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "geometry",
+          "metadata",
+          "explanation",
+          "manual_review"
+        ]
+      }
+    },
+    "confidencePolicy": {
+      "type": "object"
+    },
+    "explanationTemplate": {
+      "type": "string"
+    },
+    "visibilityPolicy": {
+      "$ref": "./common.schema.json#/$defs/visibilityPolicyRef"
+    },
+    "sourceProvenance": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/sourceProvenance"
+      }
+    }
+  }
+}

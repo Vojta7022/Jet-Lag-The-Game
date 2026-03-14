@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transit-hide-and-seek.example/schemas/content-pack.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "packId",
+    "packVersion",
+    "title",
+    "status",
+    "sourceFingerprint",
+    "importerVersion",
+    "mappingProfileId",
+    "provenance",
+    "rulesets",
+    "decks",
+    "cards",
+    "questionCategories",
+    "questionTemplates",
+    "mapPresets",
+    "constraints",
+    "compatibility"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "packId": {
+      "type": "string"
+    },
+    "packVersion": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published",
+        "archived"
+      ]
+    },
+    "sourceFingerprint": {
+      "type": "string"
+    },
+    "importerVersion": {
+      "type": "string"
+    },
+    "mappingProfileId": {
+      "type": "string"
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceType",
+        "sourceFileName",
+        "importedAt",
+        "sourceSheets",
+        "unmappedSheets",
+        "normalizationWarnings"
+      ],
+      "properties": {
+        "sourceType": {
+          "type": "string",
+          "enum": [
+            "xlsx",
+            "csv",
+            "json"
+          ]
+        },
+        "sourceFileName": {
+          "type": "string"
+        },
+        "importedAt": {
+          "type": "string"
+        },
+        "sourceSheets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unmappedSheets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "normalizationWarnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rulesets": {
+      "type": "array",
+      "items": {
+        "$ref": "./ruleset.schema.json"
+      }
+    },
+    "decks": {
+      "type": "array",
+      "items": {
+        "$ref": "./deck-definition.schema.json"
+      }
+    },
+    "cards": {
+      "type": "array",
+      "items": {
+        "$ref": "./card-definition.schema.json"
+      }
+    },
+    "questionCategories": {
+      "type": "array",
+      "items": {
+        "$ref": "./question-category.schema.json"
+      }
+    },
+    "questionTemplates": {
+      "type": "array",
+      "items": {
+        "$ref": "./question-template.schema.json"
+      }
+    },
+    "mapPresets": {
+      "type": "array",
+      "items": {
+        "$ref": "./map-preset.schema.json"
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "$ref": "./constraint-definition.schema.json"
+      }
+    },
+    "featureTaxonomy": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "featureClassId",
+          "label",
+          "sourceProvenance"
+        ],
+        "properties": {
+          "featureClassId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sourceProvenance": {
+            "type": "array",
+            "items": {
+              "$ref": "./common.schema.json#/$defs/sourceProvenance"
+            }
+          }
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "supportedModes",
+        "supportsDraftPlaceholders",
+        "requiresFeatureDatasets"
+      ],
+      "properties": {
+        "supportedModes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "online",
+              "local_nearby",
+              "single_device_referee"
+            ]
+          },
+          "minItems": 1
+        },
+        "supportsDraftPlaceholders": {
+          "type": "boolean"
+        },
+        "requiresFeatureDatasets": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

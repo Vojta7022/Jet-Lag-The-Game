@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transit-hide-and-seek.example/schemas/question-template.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "templateId",
+    "packId",
+    "categoryId",
+    "name",
+    "answerSchema",
+    "resolverConfig",
+    "constraintRefs",
+    "scaleSet",
+    "visibilityPolicy",
+    "sourceProvenance"
+  ],
+  "properties": {
+    "templateId": {
+      "type": "string"
+    },
+    "packId": {
+      "type": "string"
+    },
+    "categoryId": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "promptOverrides": {
+      "type": "object"
+    },
+    "featureClassRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/featureClassRef"
+      }
+    },
+    "parameters": {
+      "type": "object"
+    },
+    "answerSchema": {
+      "type": "object"
+    },
+    "resolverConfig": {
+      "type": "object"
+    },
+    "constraintRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/requirementDefinition"
+      }
+    },
+    "scaleSet": {
+      "$ref": "./common.schema.json#/$defs/scaleSet"
+    },
+    "visibilityPolicy": {
+      "$ref": "./common.schema.json#/$defs/visibilityPolicyRef"
+    },
+    "sourceProvenance": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/sourceProvenance"
+      }
+    }
+  }
+}

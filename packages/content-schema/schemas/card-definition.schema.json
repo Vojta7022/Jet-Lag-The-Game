@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transit-hide-and-seek.example/schemas/card-definition.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cardDefinitionId",
+    "packId",
+    "deckId",
+    "kind",
+    "name",
+    "description",
+    "automationLevel",
+    "effects",
+    "visibilityPolicy",
+    "sourceProvenance"
+  ],
+  "properties": {
+    "cardDefinitionId": {
+      "type": "string"
+    },
+    "packId": {
+      "type": "string"
+    },
+    "deckId": {
+      "type": "string"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "time_bonus",
+        "power_up",
+        "curse",
+        "blank",
+        "custom"
+      ]
+    },
+    "subtype": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "shortName": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "automationLevel": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "assisted",
+        "authoritative"
+      ]
+    },
+    "timingWindow": {
+      "type": "object"
+    },
+    "castingCost": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/requirementDefinition"
+      }
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/requirementDefinition"
+      }
+    },
+    "effects": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/cardEffectDefinition"
+      }
+    },
+    "rewardsOrPenalties": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/cardEffectDefinition"
+      }
+    },
+    "requirements": {
+      "type": "object"
+    },
+    "durationPolicy": {
+      "$ref": "./common.schema.json#/$defs/timerPolicyRef"
+    },
+    "visibilityPolicy": {
+      "$ref": "./common.schema.json#/$defs/visibilityPolicyRef"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sourceProvenance": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/sourceProvenance"
+      }
+    }
+  }
+}

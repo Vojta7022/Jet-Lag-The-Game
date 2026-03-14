@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transit-hide-and-seek.example/schemas/deck-definition.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deckId",
+    "packId",
+    "name",
+    "ownerScope",
+    "drawPolicy",
+    "visibilityPolicy",
+    "entries",
+    "sourceProvenance"
+  ],
+  "properties": {
+    "deckId": {
+      "type": "string"
+    },
+    "packId": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "ownerScope": {
+      "type": "string",
+      "enum": [
+        "hider_team",
+        "seeker_team",
+        "hider_player",
+        "seeker_player",
+        "shared_public",
+        "host_only"
+      ]
+    },
+    "drawPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shuffleOnCreate",
+        "reshuffleDiscardIntoDraw"
+      ],
+      "properties": {
+        "shuffleOnCreate": {
+          "type": "boolean"
+        },
+        "reshuffleDiscardIntoDraw": {
+          "type": "boolean"
+        },
+        "initialDrawCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "visibilityPolicy": {
+      "$ref": "./common.schema.json#/$defs/visibilityPolicyRef"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cardDefinitionId",
+          "quantity",
+          "sourceProvenance"
+        ],
+        "properties": {
+          "cardDefinitionId": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "weight": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "notes": {
+            "type": "string"
+          },
+          "sourceProvenance": {
+            "type": "array",
+            "items": {
+              "$ref": "./common.schema.json#/$defs/sourceProvenance"
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object"
+    },
+    "sourceProvenance": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/sourceProvenance"
+      }
+    }
+  }
+}

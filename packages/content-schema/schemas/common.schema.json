@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transit-hide-and-seek.example/schemas/common.schema.json",
+  "$defs": {
+    "projectionScope": {
+      "type": "string",
+      "enum": [
+        "authority",
+        "host_admin",
+        "team_private",
+        "player_private",
+        "public_match",
+        "event_feed_public"
+      ]
+    },
+    "sourceProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceType",
+        "sourceFileName"
+      ],
+      "properties": {
+        "sourceType": {
+          "type": "string",
+          "enum": [
+            "xlsx",
+            "csv",
+            "json",
+            "generated"
+          ]
+        },
+        "sourceFileName": {
+          "type": "string"
+        },
+        "sheetName": {
+          "type": "string"
+        },
+        "rowNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "columnName": {
+          "type": "string"
+        },
+        "cellAddress": {
+          "type": "string"
+        },
+        "rawLabel": {
+          "type": "string"
+        },
+        "rawValue": {},
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "scaleKey": {
+      "type": "string",
+      "enum": [
+        "small",
+        "medium",
+        "large"
+      ]
+    },
+    "scaleSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "appliesTo"
+      ],
+      "properties": {
+        "appliesTo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scaleKey"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "rawLabel": {
+          "type": "string"
+        }
+      }
+    },
+    "visibilityPolicyRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visibleTo"
+      ],
+      "properties": {
+        "visibleTo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/projectionScope"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "hiddenFrom": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/projectionScope"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "distanceValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "meters",
+        "rawText"
+      ],
+      "properties": {
+        "meters": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "rawText": {
+          "type": "string"
+        },
+        "milesText": {
+          "type": "string"
+        },
+        "metricText": {
+          "type": "string"
+        }
+      }
+    },
+    "timeValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seconds",
+        "rawText"
+      ],
+      "properties": {
+        "seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "rawText": {
+          "type": "string"
+        }
+      }
+    },
+    "timerPolicyRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "fixed",
+            "by_scale"
+          ]
+        },
+        "durationSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "durationSecondsByScale": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/scaleKey"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0
+          }
+        },
+        "pauseBehavior": {
+          "type": "string",
+          "enum": [
+            "freeze",
+            "continue"
+          ]
+        },
+        "extensionPolicy": {
+          "type": "string",
+          "enum": [
+            "manual_only",
+            "ruleset_defined",
+            "not_allowed"
+          ]
+        }
+      }
+    },
+    "featureClassRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "featureClassId",
+        "label"
+      ],
+      "properties": {
+        "featureClassId": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "rawLabel": {
+          "type": "string"
+        }
+      }
+    },
+    "requirementDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirementType",
+        "description"
+      ],
+      "properties": {
+        "requirementType": {
+          "type": "string",
+          "enum": [
+            "raw_text",
+            "photo",
+            "dice",
+            "location",
+            "manual_approval",
+            "condition"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "rawText": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "cardEffectDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effectType",
+        "description",
+        "automationLevel"
+      ],
+      "properties": {
+        "effectType": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "automationLevel": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "assisted",
+            "authoritative"
+          ]
+        },
+        "rawText": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "payload": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

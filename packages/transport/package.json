@@ -1,0 +1,6 @@
+{
+  "name": "@transit-hide-and-seek/transport",
+  "private": true,
+  "type": "module",
+  "description": "Placeholder package. Transport implementation is deferred."
+}

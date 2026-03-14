@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://transit-hide-and-seek.example/schemas/map-preset.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mapPresetId",
+    "packId",
+    "name",
+    "geometry",
+    "featureDatasetRefs",
+    "layerPolicies",
+    "locationPrecisionPolicy",
+    "sourceProvenance"
+  ],
+  "properties": {
+    "mapPresetId": {
+      "type": "string"
+    },
+    "packId": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "geometry": {
+      "type": "object"
+    },
+    "forbiddenRegions": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "featureDatasetRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "layerPolicies": {
+      "type": "object"
+    },
+    "locationPrecisionPolicy": {
+      "type": "object"
+    },
+    "travelPolicies": {
+      "type": "object"
+    },
+    "sourceProvenance": {
+      "type": "array",
+      "items": {
+        "$ref": "./common.schema.json#/$defs/sourceProvenance"
+      }
+    }
+  }
+}
