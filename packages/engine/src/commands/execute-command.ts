@@ -6,17 +6,23 @@ import type {
   CommandEnvelope,
   ContentPack,
   DomainEventEnvelope,
+  LocationSampleModel,
   MatchAggregate,
   RoleAssignmentModel,
   TeamModel,
   TimerModel
 } from '../../../shared-types/src/index.ts';
-import { buildConstraintArtifactsForRegion } from '../../../geo/src/index.ts';
+import {
+  materializeConstraintRecord,
+  resolveQuestionConstraint
+} from '../../../geo/src/index.ts';
 
 import { getPlayerRole, getPlayerTeam } from '../../../domain/src/index.ts';
 import {
   getCardDefinition,
+  getConstraintDefinition,
   getHidePhaseDurationSeconds,
+  getQuestionCategory,
   getQuestionCooldownSeconds,
   getQuestionTemplate
 } from '../helpers/content-pack.ts';
@@ -144,6 +150,27 @@ function buildHideTimer(contentPack: ContentPack, rulesetId: string | undefined,
     durationSeconds,
     remainingSeconds: durationSeconds,
     startedAt: occurredAt
+  };
+}
+
+function buildLocationSample(
+  aggregate: MatchAggregate,
+  envelope: CommandEnvelope<Extract<CommandEnvelope['command'], { type: 'update_location' }>>
+): LocationSampleModel {
+  const playerId = envelope.actor.playerId ?? envelope.actor.actorId;
+  const role = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+  const team = getPlayerTeam(aggregate, playerId);
+
+  return {
+    sampleId: `location:${randomUUID()}`,
+    playerId,
+    role,
+    teamId: team?.teamId,
+    latitude: envelope.command.payload.latitude,
+    longitude: envelope.command.payload.longitude,
+    accuracyMeters: envelope.command.payload.accuracyMeters,
+    source: envelope.command.payload.source ?? 'device',
+    recordedAt: envelope.occurredAt
   };
 }
 
@@ -315,6 +342,23 @@ function eventsForCommand(
           }
         })
       ];
+    case 'update_location': {
+      const locationSample = buildLocationSample(aggregate!, envelope as typeof envelope & {
+        command: { type: 'update_location'; payload: { latitude: number; longitude: number; accuracyMeters?: number; source?: 'device' | 'manual' | 'system'; } };
+      });
+
+      return [
+        makeEventEnvelope(aggregate, envelope, 0, 'authority', {
+          type: 'location_updated',
+          payload: {
+            ...envelope.command.payload,
+            playerId: locationSample.playerId,
+            role: locationSample.role,
+            teamId: locationSample.teamId
+          }
+        })
+      ];
+    }
     case 'end_hide_phase':
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
@@ -370,18 +414,30 @@ function eventsForCommand(
       ];
     case 'apply_constraint': {
       const question = aggregate!.questionInstances[envelope.command.payload.questionInstanceId];
+      const template = getQuestionTemplate(contentPack, question.templateId)!;
+      const category = getQuestionCategory(contentPack, template.categoryId)!;
+      const constraintDefinition = getConstraintDefinition(contentPack, envelope.command.payload.constraintId)!;
       const constraintRecordId = `constraint:${randomUUID()}`;
-      const constraintArtifacts = aggregate?.mapRegion
-        ? buildConstraintArtifactsForRegion({
-            region: aggregate.mapRegion,
-            metadata: envelope.command.payload.metadata,
-            createdAt: envelope.occurredAt,
-            constraintRecordId
-          })
-        : {
-            resolutionMode: 'metadata_only' as const,
-            artifacts: []
-          };
+      const resolvedConstraint = resolveQuestionConstraint({
+        aggregate: aggregate!,
+        contentPack,
+        question,
+        category,
+        template,
+        constraint: constraintDefinition,
+        createdAt: envelope.occurredAt,
+        resolutionMetadata: envelope.command.payload.metadata
+      });
+      const constraintRecord = materializeConstraintRecord({
+        searchArea: aggregate!.searchArea!,
+        region: aggregate!.mapRegion!,
+        constraintRecordId,
+        constraintId: envelope.command.payload.constraintId,
+        sourceQuestionInstanceId: envelope.command.payload.questionInstanceId,
+        createdAt: envelope.occurredAt,
+        draft: resolvedConstraint,
+        rawMetadata: envelope.command.payload.metadata
+      });
       const cooldownTimer = envelope.command.payload.openCardResolution
         ? undefined
         : buildCooldownTimer(aggregate!, contentPack, question.templateId, envelope.occurredAt);
@@ -391,16 +447,7 @@ function eventsForCommand(
           type: 'constraint_applied',
           payload: {
             ...envelope.command.payload,
-            constraint: {
-              constraintRecordId,
-              constraintId: envelope.command.payload.constraintId,
-              status: 'active',
-              sourceQuestionInstanceId: envelope.command.payload.questionInstanceId,
-              resolutionMode: constraintArtifacts.resolutionMode,
-              artifacts: constraintArtifacts.artifacts,
-              metadata: envelope.command.payload.metadata ?? {},
-              createdAt: envelope.occurredAt
-            },
+            constraint: constraintRecord,
             lifecycleState: 'seek_phase',
             seekPhaseSubstate: envelope.command.payload.openCardResolution
               ? 'awaiting_card_resolution'

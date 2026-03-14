@@ -8,7 +8,6 @@ import type {
 
 import {
   getPlayerRole,
-  getPlayerTeam,
   scopeCanView
 } from '../../../domain/src/index.ts';
 
@@ -60,6 +59,7 @@ function toVisibleArtifact(artifact: SpatialArtifactModel) {
     regionId: artifact.regionId,
     geometry: artifact.geometry,
     precision: artifact.precision,
+    confidenceScore: artifact.confidenceScore,
     clippedToRegion: artifact.clippedToRegion,
     featureCoverage: artifact.featureCoverage,
     explanation: artifact.explanation,
@@ -115,6 +115,11 @@ export function buildMatchProjection(
     constraintId: constraint.constraintId,
     status: constraint.status,
     resolutionMode: constraint.resolutionMode,
+    confidenceScore: constraint.confidenceScore,
+    explanation: constraint.explanation,
+    beforeRemainingArtifactId: constraint.beforeRemainingArtifactId,
+    afterRemainingArtifactId: constraint.afterRemainingArtifactId,
+    contradiction: constraint.contradiction,
     artifacts: constraint.artifacts.map((artifact) => toVisibleArtifact(artifact)),
     metadata: constraint.metadata
   }));
@@ -134,7 +139,16 @@ export function buildMatchProjection(
           eliminatedAreas: aggregate.searchArea.eliminatedAreas.map((artifact) => toVisibleArtifact(artifact)),
           constraintArtifacts: aggregate.searchArea.constraintArtifacts.map((artifact) =>
             toVisibleArtifact(artifact)
-          )
+          ),
+          contradiction: aggregate.searchArea.contradiction,
+          history: aggregate.searchArea.history.map((entry) => ({
+            historyEntryId: entry.historyEntryId,
+            constraintRecordId: entry.constraintRecordId,
+            summary: entry.summary,
+            beforeRemainingArtifactId: entry.beforeRemainingArtifactId,
+            afterRemainingArtifactId: entry.afterRemainingArtifactId,
+            contradiction: entry.contradiction
+          }))
         }
       : undefined;
 

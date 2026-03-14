@@ -5,7 +5,7 @@ import type {
   MatchAggregate
 } from '../../shared-types/src/index.ts';
 import {
-  applyConstraintArtifactsToSearchArea,
+  applyConstraintRecordToSearchArea,
   buildPlayableRegionFromCommand,
   initializeSearchAreaFromRegion
 } from '../../geo/src/index.ts';
@@ -71,6 +71,7 @@ export function reduceMatchAggregate(
         cardInstances: Object.fromEntries(cardInstances.map((card) => [card.cardInstanceId, card])),
         questionInstances: {},
         constraints: {},
+        locationSamples: [],
         eventLog: [eventLogEntry],
         hiddenState: {}
       };
@@ -181,6 +182,24 @@ export function reduceMatchAggregate(
           }
         }
       };
+    case 'location_updated':
+      return {
+        ...base,
+        locationSamples: [
+          ...base.locationSamples,
+          {
+            sampleId: `location:${eventEnvelope.sequence}`,
+            playerId: eventEnvelope.event.payload.playerId,
+            role: eventEnvelope.event.payload.role,
+            teamId: eventEnvelope.event.payload.teamId,
+            latitude: eventEnvelope.event.payload.latitude,
+            longitude: eventEnvelope.event.payload.longitude,
+            accuracyMeters: eventEnvelope.event.payload.accuracyMeters,
+            source: eventEnvelope.event.payload.source ?? 'device',
+            recordedAt: eventEnvelope.occurredAt
+          }
+        ]
+      };
     case 'hide_phase_ended': {
       const updatedTimers = Object.fromEntries(
         Object.values(base.timers).map((timer) =>
@@ -260,7 +279,7 @@ export function reduceMatchAggregate(
         },
         searchArea:
           base.searchArea
-            ? applyConstraintArtifactsToSearchArea(base.searchArea, nextConstraint, eventEnvelope.occurredAt)
+            ? applyConstraintRecordToSearchArea(base.searchArea, nextConstraint, eventEnvelope.occurredAt)
             : base.searchArea,
         timers: eventEnvelope.event.payload.cooldownTimer
           ? {

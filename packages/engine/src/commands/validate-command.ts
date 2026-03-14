@@ -18,6 +18,8 @@ import {
 } from '../../../domain/src/index.ts';
 import {
   getCardDefinition,
+  getConstraintDefinition,
+  getQuestionCategory,
   getQuestionTemplate,
   getRuleset
 } from '../helpers/content-pack.ts';
@@ -144,6 +146,20 @@ export function validateCommandEnvelope(
       }
       return [];
     }
+    case 'update_location': {
+      if (!envelope.actor.playerId) {
+        return [error(envelope.command.type, 'PLAYER_REQUIRED', 'Location updates require an associated player.')];
+      }
+
+      if (
+        !Number.isFinite(envelope.command.payload.latitude) ||
+        !Number.isFinite(envelope.command.payload.longitude)
+      ) {
+        return [error(envelope.command.type, 'INVALID_LOCATION', 'Location updates require numeric latitude and longitude values.')];
+      }
+
+      return [];
+    }
     case 'ask_question': {
       if (hasActiveQuestion(aggregate)) {
         return [error(envelope.command.type, 'QUESTION_FLOW_LOCKED', 'A question is already active.')];
@@ -168,6 +184,10 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'QUESTION_NOT_ACTIVE', 'Constraints can only be applied to the active question.')];
       }
 
+      if (!activeQuestion.answer) {
+        return [error(envelope.command.type, 'QUESTION_NOT_ANSWERED', 'Constraints require a recorded answer before resolution.')];
+      }
+
       if (!aggregate.mapRegion || !aggregate.searchArea) {
         return [
           error(
@@ -178,9 +198,38 @@ export function validateCommandEnvelope(
         ];
       }
 
-      if (!contentPack.constraints.find((constraint) => constraint.constraintId === envelope.command.payload.constraintId)) {
+      const template = getQuestionTemplate(contentPack, activeQuestion.templateId);
+      if (!template) {
+        return [error(envelope.command.type, 'QUESTION_TEMPLATE_NOT_FOUND', 'The active question template could not be resolved.')];
+      }
+
+      const category = getQuestionCategory(contentPack, template.categoryId);
+      if (!category) {
+        return [error(envelope.command.type, 'QUESTION_CATEGORY_NOT_FOUND', 'The active question category could not be resolved.')];
+      }
+
+      const constraint = getConstraintDefinition(contentPack, envelope.command.payload.constraintId);
+      if (!constraint) {
         return [error(envelope.command.type, 'CONSTRAINT_NOT_FOUND', 'The selected constraint definition does not exist.')];
       }
+
+      const allowedConstraintIds = new Set([
+        ...template.constraintRefs,
+        ...(category.defaultConstraintRefs ?? [])
+      ]);
+      if (!allowedConstraintIds.has(constraint.constraintId)) {
+        return [error(envelope.command.type, 'CONSTRAINT_NOT_ALLOWED', 'The selected constraint is not allowed for this question template.')];
+      }
+
+      const answerValue = activeQuestion.answer?.value;
+      if (
+        category.resolverKind === 'threshold_distance' &&
+        ((answerValue === 'yes' && constraint.kind !== 'within_distance') ||
+          (answerValue === 'no' && constraint.kind !== 'beyond_distance'))
+      ) {
+        return [error(envelope.command.type, 'CONSTRAINT_MISMATCH', 'Radar answers must use the matching inclusion or exclusion constraint.')];
+      }
+
       return [];
     }
     case 'draw_card': {

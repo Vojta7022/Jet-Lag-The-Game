@@ -64,7 +64,10 @@ Planned major areas:
 ## Repository status
 
 Current stage:
-- schema/types foundation and workbook importer
+- schema/types foundation
+- workbook importer
+- core domain engine and state machine foundation
+- bounded geometry and constraint-engine foundation
 
 Expected early deliverables:
 - `docs/architecture.md`
@@ -91,6 +94,12 @@ Run the importer test suite:
 
 ```bash
 npm test
+```
+
+Run only the geo and constraint tests:
+
+```bash
+npm run test:geo
 ```
 
 The current importer outputs a draft content pack with provenance metadata, normalization warnings, and row-level import reporting. Rulesets and map presets are intentionally still draft-time follow-up work.

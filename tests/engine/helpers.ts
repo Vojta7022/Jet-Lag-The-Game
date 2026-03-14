@@ -293,3 +293,93 @@ export function moveCardToTeamHand(
 
   return card.cardInstanceId;
 }
+
+export function recordLocationUpdate(
+  aggregate: MatchAggregate,
+  contentPack: ContentPack,
+  args: {
+    playerId: string;
+    role: MatchRole;
+    latitude: number;
+    longitude: number;
+    accuracyMeters?: number;
+    source?: 'device' | 'manual' | 'system';
+    step: number;
+  }
+): MatchAggregate {
+  return executeCommand(
+    aggregate,
+    makeEnvelope(
+      aggregate.matchId,
+      { actorId: args.playerId, playerId: args.playerId, role: args.role },
+      {
+        type: 'update_location',
+        payload: {
+          latitude: args.latitude,
+          longitude: args.longitude,
+          accuracyMeters: args.accuracyMeters,
+          source: args.source
+        }
+      },
+      args.step
+    ),
+    contentPack
+  ).aggregate;
+}
+
+export function openAnsweredQuestion(
+  aggregate: MatchAggregate,
+  contentPack: ContentPack,
+  args: {
+    questionInstanceId: string;
+    templateId: string;
+    answer: Record<string, unknown>;
+    startStep: number;
+  }
+): MatchAggregate {
+  let next = executeCommand(
+    aggregate,
+    makeEnvelope(
+      aggregate.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'begin_question_prompt', payload: {} },
+      args.startStep
+    ),
+    contentPack
+  ).aggregate;
+
+  next = executeCommand(
+    next,
+    makeEnvelope(
+      next.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      {
+        type: 'ask_question',
+        payload: {
+          questionInstanceId: args.questionInstanceId,
+          templateId: args.templateId,
+          targetTeamId: 'team-hider'
+        }
+      },
+      args.startStep + 1
+    ),
+    contentPack
+  ).aggregate;
+
+  return executeCommand(
+    next,
+    makeEnvelope(
+      next.matchId,
+      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+      {
+        type: 'answer_question',
+        payload: {
+          questionInstanceId: args.questionInstanceId,
+          answer: args.answer
+        }
+      },
+      args.startStep + 2
+    ),
+    contentPack
+  ).aggregate;
+}

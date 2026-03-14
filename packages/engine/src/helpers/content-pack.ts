@@ -1,5 +1,6 @@
 import type {
   CardDefinition,
+  ConstraintDefinition,
   ContentPack,
   QuestionCategoryDefinition,
   QuestionTemplateDefinition,
@@ -30,6 +31,13 @@ export function getRuleset(contentPack: ContentPack, rulesetId: string | undefin
   }
 
   return contentPack.rulesets.find((ruleset) => ruleset.rulesetId === rulesetId);
+}
+
+export function getConstraintDefinition(
+  contentPack: ContentPack,
+  constraintId: string
+): ConstraintDefinition | undefined {
+  return contentPack.constraints.find((constraint) => constraint.constraintId === constraintId);
 }
 
 export function getHidePhaseDurationSeconds(contentPack: ContentPack, rulesetId: string | undefined): number {

@@ -111,11 +111,13 @@ The current implementation establishes:
 - boundary-based search area initialization
 - bounded spatial artifacts in constraints and projections
 - a pluggable feature-layer descriptor package
+- exact convex polygon clipping and exact half-plane clipping where the math is trustworthy
+- approximate grid-based narrowing for radius, distance-threshold, and candidate-choice cases
 - metadata-only fallback when geometry cannot be trusted yet
 
 What is intentionally deferred:
 
-- exact polygon intersection and subtraction
+- full general-purpose polygon boolean operations for arbitrary concave inputs
 - provider-specific dataset ingestion
 - geometry confidence scoring from real data sources
 - transport-specific map synchronization

@@ -1,4 +1,6 @@
 import type {
+  ConstraintExplanationModel,
+  ContradictionReportModel,
   GeometryPrecision,
   GeoJsonGeometryModel,
   MatchLifecycleState,
@@ -56,6 +58,11 @@ export interface VisibleConstraintProjection {
   constraintId: string;
   status: string;
   resolutionMode: GeometryPrecision;
+  confidenceScore: number;
+  explanation: ConstraintExplanationModel;
+  beforeRemainingArtifactId?: string;
+  afterRemainingArtifactId?: string;
+  contradiction?: ContradictionReportModel;
   artifacts: VisibleSpatialArtifactProjection[];
   metadata: Record<string, unknown>;
 }
@@ -66,6 +73,7 @@ export interface VisibleSpatialArtifactProjection {
   regionId: string;
   geometry?: GeoJsonGeometryModel;
   precision: GeometryPrecision;
+  confidenceScore: number;
   clippedToRegion: boolean;
   featureCoverage: GeometryPrecision;
   explanation?: string;
@@ -81,6 +89,15 @@ export interface VisibleMapProjection {
   remainingArea?: VisibleSpatialArtifactProjection;
   eliminatedAreas: VisibleSpatialArtifactProjection[];
   constraintArtifacts: VisibleSpatialArtifactProjection[];
+  contradiction?: ContradictionReportModel;
+  history: Array<{
+    historyEntryId: string;
+    constraintRecordId: string;
+    summary: string;
+    beforeRemainingArtifactId?: string;
+    afterRemainingArtifactId?: string;
+    contradiction?: ContradictionReportModel;
+  }>;
 }
 
 export interface MatchProjection {

@@ -1,6 +1,10 @@
 import type {
+  ConstraintExplanationModel,
+  ConstraintHistoryEntryModel,
   ConstraintRecordModel,
+  ContradictionReportModel,
   CreateMapRegionCommand,
+  FeatureClassRef,
   GeoJsonGeometryModel,
   GeometryPrecision,
   PlayableRegionModel,
@@ -9,35 +13,17 @@ import type {
   SpatialArtifactModel
 } from '../../shared-types/src/index.ts';
 
-export interface SpatialConstraintInput {
-  mode?: 'preclipped' | 'metadata_only';
-  regionId?: string;
-  precision?: GeometryPrecision;
-  featureCoverage?: GeometryPrecision;
-  explanation?: string;
-  remainingAreaGeometry?: GeoJsonGeometryModel;
-  eliminatedAreaGeometries?: GeoJsonGeometryModel[];
-  overlayGeometries?: GeoJsonGeometryModel[];
-}
-
-export interface ConstraintArtifactBuildResult {
+export interface ResolvedConstraintDraft {
   resolutionMode: GeometryPrecision;
-  artifacts: SpatialArtifactModel[];
-}
-
-function normalizePrecision(
-  value: unknown,
-  fallback: GeometryPrecision
-): GeometryPrecision {
-  return value === 'exact' || value === 'approximate' || value === 'metadata_only'
-    ? value
-    : fallback;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : undefined;
+  confidenceScore: number;
+  featureCoverage: GeometryPrecision;
+  explanation: ConstraintExplanationModel;
+  nextRemainingGeometry?: GeoJsonGeometryModel;
+  eliminatedGeometry?: GeoJsonGeometryModel;
+  overlayGeometries?: GeoJsonGeometryModel[];
+  featureClassRefs?: FeatureClassRef[];
+  contradictionReason?: string;
+  metadata?: Record<string, unknown>;
 }
 
 function artifactId(
@@ -49,14 +35,28 @@ function artifactId(
   return `${regionId}:${kind}:${createdAt}:${suffix}`;
 }
 
+export function confidenceScoreForPrecision(precision: GeometryPrecision): number {
+  if (precision === 'exact') {
+    return 0.95;
+  }
+
+  if (precision === 'approximate') {
+    return 0.65;
+  }
+
+  return 0.2;
+}
+
 function createSpatialArtifact(args: {
   regionId: string;
   kind: SpatialArtifactKind;
   createdAt: string;
   precision: GeometryPrecision;
+  confidenceScore: number;
   featureCoverage: GeometryPrecision;
   geometry?: GeoJsonGeometryModel;
   explanation?: string;
+  featureClassRefs?: FeatureClassRef[];
   metadata?: Record<string, unknown>;
   suffix: string;
 }): SpatialArtifactModel {
@@ -66,43 +66,33 @@ function createSpatialArtifact(args: {
     regionId: args.regionId,
     geometry: args.geometry,
     precision: args.precision,
+    confidenceScore: args.confidenceScore,
     clippedToRegion: true,
     featureCoverage: args.featureCoverage,
     explanation: args.explanation,
+    featureClassRefs: args.featureClassRefs,
     metadata: args.metadata ?? {},
     createdAt: args.createdAt
   };
 }
 
-function readSpatialConstraintInput(metadata: Record<string, unknown>): SpatialConstraintInput | undefined {
-  return asRecord(metadata.spatial) as SpatialConstraintInput | undefined;
+function contradictionReport(
+  createdAt: string,
+  reason: string,
+  currentHistory: ConstraintHistoryEntryModel[]
+): ContradictionReportModel {
+  return {
+    contradictionId: `contradiction:${createdAt}`,
+    reason,
+    conflictingConstraintRecordIds: currentHistory.map((entry) => entry.constraintRecordId),
+    detectedAt: createdAt
+  };
 }
 
-function metadataOnlyConstraintArtifacts(
-  region: PlayableRegionModel,
-  createdAt: string,
-  metadata: Record<string, unknown>,
-  constraintRecordId: string
-): ConstraintArtifactBuildResult {
+export function emptyGeometry(): GeoJsonGeometryModel {
   return {
-    resolutionMode: 'metadata_only',
-    artifacts: [
-      createSpatialArtifact({
-        regionId: region.regionId,
-        kind: 'constraint_overlay',
-        createdAt,
-        precision: 'metadata_only',
-        featureCoverage: 'metadata_only',
-        explanation:
-          'Constraint recorded without a preclipped geometry result. Search remains bounded to the selected region.',
-        metadata: {
-          constraintRecordId,
-          degradedReason: 'missing_preclipped_geometry',
-          rawMetadata: metadata
-        },
-        suffix: constraintRecordId
-      })
-    ]
+    type: 'MultiPolygon',
+    coordinates: []
   };
 }
 
@@ -127,6 +117,7 @@ export function buildPlayableRegionFromCommand(
     kind: 'playable_boundary',
     createdAt: occurredAt,
     precision: 'exact',
+    confidenceScore: 1,
     featureCoverage: 'exact',
     geometry: payload.geometry,
     explanation: `Playable region boundary for ${displayName}.`,
@@ -161,6 +152,7 @@ export function initializeSearchAreaFromRegion(
       kind: 'candidate_remaining',
       createdAt: occurredAt,
       precision: 'exact',
+      confidenceScore: 1,
       featureCoverage: 'exact',
       geometry: region.boundaryGeometry,
       explanation: `Initial candidate area matches the selected ${region.regionKind} boundary.`,
@@ -170,100 +162,160 @@ export function initializeSearchAreaFromRegion(
       suffix: 'initial-remaining'
     }),
     eliminatedAreas: [],
-    constraintArtifacts: []
+    constraintArtifacts: [],
+    history: []
   };
 }
 
-export function buildConstraintArtifactsForRegion(args: {
-  region: PlayableRegionModel;
+export function metadataOnlyDraft(args: {
+  summary: string;
+  detail?: string;
+  reasoningSteps?: string[];
   metadata?: Record<string, unknown>;
-  createdAt: string;
+}): ResolvedConstraintDraft {
+  return {
+    resolutionMode: 'metadata_only',
+    confidenceScore: confidenceScoreForPrecision('metadata_only'),
+    featureCoverage: 'metadata_only',
+    explanation: {
+      summary: args.summary,
+      detail: args.detail,
+      reasoningSteps: args.reasoningSteps ?? []
+    },
+    metadata: args.metadata
+  };
+}
+
+export function materializeConstraintRecord(args: {
+  searchArea: SearchAreaModel;
+  region: PlayableRegionModel;
   constraintRecordId: string;
-}): ConstraintArtifactBuildResult {
-  const metadata = args.metadata ?? {};
-  const spatial = readSpatialConstraintInput(metadata);
-
-  if (!spatial) {
-    return metadataOnlyConstraintArtifacts(args.region, args.createdAt, metadata, args.constraintRecordId);
-  }
-
-  if (spatial.mode !== 'preclipped') {
-    return metadataOnlyConstraintArtifacts(args.region, args.createdAt, metadata, args.constraintRecordId);
-  }
-
-  if (spatial.regionId && spatial.regionId !== args.region.regionId) {
-    return metadataOnlyConstraintArtifacts(args.region, args.createdAt, metadata, args.constraintRecordId);
-  }
-
-  const precision = normalizePrecision(spatial.precision, 'approximate');
-  const featureCoverage = normalizePrecision(spatial.featureCoverage, precision);
+  constraintId: string;
+  sourceQuestionInstanceId?: string;
+  sourceCardInstanceId?: string;
+  createdAt: string;
+  draft: ResolvedConstraintDraft;
+  rawMetadata?: Record<string, unknown>;
+}): ConstraintRecordModel {
   const artifacts: SpatialArtifactModel[] = [];
+  const beforeRemainingArtifactId = args.searchArea.remainingArea.artifactId;
+  let afterRemainingArtifactId = beforeRemainingArtifactId;
 
-  if (spatial.remainingAreaGeometry) {
-    artifacts.push(
-      createSpatialArtifact({
-        regionId: args.region.regionId,
-        kind: 'candidate_remaining',
-        createdAt: args.createdAt,
-        precision,
-        featureCoverage,
-        geometry: spatial.remainingAreaGeometry,
-        explanation: spatial.explanation,
-        metadata: {
-          constraintRecordId: args.constraintRecordId
-        },
-        suffix: 'remaining'
-      })
-    );
+  const contradiction =
+    args.draft.contradictionReason
+      ? contradictionReport(args.createdAt, args.draft.contradictionReason, args.searchArea.history)
+      : undefined;
+
+  if (args.draft.nextRemainingGeometry || contradiction) {
+    const remainingArtifact = createSpatialArtifact({
+      regionId: args.region.regionId,
+      kind: 'candidate_remaining',
+      createdAt: args.createdAt,
+      precision: args.draft.resolutionMode,
+      confidenceScore: args.draft.confidenceScore,
+      featureCoverage: args.draft.featureCoverage,
+      geometry: args.draft.nextRemainingGeometry ?? emptyGeometry(),
+      explanation: args.draft.explanation.summary,
+      featureClassRefs: args.draft.featureClassRefs,
+      metadata: {
+        constraintRecordId: args.constraintRecordId,
+        source: 'constraint_result',
+        ...(args.draft.metadata ?? {})
+      },
+      suffix: 'remaining'
+    });
+    artifacts.push(remainingArtifact);
+    afterRemainingArtifactId = remainingArtifact.artifactId;
   }
 
-  for (const [index, geometry] of (spatial.eliminatedAreaGeometries ?? []).entries()) {
+  if (args.draft.eliminatedGeometry) {
     artifacts.push(
       createSpatialArtifact({
         regionId: args.region.regionId,
         kind: 'candidate_eliminated',
         createdAt: args.createdAt,
-        precision,
-        featureCoverage,
-        geometry,
-        explanation: spatial.explanation,
+        precision: args.draft.resolutionMode,
+        confidenceScore: args.draft.confidenceScore,
+        featureCoverage: args.draft.featureCoverage,
+        geometry: args.draft.eliminatedGeometry,
+        explanation: args.draft.explanation.summary,
+        featureClassRefs: args.draft.featureClassRefs,
         metadata: {
-          constraintRecordId: args.constraintRecordId
+          constraintRecordId: args.constraintRecordId,
+          source: 'constraint_result',
+          ...(args.draft.metadata ?? {})
         },
-        suffix: `eliminated-${index + 1}`
+        suffix: 'eliminated'
       })
     );
   }
 
-  for (const [index, geometry] of (spatial.overlayGeometries ?? []).entries()) {
+  for (const [index, geometry] of (args.draft.overlayGeometries ?? []).entries()) {
     artifacts.push(
       createSpatialArtifact({
         regionId: args.region.regionId,
         kind: 'constraint_overlay',
         createdAt: args.createdAt,
-        precision,
-        featureCoverage,
+        precision: args.draft.resolutionMode,
+        confidenceScore: args.draft.confidenceScore,
+        featureCoverage: args.draft.featureCoverage,
         geometry,
-        explanation: spatial.explanation,
+        explanation: args.draft.explanation.summary,
+        featureClassRefs: args.draft.featureClassRefs,
         metadata: {
-          constraintRecordId: args.constraintRecordId
+          constraintRecordId: args.constraintRecordId,
+          source: 'constraint_result',
+          overlayIndex: index,
+          ...(args.draft.metadata ?? {})
         },
         suffix: `overlay-${index + 1}`
       })
     );
   }
 
-  if (artifacts.length === 0) {
-    return metadataOnlyConstraintArtifacts(args.region, args.createdAt, metadata, args.constraintRecordId);
+  if (artifacts.length === 0 && args.draft.resolutionMode === 'metadata_only') {
+    artifacts.push(
+      createSpatialArtifact({
+        regionId: args.region.regionId,
+        kind: 'constraint_overlay',
+        createdAt: args.createdAt,
+        precision: 'metadata_only',
+        confidenceScore: args.draft.confidenceScore,
+        featureCoverage: args.draft.featureCoverage,
+        explanation: args.draft.explanation.summary,
+        featureClassRefs: args.draft.featureClassRefs,
+        metadata: {
+          constraintRecordId: args.constraintRecordId,
+          source: 'constraint_result',
+          ...(args.draft.metadata ?? {})
+        },
+        suffix: 'metadata-only'
+      })
+    );
   }
 
   return {
-    resolutionMode: precision,
-    artifacts
+    constraintRecordId: args.constraintRecordId,
+    constraintId: args.constraintId,
+    status: 'active',
+    sourceQuestionInstanceId: args.sourceQuestionInstanceId,
+    sourceCardInstanceId: args.sourceCardInstanceId,
+    resolutionMode: args.draft.resolutionMode,
+    confidenceScore: args.draft.confidenceScore,
+    explanation: args.draft.explanation,
+    beforeRemainingArtifactId,
+    afterRemainingArtifactId,
+    contradiction,
+    artifacts,
+    metadata: {
+      ...(args.rawMetadata ?? {}),
+      ...(args.draft.metadata ?? {})
+    },
+    createdAt: args.createdAt
   };
 }
 
-export function applyConstraintArtifactsToSearchArea(
+export function applyConstraintRecordToSearchArea(
   searchArea: SearchAreaModel,
   constraint: ConstraintRecordModel,
   occurredAt: string
@@ -275,7 +327,10 @@ export function applyConstraintArtifactsToSearchArea(
   for (const artifact of constraint.artifacts) {
     constraintArtifacts.push(artifact);
 
-    if (artifact.kind === 'candidate_remaining' && artifact.geometry) {
+    if (
+      artifact.kind === 'candidate_remaining' &&
+      constraint.afterRemainingArtifactId === artifact.artifactId
+    ) {
       remainingArea = artifact;
     }
 
@@ -284,11 +339,26 @@ export function applyConstraintArtifactsToSearchArea(
     }
   }
 
+  const historyEntry: ConstraintHistoryEntryModel = {
+    historyEntryId: `history:${constraint.constraintRecordId}`,
+    constraintRecordId: constraint.constraintRecordId,
+    beforeRemainingArtifactId: constraint.beforeRemainingArtifactId,
+    afterRemainingArtifactId: constraint.afterRemainingArtifactId,
+    eliminatedArtifactIds: constraint.artifacts
+      .filter((artifact) => artifact.kind === 'candidate_eliminated')
+      .map((artifact) => artifact.artifactId),
+    createdAt: occurredAt,
+    summary: constraint.explanation.summary,
+    contradiction: constraint.contradiction
+  };
+
   return {
     ...searchArea,
     remainingArea,
     eliminatedAreas,
     constraintArtifacts,
+    history: [...searchArea.history, historyEntry],
+    contradiction: constraint.contradiction,
     lastUpdatedAt: occurredAt
   };
 }

@@ -16,6 +16,7 @@ import type {
   ImportContentPackCommand,
   JoinMatchCommand,
   LockHiderLocationCommand,
+  UpdateLocationCommand,
   PauseMatchCommand,
   PlayCardCommand,
   PublishContentPackCommand,
@@ -62,6 +63,7 @@ export type DomainEvent =
   | MapRegionCreatedEvent
   | MatchStartedEvent
   | HiderLocationLockedEvent
+  | LocationUpdatedEvent
   | HidePhaseEndedEvent
   | QuestionPromptOpenedEvent
   | QuestionAskedEvent
@@ -163,6 +165,15 @@ export interface HiderLocationLockedEvent {
   type: 'hider_location_locked';
   payload: LockHiderLocationCommand['payload'] & {
     lockedByPlayerId: string;
+  };
+}
+
+export interface LocationUpdatedEvent {
+  type: 'location_updated';
+  payload: UpdateLocationCommand['payload'] & {
+    playerId: string;
+    role: MatchAggregate['roleAssignments'][string]['role'];
+    teamId?: string;
   };
 }
 

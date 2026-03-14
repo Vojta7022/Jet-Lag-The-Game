@@ -32,12 +32,14 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'archive_match',
   'resolve_card_window',
   'complete_cooldown',
-  'apply_constraint'
+  'apply_constraint',
+  'update_location'
 ]);
 
 const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'join_match',
   'lock_hider_location',
+  'update_location',
   'draw_card',
   'play_card',
   'answer_question'
@@ -47,6 +49,7 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'join_match',
   'begin_question_prompt',
   'ask_question',
+  'update_location',
   'draw_card',
   'play_card'
 ]);
@@ -58,6 +61,7 @@ const SYSTEM_COMMANDS = new Set<DomainCommand['type']>([
   'start_match',
   'end_hide_phase',
   'apply_constraint',
+  'update_location',
   'complete_cooldown',
   'pause_match',
   'resume_match',

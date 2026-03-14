@@ -38,6 +38,8 @@ export type PlayableRegionKind = 'city' | 'admin_region' | 'custom';
 
 export type PlayerConnectionState = 'connected' | 'disconnected';
 
+export type LocationSourceKind = 'device' | 'manual' | 'system';
+
 export type TimerKind = 'hide' | 'question' | 'cooldown' | 'status_effect' | 'custom';
 
 export type TimerStatus = 'running' | 'paused' | 'completed';
@@ -147,12 +149,26 @@ export interface QuestionInstanceModel {
   resolvedAt?: string;
 }
 
+export interface ConstraintExplanationModel {
+  summary: string;
+  detail?: string;
+  reasoningSteps: string[];
+}
+
+export interface ContradictionReportModel {
+  contradictionId: string;
+  reason: string;
+  conflictingConstraintRecordIds: string[];
+  detectedAt: string;
+}
+
 export interface SpatialArtifactModel {
   artifactId: string;
   kind: SpatialArtifactKind;
   regionId: string;
   geometry?: GeoJsonGeometryModel;
   precision: GeometryPrecision;
+  confidenceScore: number;
   clippedToRegion: boolean;
   featureCoverage: GeometryPrecision;
   explanation?: string;
@@ -168,9 +184,37 @@ export interface ConstraintRecordModel {
   sourceQuestionInstanceId?: string;
   sourceCardInstanceId?: string;
   resolutionMode: GeometryPrecision;
+  confidenceScore: number;
   artifacts: SpatialArtifactModel[];
+  explanation: ConstraintExplanationModel;
+  beforeRemainingArtifactId?: string;
+  afterRemainingArtifactId?: string;
+  contradiction?: ContradictionReportModel;
   metadata: Record<string, unknown>;
   createdAt: string;
+}
+
+export interface ConstraintHistoryEntryModel {
+  historyEntryId: string;
+  constraintRecordId: string;
+  beforeRemainingArtifactId?: string;
+  afterRemainingArtifactId?: string;
+  eliminatedArtifactIds: string[];
+  createdAt: string;
+  summary: string;
+  contradiction?: ContradictionReportModel;
+}
+
+export interface LocationSampleModel {
+  sampleId: string;
+  playerId: string;
+  role: MatchRole;
+  teamId?: string;
+  latitude: number;
+  longitude: number;
+  accuracyMeters?: number;
+  source: LocationSourceKind;
+  recordedAt: string;
 }
 
 export interface HiddenStateModel {
@@ -200,6 +244,8 @@ export interface SearchAreaModel {
   remainingArea: SpatialArtifactModel;
   eliminatedAreas: SpatialArtifactModel[];
   constraintArtifacts: SpatialArtifactModel[];
+  history: ConstraintHistoryEntryModel[];
+  contradiction?: ContradictionReportModel;
 }
 
 export interface PauseOverlayState {
@@ -237,6 +283,7 @@ export interface MatchAggregate {
   cardInstances: Record<string, CardInstanceModel>;
   questionInstances: Record<string, QuestionInstanceModel>;
   constraints: Record<string, ConstraintRecordModel>;
+  locationSamples: LocationSampleModel[];
   eventLog: EventLogEntry[];
   hiddenState: HiddenStateModel;
   activeQuestionInstanceId?: string;

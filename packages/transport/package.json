@@ -2,5 +2,5 @@
   "name": "@transit-hide-and-seek/transport",
   "private": true,
   "type": "module",
-  "description": "Placeholder package. Transport implementation is deferred."
+  "description": "Shared transport-core contracts and in-memory reference runtime for the transit hide-and-seek engine."
 }

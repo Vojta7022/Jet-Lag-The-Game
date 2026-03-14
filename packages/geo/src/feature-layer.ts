@@ -1,4 +1,8 @@
-import type { GeometryPrecision, PlayableRegionKind } from '../../shared-types/src/index.ts';
+import type {
+  GeoJsonGeometryModel,
+  GeometryPrecision,
+  PlayableRegionKind
+} from '../../shared-types/src/index.ts';
 
 export const SUPPORTED_FEATURE_TYPES = [
   'airport',
@@ -42,6 +46,22 @@ export interface RegionBoundaryRequest {
 
 export interface FeatureDataLayer {
   descriptor: FeatureDataLayerDescriptor;
+}
+
+export interface FeaturePointRef {
+  latitude: number;
+  longitude: number;
+}
+
+export interface GeoFeatureRecord {
+  featureId: string;
+  featureClassId: string;
+  label: string;
+  geometry?: GeoJsonGeometryModel;
+  representativePoint?: FeaturePointRef;
+  geometrySupport: FeatureGeometrySupport;
+  coverage: GeometryPrecision;
+  properties?: Record<string, unknown>;
 }
 
 export interface RegionBoundaryProvider {

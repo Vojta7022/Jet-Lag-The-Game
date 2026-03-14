@@ -2,6 +2,7 @@ import type {
   CardInstanceModel,
   MatchAggregate,
   MatchRole,
+  LocationSampleModel,
   ProjectionScope,
   QuestionInstanceModel,
   TeamModel,
@@ -51,4 +52,24 @@ export function getHandCardsForHolder(
 
 export function scopeCanView(scope: ProjectionScope, visibleTo: ProjectionScope[]): boolean {
   return visibleTo.includes(scope);
+}
+
+export function getPlayerLocationSamples(
+  aggregate: MatchAggregate,
+  playerId: string | undefined
+): LocationSampleModel[] {
+  if (!playerId) {
+    return [];
+  }
+
+  return aggregate.locationSamples
+    .filter((sample) => sample.playerId === playerId)
+    .sort((left, right) => left.recordedAt.localeCompare(right.recordedAt));
+}
+
+export function getLatestPlayerLocation(
+  aggregate: MatchAggregate,
+  playerId: string | undefined
+): LocationSampleModel | undefined {
+  return getPlayerLocationSamples(aggregate, playerId).at(-1);
 }

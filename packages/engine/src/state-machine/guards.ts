@@ -65,6 +65,13 @@ export function validateStateForCommand(
       return isLifecycleState(aggregate, 'hide_phase')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Hider location can only be locked during hide phase.')];
+    case 'update_location':
+      return aggregate.lifecycleState === 'hide_phase' ||
+        isSeekPhaseState(aggregate, 'ready') ||
+        isSeekPhaseState(aggregate, 'cooldown') ||
+        isLifecycleState(aggregate, 'endgame')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Location updates are only allowed in active movement states.')];
     case 'end_hide_phase':
       if (!isLifecycleState(aggregate, 'hide_phase')) {
         return [error(command.type, 'INVALID_STATE', 'Hide phase can only end while the match is hiding.')];

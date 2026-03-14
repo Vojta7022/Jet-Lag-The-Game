@@ -36,6 +36,7 @@ export type DomainCommand =
   | CreateMapRegionCommand
   | StartMatchCommand
   | LockHiderLocationCommand
+  | UpdateLocationCommand
   | EndHidePhaseCommand
   | BeginQuestionPromptCommand
   | AskQuestionCommand
@@ -131,6 +132,16 @@ export interface LockHiderLocationCommand {
     latitude: number;
     longitude: number;
     accuracyMeters?: number;
+  };
+}
+
+export interface UpdateLocationCommand {
+  type: 'update_location';
+  payload: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters?: number;
+    source?: 'device' | 'manual' | 'system';
   };
 }
 
