@@ -27,6 +27,11 @@ import {
   getSeedRegionFeatureData,
   type QuestionAnswerDraft
 } from '../features/questions/index.ts';
+import {
+  MatchTimingBanner,
+  MatchTimingPanel,
+  useMatchTimingModel
+} from '../features/timers/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
@@ -54,6 +59,7 @@ export function QuestionCenterScreen() {
   const { state, submitCommand, submitCommands, refreshActiveMatch } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
+  const timingModel = useMatchTimingModel(projection, state.lastSync?.generatedAt);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const capabilities = getQuestionFlowCapabilities(viewerRole);
   const categoryViewModels = useMemo(
@@ -295,6 +301,17 @@ export function QuestionCenterScreen() {
           title="Read-only spectator view"
           detail="Spectators can browse categories, inspect answers, and review bounded map updates, but cannot ask, answer, or resolve questions."
         />
+      ) : null}
+
+      <MatchTimingBanner model={timingModel} />
+
+      {activeMatch ? (
+        <Panel
+          title="Match Timing"
+          subtitle="Question flow follows the current hide timer, cooldown timer, pause state, and card lock."
+        >
+          <MatchTimingPanel model={timingModel} />
+        </Panel>
       ) : null}
 
       <Panel

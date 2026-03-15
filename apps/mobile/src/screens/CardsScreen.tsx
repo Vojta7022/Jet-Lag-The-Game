@@ -19,6 +19,11 @@ import {
   pickDefaultCardInstanceId,
   resolveCurrentRole
 } from '../features/cards/index.ts';
+import {
+  MatchTimingBanner,
+  MatchTimingPanel,
+  useMatchTimingModel
+} from '../features/timers/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
@@ -30,6 +35,7 @@ export function CardsScreen() {
   const { state, submitCommand, submitCommands, refreshActiveMatch } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
+  const timingModel = useMatchTimingModel(projection, state.lastSync?.generatedAt);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const deckViewModels = useMemo(
     () => buildDeckViewModels(defaultContentPack, projection, viewerRole),
@@ -122,6 +128,17 @@ export function CardsScreen() {
           title="Read-only spectator view"
           detail="Spectators cannot inspect private hands or perform card actions. Public card state remains hidden unless the active scope allows it."
         />
+      ) : null}
+
+      <MatchTimingBanner model={timingModel} />
+
+      {activeMatch ? (
+        <Panel
+          title="Match Timing"
+          subtitle="Card play respects the current hide timer, question cooldown, pause state, and resolution lock."
+        >
+          <MatchTimingPanel model={timingModel} />
+        </Panel>
       ) : null}
 
       <Panel

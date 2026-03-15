@@ -1,4 +1,9 @@
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
+import {
+  MatchTimingBanner,
+  MatchTimingPanel,
+  useMatchTimingModel
+} from '../features/timers/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
@@ -9,6 +14,7 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 export function StatusScreen() {
   const { state, clearError, refreshActiveMatch } = useAppShell();
   const activeMatch = state.activeMatch;
+  const timingModel = useMatchTimingModel(activeMatch?.projection, state.lastSync?.generatedAt);
 
   return (
     <ScreenContainer
@@ -26,6 +32,17 @@ export function StatusScreen() {
           title="No active transport session"
           detail="There is nothing to inspect yet because no match connection has been established."
         />
+      ) : null}
+
+      <MatchTimingBanner model={timingModel} />
+
+      {activeMatch ? (
+        <Panel
+          title="Match Timing"
+          subtitle="The current screen-wide timing summary from the latest synced projection."
+        >
+          <MatchTimingPanel model={timingModel} />
+        </Panel>
       ) : null}
 
       {activeMatch ? (

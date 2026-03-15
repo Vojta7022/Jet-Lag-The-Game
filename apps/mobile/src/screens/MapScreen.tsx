@@ -19,6 +19,11 @@ import {
   removeRegionFromSelection,
   useRegionSearch
 } from '../features/map/index.ts';
+import {
+  MatchTimingBanner,
+  MatchTimingPanel,
+  useMatchTimingModel
+} from '../features/timers/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
 import { Panel } from '../ui/Panel.tsx';
@@ -49,6 +54,7 @@ export function MapScreen() {
   });
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
+  const timingModel = useMatchTimingModel(projection, state.lastSync?.generatedAt);
   const compositePreviewRegion = useMemo(
     () => buildCompositePlayableRegion(selectedRegions),
     [selectedRegions]
@@ -134,6 +140,17 @@ export function MapScreen() {
             title="Map operation failed"
             detail={state.errorMessage}
           />
+        ) : null}
+
+        <MatchTimingBanner model={timingModel} />
+
+        {activeMatch ? (
+          <Panel
+            title="Match Timing"
+            subtitle="Hide phase, cooldowns, and pause state stay visible while you work on the playable region."
+          >
+            <MatchTimingPanel model={timingModel} />
+          </Panel>
         ) : null}
 
         <Panel

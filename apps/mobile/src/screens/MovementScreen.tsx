@@ -13,6 +13,11 @@ import {
   resolveLocationViewerRole
 } from '../features/location/index.ts';
 import { getSeedPlayableRegion } from '../features/map/index.ts';
+import {
+  MatchTimingBanner,
+  MatchTimingPanel,
+  useMatchTimingModel
+} from '../features/timers/index.ts';
 import { useLocationSharing } from '../providers/LocationSharingProvider.tsx';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
@@ -37,6 +42,7 @@ export function MovementScreen() {
 
   const activeMatch = appShellState.activeMatch;
   const projection = activeMatch?.projection;
+  const timingModel = useMatchTimingModel(projection, appShellState.lastSync?.generatedAt);
   const viewerRole = resolveLocationViewerRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const canShare = canViewerShareLiveLocation(viewerRole);
   const movementTracks = useMemo(
@@ -83,6 +89,17 @@ export function MovementScreen() {
           title="Location unavailable"
           detail="This runtime does not currently expose device location services. You can still inspect already-visible movement history from the projection."
         />
+      ) : null}
+
+      <MatchTimingBanner model={timingModel} />
+
+      {activeMatch ? (
+        <Panel
+          title="Match Timing"
+          subtitle="Movement sharing stays in step with hide phase, cooldowns, and pause state."
+        >
+          <MatchTimingPanel model={timingModel} />
+        </Panel>
       ) : null}
 
       <Panel

@@ -30,6 +30,9 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
           <Text style={styles.copy}>
             The app does not fake unresolved effects. Review the card text, handle the outcome manually or with referee assistance, then close the window.
           </Text>
+          <Text style={styles.copy}>
+            This lock does not use a separate countdown. It stays open until an allowed role resolves it.
+          </Text>
           <AppButton
             label="Close Resolution Window"
             onPress={props.onResolve}
