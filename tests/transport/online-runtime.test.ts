@@ -76,9 +76,10 @@ test('online authority runtime persists repository records and publishes scoped 
   assert.equal(hostNotices[0]?.projectionScope, 'host_admin');
 });
 
-test('online auth binding blocks impersonation and projection scope escalation', async () => {
+test('online auth binding lets the host add setup players while still blocking non-host impersonation and scope escalation', async () => {
   const { contentPack, runtime } = createOnlineHarness();
   const hostSession = makeOnlineSession('auth-host-1', { defaultPlayerId: 'host-1' });
+  const playerSession = makeOnlineSession('auth-player-1', { defaultPlayerId: 'player-1' });
   const publicSession = makeOnlineSession('auth-public-1');
   const matchId = 'online-auth-match';
 
@@ -96,10 +97,23 @@ test('online auth binding blocks impersonation and projection scope escalation',
     })
   );
 
+  const hostAddedPlayer = await runtime.submitAuthenticatedCommand(
+    hostSession,
+    makeOnlineCommandRequest(hostSession, matchId, 2, {
+      type: 'join_match',
+      payload: {
+        playerId: 'seed-hider',
+        displayName: 'Seed Hider'
+      }
+    })
+  );
+
+  assert.equal(hostAddedPlayer.accepted, true);
+
   await assert.rejects(
     runtime.submitAuthenticatedCommand(
-      hostSession,
-      makeOnlineCommandRequest(hostSession, matchId, 2, {
+      playerSession,
+      makeOnlineCommandRequest(playerSession, matchId, 3, {
         type: 'join_match',
         payload: {
           playerId: 'hider-1',

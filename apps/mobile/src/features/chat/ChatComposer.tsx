@@ -28,14 +28,14 @@ export function ChatComposer(props: ChatComposerProps) {
           {props.channel ? props.channel.channel.displayName : 'Select a channel'}
         </Text>
         <Text style={styles.subtitle}>
-          {props.channel ? 'Write a message, then attach evidence if this channel allows it.' : 'Choose a channel before sending a message.'}
+          {props.channel ? 'Write a message, attach an image, or send both if this channel allows it.' : 'Choose a channel before sending a message.'}
         </Text>
       </View>
       <Field
         label="Message"
         value={props.draft.body}
         onChangeText={(body) => props.onChange({ ...props.draft, body })}
-        placeholder="Write a match update, reminder, or evidence note"
+        placeholder="Optional when sending only an image"
         autoCapitalize="sentences"
         multiline
         numberOfLines={4}

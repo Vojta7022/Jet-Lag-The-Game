@@ -10,6 +10,7 @@ import {
   formatAttachmentVisibilityScope
 } from './evidence-model.ts';
 
+import { useAppShell } from '../../providers/AppShellProvider.tsx';
 import { colors } from '../../ui/theme.ts';
 
 interface VisibleAttachmentListProps {
@@ -19,6 +20,8 @@ interface VisibleAttachmentListProps {
 }
 
 export function VisibleAttachmentList(props: VisibleAttachmentListProps) {
+  const { getAttachmentMediaSource } = useAppShell();
+
   if (props.attachments.length === 0) {
     return <Text style={styles.empty}>{props.emptyText}</Text>;
   }
@@ -27,10 +30,15 @@ export function VisibleAttachmentList(props: VisibleAttachmentListProps) {
     <View style={styles.list}>
       {props.attachments.map((attachment) => {
         const localPreview = props.localPreviewByAttachmentId?.[attachment.attachmentId];
+        const remotePreview = getAttachmentMediaSource(attachment);
         return (
           <View key={attachment.attachmentId} style={styles.card}>
-            {localPreview?.uri ? (
-              <Image source={{ uri: localPreview.uri }} style={styles.preview} resizeMode="cover" />
+            {localPreview?.uri || remotePreview?.uri ? (
+              <Image
+                source={localPreview?.uri ? { uri: localPreview.uri } : { uri: remotePreview!.uri, headers: remotePreview?.headers }}
+                style={styles.preview}
+                resizeMode="cover"
+              />
             ) : null}
             <Text style={styles.label}>{attachment.label}</Text>
             <Text style={styles.meta}>{describeVisibleAttachmentStatus(attachment)}</Text>

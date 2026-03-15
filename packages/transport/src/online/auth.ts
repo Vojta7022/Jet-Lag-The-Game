@@ -40,7 +40,8 @@ function findMembership(session: OnlineAuthSession, matchId: string) {
 
 function assertCommandPlayerMatch(
   session: OnlineAuthSession,
-  request: OnlineCommandRequest
+  request: OnlineCommandRequest,
+  role: MatchRole
 ): void {
   if (request.command.type === 'create_match') {
     if (session.defaultPlayerId && request.command.payload.hostPlayerId !== session.defaultPlayerId) {
@@ -52,6 +53,10 @@ function assertCommandPlayerMatch(
   }
 
   if (request.command.type === 'join_match') {
+    if (role === 'host' || role === 'system') {
+      return;
+    }
+
     const expectedPlayerId = session.defaultPlayerId ?? findMembership(session, request.matchId)?.playerId;
     if (expectedPlayerId && request.command.payload.playerId !== expectedPlayerId) {
       throw new TransportRuntimeError(
@@ -109,9 +114,8 @@ export class DefaultOnlineSessionBinder implements OnlineSessionBinder {
     recipient: ProjectionRecipient;
     envelope: CommandEnvelope;
   }> {
-    assertCommandPlayerMatch(session, request);
-
     const access = await resolveAccessBinding(session, request.matchId, aggregate);
+    assertCommandPlayerMatch(session, request, access.role);
 
     if (!session.serviceRole && request.command.type !== 'create_match' && request.command.type !== 'join_match' && !access.playerId) {
       throw new TransportRuntimeError(

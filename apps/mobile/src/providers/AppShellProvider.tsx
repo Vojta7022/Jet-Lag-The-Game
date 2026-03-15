@@ -2,8 +2,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 
 import type {
   DomainCommand,
+  MatchRole,
   SyncEnvelope,
-  TransportSubscription
+  TransportSubscription,
+  VisibleAttachmentProjection
 } from '../../../../packages/shared-types/src/index.ts';
 
 import { useRuntimeClient } from './RuntimeClientProvider.tsx';
@@ -20,6 +22,8 @@ import type {
   RuntimeConnection,
   SessionProfileDraft
 } from '../runtime/types.ts';
+import type { LocalMediaAttachmentDraft } from '../features/evidence/evidence-model.ts';
+import type { RemoteAttachmentMediaSource } from '../runtime/supabase-attachment-storage.ts';
 
 interface AppShellContextValue {
   state: AppShellState;
@@ -31,6 +35,8 @@ interface AppShellContextValue {
   recoverActiveMatch: () => Promise<boolean>;
   submitCommand: (command: DomainCommand) => Promise<boolean>;
   submitCommands: (commands: DomainCommand[]) => Promise<boolean>;
+  prepareAttachmentUploadCommands: (drafts: LocalMediaAttachmentDraft[]) => Promise<DomainCommand[] | undefined>;
+  getAttachmentMediaSource: (attachment: VisibleAttachmentProjection) => RemoteAttachmentMediaSource | undefined;
   saveMapSetupDraft: (draft: MapSetupDraftState) => void;
   clearMapSetupDraft: (matchId: string) => void;
   disconnectActiveMatch: () => Promise<void>;
@@ -38,6 +44,43 @@ interface AppShellContextValue {
 }
 
 const AppShellContext = createContext<AppShellContextValue | undefined>(undefined);
+
+function resolveCommandActor(
+  connection: RuntimeConnection | undefined,
+  sessionProfile: SessionProfileDraft,
+  activePlayerRole: MatchRole | undefined
+) {
+  if (!connection) {
+    return {
+      actorId: sessionProfile.authUserId ?? sessionProfile.playerId,
+      playerId: sessionProfile.playerId,
+      role: 'spectator' as const
+    };
+  }
+
+  return {
+    actorId: connection.recipient.actorId,
+    playerId: connection.recipient.playerId ?? sessionProfile.playerId,
+    role: activePlayerRole ?? connection.recipient.role ?? 'spectator'
+  };
+}
+
+function toPlayerFacingShellError(
+  error: unknown,
+  connection: RuntimeConnection | undefined
+): string {
+  const message = error instanceof Error ? error.message : 'The app shell operation failed.';
+
+  if (/authenticated session player/i.test(message)) {
+    const connectedPlayer = connection?.recipient.playerId ?? 'the connected player';
+
+    return connection?.runtimeKind === 'online_foundation'
+      ? `This online match is still connected as "${connectedPlayer}". Disconnect the current match, confirm the player profile, then create or join again before continuing setup.`
+      : 'The current match is still using a different player identity. Disconnect and reconnect with the intended player profile before continuing.';
+  }
+
+  return message;
+}
 
 export function AppShellProvider(props: { children: React.ReactNode }) {
   const { runtimeKind, selectRuntimeKind } = useRuntimeMode();
@@ -47,8 +90,10 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
   const subscriptionRef = useRef<TransportSubscription | undefined>(undefined);
 
   useEffect(() => {
-    dispatch({ type: 'runtime_selected', runtimeKind });
-  }, [runtimeKind]);
+    if (state.runtimeKind !== runtimeKind) {
+      dispatch({ type: 'runtime_selected', runtimeKind });
+    }
+  }, [runtimeKind, state.runtimeKind]);
 
   const bindConnectedMatch = useCallback((connection: RuntimeConnection, syncEnvelope: SyncEnvelope) => {
     const summary = runtimeClient.summarize(connection, syncEnvelope);
@@ -101,7 +146,7 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
   const handleFailure = useCallback((error: unknown) => {
     dispatch({
       type: 'operation_failed',
-      errorMessage: error instanceof Error ? error.message : 'The app shell operation failed.'
+      errorMessage: toPlayerFacingShellError(error, connectionRef.current)
     });
   }, []);
 
@@ -112,6 +157,12 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
         ...input,
         runtimeKind
       });
+      if (result.resolvedSessionProfile) {
+        dispatch({
+          type: 'session_saved',
+          sessionProfile: result.resolvedSessionProfile
+        });
+      }
       await replaceConnection(result.connection, result.initialSync);
       return true;
     } catch (error) {
@@ -127,6 +178,12 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
         ...input,
         runtimeKind
       });
+      if (result.resolvedSessionProfile) {
+        dispatch({
+          type: 'session_saved',
+          sessionProfile: result.resolvedSessionProfile
+        });
+      }
       await replaceConnection(result.connection, result.initialSync);
       return true;
     } catch (error) {
@@ -191,10 +248,15 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
 
     dispatch({ type: 'operation_started' });
     try {
+      const actor = resolveCommandActor(
+        connectionRef.current,
+        state.sessionProfile,
+        state.activeMatch?.playerRole
+      );
       const syncEnvelope = await runtimeClient.submitCommands(connectionRef.current, {
-        actorId: state.sessionProfile.playerId,
-        playerId: state.sessionProfile.playerId,
-        role: connectionRef.current.recipient.role ?? 'spectator'
+        actorId: actor.actorId,
+        playerId: actor.playerId,
+        role: actor.role ?? 'spectator'
       }, [command]);
       const summary = runtimeClient.summarize(connectionRef.current, syncEnvelope);
       dispatch({
@@ -208,7 +270,7 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
       handleFailure(error);
       return false;
     }
-  }, [handleFailure, runtimeClient, state.sessionProfile.playerId]);
+  }, [handleFailure, runtimeClient, state.activeMatch?.playerRole, state.sessionProfile]);
 
   const submitCommands = useCallback(async (commands: DomainCommand[]) => {
     if (!connectionRef.current) {
@@ -217,10 +279,15 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
 
     dispatch({ type: 'operation_started' });
     try {
+      const actor = resolveCommandActor(
+        connectionRef.current,
+        state.sessionProfile,
+        state.activeMatch?.playerRole
+      );
       const syncEnvelope = await runtimeClient.submitCommands(connectionRef.current, {
-        actorId: state.sessionProfile.playerId,
-        playerId: state.sessionProfile.playerId,
-        role: connectionRef.current.recipient.role ?? 'spectator'
+        actorId: actor.actorId,
+        playerId: actor.playerId,
+        role: actor.role ?? 'spectator'
       }, commands);
       const summary = runtimeClient.summarize(connectionRef.current, syncEnvelope);
       dispatch({
@@ -234,7 +301,7 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
       handleFailure(error);
       return false;
     }
-  }, [handleFailure, runtimeClient, state.sessionProfile.playerId]);
+  }, [handleFailure, runtimeClient, state.activeMatch?.playerRole, state.sessionProfile]);
 
   const saveMapSetupDraft = useCallback((draft: MapSetupDraftState) => {
     dispatch({
@@ -262,6 +329,23 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     dispatch({ type: 'clear_error' });
   }, []);
 
+  const prepareAttachmentUploadCommands = useCallback(async (drafts: LocalMediaAttachmentDraft[]) => {
+    if (!connectionRef.current) {
+      return undefined;
+    }
+
+    try {
+      return await runtimeClient.prepareAttachmentUploadCommands(connectionRef.current, drafts);
+    } catch (error) {
+      handleFailure(error);
+      return undefined;
+    }
+  }, [handleFailure, runtimeClient]);
+
+  const getAttachmentMediaSource = useCallback((attachment: VisibleAttachmentProjection) => {
+    return runtimeClient.getAttachmentMediaSource(connectionRef.current, attachment);
+  }, [runtimeClient]);
+
   useEffect(() => {
     return () => {
       void subscriptionRef.current?.unsubscribe();
@@ -279,6 +363,8 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     recoverActiveMatch,
     submitCommand,
     submitCommands,
+    prepareAttachmentUploadCommands,
+    getAttachmentMediaSource,
     saveMapSetupDraft,
     clearMapSetupDraft,
     disconnectActiveMatch,
@@ -288,7 +374,9 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     clearError,
     createMatch,
     disconnectActiveMatch,
+    getAttachmentMediaSource,
     joinMatch,
+    prepareAttachmentUploadCommands,
     refreshActiveMatch,
     recoverActiveMatch,
     saveSessionProfile,

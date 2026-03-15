@@ -19,6 +19,15 @@ export interface MapSetupDraftState {
   query: string;
 }
 
+function isSameSessionProfile(
+  left: SessionProfileDraft,
+  right: SessionProfileDraft
+): boolean {
+  return left.displayName === right.displayName &&
+    left.playerId === right.playerId &&
+    left.authUserId === right.authUserId;
+}
+
 function sameDraftRegionSelection(
   left: PlayableRegionCatalogEntry[],
   right: PlayableRegionCatalogEntry[]
@@ -99,12 +108,20 @@ export function appShellReducer(
 ): AppShellState {
   switch (action.type) {
     case 'runtime_selected':
+      if (state.runtimeKind === action.runtimeKind) {
+        return state;
+      }
+
       return {
         ...state,
         runtimeKind: action.runtimeKind,
         errorMessage: undefined
       };
     case 'session_saved':
+      if (isSameSessionProfile(state.sessionProfile, action.sessionProfile)) {
+        return state;
+      }
+
       return {
         ...state,
         sessionProfile: action.sessionProfile,

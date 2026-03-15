@@ -12,7 +12,8 @@ Included in this phase:
 - real native map screen with provider-backed searchable region selection and bounded overlays
 - first-pass question center wired to `begin_question_prompt`, `ask_question`, `answer_question`, and host-side `apply_constraint`
 - first-pass cards screen wired to `draw_card`, `play_card`, `discard_card`, and `resolve_card_window`
-- first-pass chat screen with public/team channel switching, scoped message lists, and honest placeholder attachment flows
+- first-pass chat screen with public/team channel switching, scoped message lists, and honest media/evidence flows with durable online upload when configured
+- Supabase-backed online foundation path for persisted matches, snapshots, projections, and durable attachment uploads when online env is configured
 - first-pass movement screen with foreground location permission state, `update_location` wiring, and seeker breadcrumb overlays
 - lobby, dashboard placeholder, and status screens
 - developer runtime switcher for:
@@ -25,9 +26,9 @@ Included in this phase:
 Still intentionally deferred:
 
 - visual polish
-- real Supabase backend wiring
 - real LAN discovery and device transport
 - production-tuned background location behavior
+- a server-side authoritative online gateway and full Supabase production hardening
 
 ## Run the App
 
@@ -82,6 +83,10 @@ Currently supported `EXPO_PUBLIC_*` variables include:
 - `EXPO_PUBLIC_DEFAULT_MATCH_PREFIX`
 - `EXPO_PUBLIC_NEARBY_JOIN_TTL_SECONDS`
 - `EXPO_PUBLIC_ONLINE_PROJECT_URL`
+- `EXPO_PUBLIC_ONLINE_ANON_KEY`
+- `EXPO_PUBLIC_ONLINE_ATTACHMENT_BUCKET`
+- `EXPO_PUBLIC_ONLINE_REALTIME_POLL_MS`
+- `EXPO_PUBLIC_ONLINE_STORAGE_CACHE_CONTROL_SECONDS`
 - `EXPO_PUBLIC_REGION_PROVIDER_BASE_URL`
 - `EXPO_PUBLIC_REGION_PROVIDER_LABEL`
 - `EXPO_PUBLIC_REGION_PROVIDER_ATTRIBUTION_URL`
@@ -136,6 +141,35 @@ Provider deployment guidance:
 - production should point `EXPO_PUBLIC_REGION_PROVIDER_BASE_URL` at a backend or proxy that applies attribution, caching, and rate limiting server-side
 - the current mobile provider abstraction is designed so this swap does not require a new search UI or a new bounded-region apply flow
 
+## Online Runtime And Storage
+
+The mobile shell now supports two online paths:
+
+- fallback path: mocked in-memory persistence when Supabase env is not configured
+- Supabase-backed path: real PostgREST persistence, polling-based sync fanout, anonymous mobile auth, and durable attachment uploads when the required env is configured
+
+Required Supabase env for the real online path:
+
+- `EXPO_PUBLIC_ONLINE_PROJECT_URL`
+- `EXPO_PUBLIC_ONLINE_ANON_KEY`
+- `EXPO_PUBLIC_ONLINE_ATTACHMENT_BUCKET`
+
+Current durability status:
+
+- real now:
+  - online match, event, snapshot, projection, and content-pack records can persist through Supabase REST
+  - mobile evidence flows can upload image binaries into Supabase Storage before recording the attachment in match state
+  - visible attachments can open authenticated remote previews when the current session has access
+- still partial:
+  - the mobile client is still running the online authority flow directly in-app; this is not yet a server-side trusted command gateway
+  - realtime fanout is currently polling-based rather than Supabase Realtime channels
+  - anonymous auth is suitable for local/dev testing, but production should move to a stronger auth and backend session model
+
+Deployment guidance:
+
+- local/dev use can point directly at a Supabase project
+- production should move command submission, projection access, and attachment URL brokering behind a backend or proxy without changing the current mobile screen APIs
+
 ## Current Question Phase
 
 The mobile shell now includes a dedicated question center that:
@@ -148,7 +182,7 @@ The mobile shell now includes a dedicated question center that:
 - shows honest result modes: `exact`, `approximate`, or `metadata-only`
 - refreshes the authoritative bounded map state after constraint application
 
-Photo questions stay honest in this phase. The shell can pick or capture real local images, record attachment metadata through the runtime, and preview the image during the current device session, but it does not yet claim fully durable binary upload/storage.
+Photo questions stay honest in this phase. The shell can pick or capture real images, upload them durably to Supabase Storage when the online runtime is configured, record attachment metadata through the runtime, and preview the image locally during the current session. If the app is running without the real online path, it falls back to metadata-only evidence recording.
 
 ## Current Cards Phase
 
@@ -169,7 +203,7 @@ The mobile shell now includes a dedicated chat screen that:
 - renders lobby, global, and team-private channels from the real scoped projection
 - lets permitted roles send messages through `send_chat_message`
 - lets permitted roles pick from the photo library or camera before sending a message
-- records attachment metadata through `upload_attachment` without pretending durable media storage already exists
+- uploads media durably to Supabase Storage when the online runtime is configured, then records attachment metadata through `upload_attachment`
 - keeps public, team-private, and hidden attachment visibility aligned with the runtime projection scope
 
 Current media/evidence status:
@@ -177,11 +211,12 @@ Current media/evidence status:
 - real now:
   - device image picking and camera capture through Expo image-picker
   - local preview UI for selected or already-recorded attachments during the current app session
+  - durable Supabase Storage uploads when online env and auth are configured
   - direct evidence recording from question, card, and chat flows through the existing runtime command path
 - still partial:
-  - attachment binary files are not yet persisted by a production storage adapter
-  - previews remain local to the current device session unless a later storage/network layer persists the file
-  - visibility and linkage are authoritative, but storage durability is still a later transport/storage step
+  - remote preview access still depends on an authenticated online session
+  - the client-side authority model is not yet a final trusted backend deployment
+  - richer media download management, retry queues, and moderation/storage lifecycle policies are still future work
 
 ## Current Movement Phase
 

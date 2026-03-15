@@ -48,7 +48,7 @@ export function StatusScreen() {
       {activeMatch ? (
         <Panel
           title="Connection Status"
-          subtitle="Core transport and snapshot details for the active match session."
+          subtitle="Core transport, persistence, and snapshot details for the active match session."
         >
           <FactList
             items={[
@@ -61,6 +61,16 @@ export function StatusScreen() {
               { label: 'Scope', value: activeMatch.recipient.scope }
             ]}
           />
+          {activeMatch.onlineStatus ? (
+            <FactList
+              items={[
+                { label: 'Online Persistence', value: activeMatch.onlineStatus.persistenceMode },
+                { label: 'Attachment Storage', value: activeMatch.onlineStatus.attachmentStorageMode },
+                { label: 'Attachment Bucket', value: activeMatch.onlineStatus.attachmentBucket ?? 'Not configured' },
+                { label: 'Supabase URL', value: activeMatch.onlineStatus.projectUrl ?? 'Not configured' }
+              ]}
+            />
+          ) : null}
           <AppButton
             label="Refresh Status"
             onPress={() => {

@@ -1,7 +1,5 @@
 declare module 'expo-image-picker' {
-  export const MediaTypeOptions: {
-    Images: 'images';
-  };
+  export type MediaType = 'images' | 'videos' | 'livePhotos';
 
   export interface PermissionResponse {
     granted: boolean;
@@ -34,13 +32,13 @@ declare module 'expo-image-picker' {
   export function requestMediaLibraryPermissionsAsync(): Promise<PermissionResponse>;
   export function requestCameraPermissionsAsync(): Promise<PermissionResponse>;
   export function launchImageLibraryAsync(options?: {
-    mediaTypes?: string | string[];
+    mediaTypes?: MediaType | MediaType[];
     allowsEditing?: boolean;
     quality?: number;
     selectionLimit?: number;
   }): Promise<ImagePickerResult>;
   export function launchCameraAsync(options?: {
-    mediaTypes?: string | string[];
+    mediaTypes?: MediaType | MediaType[];
     allowsEditing?: boolean;
     quality?: number;
   }): Promise<ImagePickerResult>;

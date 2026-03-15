@@ -125,6 +125,14 @@ npm run mobile:android
 npm run mobile:web
 ```
 
+To enable the real Supabase-backed online path instead of the in-memory fallback, copy [apps/mobile/.env.example](/Users/vojtechponrt/Documents/Jet%20Lag%20The%20Game/apps/mobile/.env.example) and set:
+
+- `EXPO_PUBLIC_ONLINE_PROJECT_URL`
+- `EXPO_PUBLIC_ONLINE_ANON_KEY`
+- `EXPO_PUBLIC_ONLINE_ATTACHMENT_BUCKET`
+
+Without those env vars, the app keeps using the honest mocked online fallback.
+
 The current workspace metadata also includes `pnpm-workspace.yaml`, but the checked-in scripts and README steps are currently written around npm workspaces for the first runnable mobile pass.
 
 ## Notes

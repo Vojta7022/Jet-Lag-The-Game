@@ -25,7 +25,6 @@ import {
   resolveCurrentRole
 } from '../features/cards/index.ts';
 import {
-  buildAttachmentUploadCommandFromDraft,
   buildEvidenceContexts,
   EvidenceCapturePanel,
   useLocalMediaAttachments,
@@ -44,7 +43,7 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 
 export function CardsScreen() {
-  const { state, submitCommand, submitCommands, refreshActiveMatch } = useAppShell();
+  const { state, submitCommand, submitCommands, refreshActiveMatch, prepareAttachmentUploadCommands } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
@@ -157,6 +156,11 @@ export function CardsScreen() {
   const resolveDisabledReason = activeCard && !canResolve
     ? 'A host-admin view must close the active card window after the effect is handled.'
     : undefined;
+  const cardEvidenceHint = activeMatch?.onlineStatus?.attachmentStorageMode === 'durable_supabase_storage'
+    ? 'Recording evidence here uploads the image to Supabase Storage and records durable attachment metadata in the match.'
+    : activeMatch?.runtimeKind === 'online_foundation'
+      ? 'Recording evidence here still creates real attachment records, but this online session is not yet writing shared media binaries.'
+      : 'Recording media here creates attachment metadata in the match. Binary storage and later review workflows are still partial, so this screen stays explicit about what is and is not persisted.';
 
   const handleRecordCardEvidence = async () => {
     if (!cardAttachmentContext) {
@@ -164,8 +168,8 @@ export function CardsScreen() {
     }
 
     const attachmentIds = cardEvidenceDrafts.map((draft) => draft.attachmentId);
-    const commands = cardEvidenceDrafts.map((draft) => buildAttachmentUploadCommandFromDraft(draft));
-    if (commands.length === 0) {
+    const commands = await prepareAttachmentUploadCommands(cardEvidenceDrafts);
+    if (!commands || commands.length === 0) {
       return;
     }
 
@@ -475,7 +479,7 @@ export function CardsScreen() {
             localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
             submitLabel="Record Card Evidence"
             submitDisabled={cardEvidenceDrafts.length === 0}
-            submitHint="Recording media here creates attachment metadata in the match. Binary storage and later review workflows are still partial, so this screen stays explicit about what is and is not persisted."
+            submitHint={cardEvidenceHint}
             emptyVisibleText="No visible card evidence has been recorded for the active window yet."
             onChooseFromLibrary={() => {
               void localMedia.chooseFromLibrary(cardAttachmentContext);

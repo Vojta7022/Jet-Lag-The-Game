@@ -296,3 +296,19 @@ test('app shell reducer ignores identical map setup drafts so screens do not res
 
   assert.equal(nextState, state);
 });
+
+test('app shell reducer ignores identical runtime and session sync actions', () => {
+  const state = createInitialShellState('in_memory');
+
+  const sameRuntimeState = appShellReducer(state, {
+    type: 'runtime_selected',
+    runtimeKind: 'in_memory'
+  });
+  const sameSessionState = appShellReducer(state, {
+    type: 'session_saved',
+    sessionProfile: state.sessionProfile
+  });
+
+  assert.equal(sameRuntimeState, state);
+  assert.equal(sameSessionState, state);
+});

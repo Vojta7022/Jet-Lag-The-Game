@@ -92,7 +92,10 @@ export function createLocalMediaAttachmentDraft(args: {
 }
 
 export function buildAttachmentUploadCommandFromDraft(
-  draft: LocalMediaAttachmentDraft
+  draft: LocalMediaAttachmentDraft,
+  options?: {
+    captureMetadata?: Record<string, unknown>;
+  }
 ): DomainCommand {
   const label = draft.label.trim() || 'Untitled attachment';
   const note = draft.note.trim() || undefined;
@@ -123,6 +126,10 @@ export function buildAttachmentUploadCommandFromDraft(
 
   if (draft.fileSizeBytes !== undefined) {
     metadata.fileSizeBytes = draft.fileSizeBytes;
+  }
+
+  if (options?.captureMetadata) {
+    Object.assign(metadata, options.captureMetadata);
   }
 
   return {
@@ -171,6 +178,12 @@ export function formatLocalMediaDraftStage(stage: LocalMediaDraftStage): string 
 }
 
 export function describeVisibleAttachmentStatus(attachment: VisibleAttachmentProjection): string {
+  if (attachment.storage?.storageState === 'supabase_object_stored') {
+    return attachment.status === 'linked'
+      ? 'Stored and linked'
+      : 'Stored for review';
+  }
+
   if (attachment.status === 'linked') {
     return 'Visible in this conversation or flow';
   }
@@ -179,6 +192,10 @@ export function describeVisibleAttachmentStatus(attachment: VisibleAttachmentPro
 }
 
 export function describeVisibleAttachmentDetail(attachment: VisibleAttachmentProjection): string {
+  if (attachment.storage?.storageState === 'supabase_object_stored') {
+    return 'This evidence record is stored in Supabase Storage. Clients with the right scope and an online session can open the shared media file.';
+  }
+
   if (attachment.status === 'linked') {
     return 'This evidence record is linked to a visible message, question, or card flow. Image binaries may still stay local to the recording device until fuller storage support is added.';
   }

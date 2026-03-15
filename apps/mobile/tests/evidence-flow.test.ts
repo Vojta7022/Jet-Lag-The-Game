@@ -15,6 +15,10 @@ import {
   buildAttachmentUploadCommandFromDraft,
   createLocalMediaAttachmentDraft
 } from '../src/features/evidence/evidence-model.ts';
+import {
+  buildSupabaseAttachmentMediaSource,
+  buildSupabaseAttachmentUploadCommand
+} from '../src/runtime/supabase-attachment-storage.ts';
 import { buildEvidenceContexts } from '../src/features/evidence/evidence-contexts.ts';
 import { describeUnavailablePicker } from '../src/features/evidence/media-picker.ts';
 import {
@@ -34,6 +38,7 @@ import {
   findActiveQuestion,
   findQuestionTemplate
 } from '../src/features/questions/question-catalog.ts';
+import { SupabaseAttachmentStorageClient } from '../../../packages/transport/src/index.ts';
 
 const generatedPackPath = fileURLToPath(
   new URL('../../../samples/generated/jet-lag-the-game.content-pack.json', import.meta.url)
@@ -243,4 +248,130 @@ test('question photo evidence can be recorded through the runtime and referenced
   assert.equal(answeredQuestion?.answer?.note, 'Tree evidence recorded from the device camera.');
 
   await orchestrator.disconnect(created.connection);
+});
+
+test('supabase attachment upload command stores durable storage metadata for online evidence', async () => {
+  const originalFetch = globalThis.fetch;
+  const uploadRequests: Array<{ url: string; headers: Headers }> = [];
+
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input);
+    if (url === 'file:///tmp/uploaded-tree.jpg') {
+      return new Response(new Blob(['image-binary'], { type: 'image/jpeg' }), {
+        status: 200
+      });
+    }
+
+    if (url.includes('/storage/v1/object/')) {
+      uploadRequests.push({
+        url,
+        headers: new Headers(init?.headers)
+      });
+
+      return new Response('{}', {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+
+    throw new Error(`Unexpected fetch in durable upload test: ${url}`);
+  }) as typeof fetch;
+
+  try {
+    const draft = createLocalMediaAttachmentDraft({
+      context: {
+        contextId: 'question:photos',
+        kind: 'question',
+        title: 'Tree evidence',
+        detail: 'Record a tree photo.',
+        visibilityScope: 'team_private',
+        attachmentKind: 'photo_evidence',
+        questionInstanceId: 'question:tree-1'
+      },
+      asset: {
+        uri: 'file:///tmp/uploaded-tree.jpg',
+        source: 'camera',
+        fileName: 'uploaded-tree.jpg',
+        mimeType: 'image/jpeg',
+        width: 800,
+        height: 1200,
+        fileSizeBytes: 45678
+      },
+      createId: () => 'durable-upload-1'
+    });
+
+    const command = await buildSupabaseAttachmentUploadCommand({
+      matchId: 'match-durable-1',
+      draft,
+      authSession: {
+        authProvider: 'supabase',
+        authSessionId: 'session-1',
+        authUserId: 'auth-user-1',
+        defaultPlayerId: 'player-1',
+        accessToken: 'access-token-1',
+        memberships: []
+      },
+      storageClient: new SupabaseAttachmentStorageClient({
+        baseUrl: 'https://example-project.supabase.co',
+        anonKey: 'anon-key-1'
+      }),
+      bucket: 'match-attachments',
+      cacheControlSeconds: 600
+    });
+
+    assert.equal(command.type, 'upload_attachment');
+    assert.equal(uploadRequests.length, 1);
+    assert.match(uploadRequests[0]!.url, /match-attachments/);
+    assert.match(uploadRequests[0]!.url, /match-durable-1/);
+    assert.equal(uploadRequests[0]!.headers.get('authorization'), 'Bearer access-token-1');
+    assert.equal(command.payload.captureMetadata?.storageState, 'supabase_object_stored');
+    assert.equal(command.payload.captureMetadata?.storageProvider, 'supabase');
+    assert.equal(command.payload.captureMetadata?.storageBucket, 'match-attachments');
+    assert.equal(command.payload.captureMetadata?.storageRequiresAuthenticatedAccess, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('supabase attachment media source returns an authenticated remote preview when storage metadata is visible', () => {
+  const source = buildSupabaseAttachmentMediaSource({
+    attachment: {
+      attachmentId: 'attachment:remote-1',
+      kind: 'image',
+      status: 'linked',
+      label: 'Remote preview',
+      visibilityScope: 'public_match',
+      storage: {
+        provider: 'supabase',
+        storageState: 'supabase_object_stored',
+        bucket: 'match-attachments',
+        objectPath: 'matches/match-1/public_match/attachment:remote-1.jpg',
+        previewObjectPath: 'matches/match-1/public_match/previews/attachment:remote-1.jpg',
+        uploadedAt: '2026-01-01T00:00:00.000Z',
+        byteSize: 12345,
+        requiresAuthenticatedAccess: true
+      },
+      createdAt: '2026-01-01T00:00:00.000Z'
+    },
+    authSession: {
+      authProvider: 'supabase',
+      authSessionId: 'session-remote-1',
+      authUserId: 'auth-user-remote-1',
+      defaultPlayerId: 'player-remote-1',
+      accessToken: 'access-token-remote-1',
+      memberships: []
+    },
+    storageClient: new SupabaseAttachmentStorageClient({
+      baseUrl: 'https://example-project.supabase.co',
+      anonKey: 'anon-key-remote-1'
+    })
+  });
+
+  assert.equal(
+    source?.uri,
+    'https://example-project.supabase.co/storage/v1/object/authenticated/match-attachments/matches/match-1/public_match/previews/attachment%3Aremote-1.jpg'
+  );
+  assert.equal(source?.headers?.Authorization, 'Bearer access-token-remote-1');
 });

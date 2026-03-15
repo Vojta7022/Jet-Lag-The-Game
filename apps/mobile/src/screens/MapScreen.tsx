@@ -37,6 +37,7 @@ import {
   useMatchTimingModel
 } from '../features/timers/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
+import type { AppShellState } from '../state/app-shell-state.ts';
 import { isSameMapSetupDraft } from '../state/app-shell-state.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
@@ -113,6 +114,21 @@ function describeSetupState(args: {
   }
 
   return 'Waiting for the first synced match state.';
+}
+
+function hasOnlineIdentityMismatch(
+  profile: {
+    playerId: string;
+    authUserId?: string;
+  },
+  activeMatch: AppShellState['activeMatch']
+) {
+  if (!activeMatch || activeMatch.runtimeKind !== 'online_foundation') {
+    return false;
+  }
+
+  return activeMatch.recipient.playerId !== profile.playerId ||
+    activeMatch.recipient.actorId !== (profile.authUserId ?? profile.playerId);
 }
 
 export function MapScreen() {
@@ -228,6 +244,7 @@ export function MapScreen() {
     freshnessLabel: timingModel?.freshnessLabel,
     activeMatchExists: Boolean(activeMatch)
   });
+  const onlineIdentityMismatch = hasOnlineIdentityMismatch(state.sessionProfile, activeMatch);
 
   useEffect(() => {
     const persistedSelection = mapSetupDraft?.selectedRegions ?? [];
@@ -295,6 +312,14 @@ export function MapScreen() {
             tone="error"
             title="Map operation failed"
             detail={state.errorMessage}
+          />
+        ) : null}
+
+        {onlineIdentityMismatch ? (
+          <StateBanner
+            tone="warning"
+            title="Reconnect to switch online players"
+            detail={`This match is still connected as ${activeMatch?.recipient.playerId}. Disconnect the current online match, confirm the saved player profile, then reconnect before changing the playable region.`}
           />
         ) : null}
 
@@ -525,7 +550,7 @@ export function MapScreen() {
 
           <View style={styles.actionGrid}>
             <AppButton
-              label={state.loadState === 'loading' ? 'Working...' : 'Open Map Setup Stage'}
+              label={state.loadState === 'loading' ? 'Preparing...' : 'Prepare Match For Map Setup'}
               onPress={() => {
                 if (!projection || !canPrepareMapSetup) {
                   return;
@@ -570,7 +595,7 @@ export function MapScreen() {
               disabled={selectedRegions.length === 0 || state.loadState === 'loading'}
             />
             <AppButton
-              label="Refresh Setup State"
+              label="Refresh Match State"
               onPress={() => {
                 void refreshActiveMatch();
               }}

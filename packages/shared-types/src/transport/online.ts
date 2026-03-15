@@ -22,6 +22,9 @@ export interface OnlineAuthSession {
   authSessionId: string;
   authUserId: string;
   defaultPlayerId?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: string;
   serviceRole?: boolean;
   memberships: OnlineMatchMembership[];
 }

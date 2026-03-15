@@ -32,7 +32,7 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 
 export function ChatScreen() {
-  const { state, refreshActiveMatch, submitCommands } = useAppShell();
+  const { state, refreshActiveMatch, submitCommands, prepareAttachmentUploadCommands } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const viewerRole = resolveChatViewerRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
@@ -74,6 +74,11 @@ export function ChatScreen() {
     : [];
   const canAttach = canSendAttachmentPlaceholders(viewerRole);
   const canSend = canSubmitChatDraft(viewerRole, selectedChannel?.channel, draft, selectedAttachments);
+  const attachmentSubmitHint = activeMatch?.onlineStatus?.attachmentStorageMode === 'durable_supabase_storage'
+    ? 'Selected media uploads to Supabase Storage before the match records the attachment, so other allowed online clients can load it.'
+    : activeMatch?.runtimeKind === 'online_foundation'
+      ? 'Selected media stays on this device until you send the message. The match records attachment metadata, but shared binary storage is not ready in this online session yet.'
+      : 'Selected media stays on this device until you send the message. Sending records attachment metadata in the match, but cross-device binary storage is still partial in this phase.';
   const selectedChannelSummary = selectedChannel
     ? `${selectedChannel.messages.length} visible message${selectedChannel.messages.length === 1 ? '' : 's'}`
     : 'Choose a channel to start chatting';
@@ -83,12 +88,15 @@ export function ChatScreen() {
 
   const handleSendMessage = async () => {
     const attachmentIds = selectedAttachments.map((attachment) => attachment.attachmentId);
+    const preparedAttachmentCommands = await prepareAttachmentUploadCommands(selectedAttachments);
+
     const commands = buildChatSubmitCommands({
       role: viewerRole,
       channel: selectedChannel?.channel,
       draft,
       createId: createUuid,
-      selectedAttachments
+      selectedAttachments,
+      preparedAttachmentCommands
     });
     if (commands.length === 0) {
       return;
@@ -196,11 +204,11 @@ export function ChatScreen() {
         title="Write a Message"
         subtitle="Send text first, then add evidence naturally when this channel and role allow it."
       >
-        <ChatComposer
-          channel={selectedChannel}
-          draft={draft}
-          disabled={!activeMatch || state.loadState === 'loading'}
-          canAttach={canAttach}
+          <ChatComposer
+            channel={selectedChannel}
+            draft={draft}
+            disabled={!activeMatch || state.loadState === 'loading'}
+            canAttach={canAttach}
           canSend={canSend && canSendMessage(viewerRole, selectedChannel?.channel)}
           attachmentSlot={
             chatAttachmentContext ? (
@@ -212,7 +220,7 @@ export function ChatScreen() {
                 busy={localMedia.isContextBusy(chatAttachmentContext.contextId)}
                 feedback={localMedia.getContextFeedback(chatAttachmentContext.contextId)}
                 localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
-                submitHint="Selected media stays on this device until you send the message. Sending records attachment metadata in the match, but cross-device binary storage is still partial in this phase."
+                submitHint={attachmentSubmitHint}
                 emptyVisibleText="Recorded attachments for this channel will appear here after a successful send."
                 onChooseFromLibrary={() => {
                   void localMedia.chooseFromLibrary(chatAttachmentContext);

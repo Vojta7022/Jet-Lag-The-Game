@@ -10,7 +10,8 @@ import type {
   ProjectionRecipient,
   ProjectionScope,
   SyncEnvelope,
-  TransportAdapter
+  TransportAdapter,
+  VisibleAttachmentProjection
 } from '../../../../packages/shared-types/src/index.ts';
 import {
   InMemoryAuthorityRuntime,
@@ -21,7 +22,10 @@ import {
   MockOnlineRealtimeFanout,
   NearbyGuestTransportAdapter,
   NearbyHostAuthorityRuntime as NearbyAuthorityRuntime,
+  type OnlineRealtimeFanout,
   OnlineAuthorityRuntime,
+  SupabaseAttachmentStorageClient,
+  SupabaseProjectionPollingFanout,
   SingleDeviceRefereeRuntime,
   SingleDeviceRefereeTransportAdapter,
   SupabaseContentPackReferenceRepository,
@@ -29,13 +33,25 @@ import {
   SupabaseMatchRepository,
   SupabaseOnlineTransportAdapter,
   SupabaseProjectionRepository,
+  SupabaseRestTableClient,
   SupabaseSnapshotRepository
 } from '../../../../packages/transport/src/index.ts';
 
 import type { MobileAppEnvironment, MobileRuntimeKind } from '../config/env.ts';
+import {
+  buildAttachmentUploadCommandFromDraft,
+  type LocalMediaAttachmentDraft
+} from '../features/evidence/evidence-model.ts';
 
 import { createUuid } from './create-uuid.ts';
+import {
+  buildSupabaseAttachmentMediaSource,
+  buildSupabaseAttachmentUploadCommand,
+  type RemoteAttachmentMediaSource
+} from './supabase-attachment-storage.ts';
+import { SupabaseMobileSessionManager } from './supabase-mobile-session.ts';
 import type {
+  ConnectionSnapshotSummary,
   ConnectedMatchResult,
   CreateMatchInput,
   JoinMatchInput,
@@ -45,7 +61,10 @@ import type {
 
 interface OnlineFoundationServices {
   runtime: OnlineAuthorityRuntime;
-  realtime: MockOnlineRealtimeFanout;
+  realtime: OnlineRealtimeFanout;
+  storageClient?: SupabaseAttachmentStorageClient;
+  sessionManager?: SupabaseMobileSessionManager;
+  persistenceKind: 'mock_in_memory' | 'supabase_rest';
 }
 
 function makeTimestamp(sequence: number): string {
@@ -56,7 +75,7 @@ function makeTimestamp(sequence: number): string {
 function buildHostRecipient(profile: SessionProfileDraft): ProjectionRecipient {
   return {
     recipientId: `host_admin:${profile.playerId}`,
-    actorId: profile.playerId,
+    actorId: profile.authUserId ?? profile.playerId,
     playerId: profile.playerId,
     role: 'host',
     scope: 'host_admin'
@@ -74,10 +93,21 @@ function buildParticipantRecipient(
         : scope === 'team_private'
           ? `team_private:${profile.playerId}`
           : scope,
-    actorId: profile.playerId,
+    actorId: profile.authUserId ?? profile.playerId,
     playerId: profile.playerId,
     role: 'spectator',
     scope
+  };
+}
+
+function buildBoundOnlineSessionProfile(
+  profile: SessionProfileDraft,
+  authSession: OnlineAuthSession
+): SessionProfileDraft {
+  return {
+    displayName: profile.displayName,
+    playerId: authSession.defaultPlayerId ?? profile.playerId,
+    authUserId: authSession.authUserId
   };
 }
 
@@ -200,8 +230,75 @@ export class MobileRuntimeOrchestrator {
     await connection.transport.disconnect();
   }
 
-  summarize(connection: RuntimeConnection, syncEnvelope: SyncEnvelope) {
+  async prepareAttachmentUploadCommands(
+    connection: RuntimeConnection,
+    drafts: LocalMediaAttachmentDraft[]
+  ): Promise<DomainCommand[]> {
+    if (drafts.length === 0) {
+      return [];
+    }
+
+    if (connection.runtimeKind !== 'online_foundation') {
+      return drafts.map((draft) => buildAttachmentUploadCommandFromDraft(draft));
+    }
+
+    const foundation = this.getOrCreateOnlineFoundation();
+    const authSession = connection.authSession;
+    const storageClient = foundation.storageClient;
+
+    if (!storageClient || !authSession?.accessToken) {
+      return drafts.map((draft) => buildAttachmentUploadCommandFromDraft(draft));
+    }
+
+    return Promise.all(
+      drafts.map((draft) =>
+        buildSupabaseAttachmentUploadCommand({
+          matchId: connection.matchId,
+          draft,
+          authSession,
+          storageClient,
+          bucket: this.environment.onlineAttachmentBucket,
+          cacheControlSeconds: this.environment.onlineStorageCacheControlSeconds
+        })
+      )
+    );
+  }
+
+  getAttachmentMediaSource(
+    connection: RuntimeConnection | undefined,
+    attachment: VisibleAttachmentProjection
+  ): RemoteAttachmentMediaSource | undefined {
+    if (!connection || connection.runtimeKind !== 'online_foundation') {
+      return undefined;
+    }
+
+    return buildSupabaseAttachmentMediaSource({
+      attachment,
+      authSession: connection.authSession,
+      storageClient: this.onlineFoundation?.storageClient
+    });
+  }
+
+  summarize(connection: RuntimeConnection, syncEnvelope: SyncEnvelope): ConnectionSnapshotSummary {
     const projection = syncEnvelope.projectionDelivery.projection;
+    const onlineFoundation = connection.runtimeKind === 'online_foundation'
+      ? this.getOrCreateOnlineFoundation()
+      : undefined;
+    const onlineStatus: ConnectionSnapshotSummary['onlineStatus'] =
+      connection.runtimeKind === 'online_foundation'
+        ? {
+            projectUrl: this.environment.onlineProjectUrl,
+            persistenceMode: onlineFoundation?.persistenceKind ?? 'mock_in_memory',
+            attachmentStorageMode: onlineFoundation?.storageClient && connection.authSession?.accessToken
+              ? 'durable_supabase_storage'
+              : onlineFoundation?.storageClient
+                ? 'storage_requires_auth_session'
+                : this.environment.onlineProjectUrl && this.environment.onlineAnonKey
+                  ? 'metadata_only_fallback'
+                  : 'storage_not_configured',
+            attachmentBucket: this.environment.onlineAttachmentBucket
+          }
+        : undefined;
 
     return {
       runtimeKind: connection.runtimeKind,
@@ -216,7 +313,8 @@ export class MobileRuntimeOrchestrator {
       playerRole: getPlayerRoleFromProjection(projection, connection.recipient.playerId, connection.recipient.role),
       snapshotVersion: syncEnvelope.snapshotVersion,
       lastEventSequence: syncEnvelope.lastEventSequence,
-      joinOffer: connection.joinOffer
+      joinOffer: connection.joinOffer,
+      onlineStatus
     };
   }
 
@@ -300,17 +398,18 @@ export class MobileRuntimeOrchestrator {
     input: CreateMatchInput
   ): Promise<ConnectedMatchResult> {
     const { runtime, realtime } = this.getOrCreateOnlineFoundation();
-    const authSession = this.buildOnlineSession(profile);
-    const recipient = buildHostRecipient(profile);
+    const authSession = await this.buildOnlineSession(profile);
+    const boundProfile = buildBoundOnlineSessionProfile(profile, authSession);
+    const recipient = buildHostRecipient(boundProfile);
     const transport = new SupabaseOnlineTransportAdapter(runtime, realtime);
 
     await transport.connect({
-      sessionId: `online-host:${profile.playerId}`,
+      sessionId: `online-host:${boundProfile.playerId}`,
       recipient,
       authSession
     });
 
-    await this.submitCreateMatch(transport, input.matchId, 'online', profile, input.initialScale);
+    await this.submitCreateMatch(transport, input.matchId, 'online', boundProfile, input.initialScale);
     const initialSync = await transport.requestSnapshot({ matchId: input.matchId });
 
     return {
@@ -324,7 +423,8 @@ export class MobileRuntimeOrchestrator {
         recipient,
         authSession
       },
-      initialSync
+      initialSync,
+      resolvedSessionProfile: boundProfile
     };
   }
 
@@ -334,17 +434,18 @@ export class MobileRuntimeOrchestrator {
   ): Promise<ConnectedMatchResult> {
     const matchId = input.matchId ?? `${this.environment.defaultMatchPrefix}-missing`;
     const { runtime, realtime } = this.getOrCreateOnlineFoundation();
-    const authSession = this.buildOnlineSession(profile);
-    const recipient = buildParticipantRecipient(profile, input.requestedScope ?? 'player_private');
+    const authSession = await this.buildOnlineSession(profile);
+    const boundProfile = buildBoundOnlineSessionProfile(profile, authSession);
+    const recipient = buildParticipantRecipient(boundProfile, input.requestedScope ?? 'player_private');
     const transport = new SupabaseOnlineTransportAdapter(runtime, realtime);
 
     await transport.connect({
-      sessionId: `online-player:${profile.playerId}`,
+      sessionId: `online-player:${boundProfile.playerId}`,
       recipient,
       authSession
     });
 
-    await this.submitJoinMatch(transport, matchId, profile);
+    await this.submitJoinMatch(transport, matchId, boundProfile);
     const initialSync = await transport.requestSnapshot({ matchId });
     const projection = initialSync.projectionDelivery.projection;
 
@@ -358,11 +459,12 @@ export class MobileRuntimeOrchestrator {
         transportFlavor: 'online',
         recipient: {
           ...recipient,
-          role: getPlayerRoleFromProjection(projection, profile.playerId, recipient.role)
+          role: getPlayerRoleFromProjection(projection, boundProfile.playerId, recipient.role)
         },
         authSession
       },
-      initialSync
+      initialSync,
+      resolvedSessionProfile: boundProfile
     };
   }
 
@@ -586,8 +688,13 @@ export class MobileRuntimeOrchestrator {
       return this.onlineFoundation;
     }
 
-    const tableClient = new InMemorySupabaseTableClient();
-    const realtime = new MockOnlineRealtimeFanout();
+    const usingRealSupabase = Boolean(this.environment.onlineProjectUrl && this.environment.onlineAnonKey);
+    const tableClient = usingRealSupabase
+      ? new SupabaseRestTableClient({
+          baseUrl: this.environment.onlineProjectUrl!,
+          anonKey: this.environment.onlineAnonKey!
+        })
+      : new InMemorySupabaseTableClient();
     const repositories = {
       matches: new SupabaseMatchRepository(tableClient),
       events: new SupabaseEventRepository(tableClient),
@@ -595,6 +702,12 @@ export class MobileRuntimeOrchestrator {
       projections: new SupabaseProjectionRepository(tableClient),
       contentPackReferences: new SupabaseContentPackReferenceRepository(tableClient)
     };
+    const realtime = usingRealSupabase
+      ? new SupabaseProjectionPollingFanout({
+          projections: repositories.projections,
+          pollIntervalMs: this.environment.onlineRealtimePollMs
+        })
+      : new MockOnlineRealtimeFanout();
 
     this.onlineFoundation = {
       runtime: new OnlineAuthorityRuntime({
@@ -602,13 +715,28 @@ export class MobileRuntimeOrchestrator {
         repositories,
         realtimeFanout: realtime
       }),
-      realtime
+      realtime,
+      storageClient: usingRealSupabase
+        ? new SupabaseAttachmentStorageClient({
+            baseUrl: this.environment.onlineProjectUrl!,
+            anonKey: this.environment.onlineAnonKey!
+          })
+        : undefined,
+      sessionManager: usingRealSupabase
+        ? new SupabaseMobileSessionManager(this.environment)
+        : undefined,
+      persistenceKind: usingRealSupabase ? 'supabase_rest' : 'mock_in_memory'
     };
 
     return this.onlineFoundation;
   }
 
-  private buildOnlineSession(profile: SessionProfileDraft): OnlineAuthSession {
+  private async buildOnlineSession(profile: SessionProfileDraft): Promise<OnlineAuthSession> {
+    const foundation = this.getOrCreateOnlineFoundation();
+    if (foundation.sessionManager?.isConfigured()) {
+      return foundation.sessionManager.createOnlineAuthSession(profile);
+    }
+
     return {
       authProvider: 'supabase',
       authSessionId: `session:${profile.authUserId ?? profile.playerId}`,

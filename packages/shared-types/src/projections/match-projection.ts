@@ -89,6 +89,16 @@ export interface VisibleAttachmentProjection {
   linkedCardInstanceId?: string;
   linkedMessageId?: string;
   note?: string;
+  storage?: {
+    provider: string;
+    storageState: string;
+    bucket?: string;
+    objectPath?: string;
+    previewObjectPath?: string;
+    uploadedAt?: string;
+    byteSize?: number;
+    requiresAuthenticatedAccess: boolean;
+  };
   createdAt: string;
 }
 

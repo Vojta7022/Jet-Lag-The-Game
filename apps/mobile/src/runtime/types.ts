@@ -53,6 +53,7 @@ export interface RuntimeConnection {
 export interface ConnectedMatchResult {
   connection: RuntimeConnection;
   initialSync: SyncEnvelope;
+  resolvedSessionProfile?: SessionProfileDraft;
 }
 
 export interface ConnectionSnapshotSummary {
@@ -69,6 +70,16 @@ export interface ConnectionSnapshotSummary {
   snapshotVersion: number;
   lastEventSequence: number;
   joinOffer?: NearbyJoinOffer;
+  onlineStatus?: {
+    projectUrl?: string;
+    persistenceMode: 'mock_in_memory' | 'supabase_rest';
+    attachmentStorageMode:
+      | 'durable_supabase_storage'
+      | 'storage_requires_auth_session'
+      | 'metadata_only_fallback'
+      | 'storage_not_configured';
+    attachmentBucket?: string;
+  };
 }
 
 export interface RuntimeBinding {

@@ -34,6 +34,10 @@ import {
   RegionProviderUnavailableError
 } from '../src/features/map/osm-region-provider.ts';
 import { seedPlayableRegions } from '../src/features/map/seed-regions.ts';
+import {
+  resolveRegionSearchSelection,
+  shouldApplyExternalRegionSearchValue
+} from '../src/features/map/use-region-search.ts';
 import type {
   GeoJsonGeometryModel
 } from '../../../packages/shared-types/src/index.ts';
@@ -177,6 +181,29 @@ test('seed region data source supports searchable region lookup and fallback met
   assert.equal(adminResults.regions[0]?.displayName, 'Central Bohemia');
   assert.equal(emptyResults.regions.length, 0);
   assert.equal(byId?.displayName, 'Central Bohemia');
+});
+
+test('region search restore guards ignore echoed Praha draft updates and replace stale selections', () => {
+  const prague = seedPlayableRegions[0]!;
+  const centralBohemia = seedPlayableRegions[1]!;
+
+  assert.equal(shouldApplyExternalRegionSearchValue('Praha', 'Praha'), false);
+  assert.equal(shouldApplyExternalRegionSearchValue(undefined, 'Praha'), true);
+  assert.equal(shouldApplyExternalRegionSearchValue('Prague', 'Praha'), true);
+
+  const staleSelection = resolveRegionSearchSelection({
+    currentRegion: prague,
+    regions: [centralBohemia],
+    selectedRegionId: centralBohemia.regionId
+  });
+  const preservedSelection = resolveRegionSearchSelection({
+    currentRegion: prague,
+    regions: [prague, centralBohemia],
+    selectedRegionId: centralBohemia.regionId
+  });
+
+  assert.equal(staleSelection?.regionId, centralBohemia.regionId);
+  assert.equal(preservedSelection?.regionId, prague.regionId);
 });
 
 test('composite region builder adds, removes, and clears selected regions without duplicates', () => {

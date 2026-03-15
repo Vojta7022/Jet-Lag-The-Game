@@ -51,6 +51,10 @@ test('runtime orchestrator can create host sessions across all supported foundat
 
   assert.equal(inMemory.connection.runtimeMode, 'single_device_referee');
   assert.equal(online.connection.runtimeMode, 'online_cloud');
+  assert.equal(online.connection.recipient.playerId, 'host-1');
+  assert.equal(online.connection.recipient.actorId, 'auth-host-1');
+  assert.equal(online.resolvedSessionProfile?.playerId, 'host-1');
+  assert.equal(online.resolvedSessionProfile?.authUserId, 'auth-host-1');
   assert.equal(nearby.connection.runtimeMode, 'lan_host_authority');
   assert.equal(singleDevice.connection.runtimeMode, 'single_device_referee');
   assert.ok(nearby.connection.joinOffer?.joinCode);

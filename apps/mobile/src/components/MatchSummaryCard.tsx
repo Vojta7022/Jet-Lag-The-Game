@@ -31,7 +31,11 @@ export function MatchSummaryCard() {
           { label: 'Connection Mode', value: formatValue(activeMatch.runtimeKind) },
           { label: 'Match Mode', value: formatValue(activeMatch.matchMode) },
           { label: 'Stage', value: formatValue(activeMatch.lifecycleState) },
+          { label: 'Connected Player', value: activeMatch.recipient.playerId ?? 'Public scope only' },
           { label: 'View', value: formatValue(activeMatch.recipient.scope) },
+          ...(activeMatch.runtimeKind === 'online_foundation'
+            ? [{ label: 'Auth Session User', value: activeMatch.recipient.actorId }]
+            : []),
           { label: 'Connection', value: formatValue(activeMatch.connectionState) }
         ]}
       />

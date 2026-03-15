@@ -346,11 +346,22 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   private async loadAggregate(matchId: string): Promise<MatchAggregate | undefined> {
     const cached = this.aggregateCache.get(matchId);
     if (cached) {
-      return cached;
+      const storedMatch = await this.repositories.matches.getByMatchId(matchId);
+      if (!storedMatch || storedMatch.revision <= cached.revision) {
+        return cached;
+      }
     }
 
     const recovered = await this.recoverMatch(matchId);
-    return recovered?.aggregate;
+    if (recovered?.aggregate) {
+      return recovered.aggregate;
+    }
+
+    if (cached) {
+      return cached;
+    }
+
+    return undefined;
   }
 
   private async resolveContentPack(

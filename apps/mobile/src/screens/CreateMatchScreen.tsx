@@ -21,21 +21,21 @@ export function CreateMatchScreen() {
   const runtimeHint = useMemo(() => {
     switch (runtimeKind) {
       case 'online_foundation':
-        return 'This connection mode creates matches in online cloud mode.';
+        return 'This creates the match in online cloud mode. The saved player profile becomes the host identity for the active online session.';
       case 'nearby_host_authority':
-        return 'This connection mode creates matches in nearby host-authoritative mode.';
+        return 'This creates the match on a nearby host-authoritative session running on this device.';
       case 'single_device_referee':
-        return 'This connection mode creates matches for single-device referee play.';
+        return 'This creates the match for single-device referee play on this device.';
       case 'in_memory':
       default:
-        return 'The in-memory mode is useful for local testing and quick match setup.';
+        return 'This local test mode is useful for quick setup without network or device-to-device transport.';
     }
   }, [runtimeKind]);
 
   return (
     <ScreenContainer
       title="Create Match"
-      subtitle="Start a new match in the current connection mode, then continue in the lobby."
+      subtitle="Start a new match with the saved player profile, then continue in the lobby."
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Create match failed" detail={state.errorMessage} />
@@ -43,7 +43,7 @@ export function CreateMatchScreen() {
 
       <Panel
         title="Match Setup"
-        subtitle="Choose an ID, scale, and match mode before creating the session."
+        subtitle="Choose an ID, scale, and mode before creating the match."
       >
         <Field label="Match Id" value={matchId} onChangeText={setMatchId} placeholder="match-prague-1" />
         <Field label="Initial Scale" value={initialScale} onChangeText={(value) => setInitialScale(value as typeof initialScale)} placeholder="small" />

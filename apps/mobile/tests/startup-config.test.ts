@@ -25,6 +25,7 @@ test('mobile workspace keeps the minimum startup dependencies and scripts aligne
 
   assert.ok(packageJson.dependencies.expo);
   assert.ok(packageJson.dependencies['@expo/metro-runtime']);
+  assert.ok(packageJson.dependencies['@supabase/supabase-js']);
   assert.ok(packageJson.dependencies['expo-image-picker']);
   assert.ok(packageJson.dependencies['expo-router']);
   assert.ok(packageJson.dependencies.react);
@@ -64,6 +65,10 @@ test('expo app config and monorepo config files keep the mobile shell startup ho
   assert.match(metroConfig, /node:crypto/);
   assert.match(babelConfig, /babel-preset-expo/);
   assert.match(envExample, /EXPO_PUBLIC_REGION_PROVIDER_BASE_URL/);
+  assert.match(envExample, /EXPO_PUBLIC_ONLINE_ANON_KEY/);
+  assert.match(envExample, /EXPO_PUBLIC_ONLINE_ATTACHMENT_BUCKET/);
+  assert.match(envExample, /EXPO_PUBLIC_ONLINE_REALTIME_POLL_MS/);
+  assert.match(envExample, /EXPO_PUBLIC_ONLINE_STORAGE_CACHE_CONTROL_SECONDS/);
   assert.match(envExample, /EXPO_PUBLIC_REGION_PROVIDER_USAGE_MODE/);
   assert.match(envExample, /EXPO_PUBLIC_REGION_PROVIDER_TIMEOUT_MS/);
   assert.match(nativeMapCanvas, /react-native-maps/);

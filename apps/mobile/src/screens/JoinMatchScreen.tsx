@@ -20,7 +20,7 @@ export function JoinMatchScreen() {
   return (
     <ScreenContainer
       title="Join Match"
-      subtitle="Connect to an existing match as a player or spectator through the current connection mode."
+      subtitle="Connect to an existing match with the saved player profile and continue in the lobby."
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Join match failed" detail={state.errorMessage} />
@@ -28,7 +28,7 @@ export function JoinMatchScreen() {
 
       <Panel
         title="Join Details"
-        subtitle="Enter the match information needed for the current connection mode."
+        subtitle="Enter the match information needed for this connection mode."
       >
         <Field
           label="Match Id"
@@ -47,6 +47,13 @@ export function JoinMatchScreen() {
             <Field label="Join Code" value={joinCode} onChangeText={setJoinCode} placeholder="ABC123" />
             <Field label="QR Join Token" value={joinToken} onChangeText={setJoinToken} placeholder="Optional join token" />
           </>
+        ) : null}
+        {runtimeKind === 'online_foundation' ? (
+          <StateBanner
+            tone="info"
+            title="Online player identity"
+            detail="Online join uses the saved player profile from Home. If you recently changed profiles, reconnect the match after saving the updated player identity."
+          />
         ) : null}
         <AppButton
           label={state.loadState === 'loading' ? 'Joining...' : 'Join Match'}

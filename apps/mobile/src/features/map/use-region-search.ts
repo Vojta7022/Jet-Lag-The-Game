@@ -12,8 +12,38 @@ interface UseRegionSearchArgs {
   initialQuery?: string;
 }
 
+function normalizeExternalSearchQuery(value: string | undefined): string {
+  return value ?? '';
+}
+
+export function shouldApplyExternalRegionSearchValue(
+  lastAppliedValue: string | undefined,
+  nextExternalValue: string | undefined
+): boolean {
+  return normalizeExternalSearchQuery(lastAppliedValue) !== normalizeExternalSearchQuery(nextExternalValue);
+}
+
+export function resolveRegionSearchSelection(args: {
+  currentRegion?: PlayableRegionCatalogEntry;
+  regions: PlayableRegionCatalogEntry[];
+  selectedRegionId?: string;
+}): PlayableRegionCatalogEntry | undefined {
+  if (
+    args.currentRegion &&
+    args.regions.some((region) => region.regionId === args.currentRegion?.regionId)
+  ) {
+    return args.currentRegion;
+  }
+
+  if (args.selectedRegionId) {
+    return args.regions.find((region) => region.regionId === args.selectedRegionId);
+  }
+
+  return args.regions[0];
+}
+
 export function useRegionSearch(args: UseRegionSearchArgs) {
-  const [query, setQuery] = useState(args.initialQuery ?? '');
+  const [query, setQueryState] = useState(args.initialQuery ?? '');
   const [debouncedQuery, setDebouncedQuery] = useState(args.initialQuery ?? '');
   const [regions, setRegions] = useState<PlayableRegionCatalogEntry[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<PlayableRegionCatalogEntry | undefined>(undefined);
@@ -25,16 +55,41 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [reloadToken, setReloadToken] = useState(0);
   const selectedRegionIdRef = useRef(args.initialRegionId);
+  const lastAppliedExternalQueryRef = useRef(normalizeExternalSearchQuery(args.initialQuery));
+  const lastAppliedExternalRegionIdRef = useRef(args.initialRegionId);
 
   useEffect(() => {
-    const nextQuery = args.initialQuery ?? '';
-    setQuery((current) => (current === nextQuery ? current : nextQuery));
+    const nextQuery = normalizeExternalSearchQuery(args.initialQuery);
+    if (!shouldApplyExternalRegionSearchValue(lastAppliedExternalQueryRef.current, nextQuery)) {
+      return;
+    }
+
+    lastAppliedExternalQueryRef.current = nextQuery;
+    setQueryState((current) => (current === nextQuery ? current : nextQuery));
     setDebouncedQuery((current) => (current === nextQuery ? current : nextQuery));
   }, [args.initialQuery]);
 
   useEffect(() => {
+    if (lastAppliedExternalRegionIdRef.current === args.initialRegionId) {
+      return;
+    }
+
+    lastAppliedExternalRegionIdRef.current = args.initialRegionId;
     selectedRegionIdRef.current = args.initialRegionId;
-  }, [args.initialRegionId]);
+    if (!args.initialRegionId) {
+      setSelectedRegion((currentRegion) => (currentRegion ? undefined : currentRegion));
+      return;
+    }
+
+    setSelectedRegion((currentRegion) => {
+      if (currentRegion?.regionId === args.initialRegionId) {
+        return currentRegion;
+      }
+
+      const localMatch = regions.find((region) => region.regionId === args.initialRegionId);
+      return localMatch ?? currentRegion;
+    });
+  }, [args.initialRegionId, regions]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -76,15 +131,17 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
         setNoticeMessage(response.noticeMessage);
         setAttribution(response.attribution);
         setSelectedRegion((currentRegion) => {
-          if (currentRegion && (response.regions.some((region) => region.regionId === currentRegion.regionId) || debouncedQuery.trim().length >= 2)) {
+          const nextRegion = resolveRegionSearchSelection({
+            currentRegion,
+            regions: response.regions,
+            selectedRegionId: selectedRegionIdRef.current
+          });
+
+          if (currentRegion?.regionId === nextRegion?.regionId) {
             return currentRegion;
           }
 
-          if (selectedRegionIdRef.current) {
-            return response.regions.find((region) => region.regionId === selectedRegionIdRef.current);
-          }
-
-          return response.regions[0];
+          return nextRegion;
         });
       } catch (error) {
         if (cancelled) {
@@ -111,18 +168,28 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   const selectedRegionId = selectedRegion?.regionId;
   const minimumQueryLengthMet = debouncedQuery.trim().length >= 2;
 
+  const setQuery = useCallback((value: string) => {
+    lastAppliedExternalQueryRef.current = value;
+    setQueryState((current) => (current === value ? current : value));
+  }, []);
+
   const selectRegion = useCallback(async (regionId: string) => {
+    lastAppliedExternalRegionIdRef.current = regionId;
     selectedRegionIdRef.current = regionId;
     const localMatch = regions.find((region) => region.regionId === regionId);
     if (localMatch) {
-      setSelectedRegion(localMatch);
+      setSelectedRegion((currentRegion) => (
+        currentRegion?.regionId === localMatch.regionId ? currentRegion : localMatch
+      ));
       return;
     }
 
     try {
       const region = await args.source.getRegionById(regionId);
       if (region) {
-        setSelectedRegion(region);
+        setSelectedRegion((currentRegion) => (
+          currentRegion?.regionId === region.regionId ? currentRegion : region
+        ));
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'The region boundary could not be loaded.');
@@ -134,8 +201,9 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   }, []);
 
   const clearSelection = useCallback(() => {
+    lastAppliedExternalRegionIdRef.current = undefined;
     selectedRegionIdRef.current = undefined;
-    setSelectedRegion(undefined);
+    setSelectedRegion((currentRegion) => (currentRegion ? undefined : currentRegion));
   }, []);
 
   return useMemo(() => ({

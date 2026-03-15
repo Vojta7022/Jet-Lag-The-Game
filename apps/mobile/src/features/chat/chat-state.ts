@@ -193,6 +193,7 @@ export function buildChatSubmitCommands(args: {
   draft: ChatComposerDraft;
   createId: () => string;
   selectedAttachments?: LocalMediaAttachmentDraft[];
+  preparedAttachmentCommands?: DomainCommand[];
 }): DomainCommand[] {
   if (!args.channel || !canSubmitChatDraft(args.role, args.channel, args.draft, args.selectedAttachments)) {
     return [];
@@ -206,9 +207,18 @@ export function buildChatSubmitCommands(args: {
   const attachmentLabel = args.draft.attachmentLabel.trim();
   const attachmentNote = args.draft.attachmentNote.trim();
 
-  for (const attachment of selectedAttachments) {
-    commands.push(buildAttachmentUploadCommandFromDraft(attachment));
-    attachmentIds.push(attachment.attachmentId);
+  if (args.preparedAttachmentCommands?.length) {
+    commands.push(...args.preparedAttachmentCommands);
+    for (const command of args.preparedAttachmentCommands) {
+      if (command.type === 'upload_attachment') {
+        attachmentIds.push(command.payload.attachmentId);
+      }
+    }
+  } else {
+    for (const attachment of selectedAttachments) {
+      commands.push(buildAttachmentUploadCommandFromDraft(attachment));
+      attachmentIds.push(attachment.attachmentId);
+    }
   }
 
   if (canSendAttachmentPlaceholders(args.role) && (attachmentLabel.length > 0 || attachmentNote.length > 0)) {

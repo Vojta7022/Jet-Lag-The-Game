@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 
 import {
   getRuntimeOptions,
@@ -21,14 +21,20 @@ export function RuntimeModeProvider(props: { children: React.ReactNode }) {
     () => getRuntimeOptions(mobileAppEnvironment),
     []
   );
+  const selectRuntimeKind = useCallback((nextRuntimeKind: MobileRuntimeKind) => {
+    setRuntimeKind((currentRuntimeKind) =>
+      currentRuntimeKind === nextRuntimeKind ? currentRuntimeKind : nextRuntimeKind
+    );
+  }, []);
+  const value = useMemo<RuntimeModeContextValue>(() => ({
+    runtimeKind,
+    runtimeOptions,
+    selectRuntimeKind
+  }), [runtimeKind, runtimeOptions, selectRuntimeKind]);
 
   return (
     <RuntimeModeContext.Provider
-      value={{
-        runtimeKind,
-        runtimeOptions,
-        selectRuntimeKind: setRuntimeKind
-      }}
+      value={value}
     >
       {props.children}
     </RuntimeModeContext.Provider>

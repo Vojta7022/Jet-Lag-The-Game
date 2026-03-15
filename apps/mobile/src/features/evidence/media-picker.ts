@@ -1,5 +1,7 @@
 import type { SelectedMediaAsset } from './evidence-model.ts';
 
+const imageMediaTypes: Array<import('expo-image-picker').MediaType> = ['images'];
+
 export type MediaSelectionResult =
   | {
       status: 'selected';
@@ -66,7 +68,7 @@ export async function pickImageFromLibrary(): Promise<MediaSelectionResult> {
 
   try {
     const result = await imagePicker.launchImageLibraryAsync({
-      mediaTypes: imagePicker.MediaTypeOptions.Images,
+      mediaTypes: imageMediaTypes,
       allowsEditing: false,
       quality: 0.9,
       selectionLimit: 1
@@ -106,7 +108,7 @@ export async function captureImageWithCamera(): Promise<MediaSelectionResult> {
 
   try {
     const result = await imagePicker.launchCameraAsync({
-      mediaTypes: imagePicker.MediaTypeOptions.Images,
+      mediaTypes: imageMediaTypes,
       allowsEditing: false,
       quality: 0.9
     });

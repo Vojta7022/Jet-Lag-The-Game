@@ -7,7 +7,6 @@ import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
-  buildAttachmentUploadCommandFromDraft,
   buildEvidenceContexts,
   EvidenceCapturePanel,
   useLocalMediaAttachments,
@@ -71,7 +70,7 @@ function resolveCurrentRole(role: string | undefined, scope: string | undefined)
 }
 
 export function QuestionCenterScreen() {
-  const { state, submitCommand, submitCommands, refreshActiveMatch } = useAppShell();
+  const { state, submitCommand, submitCommands, refreshActiveMatch, prepareAttachmentUploadCommands } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
@@ -232,6 +231,11 @@ export function QuestionCenterScreen() {
       activeQuestionCategory &&
       isApplyingConstraints
   );
+  const questionEvidenceHint = activeMatch?.onlineStatus?.attachmentStorageMode === 'durable_supabase_storage'
+    ? 'Recording evidence here uploads the image to Supabase Storage and records durable attachment metadata in the match.'
+    : activeMatch?.runtimeKind === 'online_foundation'
+      ? 'Recording evidence here creates real attachment records through the runtime, but this online session is still falling back to metadata-only storage.'
+      : 'Recording evidence here creates real attachment records through the runtime. The file preview stays local to this device session until fuller storage support is added.';
 
   const handlePrepareFlow = () => {
     if (!projection) {
@@ -301,8 +305,8 @@ export function QuestionCenterScreen() {
     }
 
     const attachmentIds = questionEvidenceDrafts.map((draft) => draft.attachmentId);
-    const commands = questionEvidenceDrafts.map((draft) => buildAttachmentUploadCommandFromDraft(draft));
-    if (commands.length === 0) {
+    const commands = await prepareAttachmentUploadCommands(questionEvidenceDrafts);
+    if (!commands || commands.length === 0) {
       return;
     }
 
@@ -597,7 +601,7 @@ export function QuestionCenterScreen() {
                 localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
                 submitLabel="Record Evidence In Match"
                 submitDisabled={questionEvidenceDrafts.length === 0}
-                submitHint="Recording evidence here creates real attachment records through the runtime. The file preview stays local to this device session until fuller storage support is added."
+                submitHint={questionEvidenceHint}
                 emptyVisibleText="No visible question evidence has been recorded yet."
                 onChooseFromLibrary={() => {
                   void localMedia.chooseFromLibrary(questionAttachmentContext);

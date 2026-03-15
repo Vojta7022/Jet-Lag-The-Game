@@ -13,6 +13,10 @@ export interface MobileAppEnvironment {
   enableDeveloperTools: boolean;
   defaultMatchPrefix: string;
   onlineProjectUrl?: string;
+  onlineAnonKey?: string;
+  onlineAttachmentBucket: string;
+  onlineRealtimePollMs: number;
+  onlineStorageCacheControlSeconds: number;
   nearbyJoinTtlSeconds: number;
   regionProviderBaseUrl: string;
   regionProviderLabel: string;
@@ -76,6 +80,10 @@ export const mobileAppEnvironment: MobileAppEnvironment = {
   enableDeveloperTools: parseBoolean(process.env.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS, true),
   defaultMatchPrefix: process.env.EXPO_PUBLIC_DEFAULT_MATCH_PREFIX || 'match',
   onlineProjectUrl: process.env.EXPO_PUBLIC_ONLINE_PROJECT_URL,
+  onlineAnonKey: process.env.EXPO_PUBLIC_ONLINE_ANON_KEY,
+  onlineAttachmentBucket: process.env.EXPO_PUBLIC_ONLINE_ATTACHMENT_BUCKET || 'match-attachments',
+  onlineRealtimePollMs: parseNumber(process.env.EXPO_PUBLIC_ONLINE_REALTIME_POLL_MS, 1500),
+  onlineStorageCacheControlSeconds: parseNumber(process.env.EXPO_PUBLIC_ONLINE_STORAGE_CACHE_CONTROL_SECONDS, 3600),
   nearbyJoinTtlSeconds: parseNumber(process.env.EXPO_PUBLIC_NEARBY_JOIN_TTL_SECONDS, 600),
   regionProviderBaseUrl: process.env.EXPO_PUBLIC_REGION_PROVIDER_BASE_URL || 'https://nominatim.openstreetmap.org',
   regionProviderLabel: process.env.EXPO_PUBLIC_REGION_PROVIDER_LABEL || 'OpenStreetMap Nominatim',
@@ -102,7 +110,9 @@ export function getRuntimeOptions(environment: MobileAppEnvironment): RuntimeOpt
     options.push({
       kind: 'online_foundation',
       label: 'Online Foundation',
-      description: 'Mocked Supabase-oriented runtime using the online adapter contracts.'
+      description: environment.onlineProjectUrl && environment.onlineAnonKey
+        ? 'Supabase-backed online runtime with durable persistence when project setup is available.'
+        : 'Supabase-shaped online runtime fallback. Add project env to enable real persistence.'
     });
   }
 

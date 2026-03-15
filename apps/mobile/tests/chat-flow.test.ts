@@ -16,6 +16,7 @@ import {
   createInitialChatComposerDraft,
   pickDefaultChatChannelId
 } from '../src/features/chat/chat-state.ts';
+import { createLocalMediaAttachmentDraft } from '../src/features/evidence/evidence-model.ts';
 import { buildQuestionFlowBootstrapCommands } from '../src/features/questions/question-flow-bootstrap.ts';
 
 const generatedPackPath = fileURLToPath(
@@ -175,6 +176,89 @@ test('mobile chat helpers wire public and team chat plus photo evidence placehol
     ),
     true
   );
+
+  await orchestrator.disconnect(created.connection);
+});
+
+test('chat image attachments still send a message when upload preparation falls back to local attachment metadata', async () => {
+  const contentPack = loadContentPack();
+  const orchestrator = new MobileRuntimeOrchestrator({
+    contentPack,
+    environment: mobileAppEnvironment
+  });
+  const hostProfile = {
+    displayName: 'Host',
+    playerId: 'host-chat-image-1',
+    authUserId: 'auth-host-chat-image-1'
+  };
+
+  const created = await orchestrator.createMatch(hostProfile, {
+    runtimeKind: 'in_memory',
+    matchId: 'mobile-chat-image-flow',
+    initialScale: 'small',
+    matchMode: 'single_device_referee'
+  });
+
+  const channels = buildChatChannelViewModels(created.initialSync.projectionDelivery.projection);
+  const globalChannel = channels.find((entry) => entry.channel.channelId === 'channel:global')?.channel;
+  assert.ok(globalChannel);
+
+  const localDraft = createLocalMediaAttachmentDraft({
+    context: {
+      contextId: 'channel:channel:global',
+      kind: 'chat',
+      title: 'Attach Media',
+      detail: 'Local media picker',
+      visibilityScope: 'public_match',
+      attachmentKind: 'image',
+      channelId: 'channel:global'
+    },
+    asset: {
+      uri: 'file:///tmp/chat-image-only.jpg',
+      source: 'library',
+      fileName: 'chat-image-only.jpg',
+      mimeType: 'image/jpeg',
+      width: 1200,
+      height: 800
+    },
+    createId: () => 'picked-chat-image-1'
+  });
+
+  const commands = buildChatSubmitCommands({
+    role: 'host',
+    channel: globalChannel,
+    draft: createInitialChatComposerDraft(),
+    createId: (() => {
+      let sequence = 0;
+      return () => `chat-image-${++sequence}`;
+    })(),
+    selectedAttachments: [localDraft],
+    preparedAttachmentCommands: undefined
+  });
+
+  assert.equal(commands.length, 2);
+  assert.equal(commands[0]?.type, 'upload_attachment');
+  assert.equal(commands[1]?.type, 'send_chat_message');
+  assert.equal(commands[1]?.payload.body, undefined);
+  assert.deepEqual(commands[1]?.payload.attachmentIds, [localDraft.attachmentId]);
+
+  const sent = await orchestrator.submitCommands(
+    created.connection,
+    {
+      actorId: hostProfile.playerId,
+      playerId: hostProfile.playerId,
+      role: 'host'
+    },
+    commands
+  );
+
+  const globalAfterSend = buildChatChannelViewModels(sent.projectionDelivery.projection)
+    .find((entry) => entry.channel.channelId === 'channel:global');
+
+  assert.ok(globalAfterSend);
+  assert.equal(globalAfterSend?.messages.length, 1);
+  assert.equal(globalAfterSend?.messages[0]?.attachments.length, 1);
+  assert.equal(globalAfterSend?.messages[0]?.attachments[0]?.attachmentId, localDraft.attachmentId);
 
   await orchestrator.disconnect(created.connection);
 });

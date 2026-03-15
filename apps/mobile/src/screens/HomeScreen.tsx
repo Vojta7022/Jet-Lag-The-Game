@@ -5,6 +5,7 @@ import { MatchSummaryCard } from '../components/MatchSummaryCard.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { RuntimeModeSwitcher } from '../components/RuntimeModeSwitcher.tsx';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
+import type { AppShellState } from '../state/app-shell-state.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
@@ -12,8 +13,24 @@ import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 
+function hasOnlineIdentityMismatch(
+  profile: {
+    playerId: string;
+    authUserId?: string;
+  },
+  activeMatch: AppShellState['activeMatch']
+) {
+  if (!activeMatch || activeMatch.runtimeKind !== 'online_foundation') {
+    return false;
+  }
+
+  return activeMatch.recipient.playerId !== profile.playerId ||
+    activeMatch.recipient.actorId !== (profile.authUserId ?? profile.playerId);
+}
+
 export function HomeScreen() {
   const { state, disconnectActiveMatch } = useAppShell();
+  const onlineIdentityMismatch = hasOnlineIdentityMismatch(state.sessionProfile, state.activeMatch);
 
   return (
     <ScreenContainer
@@ -36,6 +53,13 @@ export function HomeScreen() {
             { label: 'Auth ID', value: state.sessionProfile.authUserId || 'Matches player ID' }
           ]}
         />
+        {onlineIdentityMismatch ? (
+          <StateBanner
+            tone="warning"
+            title="Online match is still using the previous player"
+            detail={`This match is connected as ${state.activeMatch?.recipient.playerId}. Disconnect and reconnect to switch the active online session to the profile shown here.`}
+          />
+        ) : null}
         <AppButton label="Edit Profile" onPress={() => router.push('/auth')} tone="secondary" />
       </Panel>
 

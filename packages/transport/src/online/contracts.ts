@@ -64,11 +64,39 @@ export interface SupabaseTableFilters {
   [field: string]: string | number | boolean | undefined;
 }
 
+export interface SupabaseRequestAuthContext {
+  accessToken?: string;
+}
+
 export interface SupabaseTableClient {
   insert(table: string, rows: unknown[]): Promise<void>;
   upsert(table: string, row: Record<string, unknown>, keyFields: string[]): Promise<void>;
   selectMany<TRecord>(table: string, filters?: SupabaseTableFilters): Promise<TRecord[]>;
   selectOne<TRecord>(table: string, filters?: SupabaseTableFilters): Promise<TRecord | undefined>;
+}
+
+export interface SupabaseStorageUploadResult {
+  bucket: string;
+  objectPath: string;
+  uploadedAt: string;
+  byteSize?: number;
+}
+
+export interface SupabaseStorageClient {
+  uploadObject(args: {
+    bucket: string;
+    objectPath: string;
+    contentType?: string;
+    body: Blob | ArrayBuffer | Uint8Array;
+    cacheControlSeconds?: number;
+    upsert?: boolean;
+    auth?: SupabaseRequestAuthContext;
+  }): Promise<SupabaseStorageUploadResult>;
+  buildAuthenticatedObjectUrl(args: {
+    bucket: string;
+    objectPath: string;
+  }): string;
+  buildAccessHeaders(auth?: SupabaseRequestAuthContext): Record<string, string>;
 }
 
 export type ProjectionFanoutListener = (notice: ProjectionFanoutNotice) => void | Promise<void>;

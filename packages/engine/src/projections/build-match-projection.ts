@@ -5,7 +5,8 @@ import type {
   MatchAggregate,
   MatchProjection,
   ProjectionViewer,
-  SpatialArtifactModel
+  SpatialArtifactModel,
+  VisibleAttachmentProjection
 } from '../../../shared-types/src/index.ts';
 
 import {
@@ -148,6 +149,40 @@ function canViewAttachment(viewer: ProjectionViewer, attachment: AttachmentModel
   });
 }
 
+function buildVisibleAttachmentStorage(
+  attachment: AttachmentModel
+): VisibleAttachmentProjection['storage'] | undefined {
+  const metadata = attachment.captureMetadata ?? {};
+  const storageState = typeof metadata.storageState === 'string' ? metadata.storageState : undefined;
+  const provider = typeof metadata.storageProvider === 'string' ? metadata.storageProvider : undefined;
+  const bucket = typeof metadata.storageBucket === 'string' ? metadata.storageBucket : undefined;
+  const objectPath = typeof metadata.storageObjectPath === 'string' ? metadata.storageObjectPath : undefined;
+  const previewObjectPath =
+    typeof metadata.storagePreviewObjectPath === 'string' ? metadata.storagePreviewObjectPath : undefined;
+  const uploadedAt = typeof metadata.storageUploadedAt === 'string' ? metadata.storageUploadedAt : undefined;
+  const byteSize =
+    typeof metadata.storageByteSize === 'number'
+      ? metadata.storageByteSize
+      : typeof metadata.fileSizeBytes === 'number'
+        ? metadata.fileSizeBytes
+        : undefined;
+
+  if (!storageState && !provider && !bucket && !objectPath && !previewObjectPath) {
+    return undefined;
+  }
+
+  return {
+    provider: provider ?? 'unknown',
+    storageState: storageState ?? 'metadata_record_only',
+    bucket,
+    objectPath,
+    previewObjectPath,
+    uploadedAt,
+    byteSize,
+    requiresAuthenticatedAccess: Boolean(objectPath || previewObjectPath)
+  };
+}
+
 function canViewEventLogEntry(
   viewer: ProjectionViewer,
   entry: MatchAggregate['eventLog'][number]
@@ -276,6 +311,7 @@ export function buildMatchProjection(
       linkedCardInstanceId: attachment.linkedCardInstanceId,
       linkedMessageId: attachment.linkedMessageId,
       note: attachment.note,
+      storage: buildVisibleAttachmentStorage(attachment),
       createdAt: attachment.createdAt
     }));
   const visibleAttachmentIds = new Set(visibleAttachments.map((attachment) => attachment.attachmentId));
