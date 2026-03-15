@@ -8,6 +8,10 @@ import type { GeoFeatureRecord } from '../../../../../packages/geo/src/index.ts'
 
 import type { QuestionAnswerDraft } from './question-flow-state.ts';
 import { getAnswerOptions } from './question-flow-state.ts';
+import {
+  describeExpectedAnswerGuidance,
+  describeQuestionTemplateForPlayers
+} from './question-guidance.ts';
 
 import { Field } from '../../ui/Field.tsx';
 import { colors } from '../../ui/theme.ts';
@@ -47,6 +51,11 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
     <View style={styles.container}>
       <Text style={styles.title}>{props.template.name}</Text>
       <Text style={styles.copy}>Category: {props.category.name}</Text>
+      <Text style={styles.copy}>{describeQuestionTemplateForPlayers(props.template, props.category)}</Text>
+      <View style={styles.guidanceCard}>
+        <Text style={styles.guidanceTitle}>How to answer</Text>
+        <Text style={styles.copy}>{describeExpectedAnswerGuidance(props.template)}</Text>
+      </View>
 
       {(answerKind === 'boolean' || answerKind === 'enum') ? (
         <View style={styles.optionList}>
@@ -77,12 +86,18 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
               ))}
             </View>
           ) : (
-            <Field
-              label="Selected Feature Id or Label"
-              value={props.draft.selectedFeatureId}
-              onChangeText={(selectedFeatureId) => props.onChange({ ...props.draft, selectedFeatureId })}
-              placeholder="Feature id or label"
-            />
+            <View style={styles.guidanceCard}>
+              <Text style={styles.guidanceTitle}>No candidate list is available</Text>
+              <Text style={styles.copy}>
+                This region does not currently expose a candidate list for the selected template. Enter the best honest feature label or id, and the outcome may stay metadata-only until better feature data is available.
+              </Text>
+              <Field
+                label="Selected Feature Id or Label"
+                value={props.draft.selectedFeatureId}
+                onChangeText={(selectedFeatureId) => props.onChange({ ...props.draft, selectedFeatureId })}
+                placeholder="Feature id or label"
+              />
+            </View>
           )}
         </>
       ) : null}
@@ -134,6 +149,17 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     lineHeight: 17
+  },
+  guidanceCard: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 12,
+    gap: 6,
+    padding: 12
+  },
+  guidanceTitle: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700'
   },
   optionList: {
     flexDirection: 'row',

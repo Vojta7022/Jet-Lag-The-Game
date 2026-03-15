@@ -20,7 +20,7 @@ export interface TimingRowModel {
 export interface MatchTimingDisplayModel {
   banner?: TimingBannerModel;
   phaseLabel: string;
-  syncAgeLabel?: string;
+  freshnessLabel?: string;
   timers: TimingRowModel[];
   pauseSummary?: string;
   pauseDetail?: string;
@@ -30,7 +30,7 @@ export interface MatchTimingDisplayModel {
 
 interface BuildMatchTimingDisplayModelOptions {
   projection?: MatchProjection;
-  syncGeneratedAt?: string;
+  freshnessAt?: string;
   nowMs: number;
 }
 
@@ -80,8 +80,8 @@ export function formatDurationWords(totalSeconds: number): string {
   return `${seconds}s`;
 }
 
-export function formatSyncAge(syncGeneratedAt: string | undefined, nowMs: number): string | undefined {
-  const syncTime = parseTime(syncGeneratedAt);
+export function formatFreshnessAge(freshnessAt: string | undefined, nowMs: number): string | undefined {
+  const syncTime = parseTime(freshnessAt);
   if (syncTime === undefined) {
     return undefined;
   }
@@ -96,7 +96,7 @@ export function formatSyncAge(syncGeneratedAt: string | undefined, nowMs: number
 
 export function getEffectiveRemainingSeconds(
   timer: VisibleTimerLike,
-  syncGeneratedAt: string | undefined,
+  freshnessAt: string | undefined,
   nowMs: number
 ): number {
   const baseRemaining = Math.max(0, timer.remainingSeconds);
@@ -104,7 +104,7 @@ export function getEffectiveRemainingSeconds(
     return baseRemaining;
   }
 
-  const syncTime = parseTime(syncGeneratedAt);
+  const syncTime = parseTime(freshnessAt);
   if (syncTime === undefined) {
     return baseRemaining;
   }
@@ -187,7 +187,7 @@ function timerPriority(timer: VisibleTimerLike): number {
 
 function buildTimerRows(
   projection: MatchProjection,
-  syncGeneratedAt: string | undefined,
+  freshnessAt: string | undefined,
   nowMs: number
 ): TimingRowModel[] {
   return [...projection.visibleTimers]
@@ -200,7 +200,7 @@ function buildTimerRows(
       return left.timerId.localeCompare(right.timerId);
     })
     .map((timer) => {
-      const remainingSeconds = getEffectiveRemainingSeconds(timer, syncGeneratedAt, nowMs);
+      const remainingSeconds = getEffectiveRemainingSeconds(timer, freshnessAt, nowMs);
       return {
         timerId: timer.timerId,
         label: formatTimerLabel(timer),
@@ -336,13 +336,13 @@ export function buildMatchTimingDisplayModel(
     return undefined;
   }
 
-  const timers = buildTimerRows(options.projection, options.syncGeneratedAt, options.nowMs);
+  const timers = buildTimerRows(options.projection, options.freshnessAt, options.nowMs);
   const pauseSummary = buildPauseSummary(options.projection, options.nowMs);
   const flowLockSummary = buildFlowLockSummary(options.projection);
 
   return {
     phaseLabel: formatPhaseLabel(options.projection),
-    syncAgeLabel: formatSyncAge(options.syncGeneratedAt, options.nowMs),
+    freshnessLabel: formatFreshnessAge(options.freshnessAt, options.nowMs),
     timers,
     ...pauseSummary,
     ...flowLockSummary,

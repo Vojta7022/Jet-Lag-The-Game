@@ -42,7 +42,7 @@ export function MovementScreen() {
 
   const activeMatch = appShellState.activeMatch;
   const projection = activeMatch?.projection;
-  const timingModel = useMatchTimingModel(projection, appShellState.lastSync?.generatedAt);
+  const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const viewerRole = resolveLocationViewerRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const canShare = canViewerShareLiveLocation(viewerRole);
   const movementTracks = useMemo(

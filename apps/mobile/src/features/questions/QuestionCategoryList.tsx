@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { QuestionCategoryViewModel } from './question-catalog.ts';
+import { describeQuestionCategoryForPlayers } from './question-guidance.ts';
 
 import { colors } from '../../ui/theme.ts';
 
@@ -23,8 +24,9 @@ export function QuestionCategoryList(props: QuestionCategoryListProps) {
             style={[styles.item, selected ? styles.itemSelected : null]}
           >
             <Text style={styles.title}>{entry.category.name}</Text>
+            <Text style={styles.copy}>{describeQuestionCategoryForPlayers(entry.category)}</Text>
             <Text style={styles.meta}>
-              {entry.templates.length} templates · {entry.category.resolverKind}
+              {entry.templates.length} {entry.templates.length === 1 ? 'question' : 'questions'} available
             </Text>
           </Pressable>
         );
@@ -58,5 +60,10 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     lineHeight: 16
+  },
+  copy: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18
   }
 });

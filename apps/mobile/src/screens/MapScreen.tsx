@@ -1,18 +1,22 @@
-import { useMemo, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { MapCanvas } from '../features/map/MapCanvas';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
+import { defaultContentPack } from '../runtime/default-content-pack.ts';
 
 import {
   MapLegend,
   SelectedRegionChipList,
   SearchableRegionPicker,
   addRegionToSelection,
+  buildAppliedRegionDraft,
   buildMapOverlayModel,
   buildCompositePlayableRegion,
+  buildMapScaleGuidanceModel,
   buildMapSetupBootstrapCommands,
   clearSelectedRegions,
   mobileRegionDataSource,
@@ -20,12 +24,21 @@ import {
   useRegionSearch
 } from '../features/map/index.ts';
 import {
+  QuestionResolutionPanel,
+  buildQuestionMapEffectModel,
+  findConstraintForQuestion,
+  findLatestResolvedQuestion,
+  findQuestionCategory,
+  findQuestionTemplate
+} from '../features/questions/index.ts';
+import {
   MatchTimingBanner,
   MatchTimingPanel,
   useMatchTimingModel
 } from '../features/timers/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
+import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
@@ -44,17 +57,118 @@ function createMapRegionCommand(selectedRegion: PlayableRegionCatalogEntry): Dom
   };
 }
 
+function sameSelection(left: PlayableRegionCatalogEntry[], right: PlayableRegionCatalogEntry[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((region, index) => region.regionId === right[index]?.regionId);
+}
+
+function describeSetupMode(runtimeKind: string | undefined) {
+  switch (runtimeKind) {
+    case 'single_device_referee':
+      return 'Single-device referee session on this device';
+    case 'nearby_host_authority':
+      return 'Nearby host session on the local network';
+    case 'online_foundation':
+      return 'Online cloud session';
+    case 'in_memory':
+    default:
+      return 'Local on-device test session';
+  }
+}
+
+function formatScaleLabel(scale: 'small' | 'medium' | 'large') {
+  switch (scale) {
+    case 'small':
+      return 'Small';
+    case 'medium':
+      return 'Medium';
+    case 'large':
+      return 'Large';
+  }
+}
+
+function describeSetupState(args: {
+  loadState: string;
+  freshnessLabel?: string;
+  activeMatchExists: boolean;
+}) {
+  if (!args.activeMatchExists) {
+    return 'Connect a match to start map setup.';
+  }
+
+  if (args.loadState === 'loading') {
+    return 'Updating the active match state.';
+  }
+
+  if (args.loadState === 'error') {
+    return 'The latest setup action needs attention.';
+  }
+
+  if (args.freshnessLabel) {
+    return `Updated ${args.freshnessLabel.toLowerCase()}.`;
+  }
+
+  return 'Waiting for the first synced match state.';
+}
+
 export function MapScreen() {
   const dimensions = useWindowDimensions();
-  const { state, submitCommands, refreshActiveMatch } = useAppShell();
+  const { state, submitCommands, refreshActiveMatch, saveMapSetupDraft, clearMapSetupDraft } = useAppShell();
   const [showLegend, setShowLegend] = useState(false);
-  const [selectedRegions, setSelectedRegions] = useState<PlayableRegionCatalogEntry[]>([]);
-  const regionSearch = useRegionSearch({
-    source: mobileRegionDataSource
-  });
   const activeMatch = state.activeMatch;
+  const mapSetupDraft = activeMatch ? state.uiState.mapSetupDrafts[activeMatch.matchId] : undefined;
+  const [selectedRegions, setSelectedRegions] = useState<PlayableRegionCatalogEntry[]>(
+    () => mapSetupDraft?.selectedRegions ?? []
+  );
+  const regionSearch = useRegionSearch({
+    source: mobileRegionDataSource,
+    initialQuery: mapSetupDraft?.query,
+    initialRegionId: mapSetupDraft?.selectedPreviewRegionId
+  });
   const projection = activeMatch?.projection;
-  const timingModel = useMatchTimingModel(projection, state.lastSync?.generatedAt);
+  const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
+  const appliedRegion = buildAppliedRegionDraft(projection?.visibleMap)[0];
+  const scaleGuidance = buildMapScaleGuidanceModel({
+    selectedRegions: selectedRegions.length > 0 ? selectedRegions : appliedRegion ? [appliedRegion] : [],
+    appliedMap: projection?.visibleMap
+  });
+  const latestResolvedQuestion = findLatestResolvedQuestion(projection);
+  const latestResolvedConstraint = findConstraintForQuestion(
+    projection,
+    latestResolvedQuestion?.questionInstanceId
+  );
+  const latestResolvedTemplate = findQuestionTemplate(
+    defaultContentPack,
+    latestResolvedQuestion?.templateId
+  );
+  const latestResolvedCategory = findQuestionCategory(
+    defaultContentPack,
+    latestResolvedQuestion?.categoryId
+  );
+  const latestQuestionEffect = useMemo(
+    () =>
+      buildQuestionMapEffectModel({
+        question: latestResolvedQuestion,
+        template: latestResolvedTemplate,
+        category: latestResolvedCategory,
+        constraint: latestResolvedConstraint,
+        visibleMap: projection?.visibleMap
+      }),
+    [
+      latestResolvedCategory,
+      latestResolvedConstraint,
+      latestResolvedQuestion,
+      latestResolvedTemplate,
+      projection?.visibleMap
+    ]
+  );
+  const lastSyncAppliedConstraint = Boolean(
+    state.lastSync?.eventStream.events.some((eventFrame) => eventFrame.type === 'constraint_applied') &&
+      latestQuestionEffect
+  );
   const compositePreviewRegion = useMemo(
     () => buildCompositePlayableRegion(selectedRegions),
     [selectedRegions]
@@ -78,6 +192,11 @@ export function MapScreen() {
     projection?.lifecycleState === 'map_setup' &&
     Boolean(compositePreviewRegion);
   const mapHasBeenApplied = Boolean(projection?.visibleMap);
+  const draftDiffersFromApplied = Boolean(
+    compositePreviewRegion &&
+    projection?.visibleMap &&
+    compositePreviewRegion.regionId !== projection.visibleMap.regionId
+  );
   const mapHeight = Math.max(190, Math.min(Math.round(dimensions.height * 0.24), 250));
   const regionSummary = projection?.visibleMap?.displayName ?? compositePreviewRegion?.displayName ?? previewRegion?.displayName ?? 'No region selected';
   const candidateSummary = projection?.visibleMap?.remainingArea
@@ -103,6 +222,35 @@ export function MapScreen() {
     selectedRegions.length > 1
       ? 'Composite'
       : compositePreviewRegion?.regionKind ?? previewRegion?.regionKind ?? 'Preview';
+  const setupStateSummary = describeSetupState({
+    loadState: state.loadState,
+    freshnessLabel: timingModel?.freshnessLabel,
+    activeMatchExists: Boolean(activeMatch)
+  });
+
+  useEffect(() => {
+    const persistedSelection = mapSetupDraft?.selectedRegions ?? [];
+    setSelectedRegions((current) => (sameSelection(current, persistedSelection) ? current : persistedSelection));
+  }, [activeMatch?.matchId, mapSetupDraft?.selectedRegions]);
+
+  useEffect(() => {
+    if (!activeMatch) {
+      return;
+    }
+
+    saveMapSetupDraft({
+      matchId: activeMatch.matchId,
+      selectedRegions,
+      query: regionSearch.query,
+      selectedPreviewRegionId: regionSearch.selectedRegionId
+    });
+  }, [
+    activeMatch,
+    regionSearch.query,
+    regionSearch.selectedRegionId,
+    saveMapSetupDraft,
+    selectedRegions
+  ]);
 
   return (
     <ScreenContainer
@@ -144,12 +292,105 @@ export function MapScreen() {
 
         <MatchTimingBanner model={timingModel} />
 
+        {lastSyncAppliedConstraint && latestQuestionEffect ? (
+          <StateBanner
+            tone={latestQuestionEffect.resolutionTone}
+            title={`${latestQuestionEffect.resolutionModeLabel} map update applied`}
+            detail={latestQuestionEffect.mapEffectDetail}
+          />
+        ) : null}
+
         {activeMatch ? (
           <Panel
             title="Match Timing"
             subtitle="Hide phase, cooldowns, and pause state stay visible while you work on the playable region."
           >
             <MatchTimingPanel model={timingModel} />
+          </Panel>
+        ) : null}
+
+        {activeMatch ? (
+          <Panel
+            title="Setup Status"
+            subtitle="Keep track of what is already applied, what is still in draft, and which scale best fits the current boundary."
+          >
+            <FactList
+              items={[
+                { label: 'Session Mode', value: describeSetupMode(activeMatch.runtimeKind) },
+                { label: 'State Update', value: setupStateSummary },
+                { label: 'Applied Region', value: projection?.visibleMap?.displayName ?? 'Not applied yet' },
+                {
+                  label: 'Draft Selection',
+                  value:
+                    selectedRegions.length === 0
+                      ? 'No draft regions selected'
+                      : selectedRegions.length === 1
+                        ? selectedRegions[0]?.displayName ?? '1 region selected'
+                        : `${selectedRegions.length} regions selected`
+                },
+                { label: 'Suggested Scale', value: formatScaleLabel(scaleGuidance.suggestedScale) }
+              ]}
+            />
+            <Text style={styles.copy}>{scaleGuidance.title}</Text>
+            <Text style={styles.copy}>{scaleGuidance.detail}</Text>
+            <Text style={styles.helperCopy}>{scaleGuidance.note}</Text>
+            <View style={styles.scaleRow}>
+              {(['small', 'medium', 'large'] as const).map((scale) => {
+                const recommended = scaleGuidance.suggestedScale === scale;
+                return (
+                  <View
+                    key={scale}
+                    style={[
+                      styles.scaleChip,
+                      recommended ? styles.scaleChipRecommended : null
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.scaleChipLabel,
+                        recommended ? styles.scaleChipLabelRecommended : null
+                      ]}
+                    >
+                      {formatScaleLabel(scale)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            {draftDiffersFromApplied ? (
+              <StateBanner
+                tone="info"
+                title="Draft changes are ready to apply"
+                detail="The previewed boundary is different from the region currently applied to the match."
+              />
+            ) : null}
+          </Panel>
+        ) : null}
+
+        {projection?.visibleMap ? (
+          <Panel
+            title="Latest Question Update"
+            subtitle="The most recent resolved question that changed or annotated the search map."
+          >
+            <QuestionResolutionPanel
+              title="Question-To-Map Summary"
+              question={latestResolvedQuestion}
+              template={latestResolvedTemplate}
+              category={latestResolvedCategory}
+              constraint={latestResolvedConstraint}
+              visibleMap={projection.visibleMap}
+              actionSlot={
+                latestResolvedQuestion ? (
+                  <AppButton
+                    label="Open Question Center"
+                    tone="secondary"
+                    onPress={() => {
+                      router.push('/questions');
+                    }}
+                  />
+                ) : undefined
+              }
+            />
           </Panel>
         ) : null}
 
@@ -189,7 +430,7 @@ export function MapScreen() {
 
         <Panel
           title="Playable Region"
-          subtitle="Build a single playable boundary from one or more selected regions before applying it to the match."
+          subtitle="Build a draft playable boundary, then apply it through the real match setup flow."
         >
           {compositePreviewRegion ? (
             <View style={styles.selectedSection}>
@@ -276,7 +517,7 @@ export function MapScreen() {
 
           <View style={styles.actionGrid}>
             <AppButton
-              label={state.loadState === 'loading' ? 'Working...' : 'Move Match To Map Setup'}
+              label={state.loadState === 'loading' ? 'Working...' : 'Open Map Setup Stage'}
               onPress={() => {
                 if (!projection || !canPrepareMapSetup) {
                   return;
@@ -308,15 +549,20 @@ export function MapScreen() {
               disabled={!canApplySelectedRegion || state.loadState === 'loading'}
             />
             <AppButton
-              label="Clear Selection"
+              label="Clear Draft Selection"
               onPress={() => {
                 setSelectedRegions(clearSelectedRegions());
+                regionSearch.setQuery('');
+                regionSearch.clearSelection();
+                if (activeMatch) {
+                  clearMapSetupDraft(activeMatch.matchId);
+                }
               }}
               tone="secondary"
               disabled={selectedRegions.length === 0 || state.loadState === 'loading'}
             />
             <AppButton
-              label="Refresh Map Projection"
+              label="Refresh Setup State"
               onPress={() => {
                 void refreshActiveMatch();
               }}
@@ -402,6 +648,36 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     lineHeight: 18
+  },
+  helperCopy: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17
+  },
+  scaleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  scaleChip: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  scaleChipRecommended: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.accent
+  },
+  scaleChipLabel: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  scaleChipLabelRecommended: {
+    color: colors.accent
   },
   metricGrid: {
     flexDirection: 'row',

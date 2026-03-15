@@ -9,11 +9,12 @@ import type { RegionDataSource } from './region-data-source.ts';
 interface UseRegionSearchArgs {
   source: RegionDataSource;
   initialRegionId?: string;
+  initialQuery?: string;
 }
 
 export function useRegionSearch(args: UseRegionSearchArgs) {
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [query, setQuery] = useState(args.initialQuery ?? '');
+  const [debouncedQuery, setDebouncedQuery] = useState(args.initialQuery ?? '');
   const [regions, setRegions] = useState<PlayableRegionCatalogEntry[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<PlayableRegionCatalogEntry | undefined>(undefined);
   const [sourceLabel, setSourceLabel] = useState('');
@@ -24,6 +25,15 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [reloadToken, setReloadToken] = useState(0);
   const selectedRegionIdRef = useRef(args.initialRegionId);
+
+  useEffect(() => {
+    setQuery(args.initialQuery ?? '');
+    setDebouncedQuery(args.initialQuery ?? '');
+  }, [args.initialQuery]);
+
+  useEffect(() => {
+    selectedRegionIdRef.current = args.initialRegionId;
+  }, [args.initialRegionId]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -39,6 +49,7 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
     async function runSearch() {
       if (debouncedQuery.trim().length < 2) {
         setRegions([]);
+        setSelectedRegion(undefined);
         setSourceLabel('');
         setUsingFallback(false);
         setNoticeMessage(undefined);
@@ -121,6 +132,11 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
     setReloadToken((value) => value + 1);
   }, []);
 
+  const clearSelection = useCallback(() => {
+    selectedRegionIdRef.current = undefined;
+    setSelectedRegion(undefined);
+  }, []);
+
   return useMemo(() => ({
     query,
     setQuery,
@@ -135,8 +151,10 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
     isLoading,
     errorMessage,
     selectRegion,
-    retrySearch
+    retrySearch,
+    clearSelection
   }), [
+    clearSelection,
     errorMessage,
     isLoading,
     minimumQueryLengthMet,

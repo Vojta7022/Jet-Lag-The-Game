@@ -48,7 +48,7 @@ test('hide phase timer counts down from the latest synced projection', () => {
         }
       ]
     }),
-    syncGeneratedAt: '2026-03-15T10:00:00.000Z',
+    freshnessAt: '2026-03-15T10:00:00.000Z',
     nowMs: Date.parse('2026-03-15T10:00:30.000Z')
   });
 
@@ -72,7 +72,7 @@ test('question cooldown banner stays explicit during cooldown state', () => {
         }
       ]
     }),
-    syncGeneratedAt: '2026-03-15T10:05:00.000Z',
+    freshnessAt: '2026-03-15T10:05:00.000Z',
     nowMs: Date.parse('2026-03-15T10:05:10.000Z')
   });
 
@@ -104,7 +104,7 @@ test('paused match keeps timer values frozen and explains the resume target', ()
         }
       ]
     }),
-    syncGeneratedAt: '2026-03-15T10:10:00.000Z',
+    freshnessAt: '2026-03-15T10:10:00.000Z',
     nowMs: Date.parse('2026-03-15T10:11:30.000Z')
   });
 
@@ -124,7 +124,7 @@ test('card windows stay honest when there is a lock but no countdown timer', () 
         sourceCardInstanceId: 'card-1'
       }
     }),
-    syncGeneratedAt: '2026-03-15T10:20:00.000Z',
+    freshnessAt: '2026-03-15T10:20:00.000Z',
     nowMs: Date.parse('2026-03-15T10:20:05.000Z')
   });
 

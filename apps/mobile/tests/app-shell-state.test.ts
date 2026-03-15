@@ -99,13 +99,15 @@ test('app shell reducer saves runtime/session data and applies a connected match
       snapshotVersion: 1,
       lastEventSequence: 1
     },
-    syncEnvelope
+    syncEnvelope,
+    receivedAt: '2026-01-01T00:00:02.000Z'
   });
 
   assert.equal(state.runtimeKind, 'online_foundation');
   assert.equal(state.sessionProfile.playerId, 'host-1');
   assert.equal(state.activeMatch?.matchId, 'match-1');
   assert.equal(state.activeMatch?.connectionState, 'connected');
+  assert.equal(state.activeMatch?.receivedAt, '2026-01-01T00:00:02.000Z');
   assert.equal(state.loadState, 'ready');
 });
 
@@ -146,7 +148,8 @@ test('app shell reducer clears match state after disconnect and preserves sessio
         ...makeSyncEnvelope().projectionDelivery,
         matchId: 'match-2'
       }
-    })
+    }),
+    receivedAt: '2026-01-01T00:00:03.000Z'
   });
   state = appShellReducer(state, { type: 'match_disconnected' });
 
@@ -206,9 +209,49 @@ test('app shell reducer resets loading state after failure and after a later suc
           lifecycleState: 'map_setup'
         })
       }
-    })
+    }),
+    receivedAt: '2026-01-01T00:00:04.000Z'
   });
 
   assert.equal(state.loadState, 'ready');
   assert.equal(state.errorMessage, undefined);
+});
+
+test('app shell reducer saves and clears map setup drafts per match', () => {
+  let state = createInitialShellState('in_memory');
+
+  state = appShellReducer(state, {
+    type: 'map_setup_draft_saved',
+    draft: {
+      matchId: 'match-map-1',
+      query: 'Prague',
+      selectedPreviewRegionId: 'region-prague',
+      selectedRegions: [
+        {
+          regionId: 'region-prague',
+          displayName: 'Prague',
+          regionKind: 'city',
+          summary: 'Capital city boundary.',
+          featureDatasetRefs: ['seed-prague'],
+          geometry: {
+            type: 'Polygon',
+            coordinates: []
+          },
+          sourceKind: 'seed_catalog',
+          sourceLabel: 'Bundled seed region catalog',
+          searchAliases: ['Prague', 'Praha']
+        }
+      ]
+    }
+  });
+
+  assert.equal(state.uiState.mapSetupDrafts['match-map-1']?.query, 'Prague');
+  assert.equal(state.uiState.mapSetupDrafts['match-map-1']?.selectedRegions.length, 1);
+
+  state = appShellReducer(state, {
+    type: 'map_setup_draft_cleared',
+    matchId: 'match-map-1'
+  });
+
+  assert.equal(state.uiState.mapSetupDrafts['match-map-1'], undefined);
 });

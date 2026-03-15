@@ -32,9 +32,9 @@ export function MatchTimingPanel(props: MatchTimingPanelProps) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.summarySection}>
-        {renderSummaryRow('Phase', props.model.phaseLabel)}
-        {renderSummaryRow('Last Sync', props.model.syncAgeLabel)}
+        <View style={styles.summarySection}>
+          {renderSummaryRow('Phase', props.model.phaseLabel)}
+        {renderSummaryRow('Updated', props.model.freshnessLabel)}
       </View>
 
       {props.model.pauseSummary ? (

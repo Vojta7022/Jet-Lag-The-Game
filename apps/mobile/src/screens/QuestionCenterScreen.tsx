@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
@@ -15,6 +16,12 @@ import {
   buildDemoMovementCommands,
   buildQuestionCategoryViewModels,
   buildQuestionFlowBootstrapCommands,
+  describeExpectedAnswerGuidance,
+  describeQuestionCategoryForPlayers,
+  describeQuestionImpactExpectation,
+  describeQuestionTemplateForPlayers,
+  formatQuestionScaleSet,
+  buildQuestionMapEffectModel,
   chooseConstraintIdForQuestion,
   createInitialAnswerDraft,
   describeTemplateSupport,
@@ -59,7 +66,7 @@ export function QuestionCenterScreen() {
   const { state, submitCommand, submitCommands, refreshActiveMatch } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
-  const timingModel = useMatchTimingModel(projection, state.lastSync?.generatedAt);
+  const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const capabilities = getQuestionFlowCapabilities(viewerRole);
   const categoryViewModels = useMemo(
@@ -108,6 +115,13 @@ export function QuestionCenterScreen() {
 
   const visibleMap = projection?.visibleMap;
   const selectedRegionId = visibleMap?.regionId;
+  const selectedQuestionImpact = selectedTemplate && selectedCategory
+    ? describeQuestionImpactExpectation({
+        template: selectedTemplate,
+        category: selectedCategory,
+        regionId: selectedRegionId
+      })
+    : undefined;
   const previewFeatureData = getSeedRegionFeatureData(
     selectedRegionId,
     (selectedTemplate?.featureClassRefs ?? []).map((feature) => feature.featureClassId)
@@ -118,6 +132,27 @@ export function QuestionCenterScreen() {
   );
   const activeQuestionConstraint = findConstraintForQuestion(projection, activeQuestion?.questionInstanceId);
   const resolvedQuestionConstraint = findConstraintForQuestion(projection, resolvedQuestion?.questionInstanceId);
+  const latestResolvedEffect = useMemo(
+    () =>
+      buildQuestionMapEffectModel({
+        question: resolvedQuestion,
+        template: resolvedQuestionTemplate,
+        category: resolvedQuestionCategory,
+        constraint: resolvedQuestionConstraint,
+        visibleMap
+      }),
+    [
+      resolvedQuestion,
+      resolvedQuestionCategory,
+      resolvedQuestionConstraint,
+      resolvedQuestionTemplate,
+      visibleMap
+    ]
+  );
+  const latestConstraintApplied = Boolean(
+    state.lastSync?.eventStream.events.some((eventFrame) => eventFrame.type === 'constraint_applied') &&
+      latestResolvedEffect
+  );
   const isQuestionReadyState = projection?.lifecycleState === 'seek_phase' && projection.seekPhaseSubstate === 'ready';
   const isQuestionSelectionState =
     projection?.lifecycleState === 'seek_phase' && projection.seekPhaseSubstate === 'awaiting_question_selection';
@@ -274,7 +309,7 @@ export function QuestionCenterScreen() {
       {activeMatch ? (
         <Panel
           title="Match Context"
-          subtitle="Question permissions, stage, and map context for the current view."
+          subtitle="Question permissions, current stage, and the live map context for this view."
         >
           <FactList
             items={[
@@ -286,13 +321,22 @@ export function QuestionCenterScreen() {
                   : projection?.lifecycleState ?? 'Unavailable'
               },
               { label: 'Playable Region', value: visibleMap?.displayName ?? 'Not selected yet' },
-              { label: 'Scope', value: activeMatch.recipient.scope }
+              { label: 'Scope', value: activeMatch.recipient.scope },
+              { label: 'State Update', value: timingModel?.freshnessLabel ?? 'Waiting for live state' }
             ]}
           />
           <Text style={styles.copy}>
             Asking is enabled for seeker and host-admin views. Answering is enabled for hider and host-admin views. Constraint application remains host-authoritative.
           </Text>
         </Panel>
+      ) : null}
+
+      {activeMatch && !visibleMap ? (
+        <StateBanner
+          tone="warning"
+          title="Playable region needed first"
+          detail="Finish map setup before relying on question results to change the search area."
+        />
       ) : null}
 
       {activeMatch && viewerRole === 'spectator' ? (
@@ -305,6 +349,14 @@ export function QuestionCenterScreen() {
 
       <MatchTimingBanner model={timingModel} />
 
+      {latestConstraintApplied && latestResolvedEffect ? (
+        <StateBanner
+          tone={latestResolvedEffect.resolutionTone}
+          title={`${latestResolvedEffect.resolutionModeLabel} result updated the search area`}
+          detail={latestResolvedEffect.mapEffectDetail}
+        />
+      ) : null}
+
       {activeMatch ? (
         <Panel
           title="Match Timing"
@@ -315,22 +367,47 @@ export function QuestionCenterScreen() {
       ) : null}
 
       <Panel
+        title="Latest Result"
+        subtitle="Follow the full answer-to-map chain for the most recent resolved question."
+      >
+        <QuestionResolutionPanel
+          title="Latest Question Outcome"
+          question={resolvedQuestion}
+          template={resolvedQuestionTemplate}
+          category={resolvedQuestionCategory}
+          constraint={resolvedQuestionConstraint}
+          visibleMap={visibleMap}
+          actionSlot={
+            resolvedQuestion ? (
+              <AppButton
+                label="Open Map View"
+                tone="secondary"
+                onPress={() => {
+                  router.push('/map');
+                }}
+              />
+            ) : undefined
+          }
+        />
+      </Panel>
+
+      <Panel
         title="Question Actions"
-        subtitle="Use these controls to prepare the match, refresh the view, or add movement context for distance-based questions."
+        subtitle="Prepare the match, refresh the live view, or add seeker movement context for movement-based questions."
       >
         <AppButton
-          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Questions'}
+          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Question Play'}
           onPress={handlePrepareFlow}
           disabled={!canPrepareFlow || state.loadState === 'loading'}
         />
         <AppButton
-          label="Add Sample Movement"
+          label="Add Sample Seeker Movement"
           onPress={handleSeedMovement}
           disabled={!canSeedMovement || state.loadState === 'loading'}
           tone="secondary"
         />
         <AppButton
-          label="Refresh Questions"
+          label="Refresh Match State"
           onPress={() => {
             void refreshActiveMatch();
           }}
@@ -341,7 +418,7 @@ export function QuestionCenterScreen() {
 
       <Panel
         title="Categories"
-        subtitle="Browse the available question groups from the current content pack."
+        subtitle="Start by choosing the kind of clue you want to ask for."
       >
         <QuestionCategoryList
           categories={categoryViewModels}
@@ -352,7 +429,7 @@ export function QuestionCenterScreen() {
 
       <Panel
         title="Templates"
-        subtitle="Choose a specific question inside the selected category."
+        subtitle="Choose the specific question card you want to ask."
       >
         {selectedCategory ? (
           <QuestionTemplateList
@@ -375,38 +452,70 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Ask Question"
-        subtitle="Send the selected question into the live match flow."
+        title="Selected Question"
+        subtitle="Review what the chosen question asks, how it should be answered, and what kind of map update to expect."
       >
         {selectedTemplate && selectedCategory ? (
           <>
             <Text style={styles.title}>{selectedTemplate.name}</Text>
             <Text style={styles.copy}>
-              {describeTemplateSupport({
-                template: selectedTemplate,
-                category: selectedCategory,
-                regionId: selectedRegionId
-              })}
+              {describeQuestionCategoryForPlayers(selectedCategory)}
             </Text>
+            <Text style={styles.copy}>
+              {describeQuestionTemplateForPlayers(selectedTemplate, selectedCategory)}
+            </Text>
+            {selectedQuestionImpact ? (
+              <StateBanner
+                tone={selectedQuestionImpact.tone}
+                title={selectedQuestionImpact.label}
+                detail={selectedQuestionImpact.detail}
+              />
+            ) : null}
+            <FactList
+              items={[
+                { label: 'How to answer', value: describeExpectedAnswerGuidance(selectedTemplate) },
+                { label: 'Scale fit', value: formatQuestionScaleSet(selectedTemplate.scaleSet.appliesTo) },
+                {
+                  label: 'Coverage today',
+                  value: describeTemplateSupport({
+                    template: selectedTemplate,
+                    category: selectedCategory,
+                    regionId: selectedRegionId
+                  })
+                }
+              ]}
+            />
             {previewFeatureData.length > 0 ? (
               <Text style={styles.copy}>
-                Region feature support: {previewFeatureData.length} approximate feature records are available for this template in the selected region.
+                Region feature support: {previewFeatureData.length} approximate feature records are available for this question in the current playable region.
               </Text>
             ) : null}
+          </>
+        ) : (
+          <Text style={styles.copy}>Choose a category and question card to see a plain-language briefing here.</Text>
+        )}
+      </Panel>
+
+      <Panel
+        title="Ask Question"
+        subtitle="Send the selected question into the live match flow when the match is ready."
+      >
+        {selectedTemplate && selectedCategory ? (
+          <>
             <AppButton
-              label={isQuestionReadyState ? 'Open Prompt And Ask' : 'Ask Selected Template'}
+              label="Ask Question"
               onPress={handleAskQuestion}
               disabled={!canAskQuestion || state.loadState === 'loading'}
             />
           </>
         ) : (
-          <Text style={styles.copy}>Select a template first.</Text>
+          <Text style={styles.copy}>Select a question card first.</Text>
         )}
       </Panel>
 
       <Panel
         title="Answer Question"
-        subtitle="Respond from the hider or host view when a question is waiting for an answer."
+        subtitle="Answer from the hider or host-admin view when a question is waiting for a response."
       >
         {activeQuestion && activeQuestionTemplate && activeQuestionCategory ? (
           <>
@@ -426,22 +535,22 @@ export function QuestionCenterScreen() {
           </>
         ) : (
           <Text style={styles.copy}>
-            When a question is awaiting an answer, the hider or host-admin view can answer it here.
+            When a question is awaiting an answer, the hider or host-admin view can answer it here with the expected response format.
           </Text>
         )}
       </Panel>
 
       <Panel
         title="Resolve Result"
-        subtitle="Apply the canonical constraint and update the bounded candidate area."
+        subtitle="Host-admin applies the result here, then reviews whether the map changed or only recorded evidence."
       >
         {activeQuestion && activeQuestionTemplate && activeQuestionCategory ? (
           <>
             <Text style={styles.copy}>
-              Host-admin resolution uses the selected template's canonical constraint mapping and refreshes the authoritative bounded candidate area.
+              Host-admin resolution uses the selected template's canonical mapping and refreshes the bounded search area inside the active playable region.
             </Text>
             <AppButton
-              label="Apply Constraint"
+              label="Resolve Result Into Map"
               onPress={handleResolveQuestion}
               disabled={!canResolveQuestion || state.loadState === 'loading'}
             />
@@ -458,23 +567,9 @@ export function QuestionCenterScreen() {
           </>
         ) : (
           <Text style={styles.copy}>
-            Resolution becomes available after an answer is submitted and the match enters constraint application.
+            Resolution becomes available after an answer is submitted and the match enters the constraint-application step.
           </Text>
         )}
-      </Panel>
-
-      <Panel
-        title="Latest Result"
-        subtitle="Review the most recent resolved question and its effect on the map."
-      >
-        <QuestionResolutionPanel
-          title="Resolved Question Summary"
-          question={resolvedQuestion}
-          template={resolvedQuestionTemplate}
-          category={resolvedQuestionCategory}
-          constraint={resolvedQuestionConstraint}
-          visibleMap={visibleMap}
-        />
       </Panel>
     </ScreenContainer>
   );

@@ -5,21 +5,35 @@ import type {
   SyncEnvelope,
   TransportConnectionState
 } from '../../../../packages/shared-types/src/index.ts';
+import type { PlayableRegionCatalogEntry } from '../features/map/region-types.ts';
 
 import type { MobileRuntimeKind } from '../config/env.ts';
 import type { ConnectionSnapshotSummary, SessionProfileDraft } from '../runtime/types.ts';
 
 export type ShellLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
+export interface MapSetupDraftState {
+  matchId: string;
+  selectedRegions: PlayableRegionCatalogEntry[];
+  selectedPreviewRegionId?: string;
+  query: string;
+}
+
 export interface ActiveMatchViewState extends ConnectionSnapshotSummary {
   projection: MatchProjection;
   connectionState: TransportConnectionState;
+  receivedAt: string;
+}
+
+export interface MobileUiState {
+  mapSetupDrafts: Record<string, MapSetupDraftState>;
 }
 
 export interface AppShellState {
   runtimeKind: MobileRuntimeKind;
   loadState: ShellLoadState;
   sessionProfile: SessionProfileDraft;
+  uiState: MobileUiState;
   activeMatch?: ActiveMatchViewState;
   lastSync?: SyncEnvelope;
   errorMessage?: string;
@@ -30,10 +44,12 @@ export type AppShellAction =
   | { type: 'session_saved'; sessionProfile: SessionProfileDraft }
   | { type: 'operation_started' }
   | { type: 'operation_failed'; errorMessage: string }
-  | { type: 'match_connected'; summary: ConnectionSnapshotSummary; syncEnvelope: SyncEnvelope }
-  | { type: 'sync_received'; summary: ConnectionSnapshotSummary; syncEnvelope: SyncEnvelope }
+  | { type: 'match_connected'; summary: ConnectionSnapshotSummary; syncEnvelope: SyncEnvelope; receivedAt: string }
+  | { type: 'sync_received'; summary: ConnectionSnapshotSummary; syncEnvelope: SyncEnvelope; receivedAt: string }
   | { type: 'connection_state_changed'; connectionState: TransportConnectionState }
   | { type: 'join_offer_updated'; joinOffer: NearbyJoinOffer | undefined }
+  | { type: 'map_setup_draft_saved'; draft: MapSetupDraftState }
+  | { type: 'map_setup_draft_cleared'; matchId: string }
   | { type: 'match_disconnected' }
   | { type: 'clear_error' };
 
@@ -41,6 +57,9 @@ export function createInitialShellState(runtimeKind: MobileRuntimeKind): AppShel
   return {
     runtimeKind,
     loadState: 'idle',
+    uiState: {
+      mapSetupDrafts: {}
+    },
     sessionProfile: {
       displayName: 'Player',
       playerId: 'player-1',
@@ -88,7 +107,8 @@ export function appShellReducer(
         activeMatch: {
           ...action.summary,
           projection: action.syncEnvelope.projectionDelivery.projection,
-          connectionState: action.summary.connectionState
+          connectionState: action.summary.connectionState,
+          receivedAt: action.receivedAt
         }
       };
     case 'connection_state_changed':
@@ -111,6 +131,28 @@ export function appShellReducer(
             }
           : state.activeMatch
       };
+    case 'map_setup_draft_saved':
+      return {
+        ...state,
+        uiState: {
+          ...state.uiState,
+          mapSetupDrafts: {
+            ...state.uiState.mapSetupDrafts,
+            [action.draft.matchId]: action.draft
+          }
+        }
+      };
+    case 'map_setup_draft_cleared': {
+      const nextDrafts = { ...state.uiState.mapSetupDrafts };
+      delete nextDrafts[action.matchId];
+      return {
+        ...state,
+        uiState: {
+          ...state.uiState,
+          mapSetupDrafts: nextDrafts
+        }
+      };
+    }
     case 'match_disconnected':
       return {
         ...state,

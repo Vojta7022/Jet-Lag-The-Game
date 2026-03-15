@@ -5,6 +5,14 @@ import type {
   QuestionTemplateDefinition
 } from '../../../../../packages/shared-types/src/index.ts';
 
+import { ResolutionModePill } from './ResolutionModePill.tsx';
+import {
+  describeExpectedAnswerGuidance,
+  describeQuestionImpactExpectation,
+  describeQuestionTemplateForPlayers,
+  formatQuestionScaleSet
+} from './question-guidance.ts';
+
 import { colors } from '../../ui/theme.ts';
 
 interface QuestionTemplateListProps {
@@ -22,6 +30,11 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
       {props.templates.map((template) => {
         const selected = template.templateId === props.selectedTemplateId;
         const featureLabels = (template.featureClassRefs ?? []).map((feature) => feature.label).join(', ');
+        const impact = describeQuestionImpactExpectation({
+          template,
+          category: props.category,
+          regionId: props.regionId
+        });
 
         return (
           <Pressable
@@ -31,9 +44,17 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
             style={[styles.item, selected ? styles.itemSelected : null]}
           >
             <Text style={styles.title}>{template.name}</Text>
+            <Text style={styles.copy}>
+              {describeQuestionTemplateForPlayers(template, props.category)}
+            </Text>
+            <ResolutionModePill label={impact.label} tone={impact.tone} />
+            <Text style={styles.copy}>
+              Answer expectation: {describeExpectedAnswerGuidance(template)}
+            </Text>
             {featureLabels ? <Text style={styles.copy}>Feature classes: {featureLabels}</Text> : null}
-            <Text style={styles.copy}>Scale: {template.scaleSet.appliesTo.join(', ')}</Text>
-            <Text style={styles.meta}>{props.describeSupport(template, props.category)}</Text>
+            <Text style={styles.copy}>Scale fit: {formatQuestionScaleSet(template.scaleSet.appliesTo)}</Text>
+            <Text style={styles.meta}>{impact.detail}</Text>
+            <Text style={styles.support}>Current data support: {props.describeSupport(template, props.category)}.</Text>
           </Pressable>
         );
       })}
@@ -71,5 +92,10 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 12,
     fontWeight: '700'
+  },
+  support: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 16
   }
 });

@@ -35,7 +35,7 @@ export function CardsScreen() {
   const { state, submitCommand, submitCommands, refreshActiveMatch } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
-  const timingModel = useMatchTimingModel(projection, state.lastSync?.generatedAt);
+  const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const deckViewModels = useMemo(
     () => buildDeckViewModels(defaultContentPack, projection, viewerRole),

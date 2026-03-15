@@ -2,7 +2,7 @@ export {
   buildMatchTimingDisplayModel,
   formatCountdown,
   formatDurationWords,
-  formatSyncAge,
+  formatFreshnessAge,
   getEffectiveRemainingSeconds,
   type MatchTimingDisplayModel,
   type TimingBannerModel,

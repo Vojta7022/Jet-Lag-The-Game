@@ -14,7 +14,7 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 export function StatusScreen() {
   const { state, clearError, refreshActiveMatch } = useAppShell();
   const activeMatch = state.activeMatch;
-  const timingModel = useMatchTimingModel(activeMatch?.projection, state.lastSync?.generatedAt);
+  const timingModel = useMatchTimingModel(activeMatch?.projection, activeMatch?.receivedAt);
 
   return (
     <ScreenContainer

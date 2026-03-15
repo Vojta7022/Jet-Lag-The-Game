@@ -11,7 +11,8 @@ import { useRuntimeMode } from './RuntimeModeProvider.tsx';
 import {
   appShellReducer,
   createInitialShellState,
-  type AppShellState
+  type AppShellState,
+  type MapSetupDraftState
 } from '../state/app-shell-state.ts';
 import type {
   CreateMatchInput,
@@ -30,6 +31,8 @@ interface AppShellContextValue {
   recoverActiveMatch: () => Promise<boolean>;
   submitCommand: (command: DomainCommand) => Promise<boolean>;
   submitCommands: (commands: DomainCommand[]) => Promise<boolean>;
+  saveMapSetupDraft: (draft: MapSetupDraftState) => void;
+  clearMapSetupDraft: (matchId: string) => void;
   disconnectActiveMatch: () => Promise<void>;
   clearError: () => void;
 }
@@ -52,7 +55,8 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     dispatch({
       type: 'match_connected',
       summary,
-      syncEnvelope
+      syncEnvelope,
+      receivedAt: new Date().toISOString()
     });
   }, [runtimeClient]);
 
@@ -72,7 +76,8 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
         dispatch({
           type: 'sync_received',
           summary,
-          syncEnvelope
+          syncEnvelope,
+          receivedAt: new Date().toISOString()
         });
       }
     );
@@ -142,7 +147,8 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
       dispatch({
         type: 'sync_received',
         summary,
-        syncEnvelope
+        syncEnvelope,
+        receivedAt: new Date().toISOString()
       });
       return true;
     } catch (error) {
@@ -168,7 +174,8 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
       dispatch({
         type: 'sync_received',
         summary,
-        syncEnvelope
+        syncEnvelope,
+        receivedAt: new Date().toISOString()
       });
       return true;
     } catch (error) {
@@ -193,7 +200,8 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
       dispatch({
         type: 'sync_received',
         summary,
-        syncEnvelope
+        syncEnvelope,
+        receivedAt: new Date().toISOString()
       });
       return true;
     } catch (error) {
@@ -218,7 +226,8 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
       dispatch({
         type: 'sync_received',
         summary,
-        syncEnvelope
+        syncEnvelope,
+        receivedAt: new Date().toISOString()
       });
       return true;
     } catch (error) {
@@ -226,6 +235,20 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
       return false;
     }
   }, [handleFailure, runtimeClient, state.sessionProfile.playerId]);
+
+  const saveMapSetupDraft = useCallback((draft: MapSetupDraftState) => {
+    dispatch({
+      type: 'map_setup_draft_saved',
+      draft
+    });
+  }, []);
+
+  const clearMapSetupDraft = useCallback((matchId: string) => {
+    dispatch({
+      type: 'map_setup_draft_cleared',
+      matchId
+    });
+  }, []);
 
   const disconnectActiveMatch = useCallback(async () => {
     await subscriptionRef.current?.unsubscribe();
@@ -256,9 +279,12 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     recoverActiveMatch,
     submitCommand,
     submitCommands,
+    saveMapSetupDraft,
+    clearMapSetupDraft,
     disconnectActiveMatch,
     clearError
   }), [
+    clearMapSetupDraft,
     clearError,
     createMatch,
     disconnectActiveMatch,
@@ -266,6 +292,7 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     refreshActiveMatch,
     recoverActiveMatch,
     saveSessionProfile,
+    saveMapSetupDraft,
     selectRuntimeKind,
     state,
     submitCommand,

@@ -27,7 +27,7 @@ function useLiveNow(enabled: boolean) {
 
 export function useMatchTimingModel(
   projection: MatchProjection | undefined,
-  syncGeneratedAt: string | undefined
+  freshnessAt: string | undefined
 ) {
   const needsLiveRefresh = Boolean(
     projection?.paused ||
@@ -39,9 +39,9 @@ export function useMatchTimingModel(
     () =>
       buildMatchTimingDisplayModel({
         projection,
-        syncGeneratedAt,
+        freshnessAt,
         nowMs
       }),
-    [nowMs, projection, syncGeneratedAt]
+    [freshnessAt, nowMs, projection]
   );
 }
