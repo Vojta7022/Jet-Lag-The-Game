@@ -13,7 +13,9 @@ interface SearchableRegionPickerProps {
   query: string;
   minimumQueryLengthMet: boolean;
   results: PlayableRegionCatalogEntry[];
+  previewRegion?: PlayableRegionCatalogEntry;
   selectedRegionId?: string;
+  selectedRegionCount: number;
   sourceLabel: string;
   usingFallback: boolean;
   noticeMessage?: string;
@@ -22,6 +24,9 @@ interface SearchableRegionPickerProps {
   onChangeQuery: (value: string) => void;
   onRetry: () => void;
   onSelect: (regionId: string) => void;
+  onAddPreviewRegion: () => void;
+  canAddPreviewRegion: boolean;
+  previewRegionAlreadyAdded: boolean;
 }
 
 export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
@@ -35,8 +40,14 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         autoCapitalize="words"
       />
       <Text style={styles.helper}>
-        Search by city or larger administrative region name. Matching results come from an OSM-compatible provider first, and the selected boundary is still applied through the real `create_map_region` command.
+        Search by city or larger administrative region name. Matching results come from an OSM-compatible provider first. Add one or more results to the current game-map selection, then apply the combined boundary through the real `create_map_region` command.
       </Text>
+
+      {props.selectedRegionCount > 0 ? (
+        <Text style={styles.meta}>
+          Game map builder: {props.selectedRegionCount === 1 ? '1 region added' : `${props.selectedRegionCount} regions added`}
+        </Text>
+      ) : null}
 
       {props.noticeMessage ? (
         <StateBanner
@@ -90,11 +101,42 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
             </Text>
           ) : null}
           {props.minimumQueryLengthMet && props.results.length > 0 ? (
-            <RegionSelectionList
-              regions={props.results}
-              selectedRegionId={props.selectedRegionId}
-              onSelect={props.onSelect}
-            />
+            <View style={styles.resultBlock}>
+              <RegionSelectionList
+                regions={props.results}
+                selectedRegionId={props.selectedRegionId}
+                onSelect={props.onSelect}
+              />
+              {props.previewRegion ? (
+                <View style={styles.previewCard}>
+                  <View style={styles.previewHeader}>
+                    <View style={styles.previewTextBlock}>
+                      <Text style={styles.previewTitle}>{props.previewRegion.displayName}</Text>
+                      <Text style={styles.previewSummary}>{props.previewRegion.summary}</Text>
+                    </View>
+                    <View style={styles.previewBadge}>
+                      <Text style={styles.previewBadgeLabel}>
+                        {props.previewRegionAlreadyAdded ? 'Added' : 'Preview'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.previewMeta}>
+                    {props.previewRegion.sourceLabel}
+                    {props.previewRegion.countryLabel ? ` · ${props.previewRegion.countryLabel}` : ''}
+                    {props.previewRegion.parentRegionLabel &&
+                    props.previewRegion.parentRegionLabel !== props.previewRegion.displayName
+                      ? ` · ${props.previewRegion.parentRegionLabel}`
+                      : ''}
+                  </Text>
+                  <AppButton
+                    label={props.previewRegionAlreadyAdded ? 'Already Added To Game Map' : 'Add Region To Game Map'}
+                    onPress={props.onAddPreviewRegion}
+                    disabled={!props.canAddPreviewRegion}
+                    tone="secondary"
+                  />
+                </View>
+              ) : null}
+            </View>
           ) : null}
           {props.minimumQueryLengthMet && props.results.length === 0 ? (
             <StateBanner
@@ -123,6 +165,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase'
+  },
+  resultBlock: {
+    gap: 12
+  },
+  previewCard: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 14,
+    gap: 10,
+    padding: 12
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between'
+  },
+  previewTextBlock: {
+    flex: 1,
+    gap: 4
+  },
+  previewTitle: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  previewSummary: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18
+  },
+  previewBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.accentMuted,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  previewBadgeLabel: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase'
+  },
+  previewMeta: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600'
   },
   stateBlock: {
     gap: 10

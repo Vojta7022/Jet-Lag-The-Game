@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 
 import type {
   VisibleMapProjection,
@@ -11,6 +11,7 @@ import { colors } from '../../ui/theme.ts';
 
 import {
   geometryToSvgPath,
+  geometryToSvgPolygonPaths,
   getGeometryBounds,
   getPreferredMapGeometry,
   mergeBounds,
@@ -87,27 +88,47 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
             ));
           }
 
-          const path = geometryToSvgPath(overlay.geometry, bounds, {
+          const polygonPaths = geometryToSvgPolygonPaths(overlay.geometry, bounds, {
             width,
             height,
             padding: 18
           });
+          const linePath = overlay.renderMode === 'line'
+            ? geometryToSvgPath(overlay.geometry, bounds, {
+              width,
+              height,
+              padding: 18
+            })
+            : '';
 
-          if (!path) {
+          if (polygonPaths.length === 0 && !linePath) {
             return null;
           }
 
           return (
-            <Path
-              key={overlay.overlayId}
-              d={path}
-              fill={overlay.renderMode === 'line' ? 'none' : overlay.fill}
-              fillRule="evenodd"
-              opacity={overlay.opacity}
-              stroke={overlay.stroke}
-              strokeDasharray={overlay.dashed ? '8 6' : undefined}
-              strokeWidth={overlay.strokeWidth}
-            />
+            <G key={overlay.overlayId}>
+              {polygonPaths.map((polygonPath, index) => (
+                <Path
+                  key={`${overlay.overlayId}:polygon:${index}`}
+                  d={polygonPath}
+                  fill={overlay.fill}
+                  opacity={overlay.opacity}
+                  stroke={overlay.stroke}
+                  strokeDasharray={overlay.dashed ? '8 6' : undefined}
+                  strokeWidth={overlay.strokeWidth}
+                />
+              ))}
+              {linePath ? (
+                <Path
+                  d={linePath}
+                  fill="none"
+                  opacity={overlay.opacity}
+                  stroke={overlay.stroke}
+                  strokeDasharray={overlay.dashed ? '8 6' : undefined}
+                  strokeWidth={overlay.strokeWidth}
+                />
+              ) : null}
+            </G>
           );
         })}
       </Svg>

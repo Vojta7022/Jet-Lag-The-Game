@@ -154,3 +154,61 @@ test('app shell reducer clears match state after disconnect and preserves sessio
   assert.equal(state.sessionProfile.playerId, 'ref-1');
   assert.equal(state.loadState, 'idle');
 });
+
+test('app shell reducer resets loading state after failure and after a later successful sync', () => {
+  let state = createInitialShellState('in_memory');
+  state = appShellReducer(state, { type: 'operation_started' });
+
+  state = appShellReducer(state, {
+    type: 'operation_failed',
+    errorMessage: 'Map region apply failed.'
+  });
+
+  assert.equal(state.loadState, 'error');
+  assert.equal(state.errorMessage, 'Map region apply failed.');
+
+  state = appShellReducer(state, { type: 'clear_error' });
+  assert.equal(state.loadState, 'idle');
+
+  state = appShellReducer(state, { type: 'operation_started' });
+  state = appShellReducer(state, {
+    type: 'match_connected',
+    summary: {
+      runtimeKind: 'in_memory',
+      runtimeMode: 'single_device_referee',
+      matchId: 'match-3',
+      matchMode: 'single_device_referee',
+      transportFlavor: 'single_device',
+      connectionState: 'connected',
+      recipient: {
+        recipientId: 'host_admin:host-3',
+        actorId: 'host-3',
+        playerId: 'host-3',
+        role: 'host',
+        scope: 'host_admin'
+      },
+      lifecycleState: 'map_setup',
+      playerRole: 'host',
+      snapshotVersion: 3,
+      lastEventSequence: 3
+    },
+    syncEnvelope: makeSyncEnvelope({
+      matchId: 'match-3',
+      snapshotVersion: 3,
+      lastEventSequence: 3,
+      projectionDelivery: {
+        ...makeSyncEnvelope().projectionDelivery,
+        matchId: 'match-3',
+        snapshotVersion: 3,
+        lastEventSequence: 3,
+        projection: makeProjection({
+          matchId: 'match-3',
+          lifecycleState: 'map_setup'
+        })
+      }
+    })
+  });
+
+  assert.equal(state.loadState, 'ready');
+  assert.equal(state.errorMessage, undefined);
+});

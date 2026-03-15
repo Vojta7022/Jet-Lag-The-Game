@@ -212,6 +212,51 @@ function normalizeCoordinate(value: number, min: number, max: number, length: nu
   return padding + ((value - min) / span) * Math.max(length - padding * 2, 1);
 }
 
+function ringToSvgPath(
+  ring: Ring,
+  bounds: GeometryBounds,
+  viewport: MapViewport
+): string {
+  const commands = ring.map((point, index) => {
+    const x = normalizeCoordinate(
+      point.longitude,
+      bounds.minLongitude,
+      bounds.maxLongitude,
+      viewport.width,
+      viewport.padding
+    );
+    const y = viewport.height - normalizeCoordinate(
+      point.latitude,
+      bounds.minLatitude,
+      bounds.maxLatitude,
+      viewport.height,
+      viewport.padding
+    );
+
+    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+  });
+
+  if (commands.length === 0) {
+    return '';
+  }
+
+  return `${commands.join(' ')} Z`;
+}
+
+export function geometryToSvgPolygonPaths(
+  geometry: GeoJsonGeometryModel | undefined,
+  bounds: GeometryBounds | undefined,
+  viewport: MapViewport
+): string[] {
+  if (!geometry || !bounds) {
+    return [];
+  }
+
+  return extractPolygonRings(geometry)
+    .map((polygon) => polygon.map((ring) => ringToSvgPath(ring, bounds, viewport)).filter(Boolean).join(' '))
+    .filter(Boolean);
+}
+
 export function geometryToSvgPath(
   geometry: GeoJsonGeometryModel | undefined,
   bounds: GeometryBounds | undefined,
@@ -253,27 +298,9 @@ export function geometryToSvgPath(
 
   for (const polygon of polygons) {
     for (const ring of polygon) {
-      const commands = ring.map((point, index) => {
-        const x = normalizeCoordinate(
-          point.longitude,
-          bounds.minLongitude,
-          bounds.maxLongitude,
-          viewport.width,
-          viewport.padding
-        );
-        const y = viewport.height - normalizeCoordinate(
-          point.latitude,
-          bounds.minLatitude,
-          bounds.maxLatitude,
-          viewport.height,
-          viewport.padding
-        );
-
-        return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
-      });
-
-      if (commands.length > 0) {
-        segments.push(`${commands.join(' ')} Z`);
+      const path = ringToSvgPath(ring, bounds, viewport);
+      if (path) {
+        segments.push(path);
       }
     }
   }
@@ -332,12 +359,33 @@ export function geometryToMapPolylines(geometry: GeoJsonGeometryModel | undefine
     .filter((line) => line.length >= 2);
 }
 
+export function geometryToMapBoundaryPolylines(geometry: GeoJsonGeometryModel | undefined): MapCoordinate[][] {
+  return extractPolygonRings(geometry)
+    .flatMap((polygon) => polygon)
+    .map((ring) => closePolyline(trimClosingCoordinate(ring).map(toMapCoordinate)))
+    .filter((line) => line.length >= 4);
+}
+
 export function geometryToMapPoints(geometry: GeoJsonGeometryModel | undefined): MapCoordinate[] {
   return extractPoints(geometry).map(toMapCoordinate);
 }
 
 export function collectGeometryCoordinates(geometry: GeoJsonGeometryModel | undefined): MapCoordinate[] {
   return collectGeometryPoints(geometry).map(toMapCoordinate);
+}
+
+function closePolyline(line: MapCoordinate[]): MapCoordinate[] {
+  if (line.length === 0) {
+    return line;
+  }
+
+  const first = line[0]!;
+  const last = line[line.length - 1]!;
+  if (first.latitude === last.latitude && first.longitude === last.longitude) {
+    return line;
+  }
+
+  return [...line, first];
 }
 
 export function buildMapCameraRegion(args: {

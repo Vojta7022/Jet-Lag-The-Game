@@ -13,9 +13,17 @@ import {
   buildMapCameraRegion,
   geometryToMapPolygons,
   getGeometryBounds,
-  geometryToSvgPath
+  geometryToSvgPath,
+  geometryToSvgPolygonPaths
 } from '../src/features/map/map-geometry.ts';
 import { buildMapOverlayModel } from '../src/features/map/map-overlays.ts';
+import {
+  addRegionToSelection,
+  analyzeCompositeRegionWarning,
+  buildCompositePlayableRegion,
+  clearSelectedRegions,
+  removeRegionFromSelection
+} from '../src/features/map/composite-region-builder.ts';
 import {
   createProviderBackedRegionDataSource,
   createSeedRegionDataSource
@@ -25,7 +33,10 @@ import {
   RegionProviderUnavailableError
 } from '../src/features/map/osm-region-provider.ts';
 import { seedPlayableRegions } from '../src/features/map/seed-regions.ts';
-import type { GeoJsonGeometryModel } from '../../../packages/shared-types/src/index.ts';
+import type {
+  GeoJsonGeometryModel
+} from '../../../packages/shared-types/src/index.ts';
+import type { PlayableRegionCatalogEntry } from '../src/features/map/region-types.ts';
 
 const generatedPackPath = fileURLToPath(
   new URL('../../../samples/generated/jet-lag-the-game.content-pack.json', import.meta.url)
@@ -33,6 +44,23 @@ const generatedPackPath = fileURLToPath(
 
 function loadContentPack(): ContentPack {
   return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
+}
+
+function asProviderRegion(
+  region: PlayableRegionCatalogEntry,
+  overrides: Partial<PlayableRegionCatalogEntry> = {}
+): PlayableRegionCatalogEntry {
+  return {
+    ...region,
+    ...overrides,
+    sourceKind: 'provider_catalog',
+    sourceLabel: 'OpenStreetMap Nominatim',
+    providerMetadata: {
+      providerKey: 'osm_nominatim',
+      providerLabel: 'OpenStreetMap Nominatim',
+      boundarySource: 'search_geometry'
+    }
+  };
 }
 
 test('map bootstrap commands move a host match into map_setup and region selection initializes the bounded search area', async () => {
@@ -148,6 +176,272 @@ test('seed region data source supports searchable region lookup and fallback met
   assert.equal(adminResults.regions[0]?.displayName, 'Central Bohemia');
   assert.equal(emptyResults.regions.length, 0);
   assert.equal(byId?.displayName, 'Central Bohemia');
+});
+
+test('composite region builder adds, removes, and clears selected regions without duplicates', () => {
+  const prague = seedPlayableRegions[0]!;
+  const centralBohemia = seedPlayableRegions[1]!;
+
+  const addedOnce = addRegionToSelection([], prague);
+  const addedTwice = addRegionToSelection(addedOnce, prague);
+  const addedMultiple = addRegionToSelection(addedTwice, centralBohemia);
+  const removed = removeRegionFromSelection(addedMultiple, prague.regionId);
+  const cleared = clearSelectedRegions();
+
+  assert.equal(addedOnce.length, 1);
+  assert.equal(addedTwice.length, 1);
+  assert.equal(addedMultiple.length, 2);
+  assert.equal(removed.length, 1);
+  assert.equal(removed[0]?.regionId, centralBohemia.regionId);
+  assert.deepEqual(cleared, []);
+});
+
+test('composite region builder previews multiple selected regions as one combined playable region and warns when disconnected', () => {
+  const prague = seedPlayableRegions[0]!;
+  const centralBohemia = seedPlayableRegions[1]!;
+  const vienna = seedPlayableRegions[2]!;
+
+  const connectedComposite = buildCompositePlayableRegion([prague, centralBohemia]);
+  const disconnectedComposite = buildCompositePlayableRegion([prague, vienna]);
+  const disconnectedWarning = analyzeCompositeRegionWarning([prague, vienna]);
+  const previewOverlayModel = buildMapOverlayModel({
+    previewRegion: connectedComposite
+  });
+
+  assert.equal(connectedComposite?.regionKind, 'custom');
+  assert.equal(connectedComposite?.geometry.type, 'MultiPolygon');
+  assert.equal(connectedComposite?.compositeMetadata?.dissolveStatus, 'disabled_stable_raw');
+  assert.equal(connectedComposite?.compositeMetadata?.componentRegions.length, 2);
+  assert.equal(
+    previewOverlayModel.overlays.some((overlay) => overlay.label === 'Composite Boundary'),
+    true
+  );
+  assert.equal(Boolean(disconnectedComposite?.compositeMetadata?.disconnectedWarning), true);
+  assert.equal(disconnectedWarning?.connectedGroupCount, 2);
+});
+
+test('composite region builder keeps enclosed-region components in the stable raw preview geometry', () => {
+  const prague = seedPlayableRegions[0]!;
+  const centralBohemia = seedPlayableRegions[1]!;
+
+  const composite = buildCompositePlayableRegion([prague, centralBohemia]);
+
+  assert.equal(composite?.compositeMetadata?.dissolveStatus, 'disabled_stable_raw');
+  assert.equal(composite?.geometry.type, 'MultiPolygon');
+  assert.deepEqual(composite?.geometry, composite?.compositeMetadata?.rawCombinedGeometry);
+  assert.equal((composite?.compositeMetadata?.componentRegions ?? []).length, 2);
+});
+
+test('provider-backed Prague plus Central Bohemia keeps both exact component boundaries in the stable raw preview', () => {
+  const prague = asProviderRegion(seedPlayableRegions[0]!, { regionId: 'osm:relation:prague' });
+  const centralBohemia = asProviderRegion(seedPlayableRegions[1]!, { regionId: 'osm:relation:central-bohemia' });
+
+  const composite = buildCompositePlayableRegion([prague, centralBohemia]);
+  const overlayModel = buildMapOverlayModel({
+    previewRegion: composite
+  });
+  const playableBoundaryOverlay = overlayModel.overlays.find((overlay) => overlay.overlayId === 'preview-boundary');
+  const polygonPaths = geometryToSvgPolygonPaths(playableBoundaryOverlay?.geometry, getGeometryBounds(playableBoundaryOverlay?.geometry), {
+    width: 360,
+    height: 260,
+    padding: 16
+  });
+
+  assert.equal(composite?.compositeMetadata?.componentRegions.length, 2);
+  assert.equal(composite?.compositeMetadata?.dissolveStatus, 'disabled_stable_raw');
+  assert.equal(composite?.geometry.type, 'MultiPolygon');
+  assert.deepEqual(composite?.geometry, composite?.compositeMetadata?.rawCombinedGeometry);
+  assert.equal(Boolean(playableBoundaryOverlay?.strokeGeometry), false);
+  assert.equal(playableBoundaryOverlay?.suppressStroke, undefined);
+  assert.equal(polygonPaths.length, 2);
+});
+
+test('provider-backed Prague plus Czechia keeps both exact component boundaries in the stable raw preview', () => {
+  const prague = asProviderRegion(seedPlayableRegions[0]!, { regionId: 'osm:relation:prague' });
+  const czechia: PlayableRegionCatalogEntry = asProviderRegion({
+    regionId: 'seed-czechia',
+    displayName: 'Czechia',
+    regionKind: 'admin_region',
+    summary: 'Country-scale enclosing region for provider-backed composite tests.',
+    featureDatasetRefs: ['osm-admin'],
+    sourceKind: 'seed_catalog',
+    sourceLabel: 'Bundled seed region catalog',
+    searchAliases: ['Czech Republic', 'Cesko'],
+    countryLabel: 'Czechia',
+    parentRegionLabel: 'Czechia',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[[12.0, 48.5], [19.0, 48.5], [19.0, 51.5], [12.0, 51.5], [12.0, 48.5]]]
+    }
+  }, {
+    regionId: 'osm:relation:czechia'
+  });
+
+  const composite = buildCompositePlayableRegion([prague, czechia]);
+  const overlayModel = buildMapOverlayModel({
+    previewRegion: composite
+  });
+  const playableBoundaryOverlay = overlayModel.overlays.find((overlay) => overlay.overlayId === 'preview-boundary');
+  const polygonPaths = geometryToSvgPolygonPaths(playableBoundaryOverlay?.geometry, getGeometryBounds(playableBoundaryOverlay?.geometry), {
+    width: 360,
+    height: 260,
+    padding: 16
+  });
+
+  assert.equal(composite?.compositeMetadata?.componentRegions.length, 2);
+  assert.equal(composite?.compositeMetadata?.dissolveStatus, 'disabled_stable_raw');
+  assert.equal(composite?.geometry.type, 'MultiPolygon');
+  assert.deepEqual(composite?.geometry, composite?.compositeMetadata?.rawCombinedGeometry);
+  assert.equal(Boolean(playableBoundaryOverlay?.strokeGeometry), false);
+  assert.equal(polygonPaths.length, 2);
+});
+
+test('composite region builder always uses the stable raw combined geometry for shared-border selections', () => {
+  const westRegion: PlayableRegionCatalogEntry = {
+    regionId: 'provider:west-fallback',
+    displayName: 'West Region',
+    regionKind: 'admin_region',
+    summary: 'West test region',
+    featureDatasetRefs: ['osm-admin'],
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]
+    },
+    sourceKind: 'provider_catalog',
+    sourceLabel: 'OpenStreetMap Nominatim',
+    searchAliases: ['West Region'],
+    providerMetadata: {
+      providerKey: 'osm_nominatim',
+      providerLabel: 'OpenStreetMap Nominatim',
+      boundarySource: 'search_geometry'
+    }
+  };
+  const eastRegion: PlayableRegionCatalogEntry = {
+    ...westRegion,
+    regionId: 'provider:east-fallback',
+    displayName: 'East Region',
+    summary: 'East test region',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[[1, 0], [2, 0], [2, 1], [1, 1], [1, 0]]]
+    },
+    searchAliases: ['East Region']
+  };
+
+  const composite = buildCompositePlayableRegion([westRegion, eastRegion]);
+
+  assert.equal(composite?.compositeMetadata?.dissolveStatus, 'disabled_stable_raw');
+  assert.match(composite?.compositeMetadata?.dissolveNotice ?? '', /raw component boundaries/i);
+  assert.deepEqual(composite?.geometry, composite?.compositeMetadata?.rawCombinedGeometry);
+  assert.equal(composite?.geometry.type, 'MultiPolygon');
+
+  const overlayModel = buildMapOverlayModel({
+    previewRegion: composite
+  });
+  const playableBoundaryOverlay = overlayModel.overlays.find((overlay) => overlay.overlayId === 'preview-boundary');
+  const polygonPaths = geometryToSvgPolygonPaths(playableBoundaryOverlay?.geometry, getGeometryBounds(playableBoundaryOverlay?.geometry), {
+    width: 360,
+    height: 260,
+    padding: 16
+  });
+
+  assert.equal(Boolean(playableBoundaryOverlay?.strokeGeometry), false);
+  assert.equal(playableBoundaryOverlay?.suppressStroke, undefined);
+  assert.equal(polygonPaths.length, 2);
+});
+
+test('shared-border composite selections keep every region visible in the stable raw preview', () => {
+  const westRegion: PlayableRegionCatalogEntry = {
+    regionId: 'provider:west',
+    displayName: 'West Region',
+    regionKind: 'admin_region',
+    summary: 'West test region',
+    featureDatasetRefs: ['osm-admin'],
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]]
+    },
+    sourceKind: 'provider_catalog',
+    sourceLabel: 'OpenStreetMap Nominatim',
+    searchAliases: ['West Region'],
+    providerMetadata: {
+      providerKey: 'osm_nominatim',
+      providerLabel: 'OpenStreetMap Nominatim',
+      boundarySource: 'search_geometry'
+    }
+  };
+  const eastRegion: PlayableRegionCatalogEntry = {
+    ...westRegion,
+    regionId: 'provider:east',
+    displayName: 'East Region',
+    summary: 'East test region',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[[1, 0], [2, 0], [2, 1], [1, 1], [1, 0]]]
+    },
+    searchAliases: ['East Region']
+  };
+
+  const composite = buildCompositePlayableRegion([westRegion, eastRegion]);
+
+  assert.equal(composite?.compositeMetadata?.dissolveStatus, 'disabled_stable_raw');
+  assert.equal(composite?.geometry.type, 'MultiPolygon');
+  assert.deepEqual(composite?.geometry, composite?.compositeMetadata?.rawCombinedGeometry);
+});
+
+test('disconnected composite selections keep separate regions visible in the stable raw preview', () => {
+  const prague = seedPlayableRegions[0]!;
+  const vienna = seedPlayableRegions[2]!;
+  const composite = buildCompositePlayableRegion([prague, vienna]);
+  const overlayModel = buildMapOverlayModel({
+    previewRegion: composite
+  });
+  const playableBoundaryOverlay = overlayModel.overlays.find((overlay) => overlay.overlayId === 'preview-boundary');
+  const polygonPaths = geometryToSvgPolygonPaths(playableBoundaryOverlay?.geometry, getGeometryBounds(playableBoundaryOverlay?.geometry), {
+    width: 360,
+    height: 260,
+    padding: 16
+  });
+
+  assert.equal(composite?.compositeMetadata?.dissolveStatus, 'disabled_stable_raw');
+  assert.equal(Boolean(composite?.compositeMetadata?.disconnectedWarning), true);
+  assert.equal(composite?.geometry.type, 'MultiPolygon');
+  assert.equal(polygonPaths.length, 2);
+});
+
+test('composite region builder preserves multipolygon inputs in the combined geometry', () => {
+  const islandRegion: PlayableRegionCatalogEntry = {
+    regionId: 'provider:islands',
+    displayName: 'Island Group',
+    regionKind: 'admin_region',
+    summary: 'Two-island admin region',
+    featureDatasetRefs: ['osm-admin'],
+    geometry: {
+      type: 'MultiPolygon',
+      coordinates: [
+        [[[14.1, 50.1], [14.2, 50.1], [14.2, 50.2], [14.1, 50.2], [14.1, 50.1]]],
+        [[[14.4, 50.4], [14.5, 50.4], [14.5, 50.5], [14.4, 50.5], [14.4, 50.4]]]
+      ]
+    },
+    sourceKind: 'provider_catalog',
+    sourceLabel: 'OpenStreetMap Nominatim',
+    searchAliases: ['Island Group'],
+    providerMetadata: {
+      providerKey: 'osm_nominatim',
+      providerLabel: 'OpenStreetMap Nominatim',
+      boundarySource: 'search_geometry'
+    }
+  };
+  const prague = seedPlayableRegions[0]!;
+
+  const composite = buildCompositePlayableRegion([islandRegion, prague]);
+
+  assert.equal(composite?.geometry.type, 'MultiPolygon');
+  assert.equal(composite?.compositeMetadata?.dissolveStatus, 'disabled_stable_raw');
+  assert.equal(Array.isArray(composite?.geometry.coordinates), true);
+  assert.equal((composite?.geometry.coordinates as unknown[])?.length, 3);
+  assert.equal(Array.isArray(composite?.compositeMetadata?.rawCombinedGeometry.coordinates), true);
+  assert.equal((composite?.compositeMetadata?.rawCombinedGeometry.coordinates as unknown[])?.length, 3);
 });
 
 test('nominatim provider maps real polygon search results and exact preview geometry', async () => {
@@ -327,6 +621,73 @@ test('provider-returned boundaries apply through create_map_region into the boun
 
   assert.deepEqual(applied.projectionDelivery.projection.visibleMap?.playableBoundary.geometry, providerBoundary);
   assert.deepEqual(applied.projectionDelivery.projection.visibleMap?.remainingArea?.geometry, providerBoundary);
+
+  await orchestrator.disconnect(created.connection);
+});
+
+test('composite playable regions apply through create_map_region into the bounded match state', async () => {
+  const contentPack = loadContentPack();
+  const orchestrator = new MobileRuntimeOrchestrator({
+    contentPack,
+    environment: mobileAppEnvironment
+  });
+  const hostProfile = {
+    displayName: 'Host',
+    playerId: 'host-composite',
+    authUserId: 'auth-host-composite'
+  };
+  const created = await orchestrator.createMatch(hostProfile, {
+    runtimeKind: 'in_memory',
+    matchId: 'mobile-composite-map-flow',
+    initialScale: 'small',
+    matchMode: 'single_device_referee'
+  });
+
+  const bootstrapCommands = buildMapSetupBootstrapCommands(created.initialSync.projectionDelivery.projection);
+  await orchestrator.submitCommands(
+    created.connection,
+    {
+      actorId: hostProfile.playerId,
+      playerId: hostProfile.playerId,
+      role: 'host'
+    },
+    bootstrapCommands
+  );
+
+  const compositeRegion = buildCompositePlayableRegion([
+    seedPlayableRegions[0]!,
+    seedPlayableRegions[1]!
+  ]);
+  assert.ok(compositeRegion);
+
+  const applied = await orchestrator.submitCommands(
+    created.connection,
+    {
+      actorId: hostProfile.playerId,
+      playerId: hostProfile.playerId,
+      role: 'host'
+    },
+    [{
+      type: 'create_map_region',
+      payload: {
+        regionId: compositeRegion.regionId,
+        displayName: compositeRegion.displayName,
+        regionKind: compositeRegion.regionKind,
+        featureDatasetRefs: compositeRegion.featureDatasetRefs,
+        geometry: compositeRegion.geometry
+      }
+    }]
+  );
+
+  assert.equal(applied.projectionDelivery.projection.visibleMap?.regionId, compositeRegion.regionId);
+  assert.deepEqual(
+    applied.projectionDelivery.projection.visibleMap?.playableBoundary.geometry,
+    compositeRegion.geometry
+  );
+  assert.deepEqual(
+    applied.projectionDelivery.projection.visibleMap?.remainingArea?.geometry,
+    compositeRegion.geometry
+  );
 
   await orchestrator.disconnect(created.connection);
 });

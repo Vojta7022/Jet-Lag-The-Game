@@ -10,6 +10,7 @@ export interface MapOverlayDescriptor {
   overlayId: string;
   label: string;
   geometry?: GeoJsonGeometryModel;
+  strokeGeometry?: GeoJsonGeometryModel;
   renderMode?: 'fill' | 'line' | 'point';
   fill: string;
   stroke: string;
@@ -17,6 +18,7 @@ export interface MapOverlayDescriptor {
   opacity: number;
   dashed?: boolean;
   pointRadius?: number;
+  suppressStroke?: boolean;
 }
 
 export interface MapOverlayModel {
@@ -45,7 +47,7 @@ export function buildMapOverlayModel(args: {
   } else if (args.previewRegion?.geometry) {
     overlays.push({
       overlayId: 'preview-boundary',
-      label: 'Selected Boundary',
+      label: args.previewRegion.sourceKind === 'composite_selection' ? 'Composite Boundary' : 'Selected Boundary',
       geometry: args.previewRegion.geometry,
       renderMode: 'fill',
       fill: 'rgba(20, 94, 168, 0.08)',
@@ -69,7 +71,7 @@ export function buildMapOverlayModel(args: {
   } else if (args.previewRegion?.geometry) {
     overlays.push({
       overlayId: 'candidate-preview',
-      label: 'Candidate Preview',
+      label: args.previewRegion.sourceKind === 'composite_selection' ? 'Composite Candidate Preview' : 'Candidate Preview',
       geometry: args.previewRegion.geometry,
       renderMode: 'fill',
       fill: 'rgba(45, 122, 82, 0.18)',

@@ -1,6 +1,8 @@
 export * from './MapFallbackCanvas.tsx';
 export * from './MapLegend.tsx';
+export * from './SelectedRegionChipList.tsx';
 export * from './SearchableRegionPicker.tsx';
+export * from './composite-region-builder.ts';
 export type * from './MapCanvas.types.ts';
 export type * from './MapOverlayRenderer.types.ts';
 export * from './RegionSelectionList.tsx';

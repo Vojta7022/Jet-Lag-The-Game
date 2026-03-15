@@ -9,6 +9,7 @@ import {
 import { colors } from '../../ui/theme.ts';
 
 import {
+  geometryToMapBoundaryPolylines,
   geometryToMapPoints,
   geometryToMapPolygons,
   geometryToMapPolylines
@@ -21,28 +22,42 @@ export function MapOverlayRenderer(props: MapOverlayRendererProps) {
       {props.overlays.map((overlay) => {
         const polygons = geometryToMapPolygons(overlay.geometry);
         const polylines = geometryToMapPolylines(overlay.geometry);
+        const strokePolylines = geometryToMapBoundaryPolylines(overlay.strokeGeometry);
         const points = geometryToMapPoints(overlay.geometry);
 
         if (polygons.length > 0) {
-          return polygons.map((polygon, index) => (
-            <Fragment key={`${overlay.overlayId}:polygon:${index}`}>
-              <Polygon
-                coordinates={polygon.coordinates}
-                holes={polygon.holes.length > 0 ? polygon.holes : undefined}
-                fillColor={overlay.fill}
-                strokeColor={overlay.stroke}
-                strokeWidth={overlay.strokeWidth}
-              />
-              {overlay.dashed ? (
+          return (
+            <Fragment key={`${overlay.overlayId}:polygon-group`}>
+              {polygons.map((polygon, index) => (
+                <Polygon
+                  key={`${overlay.overlayId}:fill:${index}`}
+                  coordinates={polygon.coordinates}
+                  holes={polygon.holes.length > 0 ? polygon.holes : undefined}
+                  fillColor={overlay.fill}
+                  strokeColor={overlay.suppressStroke || overlay.strokeGeometry ? 'rgba(0,0,0,0)' : overlay.stroke}
+                  strokeWidth={overlay.suppressStroke || overlay.strokeGeometry ? 0 : overlay.strokeWidth}
+                />
+              ))}
+              {(overlay.strokeGeometry ? strokePolylines : []).map((line, index) => (
                 <Polyline
+                  key={`${overlay.overlayId}:stroke:${index}`}
+                  coordinates={line}
+                  lineDashPattern={overlay.dashed ? [10, 8] : undefined}
+                  strokeColor={overlay.stroke}
+                  strokeWidth={overlay.strokeWidth}
+                />
+              ))}
+              {!overlay.strokeGeometry && overlay.dashed ? polygons.map((polygon, index) => (
+                <Polyline
+                  key={`${overlay.overlayId}:dash:${index}`}
                   coordinates={[...polygon.coordinates, polygon.coordinates[0]!]}
                   lineDashPattern={[10, 8]}
                   strokeColor={overlay.stroke}
                   strokeWidth={overlay.strokeWidth}
                 />
-              ) : null}
+              )) : null}
             </Fragment>
-          ));
+          );
         }
 
         if (polylines.length > 0) {

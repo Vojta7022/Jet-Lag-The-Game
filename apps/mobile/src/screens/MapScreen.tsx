@@ -7,10 +7,15 @@ import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
 
 import {
   MapLegend,
+  SelectedRegionChipList,
   SearchableRegionPicker,
+  addRegionToSelection,
   buildMapOverlayModel,
+  buildCompositePlayableRegion,
   buildMapSetupBootstrapCommands,
+  clearSelectedRegions,
   mobileRegionDataSource,
+  removeRegionFromSelection,
   useRegionSearch
 } from '../features/map/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
@@ -36,12 +41,17 @@ export function MapScreen() {
   const dimensions = useWindowDimensions();
   const { state, submitCommands, refreshActiveMatch } = useAppShell();
   const [showLegend, setShowLegend] = useState(false);
+  const [selectedRegions, setSelectedRegions] = useState<PlayableRegionCatalogEntry[]>([]);
   const regionSearch = useRegionSearch({
     source: mobileRegionDataSource
   });
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
-  const previewRegion = regionSearch.selectedRegion;
+  const compositePreviewRegion = useMemo(
+    () => buildCompositePlayableRegion(selectedRegions),
+    [selectedRegions]
+  );
+  const previewRegion = compositePreviewRegion ?? regionSearch.selectedRegion;
   const overlayModel = useMemo(
     () => buildMapOverlayModel({
       visibleMap: projection?.visibleMap,
@@ -55,13 +65,36 @@ export function MapScreen() {
     isHostView &&
     projection &&
     ['draft', 'lobby', 'role_assignment', 'rules_confirmation'].includes(projection.lifecycleState);
-  const canApplySelectedRegion = isHostView && projection?.lifecycleState === 'map_setup' && Boolean(previewRegion);
+  const canApplySelectedRegion =
+    isHostView &&
+    projection?.lifecycleState === 'map_setup' &&
+    Boolean(compositePreviewRegion);
   const mapHasBeenApplied = Boolean(projection?.visibleMap);
   const mapHeight = Math.max(190, Math.min(Math.round(dimensions.height * 0.24), 250));
-  const regionSummary = projection?.visibleMap?.displayName ?? previewRegion?.displayName ?? 'No region selected';
+  const regionSummary = projection?.visibleMap?.displayName ?? compositePreviewRegion?.displayName ?? previewRegion?.displayName ?? 'No region selected';
   const candidateSummary = projection?.visibleMap?.remainingArea
     ? `${projection.visibleMap.remainingArea.precision} / clipped=${String(projection.visibleMap.remainingArea.clippedToRegion)}`
-    : 'Pending region application';
+    : compositePreviewRegion
+      ? `${selectedRegions.length} selected ${selectedRegions.length === 1 ? 'region' : 'regions'}`
+      : 'Pending region application';
+  const selectedSourcesSummary =
+    compositePreviewRegion?.compositeMetadata?.sourceProviderLabels.join(', ') ??
+    compositePreviewRegion?.sourceLabel ??
+    previewRegion?.sourceLabel ??
+    'No provider selected yet';
+  const disconnectedWarning = compositePreviewRegion?.compositeMetadata?.disconnectedWarning;
+  const previewRegionAlreadyAdded = Boolean(
+    regionSearch.selectedRegion &&
+    selectedRegions.some((region) => region.regionId === regionSearch.selectedRegion?.regionId)
+  );
+  const activeSelectionFeatureRefs = compositePreviewRegion?.featureDatasetRefs ?? previewRegion?.featureDatasetRefs ?? [];
+  const activeSelectionCoverage = compositePreviewRegion?.countryLabel ?? previewRegion?.countryLabel;
+  const activeSelectionParentLabel = compositePreviewRegion?.parentRegionLabel ?? previewRegion?.parentRegionLabel;
+  const compositeDissolveNotice = compositePreviewRegion?.compositeMetadata?.dissolveNotice;
+  const selectionBadgeLabel =
+    selectedRegions.length > 1
+      ? 'Composite'
+      : compositePreviewRegion?.regionKind ?? previewRegion?.regionKind ?? 'Preview';
 
   return (
     <View style={styles.screen}>
@@ -69,7 +102,7 @@ export function MapScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Map Setup</Text>
           <Text style={styles.headerSubtitle}>
-            Search for a playable city or administrative region first, then preview and apply its bounded boundary through the real runtime flow.
+            Search for one or more playable cities or administrative regions, build a composite bounded preview, then apply the final geometry through the real runtime flow.
           </Text>
         </View>
 
@@ -93,7 +126,15 @@ export function MapScreen() {
           <StateBanner
             tone="info"
             title="Map setup is ready"
-            detail="Selecting a region now will trigger create_map_region and reinitialize the candidate search area from that boundary."
+            detail="Applying the current selection will trigger create_map_region and reinitialize the candidate search area from the combined playable boundary."
+          />
+        ) : null}
+
+        {state.loadState === 'error' && state.errorMessage ? (
+          <StateBanner
+            tone="error"
+            title="Map operation failed"
+            detail={state.errorMessage}
           />
         ) : null}
 
@@ -102,7 +143,9 @@ export function MapScreen() {
             query={regionSearch.query}
             minimumQueryLengthMet={regionSearch.minimumQueryLengthMet}
             results={regionSearch.regions}
+            previewRegion={regionSearch.selectedRegion}
             selectedRegionId={regionSearch.selectedRegionId}
+            selectedRegionCount={selectedRegions.length}
             sourceLabel={regionSearch.sourceLabel}
             usingFallback={regionSearch.usingFallback}
             noticeMessage={regionSearch.noticeMessage}
@@ -113,26 +156,63 @@ export function MapScreen() {
             onSelect={(regionId) => {
               void regionSearch.selectRegion(regionId);
             }}
+            onAddPreviewRegion={() => {
+              if (!regionSearch.selectedRegion) {
+                return;
+              }
+
+              setSelectedRegions((currentRegions) => addRegionToSelection(currentRegions, regionSearch.selectedRegion!));
+            }}
+            canAddPreviewRegion={Boolean(regionSearch.selectedRegion) && !previewRegionAlreadyAdded}
+            previewRegionAlreadyAdded={previewRegionAlreadyAdded}
           />
         </Panel>
 
-        <Panel title="Selected Region">
-          {previewRegion ? (
+        <Panel title="Game Map Builder">
+          {compositePreviewRegion ? (
             <View style={styles.selectedSection}>
               <View style={styles.selectedHeader}>
                 <View style={styles.selectedTextBlock}>
-                  <Text style={styles.title}>{previewRegion.displayName}</Text>
-                  <Text style={styles.copy}>{previewRegion.summary}</Text>
+                  <Text style={styles.title}>{compositePreviewRegion.displayName}</Text>
+                  <Text style={styles.copy}>{compositePreviewRegion.summary}</Text>
                 </View>
                 <View style={styles.selectedBadge}>
-                  <Text style={styles.selectedBadgeLabel}>{previewRegion.regionKind}</Text>
+                  <Text style={styles.selectedBadgeLabel}>{selectionBadgeLabel}</Text>
                 </View>
               </View>
 
+              <SelectedRegionChipList
+                regions={selectedRegions}
+                onRemove={(regionId) => {
+                  setSelectedRegions((currentRegions) => removeRegionFromSelection(currentRegions, regionId));
+                }}
+                onClearAll={() => {
+                  setSelectedRegions(clearSelectedRegions());
+                }}
+              />
+
+              {disconnectedWarning ? (
+                <StateBanner
+                  tone="warning"
+                  title="Selections appear disconnected"
+                  detail={disconnectedWarning.summary}
+                />
+              ) : null}
+
+              {compositeDissolveNotice ? (
+                <StateBanner
+                  tone="warning"
+                  title="Using safe composite fallback"
+                  detail={compositeDissolveNotice}
+                />
+              ) : null}
+
               <View style={styles.metricGrid}>
                 <View style={styles.metricCard}>
-                  <Text style={styles.metricLabel}>Provider</Text>
-                  <Text style={styles.metricValue}>{previewRegion.sourceLabel}</Text>
+                  <Text style={styles.metricLabel}>Components</Text>
+                  <Text style={styles.metricValue}>
+                    {selectedRegions.length} {selectedRegions.length === 1 ? 'region' : 'regions'}
+                  </Text>
                 </View>
                 <View style={styles.metricCard}>
                   <Text style={styles.metricLabel}>Candidate</Text>
@@ -143,26 +223,32 @@ export function MapScreen() {
                   <Text style={styles.metricValue}>{regionSummary}</Text>
                 </View>
                 <View style={styles.metricCard}>
-                  <Text style={styles.metricLabel}>Visible Tracks</Text>
-                  <Text style={styles.metricValue}>{String(projection?.visibleMovementTracks.length ?? 0)}</Text>
+                  <Text style={styles.metricLabel}>Sources</Text>
+                  <Text style={styles.metricValue}>{selectedSourcesSummary}</Text>
                 </View>
               </View>
 
-              {previewRegion.countryLabel ? (
+              {activeSelectionCoverage ? (
                 <Text style={styles.copy}>
-                  Coverage: {previewRegion.countryLabel}
-                  {previewRegion.parentRegionLabel && previewRegion.parentRegionLabel !== previewRegion.displayName
-                    ? ` · ${previewRegion.parentRegionLabel}`
+                  Coverage: {activeSelectionCoverage}
+                  {activeSelectionParentLabel && activeSelectionParentLabel !== compositePreviewRegion.displayName
+                    ? ` · ${activeSelectionParentLabel}`
                     : ''}
                 </Text>
               ) : null}
-              <Text style={styles.copy}>Feature datasets: {previewRegion.featureDatasetRefs.join(', ')}</Text>
+              <Text style={styles.copy}>Feature datasets: {activeSelectionFeatureRefs.join(', ')}</Text>
             </View>
+          ) : regionSearch.selectedRegion ? (
+            <StateBanner
+              tone="info"
+              title="Preview selected region"
+              detail="The current search result is being previewed. Add it to the game map to keep it in the composite playable region and enable apply."
+            />
           ) : (
             <StateBanner
               tone="info"
-              title="No region selected yet"
-              detail="Use the search panel above to preview a real administrative boundary before applying it to the match."
+              title="No regions added yet"
+              detail="Use the search panel above, preview a provider-backed result, then add one or more regions to build the playable map."
             />
           )}
 
@@ -185,16 +271,27 @@ export function MapScreen() {
               disabled={!canPrepareMapSetup || state.loadState === 'loading'}
             />
             <AppButton
-              label={mapHasBeenApplied ? 'Replace Playable Region' : 'Apply Selected Region'}
+              label={
+                mapHasBeenApplied
+                  ? 'Replace Playable Region With Composite'
+                  : 'Apply Composite Playable Region'
+              }
               onPress={() => {
-                if (!canApplySelectedRegion || !previewRegion) {
+                if (!canApplySelectedRegion || !compositePreviewRegion) {
                   return;
                 }
 
-                void submitCommands([createMapRegionCommand(previewRegion)]);
+                void submitCommands([createMapRegionCommand(compositePreviewRegion)]);
               }}
               disabled={!canApplySelectedRegion || state.loadState === 'loading'}
+            />
+            <AppButton
+              label="Clear Selected Regions"
+              onPress={() => {
+                setSelectedRegions(clearSelectedRegions());
+              }}
               tone="secondary"
+              disabled={selectedRegions.length === 0 || state.loadState === 'loading'}
             />
             <AppButton
               label="Refresh Map Projection"
@@ -211,7 +308,7 @@ export function MapScreen() {
           <View style={styles.previewHeader}>
             <View style={styles.previewTextBlock}>
               <Text style={styles.copy}>
-                The map preview is secondary during setup: it shows the selected playable boundary and the current bounded candidate area without crowding the search workflow.
+                The map preview is secondary during setup: it shows the combined playable boundary for the current selection and the current bounded candidate area without crowding the search workflow.
               </Text>
             </View>
             <Pressable
@@ -238,7 +335,7 @@ export function MapScreen() {
             </View>
           ) : null}
           <Text style={styles.previewMeta}>
-            Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)}
+            Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)} · Selected components: {String(selectedRegions.length)}
           </Text>
         </Panel>
       </ScrollView>
