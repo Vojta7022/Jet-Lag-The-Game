@@ -1,6 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { PlayableRegionCatalogEntry } from './region-types.ts';
+import type {
+  PlayableRegionCatalogEntry,
+  RegionSourceAttribution
+} from './region-types.ts';
 
 import { AppButton } from '../../ui/AppButton.tsx';
 import { Field } from '../../ui/Field.tsx';
@@ -19,6 +22,7 @@ interface SearchableRegionPickerProps {
   sourceLabel: string;
   usingFallback: boolean;
   noticeMessage?: string;
+  attribution?: RegionSourceAttribution;
   isLoading: boolean;
   errorMessage?: string;
   onChangeQuery: (value: string) => void;
@@ -49,12 +53,30 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         </Text>
       ) : null}
 
+      {props.attribution ? (
+        <View style={styles.attributionCard}>
+          <Text style={styles.attributionLabel}>
+            {props.usingFallback ? 'Fallback source' : 'Live boundary source'}
+          </Text>
+          <Text style={styles.attributionTitle}>{props.attribution.label}</Text>
+          <Text style={styles.attributionCopy}>{props.attribution.notice}</Text>
+          {props.attribution.url ? (
+            <Text style={styles.attributionLink}>{props.attribution.url}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
       {props.noticeMessage ? (
-        <StateBanner
-          tone="info"
-          title={props.usingFallback ? 'Using bundled fallback regions' : 'Provider search ready'}
-          detail={props.noticeMessage}
-        />
+        <View style={styles.stateBlock}>
+          <StateBanner
+            tone="info"
+            title={props.usingFallback ? 'Using bundled fallback regions' : 'Provider search ready'}
+            detail={props.noticeMessage}
+          />
+          {props.usingFallback ? (
+            <AppButton label="Retry Live Search" onPress={props.onRetry} tone="secondary" />
+          ) : null}
+        </View>
       ) : null}
 
       {!props.minimumQueryLengthMet && props.query.trim().length > 0 ? (
@@ -168,6 +190,33 @@ const styles = StyleSheet.create({
   },
   resultBlock: {
     gap: 12
+  },
+  attributionCard: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 14,
+    gap: 4,
+    padding: 12
+  },
+  attributionLabel: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase'
+  },
+  attributionTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  attributionCopy: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17
+  },
+  attributionLink: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '600'
   },
   previewCard: {
     backgroundColor: colors.surfaceMuted,

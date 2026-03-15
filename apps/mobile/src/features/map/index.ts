@@ -11,6 +11,7 @@ export * from './map-overlays.ts';
 export * from './map-setup-flow.ts';
 export * from './osm-region-provider.ts';
 export * from './region-data-source.ts';
+export * from './region-provider.ts';
 export * from './region-types.ts';
 export * from './seed-regions.ts';
 export * from './use-region-search.ts';

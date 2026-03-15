@@ -2,12 +2,17 @@ import { mobileAppEnvironment } from '../../config/env.ts';
 
 import {
   createNominatimRegionProvider,
-  type RegionBoundaryProvider,
-  RegionProviderUnavailableError
+  type RegionBoundaryProvider
 } from './osm-region-provider.ts';
+import {
+  RegionProviderError,
+  RegionProviderRateLimitError,
+  RegionProviderUnavailableError
+} from './region-provider.ts';
 import { seedPlayableRegions } from './seed-regions.ts';
 import type {
   PlayableRegionCatalogEntry,
+  RegionSourceAttribution,
   RegionSearchResponse
 } from './region-types.ts';
 
@@ -17,6 +22,12 @@ export interface RegionDataSource {
 }
 
 const seedSourceLabel = 'Bundled seed region catalog';
+const seedAttribution: RegionSourceAttribution = {
+  providerKey: 'bundled_seed_catalog',
+  label: seedSourceLabel,
+  notice: 'Bundled seed regions are a fallback source only. They help local development continue when the live provider is unavailable.',
+  usageMode: 'bundled_fallback'
+};
 
 function normalizeSearchValue(value: unknown): string {
   if (typeof value !== 'string') {
@@ -94,7 +105,8 @@ export function createSeedRegionDataSource(
         return {
           regions: [],
           sourceLabel: seedSourceLabel,
-          usingFallback: true
+          usingFallback: true,
+          attribution: seedAttribution
         };
       }
 
@@ -118,7 +130,8 @@ export function createSeedRegionDataSource(
         regions: scoredRegions,
         sourceLabel: seedSourceLabel,
         usingFallback: true,
-        noticeMessage: 'The bundled seed catalog is acting as the fallback region source.'
+        noticeMessage: 'The bundled seed catalog is acting as the fallback region source.',
+        attribution: seedAttribution
       };
     },
 
@@ -126,6 +139,21 @@ export function createSeedRegionDataSource(
       return byId.get(regionId);
     }
   };
+}
+
+function buildProviderFallbackNotice(
+  provider: RegionBoundaryProvider,
+  error: RegionProviderError
+): string {
+  if (error instanceof RegionProviderRateLimitError) {
+    return `${provider.providerLabel} is rate limiting requests right now. The bundled seed fallback is being used temporarily. Retry in a moment or move this provider behind a proxy for production traffic.`;
+  }
+
+  if (error instanceof RegionProviderUnavailableError) {
+    return `${provider.providerLabel} is unavailable right now. The bundled seed fallback is being used for local/dev continuity.`;
+  }
+
+  return `${provider.providerLabel} returned an unexpected response. The bundled seed fallback is being used until the provider configuration is fixed.`;
 }
 
 export function createProviderBackedRegionDataSource(args: {
@@ -140,7 +168,8 @@ export function createProviderBackedRegionDataSource(args: {
         return {
           regions: [],
           sourceLabel: args.provider.providerLabel,
-          usingFallback: false
+          usingFallback: false,
+          attribution: args.provider.attribution
         };
       }
 
@@ -149,10 +178,11 @@ export function createProviderBackedRegionDataSource(args: {
         return {
           regions: providerResults,
           sourceLabel: args.provider.providerLabel,
-          usingFallback: false
+          usingFallback: false,
+          attribution: args.provider.attribution
         };
       } catch (error) {
-        if (!(error instanceof RegionProviderUnavailableError)) {
+        if (!(error instanceof RegionProviderError)) {
           throw error;
         }
 
@@ -160,7 +190,8 @@ export function createProviderBackedRegionDataSource(args: {
         return {
           ...fallbackResponse,
           usingFallback: true,
-          noticeMessage: `${args.provider.providerLabel} is unavailable right now. The bundled seed fallback is being used for local/dev continuity.`
+          noticeMessage: buildProviderFallbackNotice(args.provider, error),
+          attribution: fallbackResponse.attribution ?? seedAttribution
         };
       }
     },
@@ -172,7 +203,7 @@ export function createProviderBackedRegionDataSource(args: {
           return providerRegion;
         }
       } catch (error) {
-        if (!(error instanceof RegionProviderUnavailableError)) {
+        if (!(error instanceof RegionProviderError)) {
           throw error;
         }
       }
@@ -182,12 +213,22 @@ export function createProviderBackedRegionDataSource(args: {
   };
 }
 
-export const mobileRegionDataSource = createProviderBackedRegionDataSource({
-  provider: createNominatimRegionProvider({
-    baseUrl: mobileAppEnvironment.regionProviderBaseUrl,
-    email: mobileAppEnvironment.regionProviderContactEmail,
-    throttleMs: mobileAppEnvironment.regionProviderThrottleMs,
-    cacheTtlMs: mobileAppEnvironment.regionProviderCacheTtlSeconds * 1000
-  }),
-  fallback: createSeedRegionDataSource()
-});
+export function createConfiguredRegionDataSource(
+  environment = mobileAppEnvironment
+): RegionDataSource {
+  return createProviderBackedRegionDataSource({
+    provider: createNominatimRegionProvider({
+      baseUrl: environment.regionProviderBaseUrl,
+      email: environment.regionProviderContactEmail,
+      providerLabel: environment.regionProviderLabel,
+      providerAttributionUrl: environment.regionProviderAttributionUrl,
+      usageMode: environment.regionProviderUsageMode,
+      throttleMs: environment.regionProviderThrottleMs,
+      cacheTtlMs: environment.regionProviderCacheTtlSeconds * 1000,
+      requestTimeoutMs: environment.regionProviderTimeoutMs
+    }),
+    fallback: createSeedRegionDataSource()
+  });
+}
+
+export const mobileRegionDataSource = createConfiguredRegionDataSource();

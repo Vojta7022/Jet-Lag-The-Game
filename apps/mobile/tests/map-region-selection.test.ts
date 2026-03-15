@@ -30,6 +30,7 @@ import {
 } from '../src/features/map/region-data-source.ts';
 import {
   createNominatimRegionProvider,
+  RegionProviderRateLimitError,
   RegionProviderUnavailableError
 } from '../src/features/map/osm-region-provider.ts';
 import { seedPlayableRegions } from '../src/features/map/seed-regions.ts';
@@ -500,6 +501,52 @@ test('nominatim provider maps real polygon search results and exact preview geom
   assert.equal(cachedResults[0]?.regionId, results[0]?.regionId);
 });
 
+test('nominatim provider deduplicates in-flight identical searches while keeping cache behavior', async () => {
+  const pragueBoundary: GeoJsonGeometryModel = {
+    type: 'Polygon',
+    coordinates: [[[14.2, 50.1], [14.7, 50.1], [14.7, 50.5], [14.2, 50.5], [14.2, 50.1]]]
+  };
+  let fetchCalls = 0;
+
+  const provider = createNominatimRegionProvider({
+    baseUrl: mobileAppEnvironment.regionProviderBaseUrl,
+    throttleMs: 0,
+    cacheTtlMs: 60_000,
+    fetchFn: async () => {
+      fetchCalls += 1;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      return new Response(JSON.stringify([
+        {
+          place_id: 1,
+          osm_type: 'relation',
+          osm_id: 438840,
+          class: 'boundary',
+          type: 'administrative',
+          display_name: 'Prague, Czechia',
+          address: {
+            city: 'Prague',
+            country: 'Czechia'
+          },
+          geojson: pragueBoundary
+        }
+      ]), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+  });
+
+  const [firstResult, secondResult] = await Promise.all([
+    provider.searchRegions('Prague'),
+    provider.searchRegions('Prague')
+  ]);
+
+  assert.equal(fetchCalls, 1);
+  assert.deepEqual(firstResult, secondResult);
+});
+
 test('nominatim provider ignores incomplete candidates and safely maps partial result fields', async () => {
   const boundary: GeoJsonGeometryModel = {
     type: 'Polygon',
@@ -565,6 +612,82 @@ test('provider-backed data source falls back to seeds only when the provider is 
   assert.equal(response.usingFallback, true);
   assert.equal(response.regions[0]?.displayName, 'Prague');
   assert.match(response.noticeMessage ?? '', /fallback/i);
+  assert.equal(response.attribution?.label, 'Bundled seed region catalog');
+});
+
+test('provider-backed data source exposes live-provider attribution without changing the search API', async () => {
+  const providerBoundary: GeoJsonGeometryModel = {
+    type: 'Polygon',
+    coordinates: [[[14.3, 50.0], [14.8, 50.0], [14.8, 50.4], [14.3, 50.4], [14.3, 50.0]]]
+  };
+  const dataSource = createProviderBackedRegionDataSource({
+    provider: createNominatimRegionProvider({
+      baseUrl: mobileAppEnvironment.regionProviderBaseUrl,
+      providerLabel: 'Development Nominatim',
+      providerAttributionUrl: 'https://nominatim.example.test',
+      usageMode: 'proxy_backend_recommended',
+      throttleMs: 0,
+      cacheTtlMs: 60_000,
+      fetchFn: async () => new Response(JSON.stringify([
+        {
+          place_id: 1,
+          osm_type: 'relation',
+          osm_id: 438840,
+          class: 'boundary',
+          type: 'administrative',
+          display_name: 'Prague, Czechia',
+          address: {
+            city: 'Prague',
+            country: 'Czechia'
+          },
+          geojson: providerBoundary
+        }
+      ]), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+    }),
+    fallback: createSeedRegionDataSource(seedPlayableRegions)
+  });
+
+  const response = await dataSource.searchRegions('Prague');
+
+  assert.equal(response.usingFallback, false);
+  assert.equal(response.sourceLabel, 'Development Nominatim');
+  assert.equal(response.attribution?.label, 'Development Nominatim');
+  assert.equal(response.attribution?.usageMode, 'proxy_backend_recommended');
+  assert.equal(response.attribution?.url, 'https://nominatim.example.test');
+});
+
+test('provider-backed data source falls back gracefully on rate limiting with a retryable notice', async () => {
+  const dataSource = createProviderBackedRegionDataSource({
+    provider: {
+      providerKey: 'osm_nominatim',
+      providerLabel: 'OpenStreetMap Nominatim',
+      attribution: {
+        providerKey: 'osm_nominatim',
+        label: 'OpenStreetMap Nominatim',
+        notice: 'Direct public Nominatim access is suitable for local or low-volume development only. Use a backend or proxy in production.',
+        usageMode: 'direct_public_dev_only',
+        url: 'https://nominatim.openstreetmap.org'
+      },
+      async searchRegions() {
+        throw new RegionProviderRateLimitError('Too many requests');
+      },
+      async getRegionById() {
+        return undefined;
+      }
+    },
+    fallback: createSeedRegionDataSource(seedPlayableRegions)
+  });
+
+  const response = await dataSource.searchRegions('Praha');
+
+  assert.equal(response.usingFallback, true);
+  assert.equal(response.attribution?.usageMode, 'bundled_fallback');
+  assert.match(response.noticeMessage ?? '', /rate limiting/i);
 });
 
 test('provider-returned boundaries apply through create_map_region into the bounded match state', async () => {

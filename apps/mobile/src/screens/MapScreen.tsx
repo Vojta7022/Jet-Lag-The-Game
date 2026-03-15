@@ -149,6 +149,7 @@ export function MapScreen() {
             sourceLabel={regionSearch.sourceLabel}
             usingFallback={regionSearch.usingFallback}
             noticeMessage={regionSearch.noticeMessage}
+            attribution={regionSearch.attribution}
             isLoading={regionSearch.isLoading}
             errorMessage={regionSearch.errorMessage}
             onChangeQuery={regionSearch.setQuery}

@@ -15,9 +15,13 @@ export interface MobileAppEnvironment {
   onlineProjectUrl?: string;
   nearbyJoinTtlSeconds: number;
   regionProviderBaseUrl: string;
+  regionProviderLabel: string;
+  regionProviderAttributionUrl: string;
+  regionProviderUsageMode: 'direct_public_dev_only' | 'proxy_backend_recommended';
   regionProviderContactEmail?: string;
   regionProviderThrottleMs: number;
   regionProviderCacheTtlSeconds: number;
+  regionProviderTimeoutMs: number;
 }
 
 export interface RuntimeOption {
@@ -55,6 +59,14 @@ function parseRuntimeKind(input: string | undefined): MobileRuntimeKind {
   }
 }
 
+function parseRegionProviderUsageMode(
+  input: string | undefined
+): 'direct_public_dev_only' | 'proxy_backend_recommended' {
+  return input === 'proxy_backend_recommended'
+    ? 'proxy_backend_recommended'
+    : 'direct_public_dev_only';
+}
+
 export const mobileAppEnvironment: MobileAppEnvironment = {
   defaultRuntimeKind: parseRuntimeKind(process.env.EXPO_PUBLIC_DEFAULT_RUNTIME_MODE),
   enableInMemoryMode: parseBoolean(process.env.EXPO_PUBLIC_ENABLE_IN_MEMORY_MODE, true),
@@ -66,9 +78,13 @@ export const mobileAppEnvironment: MobileAppEnvironment = {
   onlineProjectUrl: process.env.EXPO_PUBLIC_ONLINE_PROJECT_URL,
   nearbyJoinTtlSeconds: parseNumber(process.env.EXPO_PUBLIC_NEARBY_JOIN_TTL_SECONDS, 600),
   regionProviderBaseUrl: process.env.EXPO_PUBLIC_REGION_PROVIDER_BASE_URL || 'https://nominatim.openstreetmap.org',
+  regionProviderLabel: process.env.EXPO_PUBLIC_REGION_PROVIDER_LABEL || 'OpenStreetMap Nominatim',
+  regionProviderAttributionUrl: process.env.EXPO_PUBLIC_REGION_PROVIDER_ATTRIBUTION_URL || 'https://nominatim.openstreetmap.org',
+  regionProviderUsageMode: parseRegionProviderUsageMode(process.env.EXPO_PUBLIC_REGION_PROVIDER_USAGE_MODE),
   regionProviderContactEmail: process.env.EXPO_PUBLIC_REGION_PROVIDER_CONTACT_EMAIL,
   regionProviderThrottleMs: parseNumber(process.env.EXPO_PUBLIC_REGION_PROVIDER_THROTTLE_MS, 1200),
-  regionProviderCacheTtlSeconds: parseNumber(process.env.EXPO_PUBLIC_REGION_PROVIDER_CACHE_TTL_SECONDS, 900)
+  regionProviderCacheTtlSeconds: parseNumber(process.env.EXPO_PUBLIC_REGION_PROVIDER_CACHE_TTL_SECONDS, 900),
+  regionProviderTimeoutMs: parseNumber(process.env.EXPO_PUBLIC_REGION_PROVIDER_TIMEOUT_MS, 12000)
 };
 
 export function getRuntimeOptions(environment: MobileAppEnvironment): RuntimeOption[] {

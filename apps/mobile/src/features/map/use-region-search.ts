@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { PlayableRegionCatalogEntry } from './region-types.ts';
+import type {
+  PlayableRegionCatalogEntry,
+  RegionSourceAttribution
+} from './region-types.ts';
 import type { RegionDataSource } from './region-data-source.ts';
 
 interface UseRegionSearchArgs {
@@ -16,6 +19,7 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   const [sourceLabel, setSourceLabel] = useState('');
   const [usingFallback, setUsingFallback] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState<string | undefined>(undefined);
+  const [attribution, setAttribution] = useState<RegionSourceAttribution | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [reloadToken, setReloadToken] = useState(0);
@@ -38,6 +42,7 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
         setSourceLabel('');
         setUsingFallback(false);
         setNoticeMessage(undefined);
+        setAttribution(undefined);
         setErrorMessage(undefined);
         setIsLoading(false);
         return;
@@ -57,6 +62,7 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
         setSourceLabel(response.sourceLabel);
         setUsingFallback(response.usingFallback);
         setNoticeMessage(response.noticeMessage);
+        setAttribution(response.attribution);
         setSelectedRegion((currentRegion) => {
           if (currentRegion && (response.regions.some((region) => region.regionId === currentRegion.regionId) || debouncedQuery.trim().length >= 2)) {
             return currentRegion;
@@ -74,6 +80,7 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
         }
 
         setRegions([]);
+        setAttribution(undefined);
         setErrorMessage(error instanceof Error ? error.message : 'The region catalog failed to load.');
       } finally {
         if (!cancelled) {
@@ -124,6 +131,7 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
     sourceLabel,
     usingFallback,
     noticeMessage,
+    attribution,
     isLoading,
     errorMessage,
     selectRegion,
@@ -133,6 +141,7 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
     isLoading,
     minimumQueryLengthMet,
     noticeMessage,
+    attribution,
     query,
     regions,
     retrySearch,

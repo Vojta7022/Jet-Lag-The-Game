@@ -17,6 +17,19 @@ export interface RegionProviderMetadata {
   boundarySource: 'search_geometry' | 'lookup_geometry' | 'seed_fallback';
 }
 
+export type RegionSourceUsageMode =
+  | 'bundled_fallback'
+  | 'direct_public_dev_only'
+  | 'proxy_backend_recommended';
+
+export interface RegionSourceAttribution {
+  providerKey: string;
+  label: string;
+  notice: string;
+  url?: string;
+  usageMode: RegionSourceUsageMode;
+}
+
 export interface CompositeRegionComponent {
   regionId: string;
   displayName: string;
@@ -69,4 +82,5 @@ export interface RegionSearchResponse {
   sourceLabel: string;
   usingFallback: boolean;
   noticeMessage?: string;
+  attribution?: RegionSourceAttribution;
 }

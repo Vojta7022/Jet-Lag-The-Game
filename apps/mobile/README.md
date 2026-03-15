@@ -82,6 +82,14 @@ Currently supported `EXPO_PUBLIC_*` variables include:
 - `EXPO_PUBLIC_DEFAULT_MATCH_PREFIX`
 - `EXPO_PUBLIC_NEARBY_JOIN_TTL_SECONDS`
 - `EXPO_PUBLIC_ONLINE_PROJECT_URL`
+- `EXPO_PUBLIC_REGION_PROVIDER_BASE_URL`
+- `EXPO_PUBLIC_REGION_PROVIDER_LABEL`
+- `EXPO_PUBLIC_REGION_PROVIDER_ATTRIBUTION_URL`
+- `EXPO_PUBLIC_REGION_PROVIDER_USAGE_MODE`
+- `EXPO_PUBLIC_REGION_PROVIDER_CONTACT_EMAIL`
+- `EXPO_PUBLIC_REGION_PROVIDER_THROTTLE_MS`
+- `EXPO_PUBLIC_REGION_PROVIDER_CACHE_TTL_SECONDS`
+- `EXPO_PUBLIC_REGION_PROVIDER_TIMEOUT_MS`
 
 ## Startup Notes
 
@@ -117,8 +125,16 @@ What is still placeholder in this phase:
 Current provider behavior:
 
 - the app first queries an OSM-compatible Nominatim search source for real place candidates and polygon boundaries
-- provider results are cached in memory and spaced out with a minimum delay between requests
+- provider results are cached in memory, deduplicated while requests are in flight, and spaced out with a minimum delay between request starts
+- the map search UI shows source attribution and whether the live provider or bundled fallback is active
+- the HTTP request execution layer is isolated from the screen and provider mapping code so a backend or proxy can replace direct client traffic later without changing the map screen API
 - bundled seed regions are only used when the provider is unavailable, not as the default path
+
+Provider deployment guidance:
+
+- local or low-volume development can use the public Nominatim base URL directly
+- production should point `EXPO_PUBLIC_REGION_PROVIDER_BASE_URL` at a backend or proxy that applies attribution, caching, and rate limiting server-side
+- the current mobile provider abstraction is designed so this swap does not require a new search UI or a new bounded-region apply flow
 
 ## Current Question Phase
 
