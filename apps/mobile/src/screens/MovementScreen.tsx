@@ -115,12 +115,13 @@ export function MovementScreen() {
 
       <Panel title="Movement Map">
         <MapCanvas
+          height={300}
           visibleMap={projection?.visibleMap}
           visibleMovementTracks={projection?.visibleMovementTracks}
           previewRegion={fallbackPreviewRegion}
         />
         <Text style={styles.copy}>
-          The map only renders projected non-hider movement tracks. Hidden hider coordinates stay out of these overlays even when the authority stores them.
+          The map renders projected non-hider movement tracks on the same geographic surface as the active playable region. Hidden hider coordinates stay out of these overlays even when the authority stores them.
         </Text>
         <AppButton
           label="Refresh Movement Projection"

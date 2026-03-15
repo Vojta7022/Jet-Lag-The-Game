@@ -31,6 +31,7 @@ test('mobile workspace keeps the minimum startup dependencies and scripts aligne
   assert.ok(packageJson.dependencies['react-native-gesture-handler']);
   assert.ok(packageJson.dependencies['react-native-safe-area-context']);
   assert.ok(packageJson.dependencies['react-native-screens']);
+  assert.ok(packageJson.dependencies['react-native-maps']);
   assert.ok(packageJson.dependencies['react-native-svg']);
   assert.ok(packageJson.dependencies['react-dom']);
   assert.ok(packageJson.devDependencies['babel-preset-expo']);

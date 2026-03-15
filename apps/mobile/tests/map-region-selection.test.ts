@@ -9,7 +9,12 @@ import { ensureMobileShellContentPack, mobileShellRulesetId } from '../src/runti
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 import { mobileAppEnvironment } from '../src/config/env.ts';
 import { buildMapSetupBootstrapCommands } from '../src/features/map/map-setup-flow.ts';
-import { getGeometryBounds, geometryToSvgPath } from '../src/features/map/map-geometry.ts';
+import {
+  buildMapCameraRegion,
+  geometryToMapPolygons,
+  getGeometryBounds,
+  geometryToSvgPath
+} from '../src/features/map/map-geometry.ts';
 import { buildMapOverlayModel } from '../src/features/map/map-overlays.ts';
 import { seedPlayableRegions } from '../src/features/map/seed-regions.ts';
 
@@ -98,6 +103,10 @@ test('map overlay helpers produce preview layers and bounded svg paths from the 
     previewRegion: region
   });
   const bounds = getGeometryBounds(region.geometry);
+  const cameraRegion = buildMapCameraRegion({
+    previewRegion: region
+  });
+  const polygons = geometryToMapPolygons(region.geometry);
   const path = geometryToSvgPath(region.geometry, bounds, {
     width: 360,
     height: 260,
@@ -107,5 +116,7 @@ test('map overlay helpers produce preview layers and bounded svg paths from the 
   assert.equal(overlayModel.overlays.some((overlay) => overlay.label === 'Selected Boundary'), true);
   assert.equal(overlayModel.overlays.some((overlay) => overlay.label === 'Candidate Preview'), true);
   assert.equal(Boolean(bounds), true);
+  assert.equal(Boolean(cameraRegion), true);
+  assert.equal(polygons.length > 0, true);
   assert.equal(path.startsWith('M '), true);
 });

@@ -17,6 +17,23 @@ export interface GeometryPoint {
   latitude: number;
 }
 
+export interface MapCoordinate {
+  latitude: number;
+  longitude: number;
+}
+
+export interface MapPolygonShape {
+  coordinates: MapCoordinate[];
+  holes: MapCoordinate[][];
+}
+
+export interface MapCameraRegion {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+}
+
 export interface MapViewport {
   width: number;
   height: number;
@@ -127,6 +144,27 @@ function collectGeometryPoints(geometry: GeoJsonGeometryModel | undefined): Geom
   const pointGeometries = extractPoints(geometry);
 
   return [...polygonPoints, ...linePoints, ...pointGeometries];
+}
+
+function toMapCoordinate(point: GeometryPoint): MapCoordinate {
+  return {
+    latitude: point.latitude,
+    longitude: point.longitude
+  };
+}
+
+function trimClosingCoordinate(ring: Ring): Ring {
+  if (ring.length <= 1) {
+    return ring;
+  }
+
+  const first = ring[0]!;
+  const last = ring[ring.length - 1]!;
+  if (first.longitude === last.longitude && first.latitude === last.latitude) {
+    return ring.slice(0, -1);
+  }
+
+  return ring;
 }
 
 export function getGeometryBounds(geometry: GeoJsonGeometryModel | undefined): GeometryBounds | undefined {
@@ -268,6 +306,63 @@ export function projectGeometryPoints(
       viewport.padding
     )
   }));
+}
+
+export function geometryToMapPolygons(geometry: GeoJsonGeometryModel | undefined): MapPolygonShape[] {
+  return extractPolygonRings(geometry)
+    .map((polygon) => {
+      const outerRing = trimClosingCoordinate(polygon[0] ?? []).map(toMapCoordinate);
+      const holes = polygon.slice(1).map((ring) => trimClosingCoordinate(ring).map(toMapCoordinate));
+
+      if (outerRing.length < 3) {
+        return undefined;
+      }
+
+      return {
+        coordinates: outerRing,
+        holes: holes.filter((ring) => ring.length >= 3)
+      };
+    })
+    .filter((value): value is MapPolygonShape => Boolean(value));
+}
+
+export function geometryToMapPolylines(geometry: GeoJsonGeometryModel | undefined): MapCoordinate[][] {
+  return extractLineStrings(geometry)
+    .map((line) => trimClosingCoordinate(line).map(toMapCoordinate))
+    .filter((line) => line.length >= 2);
+}
+
+export function geometryToMapPoints(geometry: GeoJsonGeometryModel | undefined): MapCoordinate[] {
+  return extractPoints(geometry).map(toMapCoordinate);
+}
+
+export function collectGeometryCoordinates(geometry: GeoJsonGeometryModel | undefined): MapCoordinate[] {
+  return collectGeometryPoints(geometry).map(toMapCoordinate);
+}
+
+export function buildMapCameraRegion(args: {
+  visibleMap?: VisibleMapProjection;
+  previewRegion?: SeedPlayableRegion;
+  geometry?: GeoJsonGeometryModel;
+}): MapCameraRegion | undefined {
+  const referenceGeometry = args.geometry ?? getPreferredMapGeometry({
+    visibleMap: args.visibleMap,
+    previewRegion: args.previewRegion
+  });
+  const bounds = getGeometryBounds(referenceGeometry);
+  if (!bounds) {
+    return undefined;
+  }
+
+  const latitudeSpan = bounds.maxLatitude - bounds.minLatitude;
+  const longitudeSpan = bounds.maxLongitude - bounds.minLongitude;
+
+  return {
+    latitude: (bounds.minLatitude + bounds.maxLatitude) / 2,
+    longitude: (bounds.minLongitude + bounds.maxLongitude) / 2,
+    latitudeDelta: Math.max(latitudeSpan * 1.35, 0.02),
+    longitudeDelta: Math.max(longitudeSpan * 1.35, 0.02)
+  };
 }
 
 export function getPreferredMapGeometry(args: {

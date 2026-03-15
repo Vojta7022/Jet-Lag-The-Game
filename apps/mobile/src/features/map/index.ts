@@ -1,5 +1,7 @@
 export * from './MapCanvas.tsx';
+export * from './MapFallbackCanvas.tsx';
 export * from './MapLegend.tsx';
+export * from './MapOverlayRenderer.tsx';
 export * from './RegionSelectionList.tsx';
 export * from './map-geometry.ts';
 export * from './map-overlays.ts';

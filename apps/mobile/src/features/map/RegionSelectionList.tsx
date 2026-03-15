@@ -1,6 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton } from '../../ui/AppButton.tsx';
 import { colors } from '../../ui/theme.ts';
 
 import type { SeedPlayableRegion } from './seed-regions.ts';
@@ -17,22 +16,32 @@ export function RegionSelectionList(props: RegionSelectionListProps) {
       {props.regions.map((region) => {
         const selected = props.selectedRegionId === region.regionId;
         return (
-          <View key={region.regionId} style={styles.card}>
+          <Pressable
+            key={region.regionId}
+            accessibilityRole="button"
+            onPress={() => props.onSelect(region.regionId)}
+            style={({ pressed }) => [
+              styles.card,
+              selected ? styles.selectedCard : null,
+              pressed ? styles.pressedCard : null
+            ]}
+          >
             <View style={styles.header}>
-              <Text style={styles.title}>{region.displayName}</Text>
-              <Text style={styles.kind}>{region.regionKind}</Text>
+              <View style={styles.titleBlock}>
+                <Text style={styles.title}>{region.displayName}</Text>
+                <Text style={styles.kind}>{region.regionKind}</Text>
+              </View>
+              <View style={[styles.badge, selected ? styles.selectedBadge : null]}>
+                <Text style={[styles.badgeLabel, selected ? styles.selectedBadgeLabel : null]}>
+                  {selected ? 'Selected' : 'Preview'}
+                </Text>
+              </View>
             </View>
             <Text style={styles.summary}>{region.summary}</Text>
             <Text style={styles.datasets}>
               Datasets: {region.featureDatasetRefs.join(', ')}
             </Text>
-            <AppButton
-              label={selected ? 'Selected' : 'Preview Region'}
-              onPress={() => props.onSelect(region.regionId)}
-              disabled={selected}
-              tone={selected ? 'secondary' : 'primary'}
-            />
-          </View>
+          </Pressable>
         );
       })}
     </View>
@@ -45,15 +54,26 @@ const styles = StyleSheet.create({
   },
   card: {
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     gap: 8,
     padding: 12
+  },
+  selectedCard: {
+    borderColor: colors.accent,
+    backgroundColor: colors.accentMuted
+  },
+  pressedCard: {
+    opacity: 0.9
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12
+  },
+  titleBlock: {
+    flex: 1,
+    gap: 4
   },
   title: {
     color: colors.text,
@@ -64,6 +84,25 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     textTransform: 'uppercase'
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  selectedBadge: {
+    backgroundColor: colors.accent
+  },
+  badgeLabel: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase'
+  },
+  selectedBadgeLabel: {
+    color: '#ffffff'
   },
   summary: {
     color: colors.textMuted,

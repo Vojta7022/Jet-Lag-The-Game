@@ -9,7 +9,7 @@ Included in this phase:
 - provider stack for runtime selection, transport/runtime wiring, and shared shell state
 - basic session entry flow
 - create-match and join-match flows
-- first-pass map setup screen with seeded playable-region selection
+- real native map screen with seeded playable-region selection and bounded overlays
 - first-pass question center wired to `begin_question_prompt`, `ask_question`, `answer_question`, and host-side `apply_constraint`
 - first-pass cards screen wired to `draw_card`, `play_card`, `discard_card`, and `resolve_card_window`
 - first-pass chat screen with public/team channel switching, scoped message lists, and honest placeholder attachment flows
@@ -24,8 +24,6 @@ Included in this phase:
 
 Still intentionally deferred:
 
-- map rendering
-- full geospatial tiles and live location rendering
 - visual polish
 - real Supabase backend wiring
 - real LAN discovery and device transport
@@ -93,18 +91,26 @@ Currently supported `EXPO_PUBLIC_*` variables include:
 
 ## Current Map Phase
 
-The mobile shell now includes a dedicated map setup screen that:
+The mobile shell now includes a player-facing map screen that:
 
 - previews seeded playable regions
 - bootstraps a host match into `map_setup` through real engine commands
 - applies `create_map_region`
-- renders the selected boundary and current bounded candidate region
+- renders real native map tiles on iOS and Android
+- renders the selected boundary and current bounded candidate region on geographic coordinates
+- renders eliminated areas, constraint layers, and visible seeker breadcrumbs on the same bounded surface when the current scope allows them
 
 The first seed regions are:
 
 - Prague
 - Central Bohemia
 - Vienna
+
+What is still placeholder in this phase:
+
+- selectable region data still comes from the seeded region catalog
+- web keeps the bounded fallback preview instead of the native tile surface
+- map styling is intentionally functional rather than polished
 
 ## Current Question Phase
 
