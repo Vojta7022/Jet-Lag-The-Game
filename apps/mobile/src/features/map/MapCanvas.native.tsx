@@ -69,7 +69,7 @@ export function MapCanvas(props: MapCanvasProps) {
       <View style={[styles.frame, styles.emptyFrame, { width, height }]}>
         <Text style={styles.emptyTitle}>Map preview unavailable</Text>
         <Text style={styles.emptyCopy}>
-          Select a seeded region or apply a region to the current match to render the bounded search surface.
+          Search for a region or apply a selected boundary to the current match to render the bounded search surface.
         </Text>
       </View>
     );

@@ -2,10 +2,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../../ui/theme.ts';
 
-import type { SeedPlayableRegion } from './seed-regions.ts';
+import type { PlayableRegionCatalogEntry } from './region-types.ts';
 
 interface RegionSelectionListProps {
-  regions: SeedPlayableRegion[];
+  regions: PlayableRegionCatalogEntry[];
   selectedRegionId?: string;
   onSelect: (regionId: string) => void;
 }
@@ -38,8 +38,24 @@ export function RegionSelectionList(props: RegionSelectionListProps) {
               </View>
             </View>
             <Text style={styles.summary}>{region.summary}</Text>
+            {region.countryLabel ? (
+              <Text style={styles.meta}>
+                {region.regionKind === 'city' ? 'Country' : 'Coverage'}: {region.countryLabel}
+                {region.parentRegionLabel && region.parentRegionLabel !== region.displayName
+                  ? ` · ${region.parentRegionLabel}`
+                  : ''}
+              </Text>
+            ) : null}
+            {region.providerMetadata ? (
+              <Text style={styles.meta}>
+                Candidate: {region.providerMetadata.resultClass ?? 'place'} / {region.providerMetadata.resultType ?? 'boundary'}
+                {region.providerMetadata.osmType && region.providerMetadata.osmId
+                  ? ` · ${region.providerMetadata.osmType} ${region.providerMetadata.osmId}`
+                  : ''}
+              </Text>
+            ) : null}
             <Text style={styles.datasets}>
-              Datasets: {region.featureDatasetRefs.join(', ')}
+              Source: {region.sourceLabel}
             </Text>
           </Pressable>
         );
@@ -112,5 +128,10 @@ const styles = StyleSheet.create({
   datasets: {
     color: colors.textMuted,
     fontSize: 12
+  },
+  meta: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '600'
   }
 });

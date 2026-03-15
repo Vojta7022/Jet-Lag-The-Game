@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
 import { MapCanvas } from '../features/map/MapCanvas';
+import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
 
 import {
   MapLegend,
-  RegionSelectionList,
+  SearchableRegionPicker,
   buildMapOverlayModel,
   buildMapSetupBootstrapCommands,
-  getSeedPlayableRegion,
-  seedPlayableRegions
+  mobileRegionDataSource,
+  useRegionSearch
 } from '../features/map/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
@@ -18,12 +19,7 @@ import { Panel } from '../ui/Panel.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 
-function createMapRegionCommand(regionId: string): DomainCommand | undefined {
-  const selectedRegion = getSeedPlayableRegion(regionId);
-  if (!selectedRegion) {
-    return undefined;
-  }
-
+function createMapRegionCommand(selectedRegion: PlayableRegionCatalogEntry): DomainCommand {
   return {
     type: 'create_map_region',
     payload: {
@@ -39,10 +35,13 @@ function createMapRegionCommand(regionId: string): DomainCommand | undefined {
 export function MapScreen() {
   const dimensions = useWindowDimensions();
   const { state, submitCommands, refreshActiveMatch } = useAppShell();
-  const [selectedRegionId, setSelectedRegionId] = useState(seedPlayableRegions[0]?.regionId);
+  const [showLegend, setShowLegend] = useState(false);
+  const regionSearch = useRegionSearch({
+    source: mobileRegionDataSource
+  });
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
-  const previewRegion = selectedRegionId ? getSeedPlayableRegion(selectedRegionId) : undefined;
+  const previewRegion = regionSearch.selectedRegion;
   const overlayModel = useMemo(
     () => buildMapOverlayModel({
       visibleMap: projection?.visibleMap,
@@ -56,9 +55,9 @@ export function MapScreen() {
     isHostView &&
     projection &&
     ['draft', 'lobby', 'role_assignment', 'rules_confirmation'].includes(projection.lifecycleState);
-  const canApplySelectedRegion = isHostView && projection?.lifecycleState === 'map_setup' && previewRegion;
+  const canApplySelectedRegion = isHostView && projection?.lifecycleState === 'map_setup' && Boolean(previewRegion);
   const mapHasBeenApplied = Boolean(projection?.visibleMap);
-  const mapHeight = Math.max(320, Math.min(Math.round(dimensions.height * 0.4), 420));
+  const mapHeight = Math.max(190, Math.min(Math.round(dimensions.height * 0.24), 250));
   const regionSummary = projection?.visibleMap?.displayName ?? previewRegion?.displayName ?? 'No region selected';
   const candidateSummary = projection?.visibleMap?.remainingArea
     ? `${projection.visibleMap.remainingArea.precision} / clipped=${String(projection.visibleMap.remainingArea.clippedToRegion)}`
@@ -66,26 +65,14 @@ export function MapScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.hero}>
-        <View style={styles.heroHeader}>
-          <Text style={styles.heroTitle}>Map</Text>
-          <Text style={styles.heroSubtitle}>
-            Player-facing geographic map with authoritative region boundaries, bounded candidate overlays, and visible seeker movement only where the current scope allows it.
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Map Setup</Text>
+          <Text style={styles.headerSubtitle}>
+            Search for a playable city or administrative region first, then preview and apply its bounded boundary through the real runtime flow.
           </Text>
         </View>
-        <MapCanvas
-          height={mapHeight}
-          maxWidth={dimensions.width - 24}
-          visibleMap={projection?.visibleMap}
-          visibleMovementTracks={projection?.visibleMovementTracks}
-          previewRegion={previewRegion}
-        />
-        <View style={styles.legendCard}>
-          <MapLegend overlayModel={overlayModel} />
-        </View>
-      </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         {!activeMatch ? (
           <StateBanner
             tone="warning"
@@ -110,94 +97,149 @@ export function MapScreen() {
           />
         ) : null}
 
-        <Panel title="Map Status">
-          <View style={styles.metricGrid}>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Region</Text>
-              <Text style={styles.metricValue}>{regionSummary}</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Candidate</Text>
-              <Text style={styles.metricValue}>{candidateSummary}</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Constraint Layers</Text>
-              <Text style={styles.metricValue}>{String(projection?.visibleMap?.constraintArtifacts.length ?? 0)}</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Visible Tracks</Text>
-              <Text style={styles.metricValue}>{String(projection?.visibleMovementTracks.length ?? 0)}</Text>
-            </View>
-          </View>
-          <Text style={styles.copy}>
-            The candidate region always comes from the authoritative bounded search area. On iOS and Android this screen uses native map tiles; seeded boundaries are still the current selectable region source.
-          </Text>
-        </Panel>
-
-        <Panel title="Region Actions">
-          <AppButton
-            label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Map Setup'}
-            onPress={() => {
-              if (!projection || !canPrepareMapSetup) {
-                return;
-              }
-
-              const commands = buildMapSetupBootstrapCommands(projection);
-              if (commands.length === 0) {
-                void refreshActiveMatch();
-                return;
-              }
-
-              void submitCommands(commands);
+        <Panel title="Search Regions">
+          <SearchableRegionPicker
+            query={regionSearch.query}
+            minimumQueryLengthMet={regionSearch.minimumQueryLengthMet}
+            results={regionSearch.regions}
+            selectedRegionId={regionSearch.selectedRegionId}
+            sourceLabel={regionSearch.sourceLabel}
+            usingFallback={regionSearch.usingFallback}
+            noticeMessage={regionSearch.noticeMessage}
+            isLoading={regionSearch.isLoading}
+            errorMessage={regionSearch.errorMessage}
+            onChangeQuery={regionSearch.setQuery}
+            onRetry={regionSearch.retrySearch}
+            onSelect={(regionId) => {
+              void regionSearch.selectRegion(regionId);
             }}
-            disabled={!canPrepareMapSetup || state.loadState === 'loading'}
-          />
-          <AppButton
-            label={mapHasBeenApplied ? 'Replace Playable Region' : 'Apply Selected Region'}
-            onPress={() => {
-              if (!canApplySelectedRegion || !selectedRegionId) {
-                return;
-              }
-
-              const command = createMapRegionCommand(selectedRegionId);
-              if (!command) {
-                return;
-              }
-
-              void submitCommands([command]);
-            }}
-            disabled={!canApplySelectedRegion || state.loadState === 'loading'}
-            tone="secondary"
-          />
-          <AppButton
-            label="Refresh Map Projection"
-            onPress={() => {
-              void refreshActiveMatch();
-            }}
-            tone="secondary"
-            disabled={!activeMatch || state.loadState === 'loading'}
           />
         </Panel>
 
         <Panel title="Selected Region">
           {previewRegion ? (
-            <>
-              <Text style={styles.title}>{previewRegion.displayName}</Text>
-              <Text style={styles.copy}>{previewRegion.summary}</Text>
-              <Text style={styles.copy}>Region kind: {previewRegion.regionKind}</Text>
+            <View style={styles.selectedSection}>
+              <View style={styles.selectedHeader}>
+                <View style={styles.selectedTextBlock}>
+                  <Text style={styles.title}>{previewRegion.displayName}</Text>
+                  <Text style={styles.copy}>{previewRegion.summary}</Text>
+                </View>
+                <View style={styles.selectedBadge}>
+                  <Text style={styles.selectedBadgeLabel}>{previewRegion.regionKind}</Text>
+                </View>
+              </View>
+
+              <View style={styles.metricGrid}>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricLabel}>Provider</Text>
+                  <Text style={styles.metricValue}>{previewRegion.sourceLabel}</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricLabel}>Candidate</Text>
+                  <Text style={styles.metricValue}>{candidateSummary}</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricLabel}>Region</Text>
+                  <Text style={styles.metricValue}>{regionSummary}</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricLabel}>Visible Tracks</Text>
+                  <Text style={styles.metricValue}>{String(projection?.visibleMovementTracks.length ?? 0)}</Text>
+                </View>
+              </View>
+
+              {previewRegion.countryLabel ? (
+                <Text style={styles.copy}>
+                  Coverage: {previewRegion.countryLabel}
+                  {previewRegion.parentRegionLabel && previewRegion.parentRegionLabel !== previewRegion.displayName
+                    ? ` · ${previewRegion.parentRegionLabel}`
+                    : ''}
+                </Text>
+              ) : null}
               <Text style={styles.copy}>Feature datasets: {previewRegion.featureDatasetRefs.join(', ')}</Text>
-            </>
+            </View>
           ) : (
-            <Text style={styles.copy}>Select a region to preview its boundary.</Text>
+            <StateBanner
+              tone="info"
+              title="No region selected yet"
+              detail="Use the search panel above to preview a real administrative boundary before applying it to the match."
+            />
           )}
+
+          <View style={styles.actionGrid}>
+            <AppButton
+              label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Map Setup'}
+              onPress={() => {
+                if (!projection || !canPrepareMapSetup) {
+                  return;
+                }
+
+                const commands = buildMapSetupBootstrapCommands(projection);
+                if (commands.length === 0) {
+                  void refreshActiveMatch();
+                  return;
+                }
+
+                void submitCommands(commands);
+              }}
+              disabled={!canPrepareMapSetup || state.loadState === 'loading'}
+            />
+            <AppButton
+              label={mapHasBeenApplied ? 'Replace Playable Region' : 'Apply Selected Region'}
+              onPress={() => {
+                if (!canApplySelectedRegion || !previewRegion) {
+                  return;
+                }
+
+                void submitCommands([createMapRegionCommand(previewRegion)]);
+              }}
+              disabled={!canApplySelectedRegion || state.loadState === 'loading'}
+              tone="secondary"
+            />
+            <AppButton
+              label="Refresh Map Projection"
+              onPress={() => {
+                void refreshActiveMatch();
+              }}
+              tone="secondary"
+              disabled={!activeMatch || state.loadState === 'loading'}
+            />
+          </View>
         </Panel>
 
-        <Panel title="Seed Regions">
-          <RegionSelectionList
-            regions={seedPlayableRegions}
-            selectedRegionId={selectedRegionId}
-            onSelect={setSelectedRegionId}
+        <Panel title="Boundary Preview">
+          <View style={styles.previewHeader}>
+            <View style={styles.previewTextBlock}>
+              <Text style={styles.copy}>
+                The map preview is secondary during setup: it shows the selected playable boundary and the current bounded candidate area without crowding the search workflow.
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setShowLegend((value) => !value)}
+              style={({ pressed }) => [
+                styles.legendToggle,
+                pressed ? styles.legendTogglePressed : null
+              ]}
+            >
+              <Text style={styles.legendToggleLabel}>{showLegend ? 'Hide Legend' : 'Show Legend'}</Text>
+            </Pressable>
+          </View>
+          <MapCanvas
+            height={mapHeight}
+            maxWidth={dimensions.width - 32}
+            visibleMap={projection?.visibleMap}
+            visibleMovementTracks={projection?.visibleMovementTracks}
+            previewRegion={previewRegion}
           />
+          {showLegend ? (
+            <View style={styles.legendCard}>
+              <MapLegend overlayModel={overlayModel} compact />
+            </View>
+          ) : null}
+          <Text style={styles.previewMeta}>
+            Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)}
+          </Text>
         </Panel>
       </ScrollView>
     </View>
@@ -209,35 +251,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background
   },
-  hero: {
-    backgroundColor: colors.surface,
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    gap: 12,
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-    paddingTop: 12
-  },
-  heroHeader: {
+  header: {
     gap: 6,
-    paddingHorizontal: 4
+    paddingTop: 4
   },
-  heroTitle: {
+  headerTitle: {
     color: colors.text,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800'
   },
-  heroSubtitle: {
+  headerSubtitle: {
     color: colors.textMuted,
     fontSize: 14,
     lineHeight: 20
-  },
-  legendCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 12
   },
   scroll: {
     flex: 1
@@ -250,6 +276,31 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 18,
     fontWeight: '700'
+  },
+  selectedSection: {
+    gap: 10
+  },
+  selectedHeader: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between'
+  },
+  selectedTextBlock: {
+    flex: 1,
+    gap: 6
+  },
+  selectedBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.accentMuted,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6
+  },
+  selectedBadgeLabel: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase'
   },
   copy: {
     color: colors.textMuted,
@@ -279,5 +330,45 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18
+  },
+  actionGrid: {
+    gap: 10
+  },
+  previewHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between'
+  },
+  previewTextBlock: {
+    flex: 1
+  },
+  legendToggle: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  legendTogglePressed: {
+    opacity: 0.85
+  },
+  legendToggleLabel: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  legendCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 10
+  },
+  previewMeta: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '600'
   }
 });

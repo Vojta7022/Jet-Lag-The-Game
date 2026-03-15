@@ -3,12 +3,12 @@ import type {
   VisibleMovementTrackProjection
 } from '../../../../../packages/shared-types/src/index.ts';
 
-import type { SeedPlayableRegion } from './seed-regions.ts';
+import type { PlayableRegionCatalogEntry } from './region-types.ts';
 
 export interface MapCanvasProps {
   visibleMap?: VisibleMapProjection;
   visibleMovementTracks?: VisibleMovementTrackProjection[];
-  previewRegion?: SeedPlayableRegion;
+  previewRegion?: PlayableRegionCatalogEntry;
   height?: number;
   maxWidth?: number;
 }

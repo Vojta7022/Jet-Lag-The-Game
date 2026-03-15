@@ -4,7 +4,7 @@ import type {
   VisibleMovementTrackProjection
 } from '../../../../../packages/shared-types/src/index.ts';
 
-import type { SeedPlayableRegion } from './seed-regions.ts';
+import type { PlayableRegionCatalogEntry } from './region-types.ts';
 
 export interface MapOverlayDescriptor {
   overlayId: string;
@@ -27,7 +27,7 @@ export interface MapOverlayModel {
 export function buildMapOverlayModel(args: {
   visibleMap?: VisibleMapProjection;
   visibleMovementTracks?: VisibleMovementTrackProjection[];
-  previewRegion?: SeedPlayableRegion;
+  previewRegion?: PlayableRegionCatalogEntry;
 }): MapOverlayModel {
   const overlays: MapOverlayDescriptor[] = [];
 

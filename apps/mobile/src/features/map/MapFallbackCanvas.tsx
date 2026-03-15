@@ -17,12 +17,12 @@ import {
   projectGeometryPoints
 } from './map-geometry.ts';
 import { buildMapOverlayModel } from './map-overlays.ts';
-import type { SeedPlayableRegion } from './seed-regions.ts';
+import type { PlayableRegionCatalogEntry } from './region-types.ts';
 
 interface MapFallbackCanvasProps {
   visibleMap?: VisibleMapProjection;
   visibleMovementTracks?: VisibleMovementTrackProjection[];
-  previewRegion?: SeedPlayableRegion;
+  previewRegion?: PlayableRegionCatalogEntry;
   height?: number;
   maxWidth?: number;
   notice?: string;
@@ -55,7 +55,7 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
       <View style={[styles.frame, { width, height }]}>
         <Text style={styles.emptyTitle}>Map preview unavailable</Text>
         <Text style={styles.emptyCopy}>
-          Select a seeded region or apply a region to the current match to render the bounded search surface.
+          Search for a region or apply a selected boundary to the current match to render the bounded search surface.
         </Text>
       </View>
     );

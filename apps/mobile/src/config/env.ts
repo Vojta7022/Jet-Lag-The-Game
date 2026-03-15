@@ -14,6 +14,10 @@ export interface MobileAppEnvironment {
   defaultMatchPrefix: string;
   onlineProjectUrl?: string;
   nearbyJoinTtlSeconds: number;
+  regionProviderBaseUrl: string;
+  regionProviderContactEmail?: string;
+  regionProviderThrottleMs: number;
+  regionProviderCacheTtlSeconds: number;
 }
 
 export interface RuntimeOption {
@@ -60,7 +64,11 @@ export const mobileAppEnvironment: MobileAppEnvironment = {
   enableDeveloperTools: parseBoolean(process.env.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS, true),
   defaultMatchPrefix: process.env.EXPO_PUBLIC_DEFAULT_MATCH_PREFIX || 'match',
   onlineProjectUrl: process.env.EXPO_PUBLIC_ONLINE_PROJECT_URL,
-  nearbyJoinTtlSeconds: parseNumber(process.env.EXPO_PUBLIC_NEARBY_JOIN_TTL_SECONDS, 600)
+  nearbyJoinTtlSeconds: parseNumber(process.env.EXPO_PUBLIC_NEARBY_JOIN_TTL_SECONDS, 600),
+  regionProviderBaseUrl: process.env.EXPO_PUBLIC_REGION_PROVIDER_BASE_URL || 'https://nominatim.openstreetmap.org',
+  regionProviderContactEmail: process.env.EXPO_PUBLIC_REGION_PROVIDER_CONTACT_EMAIL,
+  regionProviderThrottleMs: parseNumber(process.env.EXPO_PUBLIC_REGION_PROVIDER_THROTTLE_MS, 1200),
+  regionProviderCacheTtlSeconds: parseNumber(process.env.EXPO_PUBLIC_REGION_PROVIDER_CACHE_TTL_SECONDS, 900)
 };
 
 export function getRuntimeOptions(environment: MobileAppEnvironment): RuntimeOption[] {

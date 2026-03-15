@@ -9,7 +9,7 @@ Included in this phase:
 - provider stack for runtime selection, transport/runtime wiring, and shared shell state
 - basic session entry flow
 - create-match and join-match flows
-- real native map screen with seeded playable-region selection and bounded overlays
+- real native map screen with provider-backed searchable region selection and bounded overlays
 - first-pass question center wired to `begin_question_prompt`, `ask_question`, `answer_question`, and host-side `apply_constraint`
 - first-pass cards screen wired to `draw_card`, `play_card`, `discard_card`, and `resolve_card_window`
 - first-pass chat screen with public/team channel switching, scoped message lists, and honest placeholder attachment flows
@@ -94,6 +94,7 @@ Currently supported `EXPO_PUBLIC_*` variables include:
 The mobile shell now includes a player-facing map screen that:
 
 - previews seeded playable regions
+- searches cities and larger administrative regions through an OSM-compatible boundary provider abstraction
 - bootstraps a host match into `map_setup` through real engine commands
 - applies `create_map_region`
 - renders real native map tiles on iOS and Android
@@ -108,9 +109,16 @@ The first seed regions are:
 
 What is still placeholder in this phase:
 
-- selectable region data still comes from the seeded region catalog
+- direct mobile use of the public OSM/Nominatim endpoint is suitable for local or low-volume development only
+- a production deployment should move the region provider behind a backend or proxy that can enforce attribution, caching, and rate limiting cleanly
 - web keeps the bounded fallback preview instead of the native tile surface
 - map styling is intentionally functional rather than polished
+
+Current provider behavior:
+
+- the app first queries an OSM-compatible Nominatim search source for real place candidates and polygon boundaries
+- provider results are cached in memory and spaced out with a minimum delay between requests
+- bundled seed regions are only used when the provider is unavailable, not as the default path
 
 ## Current Question Phase
 

@@ -3,7 +3,7 @@ import type {
   VisibleMapProjection
 } from '../../../../../packages/shared-types/src/index.ts';
 
-import type { SeedPlayableRegion } from './seed-regions.ts';
+import type { PlayableRegionCatalogEntry } from './region-types.ts';
 
 export interface GeometryBounds {
   minLongitude: number;
@@ -342,7 +342,7 @@ export function collectGeometryCoordinates(geometry: GeoJsonGeometryModel | unde
 
 export function buildMapCameraRegion(args: {
   visibleMap?: VisibleMapProjection;
-  previewRegion?: SeedPlayableRegion;
+  previewRegion?: PlayableRegionCatalogEntry;
   geometry?: GeoJsonGeometryModel;
 }): MapCameraRegion | undefined {
   const referenceGeometry = args.geometry ?? getPreferredMapGeometry({
@@ -367,7 +367,7 @@ export function buildMapCameraRegion(args: {
 
 export function getPreferredMapGeometry(args: {
   visibleMap?: VisibleMapProjection;
-  previewRegion?: SeedPlayableRegion;
+  previewRegion?: PlayableRegionCatalogEntry;
 }): GeoJsonGeometryModel | undefined {
   if (args.visibleMap?.playableBoundary.geometry) {
     return args.visibleMap.playableBoundary.geometry;

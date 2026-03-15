@@ -1,15 +1,9 @@
-import type {
-  GeoJsonGeometryModel,
-  PlayableRegionKind
-} from '../../../../../packages/shared-types/src/index.ts';
+import type { GeoJsonGeometryModel } from '../../../../../packages/shared-types/src/index.ts';
 
-export interface SeedPlayableRegion {
-  regionId: string;
-  displayName: string;
-  regionKind: PlayableRegionKind;
-  summary: string;
-  featureDatasetRefs: string[];
-  geometry: GeoJsonGeometryModel;
+import type { PlayableRegionCatalogEntry } from './region-types.ts';
+
+export interface SeedPlayableRegion extends PlayableRegionCatalogEntry {
+  sourceKind: 'seed_catalog';
 }
 
 function polygon(coordinates: Array<[number, number]>): GeoJsonGeometryModel {
@@ -26,6 +20,16 @@ export const seedPlayableRegions: SeedPlayableRegion[] = [
     regionKind: 'city',
     summary: 'Seed city boundary for first-pass map selection and bounded search rendering.',
     featureDatasetRefs: ['osm-core', 'osm-admin', 'transit-registry'],
+    sourceKind: 'seed_catalog',
+    sourceLabel: 'Bundled seed region catalog',
+    searchAliases: ['Praha', 'Prague City', 'Hlavni mesto Praha', 'Czech capital'],
+    countryLabel: 'Czechia',
+    parentRegionLabel: 'Prague',
+    providerMetadata: {
+      providerKey: 'seed_catalog',
+      providerLabel: 'Bundled seed region catalog',
+      boundarySource: 'seed_fallback'
+    },
     geometry: polygon([
       [14.22, 50.17],
       [14.72, 50.17],
@@ -42,6 +46,16 @@ export const seedPlayableRegions: SeedPlayableRegion[] = [
     regionKind: 'admin_region',
     summary: 'Seed administrative boundary for a larger regional search surface around Prague.',
     featureDatasetRefs: ['osm-core', 'osm-admin', 'rail-network', 'surface-water'],
+    sourceKind: 'seed_catalog',
+    sourceLabel: 'Bundled seed region catalog',
+    searchAliases: ['Central Bohemian Region', 'Stredocesky Kraj', 'Bohemia', 'Prague hinterland'],
+    countryLabel: 'Czechia',
+    parentRegionLabel: 'Central Bohemia',
+    providerMetadata: {
+      providerKey: 'seed_catalog',
+      providerLabel: 'Bundled seed region catalog',
+      boundarySource: 'seed_fallback'
+    },
     geometry: polygon([
       [13.15, 49.74],
       [15.55, 49.74],
@@ -58,6 +72,16 @@ export const seedPlayableRegions: SeedPlayableRegion[] = [
     regionKind: 'city',
     summary: 'Alternative city-scale seed region for testing different map footprints.',
     featureDatasetRefs: ['osm-core', 'osm-admin', 'transit-registry', 'rail-network'],
+    sourceKind: 'seed_catalog',
+    sourceLabel: 'Bundled seed region catalog',
+    searchAliases: ['Wien', 'Vienna City', 'Austrian capital'],
+    countryLabel: 'Austria',
+    parentRegionLabel: 'Vienna',
+    providerMetadata: {
+      providerKey: 'seed_catalog',
+      providerLabel: 'Bundled seed region catalog',
+      boundarySource: 'seed_fallback'
+    },
     geometry: polygon([
       [16.17, 48.12],
       [16.58, 48.12],
