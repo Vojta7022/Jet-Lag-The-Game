@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createRandomUuid } from '../../../shared-types/src/index.ts';
 
 import type {
   AuthorityRuntimeMode,
@@ -114,7 +114,7 @@ export function buildProjectionRecord(
   });
 
   return {
-    projectionRecordId: `projection:${randomUUID()}`,
+    projectionRecordId: `projection:${createRandomUuid()}`,
     matchId: aggregate.matchId,
     recipientId: recipient.recipientId,
     projectionScope: recipient.scope,

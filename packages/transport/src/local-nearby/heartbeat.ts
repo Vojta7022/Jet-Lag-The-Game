@@ -1,6 +1,4 @@
-import { randomUUID } from 'node:crypto';
-
-import type { NearbyHeartbeatRecord } from '../../../shared-types/src/index.ts';
+import { createRandomUuid, type NearbyHeartbeatRecord } from '../../../shared-types/src/index.ts';
 
 export function createHeartbeatRecord(
   matchId: string,
@@ -9,7 +7,7 @@ export function createHeartbeatRecord(
   emittedAt: string
 ): NearbyHeartbeatRecord {
   return {
-    heartbeatId: `heartbeat:${randomUUID()}`,
+    heartbeatId: `heartbeat:${createRandomUuid()}`,
     matchId,
     hostSessionId,
     sequence,

@@ -104,6 +104,29 @@ npm run test:geo
 
 The current importer outputs a draft content pack with provenance metadata, normalization warnings, and row-level import reporting. Rulesets and map presets are intentionally still draft-time follow-up work.
 
+## Mobile Shell
+
+The Expo mobile shell lives in [apps/mobile/README.md](/Users/vojtechponrt/Documents/Jet%20Lag%20The%20Game/apps/mobile/README.md).
+
+For the first local run from the repository root, use the npm workspace commands:
+
+```bash
+npm install
+npm run mobile:test:smoke
+npm run mobile:start
+```
+
+Additional helpers:
+
+```bash
+npm run mobile:typecheck
+npm run mobile:ios
+npm run mobile:android
+npm run mobile:web
+```
+
+The current workspace metadata also includes `pnpm-workspace.yaml`, but the checked-in scripts and README steps are currently written around npm workspaces for the first runnable mobile pass.
+
 ## Notes
 
 - All code, comments, docs, and UI text should be in English.

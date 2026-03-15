@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import type {
   AuthorityRuntimeMode,
   ContentPack,
@@ -14,6 +12,7 @@ import type {
   SyncEnvelopeKind,
   TransportEventFrame
 } from '../../shared-types/src/index.ts';
+import { createRandomUuid } from '../../shared-types/src/index.ts';
 import { buildMatchProjection } from '../../engine/src/index.ts';
 import { getPlayerRole, getPlayerTeam } from '../../domain/src/index.ts';
 
@@ -50,7 +49,7 @@ export function createMatchSnapshot(
   runtimeMode: AuthorityRuntimeMode
 ): MatchRuntimeSnapshot {
   return {
-    snapshotId: `snapshot:${randomUUID()}`,
+    snapshotId: `snapshot:${createRandomUuid()}`,
     matchId: aggregate.matchId,
     contentPackId: aggregate.contentPackId,
     runtimeMode,
@@ -139,7 +138,7 @@ export function buildSyncEnvelope(options: BuildSyncEnvelopeOptions): SyncEnvelo
   const lastSeenSequence = options.cursor?.lastEventSequence ?? 0;
 
   return {
-    syncId: `sync:${randomUUID()}`,
+    syncId: `sync:${createRandomUuid()}`,
     kind,
     matchId: options.aggregate.matchId,
     runtimeMode: options.runtimeMode,
@@ -149,7 +148,7 @@ export function buildSyncEnvelope(options: BuildSyncEnvelopeOptions): SyncEnvelo
     baseSnapshotVersion: options.cursor?.snapshotVersion,
     requiresResync,
     projectionDelivery: {
-      deliveryId: `delivery:${randomUUID()}`,
+      deliveryId: `delivery:${createRandomUuid()}`,
       matchId: options.aggregate.matchId,
       runtimeMode: options.runtimeMode,
       projectionScope: options.recipient.scope,

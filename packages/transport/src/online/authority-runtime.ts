@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createRandomUuid } from '../../../shared-types/src/index.ts';
 
 import type {
   AuthorityRuntime,
@@ -159,7 +159,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     request: SubscriptionRequest,
     listener: SyncListener
   ): Promise<TransportSubscription> {
-    const subscriptionId = `subscription:${randomUUID()}`;
+    const subscriptionId = `subscription:${createRandomUuid()}`;
     const matchSubscriptions =
       this.subscriptionsByMatchId.get(request.matchId) ?? new Map<string, OnlineRuntimeSubscriptionRecord>();
 

@@ -51,6 +51,10 @@ export function getHandCardsForHolder(
 }
 
 export function scopeCanView(scope: ProjectionScope, visibleTo: ProjectionScope[]): boolean {
+  if (scope === 'player_private' && visibleTo.includes('team_private')) {
+    return true;
+  }
+
   return visibleTo.includes(scope);
 }
 

@@ -68,7 +68,7 @@ export interface NearbyTransportService {
 export interface NearbyGuestTransportRuntime extends NearbyTransportService {
   subscribeGuest(
     guestSessionId: string,
-    request: NearbyGuestSyncRequest & { deliverInitialSync?: boolean },
+    request: Omit<NearbyGuestSyncRequest, 'guestSessionId'> & { deliverInitialSync?: boolean },
     listener: (envelope: SyncEnvelope) => void | Promise<void>
   ): Promise<TransportSubscription>;
 }

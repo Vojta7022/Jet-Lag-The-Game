@@ -8,9 +8,16 @@
   ],
   "scripts": {
     "import:jetlag": "node --experimental-strip-types packages/content-import/src/cli.ts import --input \"./Jet Lag The Game.xlsx\" --output \"./samples/generated/jet-lag-the-game.content-pack.json\" --report \"./samples/generated/jet-lag-the-game.import-report.json\"",
-    "test": "node --experimental-strip-types --test tests/importer/*.test.ts tests/geo/*.test.ts tests/engine/*.test.ts tests/transport/*.test.ts",
+    "mobile:start": "npm --workspace apps/mobile run start",
+    "mobile:ios": "npm --workspace apps/mobile run ios",
+    "mobile:android": "npm --workspace apps/mobile run android",
+    "mobile:web": "npm --workspace apps/mobile run web",
+    "mobile:typecheck": "npm --workspace apps/mobile run typecheck",
+    "mobile:test:smoke": "npm --workspace apps/mobile run test:smoke",
+    "test": "node --experimental-strip-types --test tests/importer/*.test.ts tests/geo/*.test.ts tests/engine/*.test.ts tests/transport/*.test.ts apps/mobile/tests/*.test.ts",
     "test:engine": "node --experimental-strip-types --test tests/engine/*.test.ts",
     "test:geo": "node --experimental-strip-types --test tests/geo/*.test.ts",
-    "test:transport": "node --experimental-strip-types --test tests/transport/*.test.ts"
+    "test:transport": "node --experimental-strip-types --test tests/transport/*.test.ts",
+    "test:mobile": "node --experimental-strip-types --test apps/mobile/tests/*.test.ts"
   }
 }

@@ -1,11 +1,12 @@
 import type {
+  AttachmentKind,
   GeoJsonGeometryModel,
   MatchLifecycleState,
   MatchMode,
   MatchRole,
   PlayableRegionKind,
   SeekPhaseSubstate
-} from '../domain/match.ts';
+} from '../domain/index.ts';
 import type { ProjectionScope } from '../content.ts';
 
 export interface ActorRef {
@@ -42,8 +43,11 @@ export type DomainCommand =
   | AskQuestionCommand
   | AnswerQuestionCommand
   | ApplyConstraintCommand
+  | SendChatMessageCommand
+  | UploadAttachmentCommand
   | DrawCardCommand
   | PlayCardCommand
+  | DiscardCardCommand
   | ResolveCardWindowCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
@@ -95,7 +99,7 @@ export interface AssignRoleCommand {
 
 export interface ConfirmRolesCommand {
   type: 'confirm_roles';
-  payload: Record<string, never>;
+  payload: {};
 }
 
 export interface SetRulesetCommand {
@@ -107,7 +111,7 @@ export interface SetRulesetCommand {
 
 export interface ConfirmRulesCommand {
   type: 'confirm_rules';
-  payload: Record<string, never>;
+  payload: {};
 }
 
 export interface CreateMapRegionCommand {
@@ -123,7 +127,7 @@ export interface CreateMapRegionCommand {
 
 export interface StartMatchCommand {
   type: 'start_match';
-  payload: Record<string, never>;
+  payload: {};
 }
 
 export interface LockHiderLocationCommand {
@@ -147,12 +151,12 @@ export interface UpdateLocationCommand {
 
 export interface EndHidePhaseCommand {
   type: 'end_hide_phase';
-  payload: Record<string, never>;
+  payload: {};
 }
 
 export interface BeginQuestionPromptCommand {
   type: 'begin_question_prompt';
-  payload: Record<string, never>;
+  payload: {};
 }
 
 export interface AskQuestionCommand {
@@ -182,6 +186,32 @@ export interface ApplyConstraintCommand {
   };
 }
 
+export interface SendChatMessageCommand {
+  type: 'send_chat_message';
+  payload: {
+    messageId: string;
+    channelId: string;
+    body?: string;
+    attachmentIds?: string[];
+  };
+}
+
+export interface UploadAttachmentCommand {
+  type: 'upload_attachment';
+  payload: {
+    attachmentId: string;
+    kind: AttachmentKind;
+    label: string;
+    mimeType?: string;
+    note?: string;
+    visibilityScope: ProjectionScope;
+    channelId?: string;
+    questionInstanceId?: string;
+    cardInstanceId?: string;
+    captureMetadata?: Record<string, unknown>;
+  };
+}
+
 export interface DrawCardCommand {
   type: 'draw_card';
   payload: {
@@ -197,6 +227,13 @@ export interface PlayCardCommand {
   };
 }
 
+export interface DiscardCardCommand {
+  type: 'discard_card';
+  payload: {
+    cardInstanceId: string;
+  };
+}
+
 export interface ResolveCardWindowCommand {
   type: 'resolve_card_window';
   payload: {
@@ -206,7 +243,7 @@ export interface ResolveCardWindowCommand {
 
 export interface CompleteCooldownCommand {
   type: 'complete_cooldown';
-  payload: Record<string, never>;
+  payload: {};
 }
 
 export interface PauseMatchCommand {
@@ -218,7 +255,7 @@ export interface PauseMatchCommand {
 
 export interface ResumeMatchCommand {
   type: 'resume_match';
-  payload: Record<string, never>;
+  payload: {};
 }
 
 export interface EndMatchCommand {

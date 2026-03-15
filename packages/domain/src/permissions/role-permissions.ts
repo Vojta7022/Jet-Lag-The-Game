@@ -40,8 +40,11 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'join_match',
   'lock_hider_location',
   'update_location',
+  'send_chat_message',
+  'upload_attachment',
   'draw_card',
   'play_card',
+  'discard_card',
   'answer_question'
 ]);
 
@@ -50,11 +53,14 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'begin_question_prompt',
   'ask_question',
   'update_location',
+  'send_chat_message',
+  'upload_attachment',
   'draw_card',
-  'play_card'
+  'play_card',
+  'discard_card'
 ]);
 
-const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match']);
+const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'send_chat_message']);
 
 const SYSTEM_COMMANDS = new Set<DomainCommand['type']>([
   'create_match',

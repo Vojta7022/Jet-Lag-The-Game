@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createRandomUuid } from '../../../shared-types/src/index.ts';
 
 import type {
   MatchProjection,
@@ -29,7 +29,7 @@ export class SingleDeviceRevealFlowManager {
     }
 
     const token: SingleDeviceRevealToken = {
-      tokenId: `reveal:${randomUUID()}`,
+      tokenId: `reveal:${createRandomUuid()}`,
       matchId: request.matchId,
       viewer: request.viewer,
       reason: request.reason,
@@ -40,7 +40,7 @@ export class SingleDeviceRevealFlowManager {
 
     this.tokens.set(token.tokenId, token);
     this.appendCheckpoint(token.matchId, {
-      checkpointId: `checkpoint:${randomUUID()}`,
+      checkpointId: `checkpoint:${createRandomUuid()}`,
       tokenId: token.tokenId,
       matchId: token.matchId,
       state: token.state,
@@ -69,7 +69,7 @@ export class SingleDeviceRevealFlowManager {
     };
     this.tokens.set(tokenId, updated);
     this.appendCheckpoint(updated.matchId, {
-      checkpointId: `checkpoint:${randomUUID()}`,
+      checkpointId: `checkpoint:${createRandomUuid()}`,
       tokenId,
       matchId: updated.matchId,
       state: updated.state,
@@ -98,7 +98,7 @@ export class SingleDeviceRevealFlowManager {
     };
     this.tokens.set(tokenId, updated);
     this.appendCheckpoint(updated.matchId, {
-      checkpointId: `checkpoint:${randomUUID()}`,
+      checkpointId: `checkpoint:${createRandomUuid()}`,
       tokenId,
       matchId: updated.matchId,
       state: updated.state,

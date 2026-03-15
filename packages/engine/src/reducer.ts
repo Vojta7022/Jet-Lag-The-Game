@@ -2,7 +2,8 @@ import type {
   CardInstanceModel,
   DomainEventEnvelope,
   EventLogEntry,
-  MatchAggregate
+  MatchAggregate,
+  TeamModel
 } from '../../shared-types/src/index.ts';
 import {
   applyConstraintRecordToSearchArea,
@@ -35,6 +36,71 @@ function moveCardToZone(
     holderType,
     holderId,
     updatedAt
+  };
+}
+
+function mapTimers(
+  timers: MatchAggregate['timers'],
+  transform: (timer: MatchAggregate['timers'][string]) => MatchAggregate['timers'][string]
+): MatchAggregate['timers'] {
+  const updated: MatchAggregate['timers'] = {};
+
+  for (const timer of Object.values(timers)) {
+    updated[timer.timerId] = transform(timer);
+  }
+
+  return updated;
+}
+
+function buildDefaultChatChannels(teams: TeamModel[], createdAt: string): MatchAggregate['chatChannels'] {
+  const channels = [
+    {
+      channelId: 'channel:lobby',
+      kind: 'lobby' as const,
+      displayName: 'Lobby',
+      visibilityScope: 'public_match' as const,
+      createdAt
+    },
+    {
+      channelId: 'channel:global',
+      kind: 'global' as const,
+      displayName: 'Global',
+      visibilityScope: 'public_match' as const,
+      createdAt
+    },
+    ...teams.map((team) => ({
+      channelId: `channel:team:${team.teamId}`,
+      kind: 'team' as const,
+      displayName: `${team.name} Chat`,
+      visibilityScope: 'team_private' as const,
+      teamId: team.teamId,
+      createdAt
+    }))
+  ];
+
+  return Object.fromEntries(channels.map((channel) => [channel.channelId, channel]));
+}
+
+function ensureTeamChannel(
+  aggregate: MatchAggregate,
+  team: TeamModel,
+  createdAt: string
+): MatchAggregate['chatChannels'] {
+  const channelId = `channel:team:${team.teamId}`;
+  if (aggregate.chatChannels[channelId]) {
+    return aggregate.chatChannels;
+  }
+
+  return {
+    ...aggregate.chatChannels,
+    [channelId]: {
+      channelId,
+      kind: 'team',
+      displayName: `${team.name} Chat`,
+      visibilityScope: 'team_private',
+      teamId: team.teamId,
+      createdAt
+    }
   };
 }
 
@@ -71,6 +137,9 @@ export function reduceMatchAggregate(
         cardInstances: Object.fromEntries(cardInstances.map((card) => [card.cardInstanceId, card])),
         questionInstances: {},
         constraints: {},
+        chatChannels: buildDefaultChatChannels(teams, eventEnvelope.occurredAt),
+        chatMessages: {},
+        attachments: {},
         locationSamples: [],
         eventLog: [eventLogEntry],
         hiddenState: {}
@@ -130,7 +199,8 @@ export function reduceMatchAggregate(
             ...eventEnvelope.event.payload.team,
             memberPlayerIds
           }
-        }
+        },
+        chatChannels: ensureTeamChannel(base, eventEnvelope.event.payload.team, eventEnvelope.occurredAt)
       };
     }
     case 'roles_confirmed':
@@ -201,12 +271,10 @@ export function reduceMatchAggregate(
         ]
       };
     case 'hide_phase_ended': {
-      const updatedTimers = Object.fromEntries(
-        Object.values(base.timers).map((timer) =>
-          timer.kind === 'hide'
-            ? [timer.timerId, { ...timer, status: 'completed', remainingSeconds: 0 }]
-            : [timer.timerId, timer]
-        )
+      const updatedTimers = mapTimers(base.timers, (timer) =>
+        timer.kind === 'hide'
+          ? { ...timer, status: 'completed', remainingSeconds: 0 }
+          : timer
       );
 
       return {
@@ -250,7 +318,7 @@ export function reduceMatchAggregate(
       };
     }
     case 'constraint_applied': {
-      const nextQuestionStatus =
+      const nextQuestionStatus: MatchAggregate['questionInstances'][string]['status'] =
         eventEnvelope.event.payload.seekPhaseSubstate === 'awaiting_card_resolution'
           ? 'awaiting_card_resolution'
           : 'resolved';
@@ -289,6 +357,39 @@ export function reduceMatchAggregate(
           : base.timers
       };
     }
+    case 'attachment_uploaded':
+      return {
+        ...base,
+        attachments: {
+          ...base.attachments,
+          [eventEnvelope.event.payload.attachment.attachmentId]: eventEnvelope.event.payload.attachment
+        }
+      };
+    case 'chat_message_sent': {
+      const updatedAttachments = { ...base.attachments };
+
+      for (const attachmentId of eventEnvelope.event.payload.message.attachmentIds) {
+        const attachment = updatedAttachments[attachmentId];
+        if (!attachment) {
+          continue;
+        }
+
+        updatedAttachments[attachmentId] = {
+          ...attachment,
+          status: 'linked',
+          linkedMessageId: eventEnvelope.event.payload.message.messageId
+        };
+      }
+
+      return {
+        ...base,
+        chatMessages: {
+          ...base.chatMessages,
+          [eventEnvelope.event.payload.message.messageId]: eventEnvelope.event.payload.message
+        },
+        attachments: updatedAttachments
+      };
+    }
     case 'card_drawn':
       return {
         ...base,
@@ -298,6 +399,7 @@ export function reduceMatchAggregate(
         }
       };
     case 'card_played':
+    case 'card_discarded':
       return {
         ...base,
         cardInstances: {
@@ -323,7 +425,7 @@ export function reduceMatchAggregate(
         updatedCards[card.cardInstanceId] = moveCardToZone(
           card,
           'discard_pile',
-          'deck',
+          card.holderType,
           card.holderId,
           eventEnvelope.occurredAt
         );
@@ -331,14 +433,14 @@ export function reduceMatchAggregate(
 
       const updatedQuestionInstances =
         base.activeQuestionInstanceId && base.questionInstances[base.activeQuestionInstanceId]
-          ? {
+          ? ({
               ...base.questionInstances,
               [base.activeQuestionInstanceId]: {
                 ...base.questionInstances[base.activeQuestionInstanceId],
                 status: 'resolved',
                 resolvedAt: eventEnvelope.occurredAt
               }
-            }
+            } satisfies MatchAggregate['questionInstances'])
           : base.questionInstances;
 
       return {
@@ -358,12 +460,10 @@ export function reduceMatchAggregate(
       };
     }
     case 'cooldown_completed': {
-      const updatedTimers = Object.fromEntries(
-        Object.values(base.timers).map((timer) =>
-          timer.kind === 'cooldown'
-            ? [timer.timerId, { ...timer, status: 'completed', remainingSeconds: 0 }]
-            : [timer.timerId, timer]
-        )
+      const updatedTimers = mapTimers(base.timers, (timer) =>
+        timer.kind === 'cooldown'
+          ? { ...timer, status: 'completed', remainingSeconds: 0 }
+          : timer
       );
 
       return {
@@ -373,19 +473,14 @@ export function reduceMatchAggregate(
       };
     }
     case 'match_paused': {
-      const updatedTimers = Object.fromEntries(
-        Object.values(base.timers).map((timer) =>
-          timer.status === 'running'
-            ? [
-                timer.timerId,
-                {
-                  ...timer,
-                  status: 'paused',
-                  pausedAt: eventEnvelope.occurredAt
-                }
-              ]
-            : [timer.timerId, timer]
-        )
+      const updatedTimers = mapTimers(base.timers, (timer) =>
+        timer.status === 'running'
+          ? {
+              ...timer,
+              status: 'paused',
+              pausedAt: eventEnvelope.occurredAt
+            }
+          : timer
       );
 
       return {
@@ -395,19 +490,14 @@ export function reduceMatchAggregate(
       };
     }
     case 'match_resumed': {
-      const updatedTimers = Object.fromEntries(
-        Object.values(base.timers).map((timer) =>
-          timer.status === 'paused'
-            ? [
-                timer.timerId,
-                {
-                  ...timer,
-                  status: 'running',
-                  pausedAt: undefined
-                }
-              ]
-            : [timer.timerId, timer]
-        )
+      const updatedTimers = mapTimers(base.timers, (timer) =>
+        timer.status === 'paused'
+          ? {
+              ...timer,
+              status: 'running',
+              pausedAt: undefined
+            }
+          : timer
       );
 
       return {

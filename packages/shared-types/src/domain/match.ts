@@ -6,6 +6,11 @@ import type {
   ScaleKey,
   VisibilityPolicyRef
 } from '../content.ts';
+import type {
+  AttachmentModel,
+  ChatChannelModel,
+  ChatMessageModel
+} from './chat.ts';
 
 export type MatchMode = 'online' | 'local_nearby' | 'single_device_referee';
 
@@ -283,6 +288,9 @@ export interface MatchAggregate {
   cardInstances: Record<string, CardInstanceModel>;
   questionInstances: Record<string, QuestionInstanceModel>;
   constraints: Record<string, ConstraintRecordModel>;
+  chatChannels: Record<string, ChatChannelModel>;
+  chatMessages: Record<string, ChatMessageModel>;
+  attachments: Record<string, AttachmentModel>;
   locationSamples: LocationSampleModel[];
   eventLog: EventLogEntry[];
   hiddenState: HiddenStateModel;

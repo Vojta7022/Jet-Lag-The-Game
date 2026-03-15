@@ -1,8 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { createRandomUuid } from '../../../shared-types/src/index.ts';
 
 import type {
+  AttachmentModel,
   CardDefinition,
   CardInstanceModel,
+  ChatMessageModel,
   CommandEnvelope,
   ContentPack,
   DomainEventEnvelope,
@@ -18,6 +20,7 @@ import {
 } from '../../../geo/src/index.ts';
 
 import { getPlayerRole, getPlayerTeam } from '../../../domain/src/index.ts';
+import { getChatChannel } from '../../../domain/src/index.ts';
 import {
   getCardDefinition,
   getConstraintDefinition,
@@ -55,7 +58,7 @@ function makeEventEnvelope(
   event: DomainEventEnvelope['event']
 ): DomainEventEnvelope {
   return {
-    eventId: randomUUID(),
+    eventId: createRandomUuid(),
     matchId: envelope.matchId,
     sequence: nextSequence(aggregate, index),
     occurredAt: envelope.occurredAt,
@@ -132,7 +135,7 @@ function findTopCardInDeck(aggregate: MatchAggregate, deckId: string): CardInsta
 function buildCooldownTimer(aggregate: MatchAggregate, contentPack: ContentPack, templateId: string, occurredAt: string): TimerModel {
   const durationSeconds = getQuestionCooldownSeconds(contentPack, aggregate.selectedRulesetId, templateId);
   return {
-    timerId: `cooldown:${randomUUID()}`,
+    timerId: `cooldown:${createRandomUuid()}`,
     kind: 'cooldown',
     status: 'running',
     durationSeconds,
@@ -162,7 +165,7 @@ function buildLocationSample(
   const team = getPlayerTeam(aggregate, playerId);
 
   return {
-    sampleId: `location:${randomUUID()}`,
+    sampleId: `location:${createRandomUuid()}`,
     playerId,
     role,
     teamId: team?.teamId,
@@ -171,6 +174,57 @@ function buildLocationSample(
     accuracyMeters: envelope.command.payload.accuracyMeters,
     source: envelope.command.payload.source ?? 'device',
     recordedAt: envelope.occurredAt
+  };
+}
+
+function buildChatMessage(
+  aggregate: MatchAggregate,
+  envelope: CommandEnvelope<Extract<CommandEnvelope['command'], { type: 'send_chat_message' }>>
+): ChatMessageModel {
+  const senderPlayerId = envelope.actor.playerId;
+  const senderTeam = getPlayerTeam(aggregate, senderPlayerId);
+  const channel = getChatChannel(aggregate, envelope.command.payload.channelId);
+  const senderDisplayName =
+    (senderPlayerId ? aggregate.players[senderPlayerId]?.displayName : undefined) ??
+    senderPlayerId ??
+    envelope.actor.actorId;
+
+  return {
+    messageId: envelope.command.payload.messageId,
+    channelId: envelope.command.payload.channelId,
+    senderPlayerId,
+    senderDisplayName,
+    senderRole: getPlayerRole(aggregate, senderPlayerId) ?? envelope.actor.role,
+    body: envelope.command.payload.body?.trim() ?? '',
+    attachmentIds: envelope.command.payload.attachmentIds ?? [],
+    visibilityScope: channel?.visibilityScope ?? 'public_match',
+    teamId: channel?.teamId ?? senderTeam?.teamId,
+    sentAt: envelope.occurredAt
+  };
+}
+
+function buildAttachmentPlaceholder(
+  aggregate: MatchAggregate,
+  envelope: CommandEnvelope<Extract<CommandEnvelope['command'], { type: 'upload_attachment' }>>
+): AttachmentModel {
+  const ownerTeam = getPlayerTeam(aggregate, envelope.actor.playerId);
+  const channel = getChatChannel(aggregate, envelope.command.payload.channelId);
+
+  return {
+    attachmentId: envelope.command.payload.attachmentId,
+    kind: envelope.command.payload.kind,
+    status: 'placeholder_pending',
+    label: envelope.command.payload.label.trim(),
+    mimeType: envelope.command.payload.mimeType,
+    visibilityScope: envelope.command.payload.visibilityScope,
+    ownerPlayerId: envelope.actor.playerId,
+    ownerTeamId: channel?.teamId ?? ownerTeam?.teamId,
+    channelId: envelope.command.payload.channelId,
+    linkedQuestionInstanceId: envelope.command.payload.questionInstanceId,
+    linkedCardInstanceId: envelope.command.payload.cardInstanceId,
+    note: envelope.command.payload.note?.trim(),
+    captureMetadata: envelope.command.payload.captureMetadata ?? {},
+    createdAt: envelope.occurredAt
   };
 }
 
@@ -417,7 +471,7 @@ function eventsForCommand(
       const template = getQuestionTemplate(contentPack, question.templateId)!;
       const category = getQuestionCategory(contentPack, template.categoryId)!;
       const constraintDefinition = getConstraintDefinition(contentPack, envelope.command.payload.constraintId)!;
-      const constraintRecordId = `constraint:${randomUUID()}`;
+      const constraintRecordId = `constraint:${createRandomUuid()}`;
       const resolvedConstraint = resolveQuestionConstraint({
         aggregate: aggregate!,
         contentPack,
@@ -457,6 +511,36 @@ function eventsForCommand(
         })
       ];
     }
+    case 'send_chat_message': {
+      const message = buildChatMessage(aggregate!, envelope as typeof envelope & {
+        command: { type: 'send_chat_message'; payload: { messageId: string; channelId: string; body?: string; attachmentIds?: string[] } };
+      });
+
+      return [
+        makeEventEnvelope(aggregate, envelope, 0, message.visibilityScope, {
+          type: 'chat_message_sent',
+          payload: {
+            ...envelope.command.payload,
+            message
+          }
+        })
+      ];
+    }
+    case 'upload_attachment': {
+      const attachment = buildAttachmentPlaceholder(aggregate!, envelope as typeof envelope & {
+        command: { type: 'upload_attachment'; payload: { attachmentId: string; kind: AttachmentModel['kind']; label: string; mimeType?: string; note?: string; visibilityScope: AttachmentModel['visibilityScope']; channelId?: string; questionInstanceId?: string; cardInstanceId?: string; captureMetadata?: Record<string, unknown>; } };
+      });
+
+      return [
+        makeEventEnvelope(aggregate, envelope, 0, attachment.visibilityScope, {
+          type: 'attachment_uploaded',
+          payload: {
+            ...envelope.command.payload,
+            attachment
+          }
+        })
+      ];
+    }
     case 'draw_card': {
       const card = aggregate ? findTopCardInDeck(aggregate, envelope.command.payload.deckId) : undefined;
       if (!card) {
@@ -488,7 +572,7 @@ function eventsForCommand(
       const cardDefinition = getCardDefinition(contentPack, currentCard.cardDefinitionId) as CardDefinition;
       const opensResolutionWindow =
         cardDefinition.automationLevel !== 'authoritative' && aggregate?.lifecycleState === 'seek_phase';
-      const playedCard = {
+      const playedCard: CardInstanceModel = {
         ...currentCard,
         zone: opensResolutionWindow ? 'pending_resolution' : 'discard_pile',
         holderType: currentCard.holderType,
@@ -496,7 +580,7 @@ function eventsForCommand(
         updatedAt: envelope.occurredAt
       };
 
-      const events = [
+      const events: DomainEventEnvelope[] = [
         makeEventEnvelope(aggregate, envelope, 0, 'team_private', {
           type: 'card_played',
           payload: {
@@ -520,6 +604,25 @@ function eventsForCommand(
       }
 
       return events;
+    }
+    case 'discard_card': {
+      const currentCard = aggregate!.cardInstances[envelope.command.payload.cardInstanceId];
+
+      return [
+        makeEventEnvelope(aggregate, envelope, 0, 'team_private', {
+          type: 'card_discarded',
+          payload: {
+            ...envelope.command.payload,
+            cardInstance: {
+              ...currentCard,
+              zone: 'discard_pile',
+              holderType: currentCard.holderType,
+              holderId: currentCard.holderId,
+              updatedAt: envelope.occurredAt
+            }
+          }
+        })
+      ];
     }
     case 'resolve_card_window': {
       const activeQuestion = aggregate?.activeQuestionInstanceId

@@ -1,6 +1,7 @@
 import type {
   ConstraintExplanationModel,
   ContradictionReportModel,
+  EventLogEntry,
   GeometryPrecision,
   GeoJsonGeometryModel,
   MatchLifecycleState,
@@ -43,6 +44,67 @@ export interface VisibleCardProjection {
   holderId: string;
 }
 
+export interface VisibleLocationSampleProjection {
+  sampleId: string;
+  playerId: string;
+  displayName: string;
+  role: MatchRole;
+  teamId?: string;
+  latitude: number;
+  longitude: number;
+  accuracyMeters?: number;
+  source: string;
+  recordedAt: string;
+}
+
+export interface VisibleMovementTrackProjection {
+  playerId: string;
+  displayName: string;
+  role: MatchRole;
+  teamId?: string;
+  sampleCount: number;
+  latestSample?: VisibleLocationSampleProjection;
+  samples: VisibleLocationSampleProjection[];
+}
+
+export interface VisibleChatChannelProjection {
+  channelId: string;
+  kind: string;
+  displayName: string;
+  visibilityScope: ProjectionScope;
+  teamId?: string;
+}
+
+export interface VisibleAttachmentProjection {
+  attachmentId: string;
+  kind: string;
+  status: string;
+  label: string;
+  mimeType?: string;
+  visibilityScope: ProjectionScope;
+  ownerPlayerId?: string;
+  ownerTeamId?: string;
+  channelId?: string;
+  linkedQuestionInstanceId?: string;
+  linkedCardInstanceId?: string;
+  linkedMessageId?: string;
+  note?: string;
+  createdAt: string;
+}
+
+export interface VisibleChatMessageProjection {
+  messageId: string;
+  channelId: string;
+  senderPlayerId?: string;
+  senderDisplayName: string;
+  senderRole: MatchRole;
+  body: string;
+  attachmentIds: string[];
+  visibilityScope: ProjectionScope;
+  teamId?: string;
+  sentAt: string;
+}
+
 export interface VisibleQuestionProjection {
   questionInstanceId: string;
   templateId: string;
@@ -51,11 +113,14 @@ export interface VisibleQuestionProjection {
   askedByPlayerId: string;
   targetTeamId?: string;
   answer?: Record<string, unknown>;
+  askedAt?: string;
+  resolvedAt?: string;
 }
 
 export interface VisibleConstraintProjection {
   constraintRecordId: string;
   constraintId: string;
+  sourceQuestionInstanceId?: string;
   status: string;
   resolutionMode: GeometryPrecision;
   confidenceScore: number;
@@ -109,6 +174,10 @@ export interface MatchProjection {
   selectedRulesetId?: string;
   players: VisiblePlayerProjection[];
   teams: VisibleTeamProjection[];
+  visibleMovementTracks: VisibleMovementTrackProjection[];
+  visibleChatChannels: VisibleChatChannelProjection[];
+  visibleChatMessages: VisibleChatMessageProjection[];
+  visibleAttachments: VisibleAttachmentProjection[];
   visibleCards: VisibleCardProjection[];
   visibleQuestions: VisibleQuestionProjection[];
   visibleConstraints: VisibleConstraintProjection[];
@@ -122,6 +191,7 @@ export interface MatchProjection {
   activeCardResolution?: {
     sourceCardInstanceId: string;
   };
+  visibleEventLog: EventLogEntry[];
   hiddenState?: {
     hiderLocation?: {
       latitude: number;

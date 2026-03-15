@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Transit Hide and Seek",
+    "slug": "transit-hide-and-seek",
+    "version": "0.1.0",
+    "scheme": "transithideseek",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.transithideseek.mobile"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

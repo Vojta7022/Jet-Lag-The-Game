@@ -10,12 +10,14 @@ import type {
   ConfirmRulesCommand,
   CreateMapRegionCommand,
   CreateMatchCommand,
+  DiscardCardCommand,
   DrawCardCommand,
   EndHidePhaseCommand,
   EndMatchCommand,
   ImportContentPackCommand,
   JoinMatchCommand,
   LockHiderLocationCommand,
+  SendChatMessageCommand,
   UpdateLocationCommand,
   PauseMatchCommand,
   PlayCardCommand,
@@ -24,7 +26,8 @@ import type {
   ResumeMatchCommand,
   SetRulesetCommand,
   StartMatchCommand,
-  AnswerQuestionCommand
+  AnswerQuestionCommand,
+  UploadAttachmentCommand
 } from '../contracts/commands.ts';
 import type {
   CardInstanceModel,
@@ -39,6 +42,7 @@ import type {
   TeamModel,
   TimerModel
 } from '../domain/match.ts';
+import type { AttachmentModel, ChatMessageModel } from '../domain/chat.ts';
 import type { ProjectionScope } from '../content.ts';
 
 export interface DomainEventEnvelope<TEvent extends DomainEvent = DomainEvent> {
@@ -69,8 +73,11 @@ export type DomainEvent =
   | QuestionAskedEvent
   | QuestionAnsweredEvent
   | ConstraintAppliedEvent
+  | ChatMessageSentEvent
+  | AttachmentUploadedEvent
   | CardDrawnEvent
   | CardPlayedEvent
+  | CardDiscardedEvent
   | CardResolutionOpenedEvent
   | CardResolutionClosedEvent
   | CooldownCompletedEvent
@@ -220,6 +227,20 @@ export interface ConstraintAppliedEvent {
   };
 }
 
+export interface ChatMessageSentEvent {
+  type: 'chat_message_sent';
+  payload: SendChatMessageCommand['payload'] & {
+    message: ChatMessageModel;
+  };
+}
+
+export interface AttachmentUploadedEvent {
+  type: 'attachment_uploaded';
+  payload: UploadAttachmentCommand['payload'] & {
+    attachment: AttachmentModel;
+  };
+}
+
 export interface CardDrawnEvent {
   type: 'card_drawn';
   payload: DrawCardCommand['payload'] & {
@@ -230,6 +251,13 @@ export interface CardDrawnEvent {
 export interface CardPlayedEvent {
   type: 'card_played';
   payload: PlayCardCommand['payload'] & {
+    cardInstance: CardInstanceModel;
+  };
+}
+
+export interface CardDiscardedEvent {
+  type: 'card_discarded';
+  payload: DiscardCardCommand['payload'] & {
     cardInstance: CardInstanceModel;
   };
 }

@@ -9,6 +9,8 @@ import { isPolygonBoundaryGeometry } from '../../../geo/src/index.ts';
 
 import {
   canActorExecuteCommand,
+  getAttachment,
+  getChatChannel,
   getActiveQuestion,
   getCardInstance,
   getHandCardsForHolder,
@@ -53,6 +55,33 @@ function isCardAccessibleToActor(
   if (card.holderType === 'team') {
     const team = getPlayerTeam(aggregate, playerId);
     return team?.teamId === card.holderId;
+  }
+
+  return false;
+}
+
+function canActorUseChannel(
+  aggregate: MatchAggregate,
+  channelId: string,
+  playerId: string | undefined,
+  actorRole: CommandEnvelope['actor']['role']
+): boolean {
+  const channel = getChatChannel(aggregate, channelId);
+  if (!channel) {
+    return false;
+  }
+
+  if (actorRole === 'host') {
+    return true;
+  }
+
+  if (channel.visibilityScope === 'public_match') {
+    return true;
+  }
+
+  if (channel.visibilityScope === 'team_private') {
+    const team = getPlayerTeam(aggregate, playerId);
+    return Boolean(team && channel.teamId && team.teamId === channel.teamId);
   }
 
   return false;
@@ -232,8 +261,166 @@ export function validateCommandEnvelope(
 
       return [];
     }
+    case 'send_chat_message': {
+      const channel = getChatChannel(aggregate, envelope.command.payload.channelId);
+      if (!channel) {
+        return [error(envelope.command.type, 'CHANNEL_NOT_FOUND', 'The selected chat channel does not exist.')];
+      }
+
+      if (
+        !canActorUseChannel(
+          aggregate,
+          channel.channelId,
+          envelope.actor.playerId,
+          envelope.actor.role
+        )
+      ) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'The actor cannot send messages to this channel.')];
+      }
+
+      const body = envelope.command.payload.body?.trim() ?? '';
+      const attachmentIds = envelope.command.payload.attachmentIds ?? [];
+      if (body.length === 0 && attachmentIds.length === 0) {
+        return [
+          error(
+            envelope.command.type,
+            'EMPTY_MESSAGE',
+            'Chat messages must include text, at least one attachment placeholder, or both.'
+          )
+        ];
+      }
+
+      for (const attachmentId of attachmentIds) {
+        const attachment = getAttachment(aggregate, attachmentId);
+        if (!attachment) {
+          return [
+            error(
+              envelope.command.type,
+              'ATTACHMENT_NOT_FOUND',
+              `The attachment placeholder "${attachmentId}" does not exist.`
+            )
+          ];
+        }
+
+        if (attachment.visibilityScope !== channel.visibilityScope) {
+          return [
+            error(
+              envelope.command.type,
+              'ATTACHMENT_SCOPE_MISMATCH',
+              'Attachment placeholders must match the selected channel visibility.'
+            )
+          ];
+        }
+
+        if (attachment.channelId && attachment.channelId !== channel.channelId) {
+          return [
+            error(
+              envelope.command.type,
+              'ATTACHMENT_CHANNEL_MISMATCH',
+              'Attachment placeholders tied to another channel cannot be reused here.'
+            )
+          ];
+        }
+      }
+
+      return [];
+    }
+    case 'upload_attachment': {
+      const label = envelope.command.payload.label.trim();
+      const note = envelope.command.payload.note?.trim() ?? '';
+      if (label.length === 0) {
+        return [error(envelope.command.type, 'LABEL_REQUIRED', 'Attachment placeholders require a label.')];
+      }
+
+      if (
+        !envelope.command.payload.channelId &&
+        !envelope.command.payload.questionInstanceId &&
+        !envelope.command.payload.cardInstanceId
+      ) {
+        return [
+          error(
+            envelope.command.type,
+            'ATTACHMENT_CONTEXT_REQUIRED',
+            'Attachment placeholders require a chat channel, question context, or card context.'
+          )
+        ];
+      }
+
+      if (envelope.command.payload.channelId) {
+        const channel = getChatChannel(aggregate, envelope.command.payload.channelId);
+        if (!channel) {
+          return [error(envelope.command.type, 'CHANNEL_NOT_FOUND', 'The selected chat channel does not exist.')];
+        }
+
+        if (channel.visibilityScope !== envelope.command.payload.visibilityScope) {
+          return [
+            error(
+              envelope.command.type,
+              'ATTACHMENT_SCOPE_MISMATCH',
+              'Attachment placeholder visibility must match the selected channel visibility.'
+            )
+          ];
+        }
+
+        if (
+          !canActorUseChannel(
+            aggregate,
+            channel.channelId,
+            envelope.actor.playerId,
+            envelope.actor.role
+          )
+        ) {
+          return [
+            error(
+              envelope.command.type,
+              'FORBIDDEN',
+              'The actor cannot upload an attachment placeholder into this channel.'
+            )
+          ];
+        }
+      }
+
+      if (
+        envelope.command.payload.questionInstanceId &&
+        !aggregate.questionInstances[envelope.command.payload.questionInstanceId]
+      ) {
+        return [
+          error(
+            envelope.command.type,
+            'QUESTION_NOT_FOUND',
+            'Attachment placeholders cannot be linked to a missing question.'
+          )
+        ];
+      }
+
+      if (
+        envelope.command.payload.cardInstanceId &&
+        !aggregate.cardInstances[envelope.command.payload.cardInstanceId]
+      ) {
+        return [
+          error(
+            envelope.command.type,
+            'CARD_NOT_FOUND',
+            'Attachment placeholders cannot be linked to a missing card.'
+          )
+        ];
+      }
+
+      if (label.length === 0 && note.length === 0) {
+        return [
+          error(
+            envelope.command.type,
+            'ATTACHMENT_EMPTY',
+            'Attachment placeholders must include a label or note.'
+          )
+        ];
+      }
+
+      return [];
+    }
     case 'draw_card': {
-      const deck = contentPack.decks.find((candidate) => candidate.deckId === envelope.command.payload.deckId);
+      const deckId = envelope.command.payload.deckId;
+      const deck = contentPack.decks.find((candidate) => candidate.deckId === deckId);
       if (!deck) {
         return [error(envelope.command.type, 'DECK_NOT_FOUND', 'The selected deck does not exist.')];
       }
@@ -251,6 +438,26 @@ export function validateCommandEnvelope(
 
       if (!isCardAccessibleToActor(aggregate, cardInstance, envelope.actor.playerId)) {
         return [error(envelope.command.type, 'FORBIDDEN', 'The actor cannot play this card.')];
+      }
+
+      if (!getCardDefinition(contentPack, cardInstance.cardDefinitionId)) {
+        return [error(envelope.command.type, 'CARD_DEFINITION_NOT_FOUND', 'The card definition is missing from the content pack.')];
+      }
+
+      return [];
+    }
+    case 'discard_card': {
+      const cardInstance = getCardInstance(aggregate, envelope.command.payload.cardInstanceId);
+      if (!cardInstance) {
+        return [error(envelope.command.type, 'CARD_NOT_FOUND', 'The selected card instance does not exist.')];
+      }
+
+      if (cardInstance.zone !== 'hand') {
+        return [error(envelope.command.type, 'CARD_NOT_IN_HAND', 'Only cards in hand can be discarded.')];
+      }
+
+      if (!isCardAccessibleToActor(aggregate, cardInstance, envelope.actor.playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'The actor cannot discard this card.')];
       }
 
       if (!getCardDefinition(contentPack, cardInstance.cardDefinitionId)) {

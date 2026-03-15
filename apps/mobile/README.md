@@ -1,5 +1,154 @@
-# Mobile App Placeholder
+# Mobile App Shell
 
-The Expo mobile app is intentionally not scaffolded in this phase.
+This Expo workspace now contains the first mobile shell for the project.
 
-This directory exists so the workspace layout matches the approved monorepo plan while schema/types/importer work is built first.
+Included in this phase:
+
+- Expo + React Native + TypeScript scaffold
+- Expo Router screen structure
+- provider stack for runtime selection, transport/runtime wiring, and shared shell state
+- basic session entry flow
+- create-match and join-match flows
+- first-pass map setup screen with seeded playable-region selection
+- first-pass question center wired to `begin_question_prompt`, `ask_question`, `answer_question`, and host-side `apply_constraint`
+- first-pass cards screen wired to `draw_card`, `play_card`, `discard_card`, and `resolve_card_window`
+- first-pass chat screen with public/team channel switching, scoped message lists, and honest placeholder attachment flows
+- first-pass movement screen with foreground location permission state, `update_location` wiring, and seeker breadcrumb overlays
+- lobby, dashboard placeholder, and status screens
+- developer runtime switcher for:
+  - in-memory runtime
+  - online adapter foundation
+  - nearby host-authoritative foundation
+  - single-device referee foundation
+- lightweight smoke tests for app-shell state and runtime orchestration
+
+Still intentionally deferred:
+
+- map rendering
+- full geospatial tiles and live location rendering
+- visual polish
+- real Supabase backend wiring
+- real LAN discovery and device transport
+- production-tuned background location behavior
+
+## Run the App
+
+From the repository root:
+
+```bash
+npm install
+npm run mobile:test:smoke
+npm run mobile:start
+```
+
+Platform shortcuts:
+
+```bash
+npm run mobile:ios
+npm run mobile:android
+npm run mobile:web
+```
+
+Optional validation before the first launch:
+
+```bash
+npm run mobile:typecheck
+```
+
+## Run Mobile Smoke Tests
+
+```bash
+npm run test:mobile
+```
+
+The mobile shell README and root workspace scripts assume npm workspaces for now. `pnpm-workspace.yaml` is present for future tooling, but this first runnable pass is documented against npm.
+
+## Environment Variables
+
+The app has safe defaults for all current runtime-mode switches, so a `.env` file is optional.
+
+If you want to override them, start from:
+
+```bash
+apps/mobile/.env.example
+```
+
+Currently supported `EXPO_PUBLIC_*` variables include:
+
+- `EXPO_PUBLIC_DEFAULT_RUNTIME_MODE`
+- `EXPO_PUBLIC_ENABLE_IN_MEMORY_MODE`
+- `EXPO_PUBLIC_ENABLE_ONLINE_MODE`
+- `EXPO_PUBLIC_ENABLE_NEARBY_MODE`
+- `EXPO_PUBLIC_ENABLE_SINGLE_DEVICE_MODE`
+- `EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS`
+- `EXPO_PUBLIC_DEFAULT_MATCH_PREFIX`
+- `EXPO_PUBLIC_NEARBY_JOIN_TTL_SECONDS`
+- `EXPO_PUBLIC_ONLINE_PROJECT_URL`
+
+## Startup Notes
+
+- This stabilization pass did not include a real Expo device or simulator launch from this workspace because no `node_modules` were present during validation.
+- The startup-risk fixes in this pass focused on config correctness, workspace scripts, Expo Router/Babel setup, Metro monorepo loading, and dependency declarations that are commonly needed for Expo web/native shell startup.
+- If Expo reports native dependency drift after install, run `npx expo install --fix` from `apps/mobile` and then retry the workspace commands above.
+
+## Current Map Phase
+
+The mobile shell now includes a dedicated map setup screen that:
+
+- previews seeded playable regions
+- bootstraps a host match into `map_setup` through real engine commands
+- applies `create_map_region`
+- renders the selected boundary and current bounded candidate region
+
+The first seed regions are:
+
+- Prague
+- Central Bohemia
+- Vienna
+
+## Current Question Phase
+
+The mobile shell now includes a dedicated question center that:
+
+- lists imported question categories and templates from the real content pack
+- lets seeker or host-admin views ask questions through the engine runtime
+- lets hider or host-admin views submit answers
+- lets host-admin apply the canonical constraint for the answered question
+- shows honest result modes: `exact`, `approximate`, or `metadata-only`
+- refreshes the authoritative bounded map state after constraint application
+
+Photo questions stay manual in this phase. The shell records placeholder attachment ids and notes, but it does not pretend to upload media or generate geometry.
+
+## Current Cards Phase
+
+The mobile shell now includes a dedicated cards screen that:
+
+- shows visible hands and piles for the current projection scope
+- reads card definitions from the imported content pack
+- lets permitted roles draw, play, discard, and close card windows through the real runtime
+- labels cards honestly as `authoritative`, `assisted`, or `manual`
+- keeps private hands hidden outside the current role and scope
+
+The current seed pack only includes a hider deck, so seeker views will usually show no accessible deck content yet.
+
+## Current Chat And Evidence Phase
+
+The mobile shell now includes a dedicated chat screen that:
+
+- renders lobby, global, and team-private channels from the real scoped projection
+- lets permitted roles send messages through `send_chat_message`
+- records attachment placeholders through `upload_attachment` without pretending media storage already exists
+- surfaces active photo-question and card evidence contexts when the current projection shows them
+- keeps public, team-private, and hidden attachment visibility aligned with the runtime projection scope
+
+## Current Movement Phase
+
+The mobile shell now includes a dedicated movement screen that:
+
+- checks and requests foreground location permission honestly
+- exposes `manual`, `balanced`, and `frequent` update modes
+- sends real `update_location` commands for one-shot or continuous foreground sharing
+- renders visible movement breadcrumbs and latest visible positions on the bounded map surface
+- keeps hidden hider coordinates out of movement overlays and public scopes
+
+This is still a first-pass foreground flow. It is not yet hardened for background execution, battery tuning, or production GPS smoothing.

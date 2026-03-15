@@ -23,7 +23,13 @@ export function validateStateForCommand(
   aggregate: MatchAggregate,
   command: DomainCommand
 ): CommandValidationError[] {
-  if (isPaused(aggregate) && command.type !== 'resume_match') {
+  const allowsPausedUpload = command.type === 'upload_attachment' && Boolean(command.payload.channelId);
+  if (
+    isPaused(aggregate) &&
+    command.type !== 'resume_match' &&
+    command.type !== 'send_chat_message' &&
+    !allowsPausedUpload
+  ) {
     return [error(command.type, 'MATCH_PAUSED', 'The match is paused and cannot accept this command.')];
   }
 
@@ -96,6 +102,21 @@ export function validateStateForCommand(
       return isSeekPhaseState(aggregate, 'applying_constraints')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Constraints can only be applied during constraint resolution.')];
+    case 'send_chat_message':
+      return aggregate.lifecycleState === 'archived'
+        ? [error(command.type, 'INVALID_STATE', 'Chat messages cannot be sent after the match is archived.')]
+        : [];
+    case 'upload_attachment':
+      return command.payload.channelId
+        ? (aggregate.lifecycleState === 'archived'
+            ? [error(command.type, 'INVALID_STATE', 'Attachment placeholders cannot be added after the match is archived.')]
+            : [])
+        : isSeekPhaseState(aggregate, 'awaiting_question_answer') ||
+        isSeekPhaseState(aggregate, 'awaiting_card_resolution') ||
+        isLifecycleState(aggregate, 'endgame') ||
+        isLifecycleState(aggregate, 'game_complete')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Attachment placeholders can only be added in evidence-capable states.')];
     case 'draw_card':
       return aggregate.lifecycleState === 'hide_phase' ||
         isSeekPhaseState(aggregate, 'ready') ||
@@ -131,6 +152,12 @@ export function validateStateForCommand(
       }
 
       return [];
+    case 'discard_card':
+      return isSeekPhaseState(aggregate, 'ready') ||
+        isSeekPhaseState(aggregate, 'awaiting_card_resolution') ||
+        isSeekPhaseState(aggregate, 'cooldown')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Cards can only be discarded in allowed hand-management windows.')];
     case 'resolve_card_window':
       return isSeekPhaseState(aggregate, 'awaiting_card_resolution')
         ? []

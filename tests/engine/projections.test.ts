@@ -59,6 +59,7 @@ test('projection builders redact hidden hider coordinates and private cards outs
 
   assert.ok(authorityProjection.hiddenState?.hiderLocation);
   assert.ok(authorityProjection.visibleCards.length > 0);
+  assert.ok(authorityProjection.visibleEventLog.length >= publicProjection.visibleEventLog.length);
   assert.equal(authorityProjection.visibleMap?.displayName, 'Prague');
   assert.equal(authorityProjection.visibleMap?.featureDatasetRefs.length, 2);
   assert.deepEqual(
@@ -68,6 +69,10 @@ test('projection builders redact hidden hider coordinates and private cards outs
 
   assert.equal(publicProjection.hiddenState, undefined);
   assert.equal(publicProjection.visibleCards.length, 0);
+  assert.equal(
+    publicProjection.visibleEventLog.every((entry) => entry.visibilityScope === 'public_match'),
+    true
+  );
   assert.equal(publicProjection.players.some((player) => player.role !== undefined), false);
   assert.equal(publicProjection.visibleMap?.displayName, 'Prague');
   assert.equal(publicProjection.visibleMap?.featureDatasetRefs.length, 0);

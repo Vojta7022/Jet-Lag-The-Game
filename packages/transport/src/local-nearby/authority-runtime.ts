@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createRandomUuid } from '../../../shared-types/src/index.ts';
 
 import type {
   AuthorityRuntime,
@@ -9,6 +9,7 @@ import type {
   MatchRuntimeSnapshot,
   NearbyGuestSession,
   NearbyGuestSyncRequest,
+  NearbyHeartbeatRecord,
   NearbyHostAvailabilityStatus,
   NearbyJoinOffer,
   NearbyJoinRequest,
@@ -34,11 +35,11 @@ import type {
 } from './contracts.ts';
 
 function makeJoinCode(): string {
-  return randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase();
+  return createRandomUuid().replace(/-/g, '').slice(0, 6).toUpperCase();
 }
 
 function makeJoinToken(): string {
-  return randomUUID();
+  return createRandomUuid();
 }
 
 function nowIso(now: () => Date): string {
@@ -129,7 +130,7 @@ export class NearbyHostAuthorityRuntime
     const joinCode = makeJoinCode();
     const joinToken = makeJoinToken();
     const offer: NearbyJoinOffer = {
-      offerId: `offer:${randomUUID()}`,
+      offerId: `offer:${createRandomUuid()}`,
       matchId,
       hostSessionId: options.hostSessionId,
       hostAlias: options.hostAlias,
@@ -171,7 +172,7 @@ export class NearbyHostAuthorityRuntime
 
     const joinedAt = nowIso(this.now);
     const guestSession: NearbyGuestSession = {
-      guestSessionId: `guest:${randomUUID()}`,
+      guestSessionId: `guest:${createRandomUuid()}`,
       matchId: request.matchId,
       playerId: request.playerId,
       displayName: request.displayName,
@@ -261,7 +262,7 @@ export class NearbyHostAuthorityRuntime
 
   async subscribeGuest(
     guestSessionId: string,
-    request: NearbyGuestSyncRequest & { deliverInitialSync?: boolean },
+    request: Omit<NearbyGuestSyncRequest, 'guestSessionId'> & { deliverInitialSync?: boolean },
     listener: SyncListener
   ): Promise<TransportSubscription> {
     const guestSession = await this.loadGuestSession(request.matchId, guestSessionId);
