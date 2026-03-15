@@ -1,20 +1,22 @@
 import type {
-  CardDefinition,
-  ContentPack,
   DomainCommand,
   MatchProjection,
   MatchRole,
-  ProjectionScope,
-  QuestionCategoryDefinition,
-  QuestionTemplateDefinition,
   VisibleAttachmentProjection,
-  VisibleCardProjection,
   VisibleChatChannelProjection,
-  VisibleChatMessageProjection,
-  VisibleQuestionProjection
+  VisibleChatMessageProjection
 } from '../../../../../packages/shared-types/src/index.ts';
 
-import { findActiveQuestion, findQuestionCategory, findQuestionTemplate } from '../questions/question-catalog.ts';
+import {
+  buildAttachmentUploadCommandFromDraft,
+  type LocalMediaAttachmentDraft
+} from '../evidence/evidence-model.ts';
+import {
+  buildEvidenceContexts,
+  type EvidenceContextViewModel
+} from '../evidence/evidence-contexts.ts';
+
+export { buildEvidenceContexts };
 
 export interface ChatComposerDraft {
   body: string;
@@ -31,17 +33,6 @@ export interface ChatChannelViewModel {
   channel: VisibleChatChannelProjection;
   messages: ChatMessageViewModel[];
   unattachedPlaceholders: VisibleAttachmentProjection[];
-}
-
-export interface EvidenceContextViewModel {
-  contextId: string;
-  kind: 'question' | 'card';
-  title: string;
-  detail: string;
-  questionInstanceId?: string;
-  cardInstanceId?: string;
-  suggestedVisibilityScope: ProjectionScope;
-  attachments: VisibleAttachmentProjection[];
 }
 
 const CHANNEL_KIND_ORDER: Record<VisibleChatChannelProjection['kind'], number> = {
@@ -171,7 +162,8 @@ export function canSendMessage(
 export function canSubmitChatDraft(
   role: MatchRole,
   channel: VisibleChatChannelProjection | undefined,
-  draft: ChatComposerDraft
+  draft: ChatComposerDraft,
+  selectedAttachments?: LocalMediaAttachmentDraft[]
 ): boolean {
   if (!canSendMessage(role, channel)) {
     return false;
@@ -180,139 +172,19 @@ export function canSubmitChatDraft(
   const body = draft.body.trim();
   const attachmentLabel = draft.attachmentLabel.trim();
   const attachmentNote = draft.attachmentNote.trim();
+  const hasSelectedAttachments = (selectedAttachments ?? []).some(
+    (attachment) => attachment.stage === 'selected_local'
+  );
 
   if (body.length > 0) {
     return true;
   }
 
-  return canSendAttachmentPlaceholders(role) && (attachmentLabel.length > 0 || attachmentNote.length > 0);
-}
-
-function resolveSuggestedEvidenceScope(args: {
-  role: MatchRole;
-  teamId?: string;
-  channelScope?: ProjectionScope;
-}): ProjectionScope {
-  if (args.teamId) {
-    return 'team_private';
-  }
-
-  if (args.role === 'host') {
-    return 'host_admin';
-  }
-
-  return args.channelScope ?? 'player_private';
-}
-
-function resolveQuestionEvidenceContext(args: {
-  contentPack: ContentPack;
-  projection: MatchProjection;
-  role: MatchRole;
-}): EvidenceContextViewModel | undefined {
-  const question = findActiveQuestion(args.projection);
-  if (!question) {
-    return undefined;
-  }
-
-  const template = findQuestionTemplate(args.contentPack, question.templateId);
-  const category = findQuestionCategory(args.contentPack, question.categoryId);
-  if (!template || !category) {
-    return undefined;
-  }
-
-  const expectsAttachmentAnswer =
-    category.resolverKind === 'photo_challenge' ||
-    String(template.answerSchema.kind ?? 'manual') === 'attachment';
-  if (!expectsAttachmentAnswer) {
-    return undefined;
-  }
-
-  const attachments = args.projection.visibleAttachments.filter(
-    (attachment) => attachment.linkedQuestionInstanceId === question.questionInstanceId
+  return canSendAttachmentPlaceholders(role) && (
+    hasSelectedAttachments ||
+    attachmentLabel.length > 0 ||
+    attachmentNote.length > 0
   );
-
-  return {
-    contextId: `question:${question.questionInstanceId}`,
-    kind: 'question',
-    title: `Photo Evidence: ${template.name}`,
-    detail: 'Use manual placeholder attachments for the current photo-style question answer.',
-    questionInstanceId: question.questionInstanceId,
-    suggestedVisibilityScope: resolveSuggestedEvidenceScope({
-      role: args.role,
-      teamId: question.targetTeamId
-    }),
-    attachments
-  };
-}
-
-function cardRequiresPhotoEvidence(card: CardDefinition): boolean {
-  if (card.requirements?.requiresPhotoUpload) {
-    return true;
-  }
-
-  return (card.castingCost ?? []).some((requirement) => requirement.requirementType === 'photo') ||
-    (card.preconditions ?? []).some((requirement) => requirement.requirementType === 'photo');
-}
-
-function findVisibleCard(
-  projection: MatchProjection,
-  cardInstanceId: string | undefined
-): VisibleCardProjection | undefined {
-  if (!cardInstanceId) {
-    return undefined;
-  }
-
-  return projection.visibleCards.find((card) => card.cardInstanceId === cardInstanceId);
-}
-
-function resolveCardEvidenceContext(args: {
-  contentPack: ContentPack;
-  projection: MatchProjection;
-  role: MatchRole;
-}): EvidenceContextViewModel | undefined {
-  const activeCard = findVisibleCard(args.projection, args.projection.activeCardResolution?.sourceCardInstanceId);
-  if (!activeCard) {
-    return undefined;
-  }
-
-  const definition = args.contentPack.cards.find(
-    (card) => card.cardDefinitionId === activeCard.cardDefinitionId
-  );
-  if (!definition || !cardRequiresPhotoEvidence(definition)) {
-    return undefined;
-  }
-
-  const attachments = args.projection.visibleAttachments.filter(
-    (attachment) => attachment.linkedCardInstanceId === activeCard.cardInstanceId
-  );
-
-  return {
-    contextId: `card:${activeCard.cardInstanceId}`,
-    kind: 'card',
-    title: `Card Evidence: ${definition.name}`,
-    detail: 'This card currently needs manual photo evidence handling before later storage/upload work exists.',
-    cardInstanceId: activeCard.cardInstanceId,
-    suggestedVisibilityScope: resolveSuggestedEvidenceScope({
-      role: args.role,
-      teamId: activeCard.holderType === 'team' ? activeCard.holderId : undefined
-    }),
-    attachments
-  };
-}
-
-export function buildEvidenceContexts(
-  contentPack: ContentPack,
-  projection: MatchProjection | undefined,
-  role: MatchRole
-): EvidenceContextViewModel[] {
-  if (!projection) {
-    return [];
-  }
-
-  return [
-    resolveQuestionEvidenceContext({ contentPack, projection, role }),
-    resolveCardEvidenceContext({ contentPack, projection, role })
-  ].filter((context): context is EvidenceContextViewModel => Boolean(context));
 }
 
 export function buildChatSubmitCommands(args: {
@@ -320,15 +192,24 @@ export function buildChatSubmitCommands(args: {
   channel: VisibleChatChannelProjection | undefined;
   draft: ChatComposerDraft;
   createId: () => string;
+  selectedAttachments?: LocalMediaAttachmentDraft[];
 }): DomainCommand[] {
-  if (!args.channel || !canSubmitChatDraft(args.role, args.channel, args.draft)) {
+  if (!args.channel || !canSubmitChatDraft(args.role, args.channel, args.draft, args.selectedAttachments)) {
     return [];
   }
 
   const commands: DomainCommand[] = [];
   const attachmentIds: string[] = [];
+  const selectedAttachments = (args.selectedAttachments ?? []).filter(
+    (attachment) => attachment.stage === 'selected_local'
+  );
   const attachmentLabel = args.draft.attachmentLabel.trim();
   const attachmentNote = args.draft.attachmentNote.trim();
+
+  for (const attachment of selectedAttachments) {
+    commands.push(buildAttachmentUploadCommandFromDraft(attachment));
+    attachmentIds.push(attachment.attachmentId);
+  }
 
   if (canSendAttachmentPlaceholders(args.role) && (attachmentLabel.length > 0 || attachmentNote.length > 0)) {
     const attachmentId = `attachment:${args.createId()}`;
@@ -408,10 +289,10 @@ export function formatChannelScope(channel: VisibleChatChannelProjection): strin
 
 export function formatAttachmentStatus(status: VisibleAttachmentProjection['status']): string {
   if (status === 'placeholder_pending') {
-    return 'Placeholder only';
+    return 'Recorded in match';
   }
 
-  return 'Linked';
+  return 'Recorded and linked';
 }
 
 export function summarizeVisiblePhotoEvidence(

@@ -27,8 +27,9 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   const selectedRegionIdRef = useRef(args.initialRegionId);
 
   useEffect(() => {
-    setQuery(args.initialQuery ?? '');
-    setDebouncedQuery(args.initialQuery ?? '');
+    const nextQuery = args.initialQuery ?? '';
+    setQuery((current) => (current === nextQuery ? current : nextQuery));
+    setDebouncedQuery((current) => (current === nextQuery ? current : nextQuery));
   }, [args.initialQuery]);
 
   useEffect(() => {

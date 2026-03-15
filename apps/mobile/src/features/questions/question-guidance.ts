@@ -94,17 +94,17 @@ export function formatQuestionScaleSet(appliesTo: ScaleKey[]): string {
 export function describeQuestionCategoryForPlayers(category: QuestionCategoryDefinition): string {
   switch (category.resolverKind) {
     case 'nearest_feature_match':
-      return 'Compare the nearest matching place for both sides.';
+      return 'Compare the nearest matching place for the seeker and the hider.';
     case 'comparative_distance':
-      return 'Compare which side is closer to the same kind of place.';
+      return 'Work out who is closer to the same kind of place.';
     case 'hotter_colder':
-      return 'Use seeker movement history to say whether the hider is getting hotter or colder.';
+      return 'Use the seeker movement trail to judge whether the hider is getting hotter or colder.';
     case 'threshold_distance':
       return 'Ask whether the hider is inside or outside a chosen distance from the seeker.';
     case 'nearest_candidate':
-      return 'Choose which nearby candidate place is closest to the hider.';
+      return 'Pick which nearby candidate place is closest to the hider.';
     case 'photo_challenge':
-      return 'Record evidence with photos or manual review instead of relying on geometry alone.';
+      return 'Record photo evidence or a referee-reviewed clue instead of relying on geometry alone.';
     default:
       return 'Use this category to record a clue about the hider.';
   }
@@ -119,23 +119,23 @@ export function describeQuestionTemplateForPlayers(
 
   switch (category.resolverKind) {
     case 'nearest_feature_match':
-      return `Compare the nearest ${featureLabel} for both sides.`;
+      return `Compare the nearest ${featureLabel} for the seeker and the hider.`;
     case 'comparative_distance':
-      return `Compare whether the hider is closer to ${featureLabel} than the seeker is.`;
+      return `Check whether the hider is closer to ${featureLabel} than the seeker is.`;
     case 'hotter_colder':
       return distanceLabel
         ? `Use seeker movement after traveling about ${distanceLabel} to answer hotter or colder.`
         : 'Use seeker movement history to answer hotter or colder.';
     case 'threshold_distance':
       return distanceLabel
-        ? `Check whether the hider is within ${distanceLabel} of the seeker.`
-        : `Check whether the hider is within the selected distance of the seeker.`;
+        ? `Ask whether the hider is within ${distanceLabel} of the seeker.`
+        : 'Ask whether the hider is within the selected distance of the seeker.';
     case 'nearest_candidate':
       return distanceLabel
         ? `Choose which nearby ${featureLabel} within about ${distanceLabel} is closest to the hider.`
         : `Choose which nearby ${featureLabel} is closest to the hider.`;
     case 'photo_challenge':
-      return `Record manual evidence for ${featureLabel}.`;
+      return `Record photo or manual evidence for ${featureLabel}.`;
     default:
       return template.name;
   }
@@ -151,15 +151,15 @@ export function describeExpectedAnswerGuidance(template: QuestionTemplateDefinit
 
   switch (answerKind) {
     case 'boolean':
-      return 'Answer Yes or No.';
+      return 'Reply with a simple Yes or No.';
     case 'enum':
       return allowedValues.length > 0
-        ? `Choose one of: ${joinList(allowedValues)}.`
+        ? `Choose one clear answer: ${joinList(allowedValues)}.`
         : 'Choose the option that best matches the real answer.';
     case 'feature_choice':
-      return 'Pick the closest matching place from the list. If the list is incomplete, enter the best honest match.';
+      return 'Pick the closest matching place from the list. If the list looks incomplete, enter the best honest match you can.';
     case 'attachment':
-      return 'Record one or more attachment placeholders and add a short note for manual evidence review.';
+      return 'Attach one or more evidence photos, then add a short note if a referee or later review needs extra context.';
     default:
       return 'Record the answer honestly using the available information.';
   }
@@ -174,17 +174,25 @@ export function describeQuestionImpactExpectation(args: {
 
   if (args.category.resolverKind === 'photo_challenge' || support.startsWith('Metadata-only')) {
     return {
-      label: 'Metadata-only',
+      label: 'Evidence only',
       tone: 'info',
-      detail: 'This records evidence or manual review notes. It does not promise a map change.'
+      detail: 'This records evidence or manual review notes honestly. It should not be expected to change the map by itself.'
+    };
+  }
+
+  if (support.startsWith('Exact') && !support.includes('approximate')) {
+    return {
+      label: 'Exact map update',
+      tone: 'success',
+      detail: 'This question is expected to create a directly clipped map result inside the active playable region.'
     };
   }
 
   if (args.category.resolverKind === 'hotter_colder') {
     return {
-      label: 'Exact or approximate update',
+      label: 'Approximate map update',
       tone: 'warning',
-      detail: 'This usually narrows the map using movement history, but the result can still be approximate.'
+      detail: 'This usually narrows the map from movement history, but the resulting shape should still be treated carefully unless the final result comes back exact.'
     };
   }
 
@@ -192,13 +200,13 @@ export function describeQuestionImpactExpectation(args: {
     return {
       label: 'Approximate map update',
       tone: 'warning',
-      detail: 'This usually changes the map, but the resulting area should be treated as approximate.'
+      detail: 'This question is expected to narrow or annotate the map, but the resulting shape should be treated as approximate.'
     };
   }
 
   return {
-    label: 'Map update',
+    label: 'Exact map update',
     tone: 'success',
-    detail: 'This question is expected to update the map inside the active playable region.'
+    detail: 'This question is expected to update the map directly inside the active playable region.'
   };
 }

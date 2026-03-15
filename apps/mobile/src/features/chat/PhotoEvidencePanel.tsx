@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { EvidenceContextViewModel } from './chat-state.ts';
+import type { EvidenceContextViewModel } from '../evidence/index.ts';
 
 import { AppButton } from '../../ui/AppButton.tsx';
 import { Field } from '../../ui/Field.tsx';

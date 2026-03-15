@@ -29,7 +29,10 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
     <View style={styles.list}>
       {props.templates.map((template) => {
         const selected = template.templateId === props.selectedTemplateId;
-        const featureLabels = (template.featureClassRefs ?? []).map((feature) => feature.label).join(', ');
+        const featureLabels = (template.featureClassRefs ?? [])
+          .map((feature) => feature.label?.trim())
+          .filter((label): label is string => Boolean(label))
+          .join(', ');
         const impact = describeQuestionImpactExpectation({
           template,
           category: props.category,
@@ -44,17 +47,13 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
             style={[styles.item, selected ? styles.itemSelected : null]}
           >
             <Text style={styles.title}>{template.name}</Text>
-            <Text style={styles.copy}>
-              {describeQuestionTemplateForPlayers(template, props.category)}
-            </Text>
             <ResolutionModePill label={impact.label} tone={impact.tone} />
-            <Text style={styles.copy}>
-              Answer expectation: {describeExpectedAnswerGuidance(template)}
-            </Text>
-            {featureLabels ? <Text style={styles.copy}>Feature classes: {featureLabels}</Text> : null}
-            <Text style={styles.copy}>Scale fit: {formatQuestionScaleSet(template.scaleSet.appliesTo)}</Text>
-            <Text style={styles.meta}>{impact.detail}</Text>
-            <Text style={styles.support}>Current data support: {props.describeSupport(template, props.category)}.</Text>
+            <Text style={styles.copy}>{describeQuestionTemplateForPlayers(template, props.category)}</Text>
+            <Text style={styles.meta}>Expected answer: {describeExpectedAnswerGuidance(template)}</Text>
+            <Text style={styles.meta}>Expected map effect: {impact.detail}</Text>
+            {featureLabels ? <Text style={styles.support}>Places involved: {featureLabels}</Text> : null}
+            <Text style={styles.support}>Best fit: {formatQuestionScaleSet(template.scaleSet.appliesTo)}</Text>
+            <Text style={styles.support}>Current support: {props.describeSupport(template, props.category)}.</Text>
           </Pressable>
         );
       })}
@@ -84,18 +83,18 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   copy: {
-    color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 16
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 18
   },
   meta: {
-    color: colors.accent,
+    color: colors.textMuted,
     fontSize: 12,
-    fontWeight: '700'
+    lineHeight: 17
   },
   support: {
     color: colors.textMuted,
-    fontSize: 12,
+    fontSize: 11,
     lineHeight: 16
   }
 });

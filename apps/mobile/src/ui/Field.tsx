@@ -8,6 +8,8 @@ interface FieldProps {
   onChangeText: (value: string) => void;
   placeholder?: string;
   autoCapitalize?: 'none' | 'words' | 'sentences' | 'characters';
+  multiline?: boolean;
+  numberOfLines?: number;
 }
 
 export function Field(props: FieldProps) {
@@ -16,10 +18,12 @@ export function Field(props: FieldProps) {
       <Text style={styles.label}>{props.label}</Text>
       <TextInput
         autoCapitalize={props.autoCapitalize ?? 'none'}
+        multiline={props.multiline}
         onChangeText={props.onChangeText}
+        numberOfLines={props.numberOfLines}
         placeholder={props.placeholder}
         placeholderTextColor={colors.textMuted}
-        style={styles.input}
+        style={[styles.input, props.multiline ? styles.inputMultiline : null]}
         value={props.value}
       />
     </View>
@@ -44,5 +48,9 @@ const styles = StyleSheet.create({
     minHeight: 46,
     paddingHorizontal: 14,
     paddingVertical: 10
+  },
+  inputMultiline: {
+    minHeight: 104,
+    textAlignVertical: 'top'
   }
 });

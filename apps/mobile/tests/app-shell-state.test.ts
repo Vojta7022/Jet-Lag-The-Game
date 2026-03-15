@@ -255,3 +255,44 @@ test('app shell reducer saves and clears map setup drafts per match', () => {
 
   assert.equal(state.uiState.mapSetupDrafts['match-map-1'], undefined);
 });
+
+test('app shell reducer ignores identical map setup drafts so screens do not resync forever', () => {
+  let state = createInitialShellState('in_memory');
+
+  const draft = {
+    matchId: 'match-map-loop',
+    query: 'Prague',
+    selectedPreviewRegionId: 'region-prague',
+    selectedRegions: [
+      {
+        regionId: 'region-prague',
+        displayName: 'Prague',
+        regionKind: 'city',
+        summary: 'Capital city boundary.',
+        featureDatasetRefs: ['seed-prague'],
+        geometry: {
+          type: 'Polygon',
+          coordinates: []
+        },
+        sourceKind: 'seed_catalog' as const,
+        sourceLabel: 'Bundled seed region catalog',
+        searchAliases: ['Prague', 'Praha']
+      }
+    ]
+  };
+
+  state = appShellReducer(state, {
+    type: 'map_setup_draft_saved',
+    draft
+  });
+
+  const nextState = appShellReducer(state, {
+    type: 'map_setup_draft_saved',
+    draft: {
+      ...draft,
+      selectedRegions: [...draft.selectedRegions]
+    }
+  });
+
+  assert.equal(nextState, state);
+});

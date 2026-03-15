@@ -47,10 +47,7 @@ export function buildAnswerPayload(
   }
 
   if (answerKind === 'attachment') {
-    const attachmentIds = draft.attachmentIdsText
-      .split(',')
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0);
+    const attachmentIds = parseAttachmentIdsText(draft.attachmentIdsText);
 
     return {
       attachmentIds,
@@ -60,6 +57,50 @@ export function buildAnswerPayload(
 
   return {
     value: draft.selectedValue || draft.note.trim()
+  };
+}
+
+export function parseAttachmentIdsText(value: string): string[] {
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+export function appendAttachmentIdToDraft(
+  draft: QuestionAnswerDraft,
+  attachmentId: string
+): QuestionAnswerDraft {
+  const nextId = attachmentId.trim();
+  if (nextId.length === 0) {
+    return draft;
+  }
+
+  const nextIds = [...parseAttachmentIdsText(draft.attachmentIdsText)];
+  if (!nextIds.includes(nextId)) {
+    nextIds.push(nextId);
+  }
+
+  return {
+    ...draft,
+    attachmentIdsText: nextIds.join(', ')
+  };
+}
+
+export function removeAttachmentIdFromDraft(
+  draft: QuestionAnswerDraft,
+  attachmentId: string
+): QuestionAnswerDraft {
+  const nextId = attachmentId.trim();
+  if (nextId.length === 0) {
+    return draft;
+  }
+
+  return {
+    ...draft,
+    attachmentIdsText: parseAttachmentIdsText(draft.attachmentIdsText)
+      .filter((value) => value !== nextId)
+      .join(', ')
   };
 }
 

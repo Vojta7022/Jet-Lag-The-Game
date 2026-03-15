@@ -109,7 +109,7 @@ export function summarizeAnswer(answer: Record<string, unknown> | undefined): st
     ? answer.attachmentIds.filter((value): value is string => typeof value === 'string' && value.length > 0)
     : [];
   if (attachmentIds.length > 0) {
-    return `${attachmentIds.length} attachment placeholder${attachmentIds.length === 1 ? '' : 's'}`;
+    return `${attachmentIds.length} evidence attachment${attachmentIds.length === 1 ? '' : 's'}`;
   }
 
   const note = typeof answer.note === 'string' ? answer.note.trim() : '';

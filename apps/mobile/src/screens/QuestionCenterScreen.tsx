@@ -7,6 +7,13 @@ import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
+  buildAttachmentUploadCommandFromDraft,
+  buildEvidenceContexts,
+  EvidenceCapturePanel,
+  useLocalMediaAttachments,
+  type LocalEvidenceContextDescriptor
+} from '../features/evidence/index.ts';
+import {
   QuestionAnswerComposer,
   QuestionCategoryList,
   QuestionResolutionPanel,
@@ -24,6 +31,7 @@ import {
   buildQuestionMapEffectModel,
   chooseConstraintIdForQuestion,
   createInitialAnswerDraft,
+  appendAttachmentIdToDraft,
   describeTemplateSupport,
   findActiveQuestion,
   findConstraintForQuestion,
@@ -67,6 +75,7 @@ export function QuestionCenterScreen() {
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
+  const localMedia = useLocalMediaAttachments(createUuid);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const capabilities = getQuestionFlowCapabilities(viewerRole);
   const categoryViewModels = useMemo(
@@ -132,6 +141,29 @@ export function QuestionCenterScreen() {
   );
   const activeQuestionConstraint = findConstraintForQuestion(projection, activeQuestion?.questionInstanceId);
   const resolvedQuestionConstraint = findConstraintForQuestion(projection, resolvedQuestion?.questionInstanceId);
+  const evidenceContexts = useMemo(
+    () => buildEvidenceContexts(defaultContentPack, projection, viewerRole),
+    [projection, viewerRole]
+  );
+  const activeQuestionEvidenceContext = evidenceContexts.find((context) => context.kind === 'question');
+  const questionAttachmentContext = useMemo<LocalEvidenceContextDescriptor | undefined>(
+    () =>
+      activeQuestionEvidenceContext
+        ? {
+            contextId: activeQuestionEvidenceContext.contextId,
+            kind: 'question',
+            title: activeQuestionEvidenceContext.title,
+            detail: activeQuestionEvidenceContext.detail,
+            visibilityScope: activeQuestionEvidenceContext.suggestedVisibilityScope,
+            attachmentKind: 'photo_evidence',
+            questionInstanceId: activeQuestionEvidenceContext.questionInstanceId
+          }
+        : undefined,
+    [activeQuestionEvidenceContext]
+  );
+  const questionEvidenceDrafts = questionAttachmentContext
+    ? localMedia.getContextDrafts(questionAttachmentContext.contextId)
+    : [];
   const latestResolvedEffect = useMemo(
     () =>
       buildQuestionMapEffectModel({
@@ -263,6 +295,33 @@ export function QuestionCenterScreen() {
     });
   };
 
+  const handleRecordQuestionEvidence = async () => {
+    if (!questionAttachmentContext) {
+      return;
+    }
+
+    const attachmentIds = questionEvidenceDrafts.map((draft) => draft.attachmentId);
+    const commands = questionEvidenceDrafts.map((draft) => buildAttachmentUploadCommandFromDraft(draft));
+    if (commands.length === 0) {
+      return;
+    }
+
+    localMedia.markSubmitting(attachmentIds);
+    const succeeded = await submitCommands(commands);
+    if (succeeded) {
+      localMedia.markSubmitted(attachmentIds);
+      setAnswerDraft((current) =>
+        attachmentIds.reduce(
+          (draft, attachmentId) => appendAttachmentIdToDraft(draft, attachmentId),
+          current
+        )
+      );
+      return;
+    }
+
+    localMedia.resetToSelected(attachmentIds);
+  };
+
   const handleResolveQuestion = () => {
     if (!activeQuestion || !activeQuestionTemplate || !activeQuestionCategory) {
       return;
@@ -295,7 +354,7 @@ export function QuestionCenterScreen() {
   return (
     <ScreenContainer
       title="Question Center"
-      subtitle="Choose a question, answer it in the right role, and review how each result narrows the active search area."
+      subtitle="Choose a clue, answer it in the right role, and review exactly how the result did or did not change the active search area."
       topSlot={<ProductNavBar current="questions" />}
     >
       {!activeMatch ? (
@@ -308,8 +367,8 @@ export function QuestionCenterScreen() {
 
       {activeMatch ? (
         <Panel
-          title="Match Context"
-          subtitle="Question permissions, current stage, and the live map context for this view."
+          title="Question context"
+          subtitle="Who can act, what stage the match is in, and which playable region is currently active."
         >
           <FactList
             items={[
@@ -326,7 +385,7 @@ export function QuestionCenterScreen() {
             ]}
           />
           <Text style={styles.copy}>
-            Asking is enabled for seeker and host-admin views. Answering is enabled for hider and host-admin views. Constraint application remains host-authoritative.
+            Seekers and host-admin views can ask. Hiders and host-admin views can answer. Applying the final result remains host-authoritative so the map stays trustworthy.
           </Text>
         </Panel>
       ) : null}
@@ -351,8 +410,8 @@ export function QuestionCenterScreen() {
 
       {latestConstraintApplied && latestResolvedEffect ? (
         <StateBanner
-          tone={latestResolvedEffect.resolutionTone}
-          title={`${latestResolvedEffect.resolutionModeLabel} result updated the search area`}
+          tone={latestResolvedEffect.mapEffectTone}
+          title={latestResolvedEffect.mapEffectTitle}
           detail={latestResolvedEffect.mapEffectDetail}
         />
       ) : null}
@@ -368,7 +427,7 @@ export function QuestionCenterScreen() {
 
       <Panel
         title="Latest Result"
-        subtitle="Follow the full answer-to-map chain for the most recent resolved question."
+        subtitle="Review the most recent question in plain language before you ask the next one."
       >
         <QuestionResolutionPanel
           title="Latest Question Outcome"
@@ -392,22 +451,22 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Question Actions"
-        subtitle="Prepare the match, refresh the live view, or add seeker movement context for movement-based questions."
+        title="Match prep"
+        subtitle="Get the question loop ready, refresh state, or add movement context for thermometer-style clues."
       >
         <AppButton
-          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Question Play'}
+          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Questions'}
           onPress={handlePrepareFlow}
           disabled={!canPrepareFlow || state.loadState === 'loading'}
         />
         <AppButton
-          label="Add Sample Seeker Movement"
+          label="Add Seeker Movement Trail"
           onPress={handleSeedMovement}
           disabled={!canSeedMovement || state.loadState === 'loading'}
           tone="secondary"
         />
         <AppButton
-          label="Refresh Match State"
+          label="Refresh Question State"
           onPress={() => {
             void refreshActiveMatch();
           }}
@@ -417,8 +476,8 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Categories"
-        subtitle="Start by choosing the kind of clue you want to ask for."
+        title="Pick a clue type"
+        subtitle="Start with the kind of answer you want back from the other side."
       >
         <QuestionCategoryList
           categories={categoryViewModels}
@@ -428,8 +487,8 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Templates"
-        subtitle="Choose the specific question card you want to ask."
+        title="Choose a question"
+        subtitle="Each question card tells you what it asks, how it should be answered, and how much map change to expect."
       >
         {selectedCategory ? (
           <QuestionTemplateList
@@ -452,8 +511,8 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Selected Question"
-        subtitle="Review what the chosen question asks, how it should be answered, and what kind of map update to expect."
+        title="Before you ask"
+        subtitle="Review the player-facing wording, expected answer format, and likely map effect."
       >
         {selectedTemplate && selectedCategory ? (
           <>
@@ -497,8 +556,8 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Ask Question"
-        subtitle="Send the selected question into the live match flow when the match is ready."
+        title="Send this question"
+        subtitle="Ask the selected clue when the current match state allows it."
       >
         {selectedTemplate && selectedCategory ? (
           <>
@@ -514,8 +573,8 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Answer Question"
-        subtitle="Answer from the hider or host-admin view when a question is waiting for a response."
+        title="Answer honestly"
+        subtitle="Respond from the hider or host-admin view when the live match is waiting for an answer."
       >
         {activeQuestion && activeQuestionTemplate && activeQuestionCategory ? (
           <>
@@ -527,6 +586,32 @@ export function QuestionCenterScreen() {
               disabled={!canAnswerQuestion || state.loadState === 'loading'}
               onChange={setAnswerDraft}
             />
+            {questionAttachmentContext ? (
+              <EvidenceCapturePanel
+                context={questionAttachmentContext}
+                drafts={questionEvidenceDrafts}
+                visibleAttachments={activeQuestionEvidenceContext?.attachments ?? []}
+                disabled={!activeMatch || state.loadState === 'loading' || !canAnswerQuestion}
+                busy={localMedia.isContextBusy(questionAttachmentContext.contextId)}
+                feedback={localMedia.getContextFeedback(questionAttachmentContext.contextId)}
+                localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
+                submitLabel="Record Evidence In Match"
+                submitDisabled={questionEvidenceDrafts.length === 0}
+                submitHint="Recording evidence here creates real attachment records through the runtime. The file preview stays local to this device session until fuller storage support is added."
+                emptyVisibleText="No visible question evidence has been recorded yet."
+                onChooseFromLibrary={() => {
+                  void localMedia.chooseFromLibrary(questionAttachmentContext);
+                }}
+                onTakePhoto={() => {
+                  void localMedia.takePhoto(questionAttachmentContext);
+                }}
+                onUpdateDraft={localMedia.updateDraft}
+                onRemoveDraft={localMedia.removeDraft}
+                onSubmitSelected={() => {
+                  void handleRecordQuestionEvidence();
+                }}
+              />
+            ) : null}
             <AppButton
               label="Submit Answer"
               onPress={handleAnswerQuestion}
@@ -541,16 +626,16 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Resolve Result"
-        subtitle="Host-admin applies the result here, then reviews whether the map changed or only recorded evidence."
+        title="Apply the outcome"
+        subtitle="Host-admin applies the answer here, then confirms whether the map changed or the result only recorded evidence."
       >
         {activeQuestion && activeQuestionTemplate && activeQuestionCategory ? (
           <>
             <Text style={styles.copy}>
-              Host-admin resolution uses the selected template's canonical mapping and refreshes the bounded search area inside the active playable region.
+              Host-admin resolution uses the selected template's canonical mapping and refreshes the bounded search area inside the active playable region when the result supports geometry.
             </Text>
             <AppButton
-              label="Resolve Result Into Map"
+              label="Apply Result"
               onPress={handleResolveQuestion}
               disabled={!canResolveQuestion || state.loadState === 'loading'}
             />

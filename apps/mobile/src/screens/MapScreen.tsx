@@ -37,6 +37,7 @@ import {
   useMatchTimingModel
 } from '../features/timers/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
+import { isSameMapSetupDraft } from '../state/app-shell-state.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
@@ -238,14 +239,21 @@ export function MapScreen() {
       return;
     }
 
-    saveMapSetupDraft({
+    const nextDraft = {
       matchId: activeMatch.matchId,
       selectedRegions,
       query: regionSearch.query,
       selectedPreviewRegionId: regionSearch.selectedRegionId
-    });
+    };
+
+    if (isSameMapSetupDraft(mapSetupDraft, nextDraft)) {
+      return;
+    }
+
+    saveMapSetupDraft(nextDraft);
   }, [
     activeMatch,
+    mapSetupDraft,
     regionSearch.query,
     regionSearch.selectedRegionId,
     saveMapSetupDraft,
@@ -294,8 +302,8 @@ export function MapScreen() {
 
         {lastSyncAppliedConstraint && latestQuestionEffect ? (
           <StateBanner
-            tone={latestQuestionEffect.resolutionTone}
-            title={`${latestQuestionEffect.resolutionModeLabel} map update applied`}
+            tone={latestQuestionEffect.mapEffectTone}
+            title={latestQuestionEffect.mapEffectTitle}
             detail={latestQuestionEffect.mapEffectDetail}
           />
         ) : null}
@@ -370,7 +378,7 @@ export function MapScreen() {
         {projection?.visibleMap ? (
           <Panel
             title="Latest Question Update"
-            subtitle="The most recent resolved question that changed or annotated the search map."
+            subtitle="The most recent resolved question, including whether it changed the search area or only recorded evidence."
           >
             <QuestionResolutionPanel
               title="Question-To-Map Summary"

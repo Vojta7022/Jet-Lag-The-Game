@@ -170,9 +170,9 @@ test('question map effect model explains approximate geometry updates clearly', 
   assert.ok(model);
   assert.equal(model?.resolutionModeLabel, 'Approximate');
   assert.equal(model?.resolutionTone, 'warning');
-  assert.equal(model?.mapEffectTitle, 'Search area updated');
+  assert.equal(model?.mapEffectTitle, 'Search area changed');
   assert.match(model?.mapEffectDetail ?? '', /narrowed/i);
-  assert.match(model?.resolutionDetail ?? '', /approximate geometry/i);
+  assert.match(model?.resolutionDetail ?? '', /approximate geometry|incomplete feature coverage/i);
 });
 
 test('question map effect model stays honest for metadata-only evidence flows', () => {
@@ -220,8 +220,8 @@ test('question map effect model stays honest for metadata-only evidence flows', 
 
   assert.ok(model);
   assert.equal(model?.resolutionModeLabel, 'Metadata-only');
-  assert.equal(model?.mapEffectTitle, 'Recorded without geometry');
-  assert.match(model?.mapEffectDetail ?? '', /does not pretend to change/i);
+  assert.equal(model?.mapEffectTitle, 'Map stayed the same');
+  assert.match(model?.mapEffectDetail ?? '', /did not pretend to change/i);
   assert.equal(model?.artifactCountLabel, '0 visible artifacts');
 });
 
@@ -278,6 +278,6 @@ test('question map effect model marks exact bounded updates as trustworthy geome
   assert.ok(model);
   assert.equal(model?.resolutionModeLabel, 'Exact');
   assert.equal(model?.resolutionTone, 'success');
-  assert.match(model?.resolutionDetail ?? '', /exact geometry clipped/i);
+  assert.match(model?.resolutionDetail ?? '', /directly clipped geometry/i);
   assert.equal(model?.candidatePrecisionLabel, 'exact');
 });

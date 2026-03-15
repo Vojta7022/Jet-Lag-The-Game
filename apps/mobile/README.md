@@ -144,10 +144,11 @@ The mobile shell now includes a dedicated question center that:
 - lets seeker or host-admin views ask questions through the engine runtime
 - lets hider or host-admin views submit answers
 - lets host-admin apply the canonical constraint for the answered question
+- lets photo-style answers record real attachment metadata from picked or captured images before the answer is submitted
 - shows honest result modes: `exact`, `approximate`, or `metadata-only`
 - refreshes the authoritative bounded map state after constraint application
 
-Photo questions stay manual in this phase. The shell records placeholder attachment ids and notes, but it does not pretend to upload media or generate geometry.
+Photo questions stay honest in this phase. The shell can pick or capture real local images, record attachment metadata through the runtime, and preview the image during the current device session, but it does not yet claim fully durable binary upload/storage.
 
 ## Current Cards Phase
 
@@ -167,9 +168,20 @@ The mobile shell now includes a dedicated chat screen that:
 
 - renders lobby, global, and team-private channels from the real scoped projection
 - lets permitted roles send messages through `send_chat_message`
-- records attachment placeholders through `upload_attachment` without pretending media storage already exists
-- surfaces active photo-question and card evidence contexts when the current projection shows them
+- lets permitted roles pick from the photo library or camera before sending a message
+- records attachment metadata through `upload_attachment` without pretending durable media storage already exists
 - keeps public, team-private, and hidden attachment visibility aligned with the runtime projection scope
+
+Current media/evidence status:
+
+- real now:
+  - device image picking and camera capture through Expo image-picker
+  - local preview UI for selected or already-recorded attachments during the current app session
+  - direct evidence recording from question, card, and chat flows through the existing runtime command path
+- still partial:
+  - attachment binary files are not yet persisted by a production storage adapter
+  - previews remain local to the current device session unless a later storage/network layer persists the file
+  - visibility and linkage are authoritative, but storage durability is still a later transport/storage step
 
 ## Current Movement Phase
 

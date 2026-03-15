@@ -41,8 +41,24 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
         <Text style={styles.copy}>No question has been recorded yet.</Text>
       ) : (
         <>
+          <View style={styles.summaryCard}>
+            <Text style={styles.sectionTitle}>What happened</Text>
+            <View style={styles.pillRow}>
+              <ResolutionModePill
+                label={model?.resolutionModeLabel ?? 'Pending'}
+                tone={model?.resolutionTone ?? 'info'}
+              />
+              <ResolutionModePill
+                label={model?.mapEffectModeLabel ?? 'Pending'}
+                tone={model?.mapEffectTone ?? 'info'}
+              />
+            </View>
+            <Text style={styles.impactTitle}>{model?.mapEffectTitle ?? 'Waiting for result'}</Text>
+            <Text style={styles.copy}>{model?.mapEffectDetail ?? 'The latest question has not produced a visible result yet.'}</Text>
+          </View>
+
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Answer</Text>
+            <Text style={styles.sectionTitle}>Question and answer</Text>
             <View style={styles.row}>
               <Text style={styles.label}>Question</Text>
               <Text style={styles.value}>{model?.questionLabel}</Text>
@@ -58,11 +74,7 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Constraint Interpretation</Text>
-            <ResolutionModePill
-              label={model?.resolutionModeLabel ?? 'Pending'}
-              tone={model?.resolutionTone ?? 'info'}
-            />
+            <Text style={styles.sectionTitle}>Why the result has this confidence</Text>
             <Text style={styles.copy}>{model?.resolutionDetail}</Text>
             {props.constraint ? (
               <>
@@ -90,29 +102,24 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Map Effect</Text>
-            <ResolutionModePill
-              label={model?.mapEffectModeLabel ?? 'Pending'}
-              tone={model?.mapEffectTone ?? 'info'}
-            />
-            <Text style={styles.impactTitle}>{model?.mapEffectTitle}</Text>
+            <Text style={styles.sectionTitle}>How the map responded</Text>
             <Text style={styles.copy}>{model?.mapEffectDetail}</Text>
             <View style={styles.row}>
-              <Text style={styles.label}>Candidate Precision</Text>
+              <Text style={styles.label}>Visible precision</Text>
               <Text style={styles.value}>{model?.candidatePrecisionLabel}</Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>Playable-Region Clipping</Text>
+              <Text style={styles.label}>Playable-region clipping</Text>
               <Text style={styles.value}>{model?.boundedLabel}</Text>
             </View>
             {model?.historySummary ? (
-              <Text style={styles.copy}>Latest map update: {model.historySummary}</Text>
+              <Text style={styles.copy}>Latest map note: {model.historySummary}</Text>
             ) : null}
           </View>
 
           {model?.reasoningSteps.length ? (
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Why This Happened</Text>
+              <Text style={styles.sectionTitle}>Reasoning trail</Text>
               {model.reasoningSteps.map((step, index) => (
                 <Text key={`${props.constraint?.constraintRecordId ?? question.questionInstanceId}:${index}`} style={styles.step}>
                   {index + 1}. {step}
@@ -143,10 +150,23 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 12
   },
+  summaryCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+    padding: 12
+  },
   sectionTitle: {
     color: colors.text,
     fontSize: 13,
     fontWeight: '700'
+  },
+  pillRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
   },
   row: {
     flexDirection: 'row',

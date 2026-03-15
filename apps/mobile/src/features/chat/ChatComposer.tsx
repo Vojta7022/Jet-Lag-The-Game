@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { ChatComposerDraft, ChatChannelViewModel } from './chat-state.ts';
@@ -12,6 +14,7 @@ interface ChatComposerProps {
   disabled?: boolean;
   canAttach?: boolean;
   canSend?: boolean;
+  attachmentSlot?: ReactNode;
   onChange: (draft: ChatComposerDraft) => void;
   onSubmit: () => void;
   onReset: () => void;
@@ -20,44 +23,55 @@ interface ChatComposerProps {
 export function ChatComposer(props: ChatComposerProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        {props.channel ? `Send To ${props.channel.channel.displayName}` : 'Select A Channel'}
-      </Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>
+          {props.channel ? props.channel.channel.displayName : 'Select a channel'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {props.channel ? 'Write a message, then attach evidence if this channel allows it.' : 'Choose a channel before sending a message.'}
+        </Text>
+      </View>
       <Field
         label="Message"
         value={props.draft.body}
         onChangeText={(body) => props.onChange({ ...props.draft, body })}
-        placeholder="Share an update, reminder, or evidence note"
+        placeholder="Write a match update, reminder, or evidence note"
         autoCapitalize="sentences"
+        multiline
+        numberOfLines={4}
       />
       {props.canAttach ? (
         <>
-          <Field
-            label="Image Placeholder Label"
-            value={props.draft.attachmentLabel}
-            onChangeText={(attachmentLabel) => props.onChange({ ...props.draft, attachmentLabel })}
-            placeholder="Station platform photo"
-            autoCapitalize="sentences"
-          />
-          <Field
-            label="Placeholder Note"
-            value={props.draft.attachmentNote}
-            onChangeText={(attachmentNote) => props.onChange({ ...props.draft, attachmentNote })}
-            placeholder="Manual placeholder only until real upload/storage exists"
-            autoCapitalize="sentences"
-          />
-          <Text style={styles.copy}>
-            Attachment placeholders are real runtime records, but they do not claim successful media upload or storage in this phase.
-          </Text>
+          {props.attachmentSlot ?? (
+            <>
+              <Field
+                label="Image Placeholder Label"
+                value={props.draft.attachmentLabel}
+                onChangeText={(attachmentLabel) => props.onChange({ ...props.draft, attachmentLabel })}
+                placeholder="Station platform photo"
+                autoCapitalize="sentences"
+              />
+              <Field
+                label="Placeholder Note"
+                value={props.draft.attachmentNote}
+                onChangeText={(attachmentNote) => props.onChange({ ...props.draft, attachmentNote })}
+                placeholder="Describe what still needs review"
+                autoCapitalize="sentences"
+              />
+              <Text style={styles.copy}>
+                Attachment records are real match-state entries, but they still do not promise completed media storage on every device in this phase.
+              </Text>
+            </>
+          )}
         </>
       ) : (
         <Text style={styles.copy}>
-          This role or scope can send chat text here, but attachment placeholders are not available.
+          This view can still send chat text, but media attachments are not available in the current role or scope.
         </Text>
       )}
       <View style={styles.actions}>
-        <AppButton label="Clear Draft" onPress={props.onReset} tone="secondary" disabled={props.disabled} />
-        <AppButton label="Send Message" onPress={props.onSubmit} disabled={props.disabled || !props.canSend} />
+        <AppButton label="Clear" onPress={props.onReset} tone="secondary" disabled={props.disabled} />
+        <AppButton label="Send" onPress={props.onSubmit} disabled={props.disabled || !props.canSend} />
       </View>
     </View>
   );
@@ -67,10 +81,18 @@ const styles = StyleSheet.create({
   container: {
     gap: 10
   },
+  header: {
+    gap: 4
+  },
   title: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700'
+  },
+  subtitle: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17
   },
   copy: {
     color: colors.textMuted,
@@ -78,6 +100,8 @@ const styles = StyleSheet.create({
     lineHeight: 18
   },
   actions: {
-    gap: 8
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end'
   }
 });

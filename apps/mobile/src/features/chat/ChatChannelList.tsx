@@ -26,7 +26,10 @@ export function ChatChannelList(props: ChatChannelListProps) {
         >
           <Text style={styles.name}>{entry.channel.displayName}</Text>
           <Text style={styles.meta}>
-            {formatChannelScope(entry.channel)} • {entry.messages.length} message{entry.messages.length === 1 ? '' : 's'}
+            {formatChannelScope(entry.channel)}
+          </Text>
+          <Text style={styles.count}>
+            {entry.messages.length} message{entry.messages.length === 1 ? '' : 's'}
           </Text>
         </Pressable>
       ))}
@@ -36,16 +39,19 @@ export function ChatChannelList(props: ChatChannelListProps) {
 
 const styles = StyleSheet.create({
   list: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8
   },
   item: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 4,
+    minWidth: 120,
     paddingHorizontal: 14,
-    paddingVertical: 12
+    paddingVertical: 10
   },
   itemSelected: {
     backgroundColor: colors.accentMuted,
@@ -59,5 +65,10 @@ const styles = StyleSheet.create({
   meta: {
     color: colors.textMuted,
     fontSize: 12
+  },
+  count: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: '700'
   }
 });

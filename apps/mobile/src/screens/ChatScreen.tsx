@@ -2,14 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
-import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
   buildChatChannelViewModels,
   buildChatSubmitCommands,
-  buildEvidenceContexts,
-  buildEvidencePlaceholderCommand,
   canSendAttachmentPlaceholders,
   canSendMessage,
   canSubmitChatDraft,
@@ -17,11 +14,16 @@ import {
   ChatComposer,
   ChatMessageList,
   createInitialChatComposerDraft,
-  PhotoEvidencePanel,
+  formatChannelScope,
   pickDefaultChatChannelId,
   resolveChatViewerRole,
   type ChatComposerDraft
 } from '../features/chat/index.ts';
+import {
+  EvidenceCapturePanel,
+  useLocalMediaAttachments,
+  type LocalEvidenceContextDescriptor
+} from '../features/evidence/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
@@ -30,10 +32,11 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 
 export function ChatScreen() {
-  const { state, refreshActiveMatch, submitCommand, submitCommands } = useAppShell();
+  const { state, refreshActiveMatch, submitCommands } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const viewerRole = resolveChatViewerRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
+  const localMedia = useLocalMediaAttachments(createUuid);
   const channelViewModels = useMemo(
     () => buildChatChannelViewModels(projection),
     [projection]
@@ -51,72 +54,109 @@ export function ChatScreen() {
   }, [channelViewModels, projection, selectedChannelId]);
 
   const selectedChannel = channelViewModels.find((entry) => entry.channel.channelId === selectedChannelId);
-  const evidenceContexts = useMemo(
-    () => buildEvidenceContexts(defaultContentPack, projection, viewerRole),
-    [projection, viewerRole]
+  const chatAttachmentContext = useMemo<LocalEvidenceContextDescriptor | undefined>(
+    () =>
+      selectedChannel
+        ? {
+            contextId: `channel:${selectedChannel.channel.channelId}`,
+            kind: 'chat',
+            title: `Attach Media To ${selectedChannel.channel.displayName}`,
+            detail: 'Choose an image from the device or camera. The preview stays local until you send the message, then the match records attachment metadata honestly.',
+            visibilityScope: selectedChannel.channel.visibilityScope,
+            attachmentKind: 'image',
+            channelId: selectedChannel.channel.channelId
+          }
+        : undefined,
+    [selectedChannel]
   );
+  const selectedAttachments = chatAttachmentContext
+    ? localMedia.getContextDrafts(chatAttachmentContext.contextId)
+    : [];
   const canAttach = canSendAttachmentPlaceholders(viewerRole);
-  const canSend = canSubmitChatDraft(viewerRole, selectedChannel?.channel, draft);
+  const canSend = canSubmitChatDraft(viewerRole, selectedChannel?.channel, draft, selectedAttachments);
+  const selectedChannelSummary = selectedChannel
+    ? `${selectedChannel.messages.length} visible message${selectedChannel.messages.length === 1 ? '' : 's'}`
+    : 'Choose a channel to start chatting';
+  const selectedChannelAttachmentSummary = selectedChannel
+    ? `${selectedChannel.unattachedPlaceholders.length} recorded attachment${selectedChannel.unattachedPlaceholders.length === 1 ? '' : 's'} waiting for a visible message`
+    : 'No channel selected';
+
+  const handleSendMessage = async () => {
+    const attachmentIds = selectedAttachments.map((attachment) => attachment.attachmentId);
+    const commands = buildChatSubmitCommands({
+      role: viewerRole,
+      channel: selectedChannel?.channel,
+      draft,
+      createId: createUuid,
+      selectedAttachments
+    });
+    if (commands.length === 0) {
+      return;
+    }
+
+    localMedia.markSubmitting(attachmentIds);
+    const succeeded = await submitCommands(commands);
+    if (succeeded) {
+      localMedia.markSubmitted(attachmentIds);
+      setDraft(createInitialChatComposerDraft());
+      return;
+    }
+
+    localMedia.resetToSelected(attachmentIds);
+  };
 
   return (
     <ScreenContainer
       title="Chat"
-      subtitle="Stay in sync across public and team channels, then attach evidence when the current role is allowed."
+      subtitle="Read the live conversation, switch between public and team channels, and attach evidence when the current role allows it."
       topSlot={<ProductNavBar current="chat" />}
     >
       {!activeMatch ? (
         <StateBanner
           tone="warning"
           title="No active match"
-          detail="Create or join a match first. Chat and evidence placeholders only work through a live runtime connection."
+          detail="Create or join a match first. Chat and media evidence only work through a live runtime connection."
         />
       ) : null}
 
       {activeMatch && viewerRole === 'spectator' ? (
         <StateBanner
           tone="info"
-          title="Spectator messaging stays public"
-          detail="Spectators can use the public lobby/global channels when visible, but they cannot create private evidence placeholders."
+          title="Spectator chat stays public"
+          detail="Spectators can read and send in visible public channels, but they cannot add private or team-only evidence attachments."
         />
       ) : null}
 
       <Panel
-        title="Conversation Context"
-        subtitle="Visible channels and evidence permissions come from the active scoped projection."
+        title="Conversation"
+        subtitle="Everything on this screen respects the live projection scope, including private channels and attachment visibility."
       >
         <FactList
           items={[
             { label: 'Role', value: viewerRole },
-            { label: 'Scope', value: activeMatch?.recipient.scope ?? 'None' },
+            { label: 'Current Scope', value: activeMatch?.recipient.scope ?? 'None' },
             {
-              label: 'Stage',
+              label: 'Match Stage',
               value: projection?.seekPhaseSubstate
                 ? `${projection.lifecycleState} / ${projection.seekPhaseSubstate}`
                 : projection?.lifecycleState ?? 'Unavailable'
             },
-            { label: 'Visible Channels', value: channelViewModels.length }
+            { label: 'Visible Channels', value: channelViewModels.length },
+            { label: 'Selected Channel', value: selectedChannel?.channel.displayName ?? 'None' }
           ]}
         />
         <Text style={styles.copy}>
-          Public and team-private visibility comes from the authoritative projection. This screen does not guess around hidden-info rules.
+          Public and team-private visibility comes from the authoritative projection. This screen never guesses around hidden-info rules.
         </Text>
-        <AppButton
-          label="Refresh Chat"
-          onPress={() => {
-            void refreshActiveMatch();
-          }}
-          tone="secondary"
-          disabled={!activeMatch || state.loadState === 'loading'}
-        />
       </Panel>
 
       <Panel
         title="Channels"
-        subtitle="Switch between visible public and team channels."
+        subtitle="Pick where you want to read and send messages."
       >
         {channelViewModels.length === 0 ? (
           <Text style={styles.copy}>
-            No chat channels are visible in the current projection scope. A public or private reconnect may expose different channels.
+            No chat channels are visible in the current projection scope right now. A different reconnect scope may expose more channels.
           </Text>
         ) : (
           <ChatChannelList
@@ -128,15 +168,33 @@ export function ChatScreen() {
       </Panel>
 
       <Panel
-        title="Messages"
-        subtitle="Read the selected channel and check which attachments are visible in this scope."
+        title={selectedChannel ? selectedChannel.channel.displayName : 'Messages'}
+        subtitle={selectedChannel ? 'Newest visible messages and evidence for this channel.' : 'Choose a channel to load the conversation.'}
       >
-        <ChatMessageList channel={selectedChannel} />
+        <FactList
+          items={[
+            { label: 'Channel Scope', value: selectedChannel?.channel ? formatChannelScope(selectedChannel.channel) : 'Unavailable' },
+            { label: 'Visible Messages', value: selectedChannelSummary },
+            { label: 'Recorded Evidence', value: selectedChannelAttachmentSummary }
+          ]}
+        />
+        <ChatMessageList
+          channel={selectedChannel}
+          localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
+        />
+        <AppButton
+          label="Refresh Conversation"
+          onPress={() => {
+            void refreshActiveMatch();
+          }}
+          tone="secondary"
+          disabled={!activeMatch || state.loadState === 'loading'}
+        />
       </Panel>
 
       <Panel
-        title="Send Message"
-        subtitle="Compose a new message or add a placeholder attachment when your role allows it."
+        title="Write a Message"
+        subtitle="Send text first, then add evidence naturally when this channel and role allow it."
       >
         <ChatComposer
           channel={selectedChannel}
@@ -144,44 +202,33 @@ export function ChatScreen() {
           disabled={!activeMatch || state.loadState === 'loading'}
           canAttach={canAttach}
           canSend={canSend && canSendMessage(viewerRole, selectedChannel?.channel)}
+          attachmentSlot={
+            chatAttachmentContext ? (
+              <EvidenceCapturePanel
+                context={chatAttachmentContext}
+                drafts={selectedAttachments}
+                visibleAttachments={[]}
+                disabled={!activeMatch || state.loadState === 'loading' || !canAttach}
+                busy={localMedia.isContextBusy(chatAttachmentContext.contextId)}
+                feedback={localMedia.getContextFeedback(chatAttachmentContext.contextId)}
+                localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
+                submitHint="Selected media stays on this device until you send the message. Sending records attachment metadata in the match, but cross-device binary storage is still partial in this phase."
+                emptyVisibleText="Recorded attachments for this channel will appear here after a successful send."
+                onChooseFromLibrary={() => {
+                  void localMedia.chooseFromLibrary(chatAttachmentContext);
+                }}
+                onTakePhoto={() => {
+                  void localMedia.takePhoto(chatAttachmentContext);
+                }}
+                onUpdateDraft={localMedia.updateDraft}
+                onRemoveDraft={localMedia.removeDraft}
+              />
+            ) : undefined
+          }
           onChange={setDraft}
           onReset={() => setDraft(createInitialChatComposerDraft())}
           onSubmit={() => {
-            const commands = buildChatSubmitCommands({
-              role: viewerRole,
-              channel: selectedChannel?.channel,
-              draft,
-              createId: createUuid
-            });
-            if (commands.length === 0) {
-              return;
-            }
-
-            void submitCommands(commands);
-            setDraft(createInitialChatComposerDraft());
-          }}
-        />
-      </Panel>
-
-      <Panel
-        title="Photo Evidence"
-        subtitle="Create placeholder evidence entries for photo-based questions and manual card checks."
-      >
-        <PhotoEvidencePanel
-          contexts={evidenceContexts}
-          disabled={!activeMatch || state.loadState === 'loading' || !canAttach}
-          onCreatePlaceholder={(context, label, note) => {
-            const command = buildEvidencePlaceholderCommand({
-              context,
-              label,
-              note,
-              createId: createUuid
-            });
-            if (!command) {
-              return;
-            }
-
-            void submitCommand(command);
+            void handleSendMessage();
           }}
         />
       </Panel>

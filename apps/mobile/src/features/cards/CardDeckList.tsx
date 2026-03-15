@@ -1,12 +1,21 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { MatchRole } from '../../../../../packages/shared-types/src/index.ts';
+
 import type { DeckViewModel } from './card-catalog.ts';
+import { CardZoneStats } from './CardZoneStats.tsx';
+import {
+  describeDeckVisibility,
+  formatDeckOwnerScope,
+  summarizeVisibleDeckCounts
+} from './card-guidance.ts';
 
 import { colors } from '../../ui/theme.ts';
 
 interface CardDeckListProps {
   decks: DeckViewModel[];
   selectedDeckId?: string;
+  viewerRole?: MatchRole;
   onSelect: (deckId: string) => void;
 }
 
@@ -23,13 +32,12 @@ export function CardDeckList(props: CardDeckListProps) {
             style={[styles.item, selected ? styles.itemSelected : null]}
           >
             <Text style={styles.title}>{deckViewModel.deck.name}</Text>
-            <Text style={styles.meta}>{deckViewModel.deck.ownerScope}</Text>
-            <View style={styles.countRow}>
-              <Text style={styles.count}>Hand {deckViewModel.visibleByZone.hand.length}</Text>
-              <Text style={styles.count}>Draw {deckViewModel.visibleByZone.draw_pile.length}</Text>
-              <Text style={styles.count}>Discard {deckViewModel.visibleByZone.discard_pile.length}</Text>
-              <Text style={styles.count}>Exile {deckViewModel.visibleByZone.exile.length}</Text>
-            </View>
+            <Text style={styles.meta}>{formatDeckOwnerScope(deckViewModel.deck.ownerScope)}</Text>
+            <Text style={styles.copy}>{summarizeVisibleDeckCounts(deckViewModel)}</Text>
+            <CardZoneStats deck={deckViewModel} />
+            <Text style={styles.copy}>
+              {describeDeckVisibility(deckViewModel.deck, props.viewerRole ?? 'spectator')}
+            </Text>
           </Pressable>
         );
       })}
@@ -60,16 +68,12 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: colors.textMuted,
-    fontSize: 12
-  },
-  countRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10
-  },
-  count: {
-    color: colors.text,
     fontSize: 12,
     fontWeight: '600'
+  },
+  copy: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17
   }
 });

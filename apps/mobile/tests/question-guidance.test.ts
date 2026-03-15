@@ -87,9 +87,9 @@ test('question guidance explains approximate map updates plainly for radar templ
   });
 
   assert.match(describeQuestionTemplateForPlayers(template, category), /within 402m/i);
-  assert.equal(describeExpectedAnswerGuidance(template), 'Answer Yes or No.');
+  assert.equal(describeExpectedAnswerGuidance(template), 'Reply with a simple Yes or No.');
   assert.equal(impact.label, 'Approximate map update');
-  assert.match(impact.detail, /changes the map/i);
+  assert.match(impact.detail, /narrow/i);
   assert.equal(formatQuestionScaleSet(template.scaleSet.appliesTo), 'Small, medium, and large games');
 });
 
@@ -129,9 +129,9 @@ test('question guidance stays honest about metadata-only evidence flows', () => 
   });
 
   assert.match(describeQuestionTemplateForPlayers(template, category), /manual evidence/i);
-  assert.match(describeExpectedAnswerGuidance(template), /attachment placeholders/i);
-  assert.equal(impact.label, 'Metadata-only');
-  assert.match(impact.detail, /does not promise a map change/i);
+  assert.match(describeExpectedAnswerGuidance(template), /evidence photos/i);
+  assert.equal(impact.label, 'Evidence only');
+  assert.match(impact.detail, /should not be expected to change the map/i);
 });
 
 test('question guidance falls back to metadata-only when feature coverage is unavailable', () => {
@@ -162,5 +162,5 @@ test('question guidance falls back to metadata-only when feature coverage is una
   });
 
   assert.match(describeQuestionTemplateForPlayers(template, category), /commercial airport/i);
-  assert.equal(impact.label, 'Metadata-only');
+  assert.equal(impact.label, 'Evidence only');
 });

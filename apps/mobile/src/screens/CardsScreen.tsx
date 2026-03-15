@@ -3,8 +3,11 @@ import { StyleSheet, Text } from 'react-native';
 
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
+import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
+  buildCardActionState,
+  buildCardBehaviorModel,
   CardDeckList,
   CardDetailPanel,
   CardResolutionStatusPanel,
@@ -15,10 +18,19 @@ import {
   canDrawCards,
   canPlayCards,
   canResolveCardWindow,
+  describeDeckVisibility,
   findResolvedVisibleCard,
+  formatDeckOwnerScope,
   pickDefaultCardInstanceId,
   resolveCurrentRole
 } from '../features/cards/index.ts';
+import {
+  buildAttachmentUploadCommandFromDraft,
+  buildEvidenceContexts,
+  EvidenceCapturePanel,
+  useLocalMediaAttachments,
+  type LocalEvidenceContextDescriptor
+} from '../features/evidence/index.ts';
 import {
   MatchTimingBanner,
   MatchTimingPanel,
@@ -36,6 +48,7 @@ export function CardsScreen() {
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
+  const localMedia = useLocalMediaAttachments(createUuid);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const deckViewModels = useMemo(
     () => buildDeckViewModels(defaultContentPack, projection, viewerRole),
@@ -107,11 +120,69 @@ export function CardsScreen() {
     activeMatch &&
       canResolveCardWindow(viewerRole, projection)
   );
+  const selectedDeckVisibility = selectedDeck
+    ? describeDeckVisibility(selectedDeck.deck, viewerRole)
+    : 'Select a deck to review its visible hand and piles.';
+  const selectedCardActionState = buildCardActionState({
+    card: selectedCard,
+    viewerRole,
+    canPlay,
+    canDiscard,
+    lockReason
+  });
+  const activeCardBehavior = activeCard ? buildCardBehaviorModel(activeCard.definition) : undefined;
+  const evidenceContexts = useMemo(
+    () => buildEvidenceContexts(defaultContentPack, projection, viewerRole),
+    [projection, viewerRole]
+  );
+  const activeCardEvidenceContext = evidenceContexts.find((context) => context.kind === 'card');
+  const cardAttachmentContext = useMemo<LocalEvidenceContextDescriptor | undefined>(
+    () =>
+      activeCardEvidenceContext
+        ? {
+            contextId: activeCardEvidenceContext.contextId,
+            kind: 'card',
+            title: activeCardEvidenceContext.title,
+            detail: activeCardEvidenceContext.detail,
+            visibilityScope: activeCardEvidenceContext.suggestedVisibilityScope,
+            attachmentKind: 'photo_evidence',
+            cardInstanceId: activeCardEvidenceContext.cardInstanceId
+          }
+        : undefined,
+    [activeCardEvidenceContext]
+  );
+  const cardEvidenceDrafts = cardAttachmentContext
+    ? localMedia.getContextDrafts(cardAttachmentContext.contextId)
+    : [];
+  const resolveDisabledReason = activeCard && !canResolve
+    ? 'A host-admin view must close the active card window after the effect is handled.'
+    : undefined;
+
+  const handleRecordCardEvidence = async () => {
+    if (!cardAttachmentContext) {
+      return;
+    }
+
+    const attachmentIds = cardEvidenceDrafts.map((draft) => draft.attachmentId);
+    const commands = cardEvidenceDrafts.map((draft) => buildAttachmentUploadCommandFromDraft(draft));
+    if (commands.length === 0) {
+      return;
+    }
+
+    localMedia.markSubmitting(attachmentIds);
+    const succeeded = await submitCommands(commands);
+    if (succeeded) {
+      localMedia.markSubmitted(attachmentIds);
+      return;
+    }
+
+    localMedia.resetToSelected(attachmentIds);
+  };
 
   return (
     <ScreenContainer
       title="Cards"
-      subtitle="Review visible hands and piles, then play or discard cards through the live match flow."
+      subtitle="Review visible hands and piles, understand what each card can really do, and manage card windows through the live match flow."
       topSlot={<ProductNavBar current="cards" />}
     >
       {!activeMatch ? (
@@ -126,7 +197,15 @@ export function CardsScreen() {
         <StateBanner
           tone="info"
           title="Read-only spectator view"
-          detail="Spectators cannot inspect private hands or perform card actions. Public card state remains hidden unless the active scope allows it."
+          detail="Spectators cannot inspect private hands or perform card actions. Only card state exposed by the current projection scope is visible here."
+        />
+      ) : null}
+
+      {activeCard && activeCardBehavior ? (
+        <StateBanner
+          tone={activeCardBehavior.tone}
+          title={`${activeCardBehavior.label} card window is open`}
+          detail={activeCardBehavior.detail}
         />
       ) : null}
 
@@ -143,7 +222,7 @@ export function CardsScreen() {
 
       <Panel
         title="Card Context"
-        subtitle="Visibility, state, and card-lock rules for the current role."
+        subtitle="Visibility, hand access, and card-lock rules for the current role."
       >
         <FactList
           items={[
@@ -155,20 +234,21 @@ export function CardsScreen() {
                 : projection?.lifecycleState ?? 'Unavailable'
             },
             { label: 'Scope', value: activeMatch?.recipient.scope ?? 'None' },
-            { label: 'Visible Decks', value: deckViewModels.length }
+            { label: 'Visible Decks', value: deckViewModels.length },
+            { label: 'State Update', value: timingModel?.freshnessLabel ?? 'Waiting for live state' }
           ]}
         />
         <Text style={styles.copy}>
-          Draw/play/discard actions respect the real state machine. Manual and assisted cards never claim automated effects that the engine does not actually perform.
+          Draw, play, discard, and resolution controls respect the real state machine. Manual and assisted cards never claim automated effects that the engine does not actually perform.
         </Text>
       </Panel>
 
       <Panel
         title="Deck Actions"
-        subtitle="Prepare the match for card use, draw from a visible deck, or refresh the current state."
+        subtitle="Prepare the match for card play, draw from a visible deck, or refresh the live card state."
       >
         <AppButton
-          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Cards'}
+          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Card Play'}
           onPress={() => {
             if (!projection) {
               return;
@@ -185,7 +265,7 @@ export function CardsScreen() {
           disabled={!canPrepareFlow || state.loadState === 'loading'}
         />
         <AppButton
-          label={selectedDeck ? `Draw From ${selectedDeck.deck.name}` : 'Draw Card'}
+          label={selectedDeck ? `Draw From ${selectedDeck.deck.name}` : 'Draw A Card'}
           onPress={() => {
             if (!selectedDeck) {
               return;
@@ -201,7 +281,7 @@ export function CardsScreen() {
           disabled={!canDraw || state.loadState === 'loading'}
         />
         <AppButton
-          label="Refresh Cards"
+          label="Refresh Card State"
           onPress={() => {
             void refreshActiveMatch();
           }}
@@ -212,7 +292,7 @@ export function CardsScreen() {
 
       <Panel
         title="Decks"
-        subtitle="Choose a deck to inspect its visible hand, draw pile, discard pile, and exile."
+        subtitle="Choose a deck to inspect its visible hand, draw pile, discard pile, exile, and any pending card windows."
       >
         {deckViewModels.length === 0 ? (
           <Text style={styles.copy}>
@@ -222,6 +302,7 @@ export function CardsScreen() {
           <CardDeckList
             decks={deckViewModels}
             selectedDeckId={selectedDeck?.deck.deckId}
+            viewerRole={viewerRole}
             onSelect={setSelectedDeckId}
           />
         )}
@@ -230,6 +311,21 @@ export function CardsScreen() {
       {selectedDeck ? (
         <>
           <Panel
+            title="Selected Deck"
+            subtitle="Understand who this deck belongs to, what is visible now, and whether anything is waiting for resolution."
+          >
+            <FactList
+              items={[
+                { label: 'Deck', value: selectedDeck.deck.name },
+                { label: 'Ownership', value: formatDeckOwnerScope(selectedDeck.deck.ownerScope) },
+                { label: 'Visible Cards', value: selectedDeck.visibleCards.length },
+                { label: 'Pending Windows', value: selectedDeck.visibleByZone.pending_resolution.length }
+              ]}
+            />
+            <Text style={styles.copy}>{selectedDeckVisibility}</Text>
+          </Panel>
+
+          <Panel
             title="Hand"
             subtitle="Cards currently visible in hand for the selected deck."
           >
@@ -237,6 +333,19 @@ export function CardsScreen() {
               title={`${selectedDeck.deck.name} Hand`}
               cards={selectedDeck.visibleByZone.hand}
               emptyText="No visible hand cards in the current scope."
+              selectedCardInstanceId={selectedCard?.card.cardInstanceId}
+              onSelect={setSelectedCardInstanceId}
+            />
+          </Panel>
+
+          <Panel
+            title="Pending Resolution"
+            subtitle="Cards currently locked in a resolution window for the selected deck."
+          >
+            <CardZoneSection
+              title="Cards Awaiting Resolution"
+              cards={selectedDeck.visibleByZone.pending_resolution}
+              emptyText="No pending-resolution cards are visible in this deck right now."
               selectedCardInstanceId={selectedCard?.card.cardInstanceId}
               onSelect={setSelectedCardInstanceId}
             />
@@ -289,14 +398,17 @@ export function CardsScreen() {
 
       <Panel
         title="Card Detail"
-        subtitle="Review the currently selected card before taking an action."
+        subtitle="Review the currently selected card, how it resolves, and which actions are honestly available right now."
       >
         <CardDetailPanel
           card={selectedCard}
+          viewerRole={viewerRole}
           disabled={state.loadState === 'loading'}
           lockReason={lockReason}
           canPlay={canPlay}
           canDiscard={canDiscard}
+          playDisabledReason={selectedCardActionState.playReason}
+          discardDisabledReason={selectedCardActionState.discardReason}
           onPlay={() => {
             if (!selectedCard) {
               return;
@@ -326,11 +438,12 @@ export function CardsScreen() {
 
       <Panel
         title="Resolution Status"
-        subtitle="Track manual or assisted card windows that still need referee action."
+        subtitle="Track manual or assisted card windows that still need referee action before play can continue."
       >
         <CardResolutionStatusPanel
           activeCard={activeCard}
           canResolve={canResolve}
+          resolveDisabledReason={resolveDisabledReason}
           disabled={state.loadState === 'loading'}
           onResolve={() => {
             if (!projection?.activeCardResolution?.sourceCardInstanceId) {
@@ -346,6 +459,38 @@ export function CardsScreen() {
           }}
         />
       </Panel>
+
+      {cardAttachmentContext ? (
+        <Panel
+          title="Card Evidence"
+          subtitle="Record supporting media for cards that require evidence without pretending the effect is already automated."
+        >
+          <EvidenceCapturePanel
+            context={cardAttachmentContext}
+            drafts={cardEvidenceDrafts}
+            visibleAttachments={activeCardEvidenceContext?.attachments ?? []}
+            disabled={!activeMatch || state.loadState === 'loading' || viewerRole === 'spectator'}
+            busy={localMedia.isContextBusy(cardAttachmentContext.contextId)}
+            feedback={localMedia.getContextFeedback(cardAttachmentContext.contextId)}
+            localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
+            submitLabel="Record Card Evidence"
+            submitDisabled={cardEvidenceDrafts.length === 0}
+            submitHint="Recording media here creates attachment metadata in the match. Binary storage and later review workflows are still partial, so this screen stays explicit about what is and is not persisted."
+            emptyVisibleText="No visible card evidence has been recorded for the active window yet."
+            onChooseFromLibrary={() => {
+              void localMedia.chooseFromLibrary(cardAttachmentContext);
+            }}
+            onTakePhoto={() => {
+              void localMedia.takePhoto(cardAttachmentContext);
+            }}
+            onUpdateDraft={localMedia.updateDraft}
+            onRemoveDraft={localMedia.removeDraft}
+            onSubmitSelected={() => {
+              void handleRecordCardEvidence();
+            }}
+          />
+        </Panel>
+      ) : null}
     </ScreenContainer>
   );
 }

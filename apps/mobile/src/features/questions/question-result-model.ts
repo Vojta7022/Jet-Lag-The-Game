@@ -57,15 +57,15 @@ function describeResolutionMode(
   mode: VisibleConstraintProjection['resolutionMode'] | undefined
 ): string {
   if (mode === 'exact') {
-    return 'Uses exact geometry clipped to the playable region boundary.';
+    return 'The runtime produced a directly clipped geometry result inside the playable region boundary.';
   }
 
   if (mode === 'approximate') {
-    return 'Uses approximate geometry or incomplete feature coverage. Treat the map shape as directional rather than exact.';
+    return 'The runtime narrowed the map using approximate geometry or incomplete feature coverage. Treat the shape as directional rather than exact.';
   }
 
   if (mode === 'metadata_only') {
-    return 'Records evidence or metadata honestly without pretending to change geometry.';
+    return 'The runtime recorded evidence or metadata honestly without pretending to change geometry.';
   }
 
   return 'Waiting for authoritative constraint application.';
@@ -93,7 +93,7 @@ function buildMapEffectDetails(
     return {
       mapEffectModeLabel: 'Pending',
       mapEffectTone: 'info',
-      mapEffectTitle: 'Waiting for map update',
+      mapEffectTitle: 'Waiting for map outcome',
       mapEffectDetail: 'The answer is recorded, but the authoritative constraint has not been applied yet.',
       geometryEffect: 'pending'
     };
@@ -110,12 +110,12 @@ function buildMapEffectDetails(
 
   if (constraint.resolutionMode === 'metadata_only') {
     return {
-      mapEffectModeLabel: 'Recorded only',
+      mapEffectModeLabel: 'Map unchanged',
       mapEffectTone: 'info',
-      mapEffectTitle: 'Recorded without geometry',
+      mapEffectTitle: 'Map stayed the same',
       mapEffectDetail:
         matchingHistory?.summary ??
-        'This result stays as evidence or metadata only, so the bounded candidate area does not pretend to change.',
+        'This result stayed as evidence or metadata only, so the bounded candidate area did not pretend to change.',
       historySummary: matchingHistory?.summary,
       geometryEffect: 'metadata_only'
     };
@@ -125,7 +125,7 @@ function buildMapEffectDetails(
     return {
       mapEffectModeLabel: 'Map changed',
       mapEffectTone: 'success',
-      mapEffectTitle: 'Search area updated',
+      mapEffectTitle: 'Search area changed',
       mapEffectDetail:
         matchingHistory?.summary ??
         'The bounded candidate area was recalculated inside the playable region.',
@@ -138,21 +138,21 @@ function buildMapEffectDetails(
     return {
       mapEffectModeLabel: 'Overlay only',
       mapEffectTone: 'warning',
-      mapEffectTitle: 'Overlay added to the map',
+      mapEffectTitle: 'Map overlay added',
       mapEffectDetail:
-        'The result adds bounded map overlays, but the current projection does not show a direct remaining-area change.',
+        'The result added bounded map overlays, but the visible remaining search area did not clearly shrink in this scope.',
       historySummary: matchingHistory?.summary,
       geometryEffect: 'overlay_only'
     };
   }
 
   return {
-    mapEffectModeLabel: 'Recorded only',
+    mapEffectModeLabel: 'Map unchanged',
     mapEffectTone: 'info',
-    mapEffectTitle: 'Result recorded',
+    mapEffectTitle: 'Map did not visibly change',
     mapEffectDetail:
       matchingHistory?.summary ??
-      'The authoritative runtime recorded the result, but no geometry change is visible in the current scope.',
+      'The authoritative runtime recorded the result, but no trustworthy geometry change is visible in the current scope.',
     historySummary: matchingHistory?.summary,
     geometryEffect: 'metadata_only'
   };

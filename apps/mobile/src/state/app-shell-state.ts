@@ -19,6 +19,31 @@ export interface MapSetupDraftState {
   query: string;
 }
 
+function sameDraftRegionSelection(
+  left: PlayableRegionCatalogEntry[],
+  right: PlayableRegionCatalogEntry[]
+): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((region, index) => region.regionId === right[index]?.regionId);
+}
+
+export function isSameMapSetupDraft(
+  left: MapSetupDraftState | undefined,
+  right: MapSetupDraftState | undefined
+): boolean {
+  if (!left || !right) {
+    return left === right;
+  }
+
+  return left.matchId === right.matchId &&
+    left.query === right.query &&
+    left.selectedPreviewRegionId === right.selectedPreviewRegionId &&
+    sameDraftRegionSelection(left.selectedRegions, right.selectedRegions);
+}
+
 export interface ActiveMatchViewState extends ConnectionSnapshotSummary {
   projection: MatchProjection;
   connectionState: TransportConnectionState;
@@ -132,6 +157,10 @@ export function appShellReducer(
           : state.activeMatch
       };
     case 'map_setup_draft_saved':
+      if (isSameMapSetupDraft(state.uiState.mapSetupDrafts[action.draft.matchId], action.draft)) {
+        return state;
+      }
+
       return {
         ...state,
         uiState: {

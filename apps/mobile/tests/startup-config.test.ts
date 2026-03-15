@@ -25,6 +25,7 @@ test('mobile workspace keeps the minimum startup dependencies and scripts aligne
 
   assert.ok(packageJson.dependencies.expo);
   assert.ok(packageJson.dependencies['@expo/metro-runtime']);
+  assert.ok(packageJson.dependencies['expo-image-picker']);
   assert.ok(packageJson.dependencies['expo-router']);
   assert.ok(packageJson.dependencies.react);
   assert.ok(packageJson.dependencies['react-native']);

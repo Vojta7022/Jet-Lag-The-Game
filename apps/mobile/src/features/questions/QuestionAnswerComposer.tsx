@@ -53,7 +53,7 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
       <Text style={styles.copy}>Category: {props.category.name}</Text>
       <Text style={styles.copy}>{describeQuestionTemplateForPlayers(props.template, props.category)}</Text>
       <View style={styles.guidanceCard}>
-        <Text style={styles.guidanceTitle}>How to answer</Text>
+        <Text style={styles.guidanceTitle}>How to answer honestly</Text>
         <Text style={styles.copy}>{describeExpectedAnswerGuidance(props.template)}</Text>
       </View>
 
@@ -92,7 +92,7 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
                 This region does not currently expose a candidate list for the selected template. Enter the best honest feature label or id, and the outcome may stay metadata-only until better feature data is available.
               </Text>
               <Field
-                label="Selected Feature Id or Label"
+                label="Selected feature id or label"
                 value={props.draft.selectedFeatureId}
                 onChangeText={(selectedFeatureId) => props.onChange({ ...props.draft, selectedFeatureId })}
                 placeholder="Feature id or label"
@@ -105,20 +105,22 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
       {answerKind === 'attachment' ? (
         <>
           <Field
-            label="Attachment Placeholder Ids"
+            label="Recorded attachment ids"
             value={props.draft.attachmentIdsText}
             onChangeText={(attachmentIdsText) => props.onChange({ ...props.draft, attachmentIdsText })}
-            placeholder="photo-1, photo-2"
+            placeholder="Recorded attachment ids appear here"
           />
           <Field
-            label="Manual Evidence Note"
+            label="Evidence note"
             value={props.draft.note}
             onChangeText={(note) => props.onChange({ ...props.draft, note })}
-            placeholder="Describe the evidence until upload UI exists"
+            placeholder="Describe what the photo shows or what still needs review"
             autoCapitalize="sentences"
+            multiline
+            numberOfLines={3}
           />
           <Text style={styles.copy}>
-            Photo flows are manual in this phase. The answer records placeholder ids and notes without pretending to create geometry.
+            Use the evidence picker to choose or take a photo, then confirm the recorded attachment ids here. You can still type ids manually if another device or referee view already recorded the evidence.
           </Text>
         </>
       ) : null}
