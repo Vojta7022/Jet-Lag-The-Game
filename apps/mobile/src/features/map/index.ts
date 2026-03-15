@@ -1,7 +1,7 @@
-export * from './MapCanvas.tsx';
 export * from './MapFallbackCanvas.tsx';
 export * from './MapLegend.tsx';
-export * from './MapOverlayRenderer.tsx';
+export type * from './MapCanvas.types.ts';
+export type * from './MapOverlayRenderer.types.ts';
 export * from './RegionSelectionList.tsx';
 export * from './map-geometry.ts';
 export * from './map-overlays.ts';

@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
+import { MapCanvas } from '../features/map/MapCanvas';
 
 import {
-  MapCanvas,
   MapLegend,
   RegionSelectionList,
   buildMapOverlayModel,

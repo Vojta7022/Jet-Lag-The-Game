@@ -13,11 +13,7 @@ import {
   geometryToMapPolygons,
   geometryToMapPolylines
 } from './map-geometry.ts';
-import type { MapOverlayDescriptor } from './map-overlays.ts';
-
-interface MapOverlayRendererProps {
-  overlays: MapOverlayDescriptor[];
-}
+import type { MapOverlayRendererProps } from './MapOverlayRenderer.types.ts';
 
 export function MapOverlayRenderer(props: MapOverlayRendererProps) {
   return (

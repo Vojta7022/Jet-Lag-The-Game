@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { MapCanvas } from '../features/map/MapCanvas';
 
 import {
   buildMovementTrackViewModels,
@@ -9,7 +10,7 @@ import {
   MovementHistoryPanel,
   resolveLocationViewerRole
 } from '../features/location/index.ts';
-import { MapCanvas, getSeedPlayableRegion } from '../features/map/index.ts';
+import { getSeedPlayableRegion } from '../features/map/index.ts';
 import { useLocationSharing } from '../providers/LocationSharingProvider.tsx';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';

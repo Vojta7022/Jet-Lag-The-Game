@@ -1,24 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
-
-import type { VisibleMapProjection, VisibleMovementTrackProjection } from '../../../../../packages/shared-types/src/index.ts';
 
 import { colors } from '../../ui/theme.ts';
 
-import { MapFallbackCanvas } from './MapFallbackCanvas.tsx';
-import { MapOverlayRenderer } from './MapOverlayRenderer.tsx';
+import { MapOverlayRenderer } from './MapOverlayRenderer';
+import type { MapCanvasProps } from './MapCanvas.types.ts';
 import { buildMapCameraRegion, collectGeometryCoordinates, getPreferredMapGeometry } from './map-geometry.ts';
 import { buildMapOverlayModel } from './map-overlays.ts';
-import type { SeedPlayableRegion } from './seed-regions.ts';
-
-interface MapCanvasProps {
-  visibleMap?: VisibleMapProjection;
-  visibleMovementTracks?: VisibleMovementTrackProjection[];
-  previewRegion?: SeedPlayableRegion;
-  height?: number;
-  maxWidth?: number;
-}
 
 export function MapCanvas(props: MapCanvasProps) {
   const dimensions = useWindowDimensions();
@@ -56,7 +45,7 @@ export function MapCanvas(props: MapCanvasProps) {
   }, [overlayModel.overlays, referenceGeometry]);
 
   useEffect(() => {
-    if (Platform.OS === 'web' || !mapRef.current || fitCoordinates.length === 0) {
+    if (!mapRef.current || fitCoordinates.length === 0) {
       return;
     }
 
@@ -75,28 +64,14 @@ export function MapCanvas(props: MapCanvasProps) {
     return () => clearTimeout(timeoutId);
   }, [fitCoordinates]);
 
-  if (Platform.OS === 'web') {
-    return (
-      <MapFallbackCanvas
-        visibleMap={props.visibleMap}
-        visibleMovementTracks={props.visibleMovementTracks}
-        previewRegion={props.previewRegion}
-        height={height}
-        maxWidth={props.maxWidth}
-        notice="Native map tiles are used on iOS and Android. Web keeps the bounded fallback preview in this phase."
-      />
-    );
-  }
-
   if (!referenceGeometry || !initialRegion) {
     return (
-      <MapFallbackCanvas
-        visibleMap={props.visibleMap}
-        visibleMovementTracks={props.visibleMovementTracks}
-        previewRegion={props.previewRegion}
-        height={height}
-        maxWidth={props.maxWidth}
-      />
+      <View style={[styles.frame, styles.emptyFrame, { width, height }]}>
+        <Text style={styles.emptyTitle}>Map preview unavailable</Text>
+        <Text style={styles.emptyCopy}>
+          Select a seeded region or apply a region to the current match to render the bounded search surface.
+        </Text>
+      </View>
     );
   }
 
@@ -138,6 +113,23 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden'
+  },
+  emptyFrame: {
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    justifyContent: 'center'
+  },
+  emptyTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  emptyCopy: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
+    paddingHorizontal: 18,
+    textAlign: 'center'
   },
   chrome: {
     left: 14,
