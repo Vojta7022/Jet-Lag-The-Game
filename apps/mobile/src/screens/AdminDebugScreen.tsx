@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import {
   AdminControlPanel,
   buildAdminControlModels,
@@ -14,6 +15,7 @@ import {
 } from '../features/admin/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
+import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
@@ -103,8 +105,9 @@ export function AdminDebugScreen() {
 
   return (
     <ScreenContainer
-      title="Admin / Debug"
-      subtitle="Referee-only controls and scoped inspection tools backed by the real engine and transport foundations."
+      title="Referee Tools"
+      subtitle="Manage match state, inspect scoped projections, and review runtime diagnostics from the host-admin view."
+      topSlot={<ProductNavBar current="admin" />}
     >
       {state.loadState === 'loading' ? (
         <StateBanner tone="info" title="Working" detail="The admin shell is waiting for the runtime to respond." />
@@ -122,28 +125,23 @@ export function AdminDebugScreen() {
         <StateBanner
           tone="warning"
           title="No active match"
-          detail="Create or join a match first. Admin/debug tools only appear once the shell is connected to a runtime."
+          detail="Create or join a match first. Referee tools only appear once the shell is connected to a runtime."
         />
       ) : null}
 
       {activeMatch ? (
-        <Panel title="Admin Context">
-          <View style={styles.row}>
-            <Text style={styles.label}>Role</Text>
-            <Text style={styles.value}>{activeMatch.playerRole ?? activeMatch.recipient.role ?? 'spectator'}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Scope</Text>
-            <Text style={styles.value}>{activeMatch.recipient.scope}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Lifecycle</Text>
-            <Text style={styles.value}>{activeMatch.projection.lifecycleState}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Paused</Text>
-            <Text style={styles.value}>{activeMatch.projection.paused ? 'Yes' : 'No'}</Text>
-          </View>
+        <Panel
+          title="Referee Context"
+          subtitle="Current role, visibility scope, and match state for this session."
+        >
+          <FactList
+            items={[
+              { label: 'Role', value: activeMatch.playerRole ?? activeMatch.recipient.role ?? 'spectator' },
+              { label: 'Scope', value: activeMatch.recipient.scope },
+              { label: 'Stage', value: activeMatch.projection.lifecycleState },
+              { label: 'Paused', value: activeMatch.projection.paused ? 'Yes' : 'No' }
+            ]}
+          />
         </Panel>
       ) : null}
 
@@ -161,9 +159,12 @@ export function AdminDebugScreen() {
           <RuntimeDiagnosticsPanel model={diagnostics} />
           <EventLogViewer entries={activeMatch.projection.visibleEventLog} />
           <ProjectionInspectorPanel model={projectionInspection} />
-          <Panel title="Manual Refresh">
+          <Panel
+            title="Refresh Session"
+            subtitle="Request the latest scoped snapshot without changing match state."
+          >
             <Text style={styles.copy}>
-              Use refresh if you want to re-request the latest scoped snapshot without changing match state.
+              Use refresh when you want to confirm the latest referee-visible state after another device or adapter has updated the match.
             </Text>
             <View style={styles.refreshRow}>
               <Text style={styles.helper}>
@@ -189,22 +190,6 @@ export function AdminDebugScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12
-  },
-  label: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  value: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'right'
-  },
   copy: {
     color: colors.textMuted,
     fontSize: 13,

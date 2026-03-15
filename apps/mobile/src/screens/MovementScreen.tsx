@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+
+import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { MapCanvas } from '../features/map/MapCanvas';
 
 import {
@@ -14,6 +16,7 @@ import { getSeedPlayableRegion } from '../features/map/index.ts';
 import { useLocationSharing } from '../providers/LocationSharingProvider.tsx';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
+import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
@@ -47,7 +50,8 @@ export function MovementScreen() {
   return (
     <ScreenContainer
       title="Movement"
-      subtitle="First-pass live-location controls and bounded movement overlays wired to the real update_location command."
+      subtitle="Share seeker movement when allowed, review recent tracks, and keep thermometer-style questions grounded in real history."
+      topSlot={<ProductNavBar current="movement" />}
     >
       {!activeMatch ? (
         <StateBanner
@@ -81,7 +85,10 @@ export function MovementScreen() {
         />
       ) : null}
 
-      <Panel title="Location Status">
+      <Panel
+        title="Location Status"
+        subtitle="Current permission, device availability, and sharing state."
+      >
         <LocationStatusPanel
           state={locationState}
           viewerRole={viewerRole}
@@ -89,7 +96,10 @@ export function MovementScreen() {
         />
       </Panel>
 
-      <Panel title="Sharing Controls">
+      <Panel
+        title="Sharing Controls"
+        subtitle="Start or stop updates, request permission, and choose a simple update frequency."
+      >
         <LocationControlsPanel
           state={locationState}
           disabled={!activeMatch || appShellState.loadState === 'loading'}
@@ -114,7 +124,10 @@ export function MovementScreen() {
         />
       </Panel>
 
-      <Panel title="Movement Map">
+      <Panel
+        title="Movement Map"
+        subtitle="Visible seeker paths are rendered on the playable map while protected hider coordinates stay hidden."
+      >
         <MapCanvas
           height={300}
           visibleMap={projection?.visibleMap}
@@ -125,7 +138,7 @@ export function MovementScreen() {
           The map renders projected non-hider movement tracks on the same geographic surface as the active playable region. Hidden hider coordinates stay out of these overlays even when the authority stores them.
         </Text>
         <AppButton
-          label="Refresh Movement Projection"
+          label="Refresh Movement"
           onPress={() => {
             void refreshActiveMatch();
           }}
@@ -134,26 +147,33 @@ export function MovementScreen() {
         />
       </Panel>
 
-      <Panel title="Visible Movement History">
+      <Panel
+        title="Visible Movement History"
+        subtitle="Recent visible movement samples from the active projection."
+      >
         <MovementHistoryPanel tracks={movementTracks} />
       </Panel>
 
-      <Panel title="Projection Summary">
-        <View style={styles.row}>
-          <Text style={styles.label}>Visible Tracks</Text>
-          <Text style={styles.value}>{String(movementTracks.length)}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Visible Samples</Text>
-          <Text style={styles.value}>{String(movementTracks.reduce((sum, track) => sum + track.sampleCount, 0))}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Lifecycle</Text>
-          <Text style={styles.value}>
-            {projection?.lifecycleState}
-            {projection?.seekPhaseSubstate ? ` / ${projection.seekPhaseSubstate}` : ''}
-          </Text>
-        </View>
+      <Panel
+        title="Movement Summary"
+        subtitle="A quick view of what the current scope can see."
+      >
+        <FactList
+          items={[
+            { label: 'Role', value: viewerRole },
+            { label: 'Visible Tracks', value: movementTracks.length },
+            {
+              label: 'Visible Samples',
+              value: movementTracks.reduce((sum, track) => sum + track.sampleCount, 0)
+            },
+            {
+              label: 'Stage',
+              value: projection?.seekPhaseSubstate
+                ? `${projection.lifecycleState} / ${projection.seekPhaseSubstate}`
+                : projection?.lifecycleState ?? 'Unavailable'
+            }
+          ]}
+        />
       </Panel>
     </ScreenContainer>
   );
@@ -165,20 +185,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12
-  },
-  label: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  value: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'right'
-  }
 });

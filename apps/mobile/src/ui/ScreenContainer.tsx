@@ -5,6 +5,7 @@ import { colors } from './theme.ts';
 interface ScreenContainerProps {
   title: string;
   subtitle?: string;
+  topSlot?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -15,6 +16,7 @@ export function ScreenContainer(props: ScreenContainerProps) {
         <Text style={styles.title}>{props.title}</Text>
         {props.subtitle ? <Text style={styles.subtitle}>{props.subtitle}</Text> : null}
       </View>
+      {props.topSlot ? <View style={styles.topSlot}>{props.topSlot}</View> : null}
       {props.children}
     </ScrollView>
   );
@@ -30,16 +32,20 @@ const styles = StyleSheet.create({
     gap: 16
   },
   header: {
-    gap: 6
+    gap: 6,
+    paddingTop: 4
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 30,
+    fontWeight: '800',
     color: colors.text
   },
   subtitle: {
     fontSize: 15,
     lineHeight: 22,
     color: colors.textMuted
+  },
+  topSlot: {
+    gap: 12
   }
 });

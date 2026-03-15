@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
+import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
@@ -27,6 +28,7 @@ import {
   type QuestionAnswerDraft
 } from '../features/questions/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
+import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
@@ -252,7 +254,8 @@ export function QuestionCenterScreen() {
   return (
     <ScreenContainer
       title="Question Center"
-      subtitle="First-pass question flow UI wired to the real match runtime, bounded search-area updates, and honest resolution modes."
+      subtitle="Choose a question, answer it in the right role, and review how each result narrows the active search area."
+      topSlot={<ProductNavBar current="questions" />}
     >
       {!activeMatch ? (
         <StateBanner
@@ -263,22 +266,23 @@ export function QuestionCenterScreen() {
       ) : null}
 
       {activeMatch ? (
-        <Panel title="Question Flow Status">
-          <View style={styles.row}>
-            <Text style={styles.label}>Viewer Role</Text>
-            <Text style={styles.value}>{viewerRole}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Lifecycle</Text>
-            <Text style={styles.value}>
-              {projection?.lifecycleState}
-              {projection?.seekPhaseSubstate ? ` / ${projection.seekPhaseSubstate}` : ''}
-            </Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Playable Region</Text>
-            <Text style={styles.value}>{visibleMap?.displayName ?? 'Not selected yet'}</Text>
-          </View>
+        <Panel
+          title="Match Context"
+          subtitle="Question permissions, stage, and map context for the current view."
+        >
+          <FactList
+            items={[
+              { label: 'Role', value: viewerRole },
+              {
+                label: 'Stage',
+                value: projection?.seekPhaseSubstate
+                  ? `${projection.lifecycleState} / ${projection.seekPhaseSubstate}`
+                  : projection?.lifecycleState ?? 'Unavailable'
+              },
+              { label: 'Playable Region', value: visibleMap?.displayName ?? 'Not selected yet' },
+              { label: 'Scope', value: activeMatch.recipient.scope }
+            ]}
+          />
           <Text style={styles.copy}>
             Asking is enabled for seeker and host-admin views. Answering is enabled for hider and host-admin views. Constraint application remains host-authoritative.
           </Text>
@@ -293,20 +297,23 @@ export function QuestionCenterScreen() {
         />
       ) : null}
 
-      <Panel title="Runtime Actions">
+      <Panel
+        title="Question Actions"
+        subtitle="Use these controls to prepare the match, refresh the view, or add movement context for distance-based questions."
+      >
         <AppButton
-          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Demo Question Flow'}
+          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Questions'}
           onPress={handlePrepareFlow}
           disabled={!canPrepareFlow || state.loadState === 'loading'}
         />
         <AppButton
-          label="Seed Demo Movement"
+          label="Add Sample Movement"
           onPress={handleSeedMovement}
           disabled={!canSeedMovement || state.loadState === 'loading'}
           tone="secondary"
         />
         <AppButton
-          label="Refresh Question State"
+          label="Refresh Questions"
           onPress={() => {
             void refreshActiveMatch();
           }}
@@ -315,7 +322,10 @@ export function QuestionCenterScreen() {
         />
       </Panel>
 
-      <Panel title="Categories">
+      <Panel
+        title="Categories"
+        subtitle="Browse the available question groups from the current content pack."
+      >
         <QuestionCategoryList
           categories={categoryViewModels}
           selectedCategoryId={selectedCategoryId}
@@ -323,7 +333,10 @@ export function QuestionCenterScreen() {
         />
       </Panel>
 
-      <Panel title="Templates">
+      <Panel
+        title="Templates"
+        subtitle="Choose a specific question inside the selected category."
+      >
         {selectedCategory ? (
           <QuestionTemplateList
             templates={availableTemplates}
@@ -344,7 +357,10 @@ export function QuestionCenterScreen() {
         )}
       </Panel>
 
-      <Panel title="Ask Question">
+      <Panel
+        title="Ask Question"
+        subtitle="Send the selected question into the live match flow."
+      >
         {selectedTemplate && selectedCategory ? (
           <>
             <Text style={styles.title}>{selectedTemplate.name}</Text>
@@ -357,7 +373,7 @@ export function QuestionCenterScreen() {
             </Text>
             {previewFeatureData.length > 0 ? (
               <Text style={styles.copy}>
-                Seed feature support: {previewFeatureData.length} approximate feature records are available for this template in the selected region.
+                Region feature support: {previewFeatureData.length} approximate feature records are available for this template in the selected region.
               </Text>
             ) : null}
             <AppButton
@@ -371,7 +387,10 @@ export function QuestionCenterScreen() {
         )}
       </Panel>
 
-      <Panel title="Answer Question">
+      <Panel
+        title="Answer Question"
+        subtitle="Respond from the hider or host view when a question is waiting for an answer."
+      >
         {activeQuestion && activeQuestionTemplate && activeQuestionCategory ? (
           <>
             <QuestionAnswerComposer
@@ -395,7 +414,10 @@ export function QuestionCenterScreen() {
         )}
       </Panel>
 
-      <Panel title="Resolve Constraint">
+      <Panel
+        title="Resolve Result"
+        subtitle="Apply the canonical constraint and update the bounded candidate area."
+      >
         {activeQuestion && activeQuestionTemplate && activeQuestionCategory ? (
           <>
             <Text style={styles.copy}>
@@ -424,7 +446,10 @@ export function QuestionCenterScreen() {
         )}
       </Panel>
 
-      <Panel title="Latest Result">
+      <Panel
+        title="Latest Result"
+        subtitle="Review the most recent resolved question and its effect on the map."
+      >
         <QuestionResolutionPanel
           title="Resolved Question Summary"
           question={resolvedQuestion}
@@ -439,23 +464,6 @@ export function QuestionCenterScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'space-between'
-  },
-  label: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  value: {
-    color: colors.text,
-    flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'right'
-  },
   copy: {
     color: colors.textMuted,
     fontSize: 13,

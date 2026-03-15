@@ -20,18 +20,31 @@ export function StateBanner(props: StateBannerProps) {
 
   return (
     <View style={[styles.banner, toneStyle]}>
-      <Text style={styles.title}>{props.title}</Text>
+      <View style={styles.header}>
+        <View style={[styles.dot, toneDotStyle(props.tone)]} />
+        <Text style={styles.title}>{props.title}</Text>
+      </View>
       {props.detail ? <Text style={styles.detail}>{props.detail}</Text> : null}
     </View>
   );
 }
 
+function toneDotStyle(tone: StateBannerProps['tone']) {
+  return tone === 'error'
+    ? styles.errorDot
+    : tone === 'warning'
+      ? styles.warningDot
+      : tone === 'success'
+        ? styles.successDot
+        : styles.infoDot;
+}
+
 const styles = StyleSheet.create({
   banner: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    gap: 4,
-    padding: 12
+    gap: 6,
+    padding: 13
   },
   info: {
     backgroundColor: colors.accentMuted,
@@ -48,6 +61,28 @@ const styles = StyleSheet.create({
   success: {
     backgroundColor: colors.successMuted,
     borderColor: colors.success
+  },
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8
+  },
+  dot: {
+    borderRadius: 999,
+    height: 8,
+    width: 8
+  },
+  infoDot: {
+    backgroundColor: colors.accent
+  },
+  errorDot: {
+    backgroundColor: colors.danger
+  },
+  warningDot: {
+    backgroundColor: colors.warning
+  },
+  successDot: {
+    backgroundColor: colors.success
   },
   title: {
     color: colors.text,

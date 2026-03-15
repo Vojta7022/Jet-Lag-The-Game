@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { MatchSummaryCard } from '../components/MatchSummaryCard.tsx';
+import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { RuntimeModeSwitcher } from '../components/RuntimeModeSwitcher.tsx';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
+import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
@@ -16,45 +18,41 @@ export function HomeScreen() {
   return (
     <ScreenContainer
       title="Transit Hide and Seek"
-      subtitle="Thin Expo shell wired to the real engine and transport foundations already built in the workspace."
+      subtitle="Create or join a match, then move between lobby, map, questions, cards, chat, movement, and referee tools from one shared mobile workspace."
+      topSlot={<ProductNavBar current="home" />}
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Last operation failed" detail={state.errorMessage} />
       ) : null}
 
-      <Panel title="Session Entry">
-        <View style={styles.sessionRow}>
-          <Text style={styles.label}>Display Name</Text>
-          <Text style={styles.value}>{state.sessionProfile.displayName}</Text>
-        </View>
-        <View style={styles.sessionRow}>
-          <Text style={styles.label}>Player Id</Text>
-          <Text style={styles.value}>{state.sessionProfile.playerId}</Text>
-        </View>
-        <View style={styles.sessionRow}>
-          <Text style={styles.label}>Auth User Id</Text>
-          <Text style={styles.value}>{state.sessionProfile.authUserId || 'Matches player id'}</Text>
-        </View>
-        <AppButton label="Edit Session" onPress={() => router.push('/auth')} tone="secondary" />
+      <Panel
+        title="Player Profile"
+        subtitle="This identity is used when you create or join a match."
+      >
+        <FactList
+          items={[
+            { label: 'Display Name', value: state.sessionProfile.displayName },
+            { label: 'Player ID', value: state.sessionProfile.playerId },
+            { label: 'Auth ID', value: state.sessionProfile.authUserId || 'Matches player ID' }
+          ]}
+        />
+        <AppButton label="Edit Profile" onPress={() => router.push('/auth')} tone="secondary" />
       </Panel>
 
       <RuntimeModeSwitcher />
       <MatchSummaryCard />
 
-      <Panel title="Match Actions">
+      <Panel
+        title="Get Started"
+        subtitle="Start a new match or join an existing one, then use the workspace tabs above to continue."
+      >
         <AppButton label="Create Match" onPress={() => router.push('/create-match')} />
         <AppButton label="Join Match" onPress={() => router.push('/join-match')} tone="secondary" />
-        <AppButton label="Open Lobby" onPress={() => router.push('/lobby')} tone="secondary" />
-        <AppButton label="Open Map Setup" onPress={() => router.push('/map')} tone="secondary" />
-        <AppButton label="Open Movement" onPress={() => router.push('/movement')} tone="secondary" />
-        <AppButton label="Open Question Center" onPress={() => router.push('/questions')} tone="secondary" />
-        <AppButton label="Open Cards" onPress={() => router.push('/cards')} tone="secondary" />
-        <AppButton label="Open Chat" onPress={() => router.push('/chat')} tone="secondary" />
-        <AppButton label="Open Admin / Debug" onPress={() => router.push('/admin')} tone="secondary" />
-        <AppButton label="Open Dashboard" onPress={() => router.push('/dashboard')} tone="secondary" />
-        <AppButton label="Open Status" onPress={() => router.push('/status')} tone="secondary" />
+        <Text style={styles.helper}>
+          Already connected? Use the workspace bar to move between setup, play, communication, and referee tools.
+        </Text>
         <AppButton
-          label="Disconnect Active Match"
+          label="Disconnect Match"
           onPress={() => {
             void disconnectActiveMatch();
           }}
@@ -67,20 +65,9 @@ export function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  sessionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12
-  },
-  label: {
+  helper: {
     color: colors.textMuted,
     fontSize: 13,
-    fontWeight: '600'
-  },
-  value: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'right'
+    lineHeight: 18
   }
 });

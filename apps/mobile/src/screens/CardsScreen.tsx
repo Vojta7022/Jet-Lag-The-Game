@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
+import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
@@ -19,6 +20,7 @@ import {
   resolveCurrentRole
 } from '../features/cards/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
+import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
@@ -103,7 +105,8 @@ export function CardsScreen() {
   return (
     <ScreenContainer
       title="Cards"
-      subtitle="First-pass hand, deck, and card-window UI wired to the real card runtime contracts."
+      subtitle="Review visible hands and piles, then play or discard cards through the live match flow."
+      topSlot={<ProductNavBar current="cards" />}
     >
       {!activeMatch ? (
         <StateBanner
@@ -121,30 +124,34 @@ export function CardsScreen() {
         />
       ) : null}
 
-      <Panel title="Card Runtime Status">
-        <View style={styles.row}>
-          <Text style={styles.label}>Viewer Role</Text>
-          <Text style={styles.value}>{viewerRole}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Lifecycle</Text>
-          <Text style={styles.value}>
-            {projection?.lifecycleState}
-            {projection?.seekPhaseSubstate ? ` / ${projection.seekPhaseSubstate}` : ''}
-          </Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Scope</Text>
-          <Text style={styles.value}>{activeMatch?.recipient.scope ?? 'none'}</Text>
-        </View>
+      <Panel
+        title="Card Context"
+        subtitle="Visibility, state, and card-lock rules for the current role."
+      >
+        <FactList
+          items={[
+            { label: 'Role', value: viewerRole },
+            {
+              label: 'Stage',
+              value: projection?.seekPhaseSubstate
+                ? `${projection.lifecycleState} / ${projection.seekPhaseSubstate}`
+                : projection?.lifecycleState ?? 'Unavailable'
+            },
+            { label: 'Scope', value: activeMatch?.recipient.scope ?? 'None' },
+            { label: 'Visible Decks', value: deckViewModels.length }
+          ]}
+        />
         <Text style={styles.copy}>
           Draw/play/discard actions respect the real state machine. Manual and assisted cards never claim automated effects that the engine does not actually perform.
         </Text>
       </Panel>
 
-      <Panel title="Deck Actions">
+      <Panel
+        title="Deck Actions"
+        subtitle="Prepare the match for card use, draw from a visible deck, or refresh the current state."
+      >
         <AppButton
-          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Demo Card Flow'}
+          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Cards'}
           onPress={() => {
             if (!projection) {
               return;
@@ -177,7 +184,7 @@ export function CardsScreen() {
           disabled={!canDraw || state.loadState === 'loading'}
         />
         <AppButton
-          label="Refresh Card State"
+          label="Refresh Cards"
           onPress={() => {
             void refreshActiveMatch();
           }}
@@ -186,7 +193,10 @@ export function CardsScreen() {
         />
       </Panel>
 
-      <Panel title="Decks">
+      <Panel
+        title="Decks"
+        subtitle="Choose a deck to inspect its visible hand, draw pile, discard pile, and exile."
+      >
         {deckViewModels.length === 0 ? (
           <Text style={styles.copy}>
             No accessible decks are visible in the current role and scope. For shared team hands, a private team-scoped connection may reveal more than a public scope.
@@ -202,7 +212,10 @@ export function CardsScreen() {
 
       {selectedDeck ? (
         <>
-          <Panel title="Hand">
+          <Panel
+            title="Hand"
+            subtitle="Cards currently visible in hand for the selected deck."
+          >
             <CardZoneSection
               title={`${selectedDeck.deck.name} Hand`}
               cards={selectedDeck.visibleByZone.hand}
@@ -212,7 +225,10 @@ export function CardsScreen() {
             />
           </Panel>
 
-          <Panel title="Draw Pile">
+          <Panel
+            title="Draw Pile"
+            subtitle="Cards remaining to be drawn when the current scope allows draw-pile visibility."
+          >
             <CardZoneSection
               title="Visible Draw Pile"
               cards={selectedDeck.visibleByZone.draw_pile}
@@ -226,7 +242,10 @@ export function CardsScreen() {
             />
           </Panel>
 
-          <Panel title="Discard Pile">
+          <Panel
+            title="Discard Pile"
+            subtitle="Cards already spent or revealed from the selected deck."
+          >
             <CardZoneSection
               title="Visible Discards"
               cards={selectedDeck.visibleByZone.discard_pile}
@@ -236,7 +255,10 @@ export function CardsScreen() {
             />
           </Panel>
 
-          <Panel title="Removed / Exile">
+          <Panel
+            title="Removed / Exile"
+            subtitle="Cards that are no longer active in the selected deck."
+          >
             <CardZoneSection
               title="Visible Exiled Cards"
               cards={selectedDeck.visibleByZone.exile}
@@ -248,7 +270,10 @@ export function CardsScreen() {
         </>
       ) : null}
 
-      <Panel title="Card Detail">
+      <Panel
+        title="Card Detail"
+        subtitle="Review the currently selected card before taking an action."
+      >
         <CardDetailPanel
           card={selectedCard}
           disabled={state.loadState === 'loading'}
@@ -282,7 +307,10 @@ export function CardsScreen() {
         />
       </Panel>
 
-      <Panel title="Resolution Status">
+      <Panel
+        title="Resolution Status"
+        subtitle="Track manual or assisted card windows that still need referee action."
+      >
         <CardResolutionStatusPanel
           activeCard={activeCard}
           canResolve={canResolve}
@@ -306,23 +334,6 @@ export function CardsScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12
-  },
-  label: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  value: {
-    color: colors.text,
-    flexShrink: 1,
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'right'
-  },
   copy: {
     color: colors.textMuted,
     fontSize: 13,

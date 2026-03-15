@@ -20,13 +20,16 @@ export function JoinMatchScreen() {
   return (
     <ScreenContainer
       title="Join Match"
-      subtitle="Attaches the shell as a player or spectator through the selected transport foundation."
+      subtitle="Connect to an existing match as a player or spectator through the current connection mode."
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Join match failed" detail={state.errorMessage} />
       ) : null}
 
-      <Panel title="Join Parameters">
+      <Panel
+        title="Join Details"
+        subtitle="Enter the match information needed for the current connection mode."
+      >
         <Field
           label="Match Id"
           value={matchId}

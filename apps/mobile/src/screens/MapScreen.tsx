@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
+import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { MapCanvas } from '../features/map/MapCanvas';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
 
@@ -21,6 +22,7 @@ import {
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
 import { Panel } from '../ui/Panel.tsx';
+import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 
@@ -97,20 +99,16 @@ export function MapScreen() {
       : compositePreviewRegion?.regionKind ?? previewRegion?.regionKind ?? 'Preview';
 
   return (
-    <View style={styles.screen}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Map Setup</Text>
-          <Text style={styles.headerSubtitle}>
-            Search for one or more playable cities or administrative regions, build a composite bounded preview, then apply the final geometry through the real runtime flow.
-          </Text>
-        </View>
-
+    <ScreenContainer
+      title="Map Setup"
+      subtitle="Search for playable regions, build the match boundary, and apply it to the active game map."
+      topSlot={<ProductNavBar current="map" />}
+    >
         {!activeMatch ? (
           <StateBanner
             tone="warning"
             title="No active match"
-            detail="Create or join a match first. The map screen only applies regions through an active runtime connection."
+            detail="Create or join a match first. Map changes are applied through the active match connection."
           />
         ) : null}
 
@@ -118,15 +116,15 @@ export function MapScreen() {
           <StateBanner
             tone="warning"
             title="Host access required"
-            detail="Only host-admin views can bootstrap map setup and apply a playable region."
+            detail="Only host views can move the match into map setup or apply a new playable region."
           />
         ) : null}
 
         {projection?.lifecycleState === 'map_setup' ? (
           <StateBanner
             tone="info"
-            title="Map setup is ready"
-            detail="Applying the current selection will trigger create_map_region and reinitialize the candidate search area from the combined playable boundary."
+            title="Ready to apply"
+            detail="Applying the current selection updates the playable boundary and resets the candidate search area inside it."
           />
         ) : null}
 
@@ -138,7 +136,10 @@ export function MapScreen() {
           />
         ) : null}
 
-        <Panel title="Search Regions">
+        <Panel
+          title="Find Regions"
+          subtitle="Search by city or administrative region, review the returned boundary, and add it to the current playable map."
+        >
           <SearchableRegionPicker
             query={regionSearch.query}
             minimumQueryLengthMet={regionSearch.minimumQueryLengthMet}
@@ -169,7 +170,10 @@ export function MapScreen() {
           />
         </Panel>
 
-        <Panel title="Game Map Builder">
+        <Panel
+          title="Playable Region"
+          subtitle="Build a single playable boundary from one or more selected regions before applying it to the match."
+        >
           {compositePreviewRegion ? (
             <View style={styles.selectedSection}>
               <View style={styles.selectedHeader}>
@@ -242,20 +246,20 @@ export function MapScreen() {
           ) : regionSearch.selectedRegion ? (
             <StateBanner
               tone="info"
-              title="Preview selected region"
-              detail="The current search result is being previewed. Add it to the game map to keep it in the composite playable region and enable apply."
+              title="Region selected"
+              detail="The current search result is being previewed. Add it to the playable region to keep it in the final selection."
             />
           ) : (
             <StateBanner
               tone="info"
-              title="No regions added yet"
-              detail="Use the search panel above, preview a provider-backed result, then add one or more regions to build the playable map."
+              title="No regions selected"
+              detail="Search above, preview a boundary, then add one or more regions to build the playable map."
             />
           )}
 
           <View style={styles.actionGrid}>
             <AppButton
-              label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Map Setup'}
+              label={state.loadState === 'loading' ? 'Working...' : 'Move Match To Map Setup'}
               onPress={() => {
                 if (!projection || !canPrepareMapSetup) {
                   return;
@@ -274,8 +278,8 @@ export function MapScreen() {
             <AppButton
               label={
                 mapHasBeenApplied
-                  ? 'Replace Playable Region With Composite'
-                  : 'Apply Composite Playable Region'
+                  ? 'Replace Playable Region'
+                  : 'Apply Playable Region'
               }
               onPress={() => {
                 if (!canApplySelectedRegion || !compositePreviewRegion) {
@@ -287,7 +291,7 @@ export function MapScreen() {
               disabled={!canApplySelectedRegion || state.loadState === 'loading'}
             />
             <AppButton
-              label="Clear Selected Regions"
+              label="Clear Selection"
               onPress={() => {
                 setSelectedRegions(clearSelectedRegions());
               }}
@@ -305,11 +309,14 @@ export function MapScreen() {
           </View>
         </Panel>
 
-        <Panel title="Boundary Preview">
+        <Panel
+          title="Map Preview"
+          subtitle="Use the preview to confirm the current playable boundary and candidate area before or after applying changes."
+        >
           <View style={styles.previewHeader}>
             <View style={styles.previewTextBlock}>
               <Text style={styles.copy}>
-                The map preview is secondary during setup: it shows the combined playable boundary for the current selection and the current bounded candidate area without crowding the search workflow.
+                The preview shows the selected boundary, the current candidate area, and any visible overlays inside the active playable region.
               </Text>
             </View>
             <Pressable
@@ -336,40 +343,14 @@ export function MapScreen() {
             </View>
           ) : null}
           <Text style={styles.previewMeta}>
-            Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)} · Selected components: {String(selectedRegions.length)}
+            Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)} · Selected regions: {String(selectedRegions.length)}
           </Text>
         </Panel>
-      </ScrollView>
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
-  header: {
-    gap: 6,
-    paddingTop: 4
-  },
-  headerTitle: {
-    color: colors.text,
-    fontSize: 28,
-    fontWeight: '800'
-  },
-  headerSubtitle: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20
-  },
-  scroll: {
-    flex: 1
-  },
-  content: {
-    gap: 16,
-    padding: 16
-  },
   title: {
     color: colors.text,
     fontSize: 18,

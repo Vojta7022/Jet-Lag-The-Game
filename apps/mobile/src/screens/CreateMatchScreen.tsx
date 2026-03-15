@@ -21,27 +21,30 @@ export function CreateMatchScreen() {
   const runtimeHint = useMemo(() => {
     switch (runtimeKind) {
       case 'online_foundation':
-        return 'Runtime is locked to online cloud mode for this adapter.';
+        return 'This connection mode creates matches in online cloud mode.';
       case 'nearby_host_authority':
-        return 'Runtime is locked to local nearby host-authoritative mode.';
+        return 'This connection mode creates matches in nearby host-authoritative mode.';
       case 'single_device_referee':
-        return 'Runtime is locked to the single-device referee foundation.';
+        return 'This connection mode creates matches for single-device referee play.';
       case 'in_memory':
       default:
-        return 'In-memory foundation can emulate the different match modes for quick debugging.';
+        return 'The in-memory mode is useful for local testing and quick match setup.';
     }
   }, [runtimeKind]);
 
   return (
     <ScreenContainer
       title="Create Match"
-      subtitle="Creates a match through the selected runtime foundation and then attaches the shell to the resulting host/admin projection."
+      subtitle="Start a new match in the current connection mode, then continue in the lobby."
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Create match failed" detail={state.errorMessage} />
       ) : null}
 
-      <Panel title="Match Setup">
+      <Panel
+        title="Match Setup"
+        subtitle="Choose an ID, scale, and match mode before creating the session."
+      >
         <Field label="Match Id" value={matchId} onChangeText={setMatchId} placeholder="match-prague-1" />
         <Field label="Initial Scale" value={initialScale} onChangeText={(value) => setInitialScale(value as typeof initialScale)} placeholder="small" />
         <Field

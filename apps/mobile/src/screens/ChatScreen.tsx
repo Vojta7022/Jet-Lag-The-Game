@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
+import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
@@ -22,6 +23,7 @@ import {
   type ChatComposerDraft
 } from '../features/chat/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
+import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
@@ -59,7 +61,8 @@ export function ChatScreen() {
   return (
     <ScreenContainer
       title="Chat"
-      subtitle="First-pass chat, channel, and photo-evidence placeholder UI wired to real match commands and scoped projections."
+      subtitle="Stay in sync across public and team channels, then attach evidence when the current role is allowed."
+      topSlot={<ProductNavBar current="chat" />}
     >
       {!activeMatch ? (
         <StateBanner
@@ -77,27 +80,28 @@ export function ChatScreen() {
         />
       ) : null}
 
-      <Panel title="Chat Runtime Status">
-        <View style={styles.row}>
-          <Text style={styles.label}>Viewer Role</Text>
-          <Text style={styles.value}>{viewerRole}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Scope</Text>
-          <Text style={styles.value}>{activeMatch?.recipient.scope ?? 'none'}</Text>
-        </View>
-        <View style={styles.row}>
-          <Text style={styles.label}>Lifecycle</Text>
-          <Text style={styles.value}>
-            {projection?.lifecycleState}
-            {projection?.seekPhaseSubstate ? ` / ${projection.seekPhaseSubstate}` : ''}
-          </Text>
-        </View>
+      <Panel
+        title="Conversation Context"
+        subtitle="Visible channels and evidence permissions come from the active scoped projection."
+      >
+        <FactList
+          items={[
+            { label: 'Role', value: viewerRole },
+            { label: 'Scope', value: activeMatch?.recipient.scope ?? 'None' },
+            {
+              label: 'Stage',
+              value: projection?.seekPhaseSubstate
+                ? `${projection.lifecycleState} / ${projection.seekPhaseSubstate}`
+                : projection?.lifecycleState ?? 'Unavailable'
+            },
+            { label: 'Visible Channels', value: channelViewModels.length }
+          ]}
+        />
         <Text style={styles.copy}>
           Public and team-private visibility comes from the authoritative projection. This screen does not guess around hidden-info rules.
         </Text>
         <AppButton
-          label="Refresh Chat State"
+          label="Refresh Chat"
           onPress={() => {
             void refreshActiveMatch();
           }}
@@ -106,7 +110,10 @@ export function ChatScreen() {
         />
       </Panel>
 
-      <Panel title="Channels">
+      <Panel
+        title="Channels"
+        subtitle="Switch between visible public and team channels."
+      >
         {channelViewModels.length === 0 ? (
           <Text style={styles.copy}>
             No chat channels are visible in the current projection scope. A public or private reconnect may expose different channels.
@@ -120,11 +127,17 @@ export function ChatScreen() {
         )}
       </Panel>
 
-      <Panel title="Messages">
+      <Panel
+        title="Messages"
+        subtitle="Read the selected channel and check which attachments are visible in this scope."
+      >
         <ChatMessageList channel={selectedChannel} />
       </Panel>
 
-      <Panel title="Message Composer">
+      <Panel
+        title="Send Message"
+        subtitle="Compose a new message or add a placeholder attachment when your role allows it."
+      >
         <ChatComposer
           channel={selectedChannel}
           draft={draft}
@@ -150,7 +163,10 @@ export function ChatScreen() {
         />
       </Panel>
 
-      <Panel title="Photo Evidence Placeholders">
+      <Panel
+        title="Photo Evidence"
+        subtitle="Create placeholder evidence entries for photo-based questions and manual card checks."
+      >
         <PhotoEvidencePanel
           contexts={evidenceContexts}
           disabled={!activeMatch || state.loadState === 'loading' || !canAttach}
@@ -174,22 +190,6 @@ export function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12
-  },
-  label: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  value: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'right'
-  },
   copy: {
     color: colors.textMuted,
     fontSize: 13,

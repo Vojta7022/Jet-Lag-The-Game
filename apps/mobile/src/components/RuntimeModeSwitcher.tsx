@@ -9,22 +9,22 @@ export function RuntimeModeSwitcher() {
   const { runtimeKind, runtimeOptions, selectRuntimeKind } = useRuntimeMode();
 
   return (
-    <Panel title="Runtime Switcher">
-      <Text style={styles.copy}>
-        Developer switcher for the transport foundations already built in the workspace.
-      </Text>
+    <Panel
+      title="Connection Mode"
+      subtitle="Choose how this device connects to the match. The app keeps the same screens and engine flow across every mode."
+    >
       <View style={styles.list}>
         {runtimeOptions.map((option) => (
           <View key={option.kind} style={styles.option}>
             <View style={styles.optionHeader}>
               <Text style={styles.optionLabel}>{option.label}</Text>
               <Text style={styles.optionState}>
-                {runtimeKind === option.kind ? 'Selected' : 'Available'}
+                {runtimeKind === option.kind ? 'Current' : 'Available'}
               </Text>
             </View>
             <Text style={styles.optionDescription}>{option.description}</Text>
             <AppButton
-              label={runtimeKind === option.kind ? 'Current Mode' : 'Use This Mode'}
+              label={runtimeKind === option.kind ? 'Current Mode' : 'Switch Mode'}
               onPress={() => selectRuntimeKind(option.kind)}
               disabled={runtimeKind === option.kind}
               tone={runtimeKind === option.kind ? 'secondary' : 'primary'}
@@ -37,11 +37,6 @@ export function RuntimeModeSwitcher() {
 }
 
 const styles = StyleSheet.create({
-  copy: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20
-  },
   list: {
     gap: 12
   },

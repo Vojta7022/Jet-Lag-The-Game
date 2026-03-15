@@ -1,8 +1,15 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { useAppShell } from '../providers/AppShellProvider.tsx';
+import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { colors } from '../ui/theme.ts';
+
+function formatValue(value: string | undefined): string {
+  return (value ?? 'unknown')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
 
 export function MatchSummaryCard() {
   const { state } = useAppShell();
@@ -10,38 +17,24 @@ export function MatchSummaryCard() {
 
   if (!activeMatch) {
     return (
-      <Panel title="Current Match">
-        <Text style={styles.empty}>No active transport connection is attached to the shell yet.</Text>
+      <Panel title="Current Match" subtitle="Your active match and connection details appear here once you create or join a session.">
+        <Text style={styles.empty}>No match is connected yet.</Text>
       </Panel>
     );
   }
 
   return (
-    <Panel title="Current Match">
-      <View style={styles.row}>
-        <Text style={styles.label}>Match</Text>
-        <Text style={styles.value}>{activeMatch.matchId}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Foundation</Text>
-        <Text style={styles.value}>{activeMatch.runtimeKind}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Mode</Text>
-        <Text style={styles.value}>{activeMatch.matchMode}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Lifecycle</Text>
-        <Text style={styles.value}>{activeMatch.lifecycleState}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Scope</Text>
-        <Text style={styles.value}>{activeMatch.recipient.scope}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Connection</Text>
-        <Text style={styles.value}>{activeMatch.connectionState}</Text>
-      </View>
+    <Panel title="Current Match" subtitle="This summary stays in sync with the active runtime connection.">
+      <FactList
+        items={[
+          { label: 'Match', value: activeMatch.matchId },
+          { label: 'Connection Mode', value: formatValue(activeMatch.runtimeKind) },
+          { label: 'Match Mode', value: formatValue(activeMatch.matchMode) },
+          { label: 'Stage', value: formatValue(activeMatch.lifecycleState) },
+          { label: 'View', value: formatValue(activeMatch.recipient.scope) },
+          { label: 'Connection', value: formatValue(activeMatch.connectionState) }
+        ]}
+      />
     </Panel>
   );
 }
@@ -51,21 +44,5 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 14,
     lineHeight: 20
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12
-  },
-  label: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  value: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'right'
   }
 });
