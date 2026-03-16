@@ -1,4 +1,6 @@
 export * from './LiveMapActionPanel.tsx';
+export * from './LiveMapImpactCard.tsx';
+export * from './LiveMapInfoChips.tsx';
 export * from './LiveMapInlineActionPanel.tsx';
 export * from './MapFallbackCanvas.tsx';
 export * from './MapLegend.tsx';
@@ -15,6 +17,7 @@ export * from './map-geometry.ts';
 export * from './map-overlays.ts';
 export * from './map-setup-flow.ts';
 export * from './map-setup-guidance.ts';
+export * from './pregame-map-setup-model.ts';
 export * from './osm-region-provider.ts';
 export * from './region-data-source.ts';
 export * from './region-provider.ts';

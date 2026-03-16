@@ -42,22 +42,26 @@ export function CardZoneSection(props: CardZoneSectionProps) {
                 style={[styles.item, selected ? styles.itemSelected : null]}
               >
                 <View style={[styles.topStripe, accentStyle]} />
-                <View style={styles.cardHeader}>
-                  <View style={styles.cardText}>
-                    <Text style={styles.kind}>{formatCardKindLabel(card.definition.kind)}</Text>
-                    <Text style={styles.name}>{card.definition.name}</Text>
-                    <Text style={styles.meta}>{buildCardListSubtitle(card)}</Text>
+                <View style={styles.cardBody}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardText}>
+                      <Text style={styles.kind}>{formatCardKindLabel(card.definition.kind)}</Text>
+                      <Text style={styles.name}>{card.definition.name}</Text>
+                      <Text style={styles.meta}>{buildCardListSubtitle(card)}</Text>
+                    </View>
+                    <View style={styles.badgeGroup}>
+                      <CardAutomationPill label={behavior.label} tone={behavior.tone} />
+                      {selected ? (
+                        <View style={styles.selectedChip}>
+                          <Text style={styles.selectedChipLabel}>Selected</Text>
+                        </View>
+                      ) : null}
+                    </View>
                   </View>
-                  <View style={styles.badgeGroup}>
-                    <CardAutomationPill label={behavior.label} tone={behavior.tone} />
-                    {selected ? (
-                      <View style={styles.selectedChip}>
-                        <Text style={styles.selectedChipLabel}>Selected</Text>
-                      </View>
-                    ) : null}
-                  </View>
+                  <Text numberOfLines={3} style={styles.copy}>
+                    {buildCardDescription(card.definition)}
+                  </Text>
                 </View>
-                <Text style={styles.copy}>{buildCardDescription(card.definition)}</Text>
               </Pressable>
             );
           })}
@@ -92,16 +96,24 @@ const styles = StyleSheet.create({
     lineHeight: 17
   },
   list: {
-    gap: 10
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
   },
   item: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.borderStrong,
-    borderRadius: 18,
+    borderRadius: 22,
     borderWidth: 1,
-    gap: 8,
+    flexBasis: '48%',
+    flexGrow: 1,
     overflow: 'hidden',
-    padding: 0
+    padding: 0,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 2
   },
   itemSelected: {
     backgroundColor: colors.accentMuted,
@@ -122,13 +134,18 @@ const styles = StyleSheet.create({
   topStripeBlank: {
     backgroundColor: colors.borderStrong
   },
+  cardBody: {
+    gap: 10,
+    minHeight: 168,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14
+  },
   cardHeader: {
     alignItems: 'flex-start',
     flexDirection: 'row',
     gap: 10,
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 12
+    justifyContent: 'space-between'
   },
   cardText: {
     flex: 1,
@@ -172,9 +189,7 @@ const styles = StyleSheet.create({
   copy: {
     color: colors.text,
     fontSize: 13,
-    lineHeight: 19,
-    paddingHorizontal: 14,
-    paddingBottom: 14
+    lineHeight: 18
   }
 });
 

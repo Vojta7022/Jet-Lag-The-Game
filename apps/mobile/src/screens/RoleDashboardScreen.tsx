@@ -101,7 +101,7 @@ export function RoleDashboardScreen() {
       <ScreenContainer
         title="Teams"
         eyebrow="Pregame"
-        subtitle="Your team view appears once a match is connected."
+        subtitle="Your side appears here once a match is connected."
         topSlot={<ProductNavBar current="dashboard" />}
       >
         <StateBanner tone="warning" title="No active match" detail="Join or create a match first." />
@@ -116,29 +116,29 @@ export function RoleDashboardScreen() {
     <ScreenContainer
       title="Teams"
       eyebrow="Pregame"
-      subtitle={`This device is currently joining from the ${formatRoleLabel(role).toLowerCase()} side.`}
+      subtitle={`This device is currently on the ${formatRoleLabel(role).toLowerCase()} side.`}
       topSlot={<ProductNavBar current="dashboard" />}
     >
       <Panel
-        title="Current Role"
-        subtitle="This is the role and view currently bound to this device before live play begins."
+        title="Current Side"
+        subtitle="Use this screen to confirm which side this device is on before the game starts."
       >
         <FactList
           items={[
-            { label: 'Role', value: formatRoleLabel(role) },
+            { label: 'Side', value: formatRoleLabel(role) },
             {
-              label: 'Stage',
+              label: 'Current Step',
               value: formatStageLabel(activeMatch.projection.lifecycleState, activeMatch.projection.seekPhaseSubstate)
             },
             {
-              label: 'Visible Map',
+              label: 'Playable Area',
               value: activeMatch.projection.visibleMap?.displayName ?? 'Not selected yet'
             }
           ]}
         />
       </Panel>
 
-      <Panel title={roleCopy.title} subtitle="Keep the next actions simple and role-based.">
+      <Panel title={roleCopy.title} subtitle="Keep the next action simple.">
         <Text>{roleCopy.detail}</Text>
         <AppButton
           label="Back To Match Room"

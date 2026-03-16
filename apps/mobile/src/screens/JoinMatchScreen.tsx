@@ -23,7 +23,7 @@ export function JoinMatchScreen() {
     <ScreenContainer
       title={runtimeKind === 'online_foundation' ? 'Join Online Match' : 'Join Match'}
       eyebrow="Pregame"
-      subtitle="Connect with the saved player profile, then continue in the match room and live map."
+      subtitle="Join with your display name, then continue into Match Room and Map Setup."
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Join match failed" detail={state.errorMessage} />
@@ -32,7 +32,7 @@ export function JoinMatchScreen() {
       <Panel
         title="Join Details"
         subtitle={runtimeKind === 'online_foundation'
-          ? 'Enter the short join code from the host. The app keeps a separate private player identity for this device, so matching display names do not block join.'
+          ? 'Enter the short join code from the host. Players can use the same display name without blocking each other.'
           : 'Enter the match details for this connection mode.'}
         tone="accent"
       >
@@ -67,8 +67,8 @@ export function JoinMatchScreen() {
         {runtimeKind === 'online_foundation' ? (
           <StateBanner
             tone="info"
-            title="Online join stays simple"
-            detail="This device joins with its own private player identity automatically. Visible display names can repeat without causing duplicate-player errors."
+            title="Display names stay simple"
+            detail="This device uses its own private player identity automatically, so matching visible names do not cause duplicate-player errors."
           />
         ) : null}
         {runtimeKind === 'online_foundation' && mobileAppEnvironment.enableDeveloperTools ? (

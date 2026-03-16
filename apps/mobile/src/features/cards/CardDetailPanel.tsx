@@ -67,10 +67,11 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
   const fallbackDescription = buildCardDescription(card.definition);
   const purposeSummary = buildCardPurposeSummary(card.definition);
   const restrictionSummary = buildCardRestrictionSummary(card.definition);
+  const accentStyle = resolveCardAccent(card.definition.kind);
 
   return (
     <View style={styles.container}>
-      <View style={styles.hero}>
+      <View style={[styles.hero, accentStyle]}>
         <View style={styles.headerText}>
           <Text style={styles.kind}>{formatCardKindLabel(card.definition.kind)}</Text>
           <Text style={styles.title}>{card.definition.name}</Text>
@@ -82,14 +83,14 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>What this card is for</Text>
+        <Text style={styles.sectionTitle}>Purpose</Text>
         <Text style={styles.highlight}>{purposeSummary}</Text>
         <Text style={styles.copy}>{fallbackDescription}</Text>
-        <Text style={styles.copy}>{behavior.detail}</Text>
-        <Text style={styles.copy}>{describeEffectSupport(card.definition)}</Text>
-        {activeScaleSummary ? <Text style={styles.effect}>{activeScaleSummary}</Text> : null}
+        <Text style={styles.effect}>{behavior.detail}</Text>
+        <Text style={styles.effect}>{describeEffectSupport(card.definition)}</Text>
+        {activeScaleSummary ? <Text style={styles.effectChip}>{activeScaleSummary}</Text> : null}
         {scaleNotes.map((note, index) => (
-          <Text key={`${card.definition.cardDefinitionId}:scale:${index}`} style={styles.effect}>
+          <Text key={`${card.definition.cardDefinitionId}:scale:${index}`} style={styles.effectChip}>
             {note}
           </Text>
         ))}
@@ -107,7 +108,7 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
 
       {(timingLines.length > 0 || requirementLines.length > 0) ? (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>When it can be used</Text>
+          <Text style={styles.sectionTitle}>Timing and restrictions</Text>
           <Text style={styles.copy}>{restrictionSummary}</Text>
           {timingLines.map((line, index) => (
             <Text key={`${card.definition.cardDefinitionId}:timing:${index}`} style={styles.meta}>
@@ -123,7 +124,7 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
       ) : null}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>What happens next</Text>
+        <Text style={styles.sectionTitle}>Current status</Text>
         <Text style={styles.copy}>{actionState.statusSummary}</Text>
         {props.workbookPlayability ? (
           <Text
@@ -145,33 +146,53 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
         {props.discardDisabledReason ? <Text style={styles.meta}>Discard: {props.discardDisabledReason}</Text> : null}
       </View>
 
-      <AppButton
-        label="Play This Card"
-        onPress={props.onPlay}
-        disabled={!props.canPlay || props.disabled}
-      />
-      <AppButton
-        label="Discard From Hand"
-        onPress={props.onDiscard}
-        disabled={!props.canDiscard || props.disabled}
-        tone="secondary"
-      />
+      <View style={styles.actions}>
+        <View style={styles.actionCell}>
+          <AppButton
+            label="Play Card"
+            onPress={props.onPlay}
+            disabled={!props.canPlay || props.disabled}
+          />
+        </View>
+        <View style={styles.actionCell}>
+          <AppButton
+            label="Discard"
+            onPress={props.onDiscard}
+            disabled={!props.canDiscard || props.disabled}
+            tone="secondary"
+          />
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12
+    gap: 14
   },
   hero: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 20,
+    borderRadius: 24,
     alignItems: 'flex-start',
     flexDirection: 'row',
     gap: 10,
     justifyContent: 'space-between',
-    padding: 14
+    padding: 16
+  },
+  heroTime: {
+    backgroundColor: colors.accentWarmMuted,
+    borderColor: colors.accentWarm,
+    borderWidth: 1
+  },
+  heroPower: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.accent,
+    borderWidth: 1
+  },
+  heroCurse: {
+    backgroundColor: colors.dangerMuted,
+    borderColor: colors.danger,
+    borderWidth: 1
   },
   headerText: {
     flex: 1,
@@ -197,9 +218,9 @@ const styles = StyleSheet.create({
   section: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    gap: 8,
+    gap: 10,
     padding: 14
   },
   sectionTitle: {
@@ -223,6 +244,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17
   },
+  effectChip: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 17,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 8
+  },
   warning: {
     color: colors.warning,
     fontSize: 12,
@@ -245,5 +278,27 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     lineHeight: 17
+  },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  actionCell: {
+    flexBasis: '48%',
+    flexGrow: 1
   }
 });
+
+function resolveCardAccent(kind: ResolvedVisibleCardModel['definition']['kind']) {
+  switch (kind) {
+    case 'time_bonus':
+      return styles.heroTime;
+    case 'power_up':
+      return styles.heroPower;
+    case 'curse':
+      return styles.heroCurse;
+    default:
+      return styles.heroPower;
+  }
+}

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
@@ -48,11 +48,9 @@ import {
 } from '../features/evidence/index.ts';
 import {
   MatchTimingBanner,
-  MatchTimingPanel,
   useMatchTimingModel
 } from '../features/timers/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
-import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
@@ -322,8 +320,8 @@ export function CardsScreen() {
       eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
       subtitle={
         liveGameplayState
-          ? 'Use this as the full deck review screen when the map flow needs more hand detail, card picks, or effect cleanup.'
-          : 'Review visible hands and piles, understand what each card can really do, and manage card windows through the live match flow.'
+          ? 'Private hand review, response picks, and card windows.'
+          : 'Review visible hands, piles, and live effects.'
       }
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="cards" />}
       bottomSlot={liveGameplayState ? <GameplayTabBar current="deck" /> : undefined}
@@ -353,249 +351,251 @@ export function CardsScreen() {
       ) : null}
 
       <MatchTimingBanner model={timingModel} />
-
       {activeMatch ? (
-        <Panel
-          title="Match Timing"
-          subtitle="Card play respects the current hide timer, question cooldown, pause state, and resolution lock."
-        >
-          <MatchTimingPanel model={timingModel} />
-        </Panel>
+        <View style={styles.heroCard}>
+          <View style={styles.heroHeader}>
+            <View style={styles.heroText}>
+              <Text style={styles.heroEyebrow}>Deck control</Text>
+              <Text style={styles.heroTitle}>
+                {selectedDeck?.deck.name ?? 'Choose a deck'}
+              </Text>
+              <Text style={styles.heroCopy}>
+                {describeDeckFlowStep(projection?.lifecycleState, projection?.seekPhaseSubstate)}
+              </Text>
+            </View>
+            <View style={styles.heroMeta}>
+              <Text style={styles.heroMetaValue}>{formatRoleLabel(viewerRole)}</Text>
+              <Text style={styles.heroMetaLabel}>Role</Text>
+            </View>
+          </View>
+
+          <View style={styles.chipRow}>
+            <View style={styles.infoChip}>
+              <Text style={styles.infoValue}>{deckViewModels.length}</Text>
+              <Text style={styles.infoLabel}>Visible decks</Text>
+            </View>
+            <View style={styles.infoChip}>
+              <Text style={styles.infoValue}>{handCardIds.length} / {HIDER_HAND_TARGET}</Text>
+              <Text style={styles.infoLabel}>Hand</Text>
+            </View>
+            <View style={styles.infoChip}>
+              <Text style={styles.infoValue}>{selectedResponseCards.length} / {responseSelectionLimit}</Text>
+              <Text style={styles.infoLabel}>Response picks</Text>
+            </View>
+            <View style={styles.infoChip}>
+              <Text style={styles.infoValue}>{timingModel?.freshnessLabel ?? 'Waiting'}</Text>
+              <Text style={styles.infoLabel}>State</Text>
+            </View>
+          </View>
+
+          <View style={styles.heroActions}>
+            {liveGameplayState ? (
+              <View style={styles.actionCell}>
+                <AppButton
+                  label="Back To Live Map"
+                  tone="secondary"
+                  onPress={() => {
+                    router.push('/map');
+                  }}
+                />
+              </View>
+            ) : null}
+            {liveGameplayState && canOpenMatchControls ? (
+              <View style={styles.actionCell}>
+                <AppButton
+                  label="Match Controls"
+                  tone="ghost"
+                  onPress={() => {
+                    router.push('/status');
+                  }}
+                />
+              </View>
+            ) : null}
+            {canPrepareFlow ? (
+              <View style={styles.actionCell}>
+                <AppButton
+                  label={state.loadState === 'loading' ? 'Working...' : 'Prepare Card Play'}
+                  onPress={() => {
+                    if (!projection) {
+                      return;
+                    }
+
+                    const commands = buildCardFlowBootstrapCommands(projection);
+                    if (commands.length === 0) {
+                      void refreshActiveMatch();
+                      return;
+                    }
+
+                    void submitCommands(commands);
+                  }}
+                  disabled={state.loadState === 'loading'}
+                />
+              </View>
+            ) : null}
+            <View style={styles.actionCell}>
+              <AppButton
+                label={
+                  canDrawToTarget
+                    ? `Draw ${cardsNeededToReachTarget} To Reach ${HIDER_HAND_TARGET}`
+                    : `Hand Target ${HIDER_HAND_TARGET} Ready`
+                }
+                onPress={() => {
+                  if (!selectedDeck || cardsNeededToReachTarget === 0) {
+                    return;
+                  }
+
+                  void submitCommands(
+                    Array.from({ length: cardsNeededToReachTarget }, () => ({
+                      type: 'draw_card' as const,
+                      payload: {
+                        deckId: selectedDeck.deck.deckId
+                      }
+                    }))
+                  );
+                }}
+                disabled={!canDrawToTarget || state.loadState === 'loading'}
+              />
+            </View>
+            <View style={styles.actionCell}>
+              <AppButton
+                label={selectedDeck ? `Draw From ${selectedDeck.deck.name}` : 'Draw A Card'}
+                onPress={() => {
+                  if (!selectedDeck) {
+                    return;
+                  }
+
+                  void submitCommand({
+                    type: 'draw_card',
+                    payload: {
+                      deckId: selectedDeck.deck.deckId
+                    }
+                  });
+                }}
+                disabled={!canDraw || state.loadState === 'loading'}
+              />
+            </View>
+            <View style={styles.actionCell}>
+              <AppButton
+                label="Refresh Card State"
+                onPress={() => {
+                  void refreshActiveMatch();
+                }}
+                tone="secondary"
+                disabled={!activeMatch || state.loadState === 'loading'}
+              />
+            </View>
+          </View>
+        </View>
       ) : null}
 
-      <Panel
-        title={liveGameplayState ? 'Hand Review' : 'Card Context'}
-        subtitle={
-          liveGameplayState
-            ? 'The map now handles the fastest live actions. Use this screen for deeper hand review, longer card management, or full-resolution follow-through.'
-            : 'Visibility, hand access, and card-lock rules for the current role.'
-        }
-      >
-        <FactList
-          items={[
-            { label: 'Role', value: formatRoleLabel(viewerRole) },
-            {
-              label: 'Next Step',
-              value: describeDeckFlowStep(projection?.lifecycleState, projection?.seekPhaseSubstate)
-            },
-            { label: 'Visible Decks', value: deckViewModels.length },
-            { label: 'State Update', value: timingModel?.freshnessLabel ?? 'Waiting for live state' }
-          ]}
+      {deckViewModels.length === 0 ? (
+        <StateBanner
+          tone="info"
+          title="No visible decks"
+          detail="This role and scope do not expose any deck contents right now."
         />
-        <Text style={styles.copy}>
-          Draw, play, discard, and resolution controls respect the real state machine. Manual and assisted cards never claim automated effects that the engine does not actually perform.
-        </Text>
-        {liveGameplayState ? (
-          <AppButton
-            label="Back To Live Map"
-            tone="secondary"
-            onPress={() => {
-              router.push('/map');
-            }}
-          />
-        ) : null}
-        {liveGameplayState && canOpenMatchControls ? (
-          <AppButton
-            label="Open Match Controls"
-            tone="ghost"
-            onPress={() => {
-              router.push('/status');
-            }}
-          />
-        ) : null}
-      </Panel>
-
-      <Panel
-        title="Hand Actions"
-        subtitle="Refill, draw, or refresh the hider hand without leaving the live chase."
-        tone="soft"
-      >
-        {canPrepareFlow ? (
-          <AppButton
-            label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Card Play'}
-            onPress={() => {
-              if (!projection) {
-                return;
-              }
-
-              const commands = buildCardFlowBootstrapCommands(projection);
-              if (commands.length === 0) {
-                void refreshActiveMatch();
-                return;
-              }
-
-              void submitCommands(commands);
-            }}
-            disabled={state.loadState === 'loading'}
-          />
-        ) : null}
-        <AppButton
-          label={
-            canDrawToTarget
-              ? `Draw ${cardsNeededToReachTarget} To Reach ${HIDER_HAND_TARGET}`
-              : `Hand Target ${HIDER_HAND_TARGET} Ready`
-          }
-          onPress={() => {
-            if (!selectedDeck || cardsNeededToReachTarget === 0) {
-              return;
-            }
-
-            void submitCommands(
-              Array.from({ length: cardsNeededToReachTarget }, () => ({
-                type: 'draw_card' as const,
-                payload: {
-                  deckId: selectedDeck.deck.deckId
-                }
-              }))
-            );
-          }}
-          disabled={!canDrawToTarget || state.loadState === 'loading'}
-        />
-        <AppButton
-          label={selectedDeck ? `Draw From ${selectedDeck.deck.name}` : 'Draw A Card'}
-          onPress={() => {
-            if (!selectedDeck) {
-              return;
-            }
-
-            void submitCommand({
-              type: 'draw_card',
-              payload: {
-                deckId: selectedDeck.deck.deckId
-              }
-            });
-          }}
-          disabled={!canDraw || state.loadState === 'loading'}
-        />
-        <AppButton
-          label="Refresh Card State"
-          onPress={() => {
-            void refreshActiveMatch();
-          }}
-          tone="secondary"
-          disabled={!activeMatch || state.loadState === 'loading'}
-        />
-      </Panel>
-
-      <Panel
-        title="Decks"
-        subtitle="Choose a deck to inspect its visible hand, draw pile, discard pile, exile, and any pending card windows."
-      >
-        {deckViewModels.length === 0 ? (
-          <Text style={styles.copy}>
-            No accessible decks are visible in the current role and scope. For shared team hands, a private team-scoped connection may reveal more than a public scope.
-          </Text>
-        ) : (
-          <CardDeckList
-            decks={deckViewModels}
-            selectedDeckId={selectedDeck?.deck.deckId}
-            viewerRole={viewerRole}
-            onSelect={setSelectedDeckId}
-          />
-        )}
-      </Panel>
+      ) : null}
 
       {selectedDeck ? (
         <>
           <Panel
-            title="Selected Deck"
-            subtitle="See what this deck is doing for the live chase, what is visible now, and whether anything is waiting for resolution."
+            title="Decks"
+            subtitle="Choose the hand you want to inspect."
             tone="accent"
           >
-            <FactList
-              items={[
-                { label: 'Deck', value: selectedDeck.deck.name },
-                { label: 'Ownership', value: formatDeckOwnerScope(selectedDeck.deck.ownerScope) },
-                { label: 'Game Size', value: selectedScale ?? 'Waiting for setup' },
-                { label: 'Visible Cards', value: selectedDeck.visibleCards.length },
-                { label: 'Pending Windows', value: selectedDeck.visibleByZone.pending_resolution.length }
-              ]}
+            <CardDeckList
+              decks={deckViewModels}
+              selectedDeckId={selectedDeck?.deck.deckId}
+              viewerRole={viewerRole}
+              onSelect={setSelectedDeckId}
             />
-            <Text style={styles.copy}>{selectedDeckVisibility}</Text>
+            <View style={styles.deckSummary}>
+              <Text style={styles.deckSummaryTitle}>{selectedDeck.deck.name}</Text>
+              <Text style={styles.deckSummaryMeta}>
+                {formatDeckOwnerScope(selectedDeck.deck.ownerScope)} · {selectedScale ?? 'Waiting for setup'}
+              </Text>
+              <Text style={styles.copy}>{selectedDeckVisibility}</Text>
+            </View>
           </Panel>
 
-          {canManageHiderDeck ? (
-            <Panel
-              title="Keep The Hider Hand Ready"
-              subtitle="Stay at six cards, track fresh draws, and keep likely response cards ready for the current clue."
-            >
-              <FactList
-                items={[
-                  { label: 'Hand Target', value: `${HIDER_HAND_TARGET} cards` },
-                  { label: 'Current Hand', value: handCardIds.length },
-                  {
-                    label: 'Need To Draw',
-                    value: cardsNeededToReachTarget > 0 ? `${cardsNeededToReachTarget} more` : 'Hand is ready'
-                  },
-                  {
-                    label: 'Active Clue',
-                    value: activeQuestionCategory?.name ?? 'No live question right now'
-                  },
-                  {
-                    label: 'Response Picks',
-                    value: `${selectedResponseCards.length} of ${responseSelectionLimit}`
-                  }
-                ]}
-              />
-              <Text style={styles.copy}>
-                Freshly drawn cards appear in a temporary tray here so the hider team can decide what to keep, what to discard, and what to hold back as a response card.
-              </Text>
-              {selectedCardResponseReason ? (
-                <Text style={styles.copy}>{selectedCardResponseReason}</Text>
-              ) : null}
-              {selectedCard?.card.zone === 'hand' ? (
-                <AppButton
-                  label={
-                    selectedResponseCardIds.includes(selectedCard.card.cardInstanceId)
-                      ? 'Remove Selected From Response Picks'
-                      : `Add Selected To Response Picks (${responseSelectionLimit} max)`
-                  }
-                  onPress={() => {
-                    setSelectedResponseCardIds((current) => {
-                      const cardId = selectedCard.card.cardInstanceId;
-                      if (current.includes(cardId)) {
-                        return current.filter((candidate) => candidate !== cardId);
-                      }
-
-                      return [...current, cardId].slice(-responseSelectionLimit);
-                    });
-                  }}
-                  tone="secondary"
-                  disabled={state.loadState === 'loading'}
-                />
-              ) : null}
-              {selectedCard?.card.zone === 'hand' && drawTrayCardIds.includes(selectedCard.card.cardInstanceId) ? (
-                <AppButton
-                  label="Mark Selected Card As Keep"
-                  onPress={() => {
-                    setDrawTrayCardIds((current) =>
-                      current.filter((candidate) => candidate !== selectedCard.card.cardInstanceId)
-                    );
-                  }}
-                  tone="secondary"
-                  disabled={state.loadState === 'loading'}
-                />
-              ) : null}
-            </Panel>
-          ) : null}
-
           <Panel
-            title="Current Hand"
-            subtitle="Cards currently visible in hand for the selected deck."
+            title="Live Hand"
+            subtitle="Main hand, fresh draws, response picks, and active effects."
           >
+            {canManageHiderDeck ? (
+              <View style={styles.handSummary}>
+                <View style={styles.chipRow}>
+                  <View style={styles.infoChip}>
+                    <Text style={styles.infoValue}>{handCardIds.length} / {HIDER_HAND_TARGET}</Text>
+                    <Text style={styles.infoLabel}>Hand target</Text>
+                  </View>
+                  <View style={styles.infoChip}>
+                    <Text style={styles.infoValue}>
+                      {cardsNeededToReachTarget > 0 ? `${cardsNeededToReachTarget} more` : 'Ready'}
+                    </Text>
+                    <Text style={styles.infoLabel}>Need to draw</Text>
+                  </View>
+                  <View style={styles.infoChip}>
+                    <Text style={styles.infoValue}>{activeQuestionCategory?.name ?? 'No live clue'}</Text>
+                    <Text style={styles.infoLabel}>Active clue</Text>
+                  </View>
+                  <View style={styles.infoChip}>
+                    <Text style={styles.infoValue}>{selectedResponseCards.length} / {responseSelectionLimit}</Text>
+                    <Text style={styles.infoLabel}>Response picks</Text>
+                  </View>
+                </View>
+                {selectedCardResponseReason ? (
+                  <Text style={styles.copy}>{selectedCardResponseReason}</Text>
+                ) : null}
+                <View style={styles.heroActions}>
+                  {selectedCard?.card.zone === 'hand' ? (
+                    <View style={styles.actionCell}>
+                      <AppButton
+                        label={
+                          selectedResponseCardIds.includes(selectedCard.card.cardInstanceId)
+                            ? 'Remove From Picks'
+                            : `Add To Picks (${responseSelectionLimit} max)`
+                        }
+                        onPress={() => {
+                          setSelectedResponseCardIds((current) => {
+                            const cardId = selectedCard.card.cardInstanceId;
+                            if (current.includes(cardId)) {
+                              return current.filter((candidate) => candidate !== cardId);
+                            }
+
+                            return [...current, cardId].slice(-responseSelectionLimit);
+                          });
+                        }}
+                        tone="secondary"
+                        disabled={state.loadState === 'loading'}
+                      />
+                    </View>
+                  ) : null}
+                  {selectedCard?.card.zone === 'hand' && drawTrayCardIds.includes(selectedCard.card.cardInstanceId) ? (
+                    <View style={styles.actionCell}>
+                      <AppButton
+                        label="Mark As Keep"
+                        onPress={() => {
+                          setDrawTrayCardIds((current) =>
+                            current.filter((candidate) => candidate !== selectedCard.card.cardInstanceId)
+                          );
+                        }}
+                        tone="secondary"
+                        disabled={state.loadState === 'loading'}
+                      />
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
+
             <CardZoneSection
-              title={`${selectedDeck.deck.name} Hand`}
+              title="Current Hand"
               cards={selectedDeck.visibleByZone.hand}
               emptyText="No visible hand cards in the current scope."
               selectedCardInstanceId={selectedCard?.card.cardInstanceId}
               onSelect={setSelectedCardInstanceId}
             />
-          </Panel>
-
-          <Panel
-            title="Fresh Draws"
-            subtitle="Newly drawn hand cards stay here until you mark them as keeps or spend/discard them."
-          >
             <CardZoneSection
               title="Temporary Draw Tray"
               cards={drawTrayCards}
@@ -603,16 +603,6 @@ export function CardsScreen() {
               selectedCardInstanceId={selectedCard?.card.cardInstanceId}
               onSelect={setSelectedCardInstanceId}
             />
-          </Panel>
-
-          <Panel
-            title="Response Picks"
-            subtitle={
-              activeQuestionCategory
-                ? `Cards the hider team wants ready for ${activeQuestionCategory.name}.`
-                : 'Cards the hider team wants to keep ready for the next question.'
-            }
-          >
             <CardZoneSection
               title="Selected Response Cards"
               cards={selectedResponseCards}
@@ -620,12 +610,6 @@ export function CardsScreen() {
               selectedCardInstanceId={selectedCard?.card.cardInstanceId}
               onSelect={setSelectedCardInstanceId}
             />
-          </Panel>
-
-          <Panel
-            title="Active Effects"
-            subtitle="Cards currently locked in a resolution window or waiting for a manual effect to finish."
-          >
             <CardZoneSection
               title="Cards Awaiting Resolution"
               cards={selectedDeck.visibleByZone.pending_resolution}
@@ -636,8 +620,8 @@ export function CardsScreen() {
           </Panel>
 
           <Panel
-            title="Draw Pile"
-            subtitle="Cards remaining to be drawn when the current scope allows draw-pile visibility."
+            title="Piles"
+            subtitle="Draw pile, discards, and removed cards."
           >
             <CardZoneSection
               title="Visible Draw Pile"
@@ -650,12 +634,6 @@ export function CardsScreen() {
               selectedCardInstanceId={selectedCard?.card.cardInstanceId}
               onSelect={setSelectedCardInstanceId}
             />
-          </Panel>
-
-          <Panel
-            title="Discard Pile"
-            subtitle="Cards already spent or revealed from the selected deck."
-          >
             <CardZoneSection
               title="Visible Discards"
               cards={selectedDeck.visibleByZone.discard_pile}
@@ -663,12 +641,6 @@ export function CardsScreen() {
               selectedCardInstanceId={selectedCard?.card.cardInstanceId}
               onSelect={setSelectedCardInstanceId}
             />
-          </Panel>
-
-          <Panel
-            title="Removed / Exile"
-            subtitle="Cards that are no longer active in the selected deck."
-          >
             <CardZoneSection
               title="Visible Exiled Cards"
               cards={selectedDeck.visibleByZone.exile}
@@ -681,8 +653,8 @@ export function CardsScreen() {
       ) : null}
 
       <Panel
-        title="Card Detail"
-        subtitle="Review the selected card, understand what it really does, and then return to the live map when you are ready."
+        title="Selected Card"
+        subtitle="Workbook detail and current actions."
         tone="soft"
       >
         <CardDetailPanel
@@ -725,8 +697,8 @@ export function CardsScreen() {
       </Panel>
 
       <Panel
-        title="Resolution Status"
-        subtitle="Finish manual or assisted card windows here so the live chase can continue cleanly."
+        title="Card Window"
+        subtitle="Resolve the current effect when the state allows it."
       >
         <CardResolutionStatusPanel
           activeCard={activeCard}
@@ -752,7 +724,7 @@ export function CardsScreen() {
       {cardAttachmentContext ? (
         <Panel
           title="Card Evidence"
-          subtitle="Record supporting media for cards that require evidence without pretending the effect is already automated."
+          subtitle="Add photo proof when the effect needs it."
         >
           <EvidenceCapturePanel
             context={cardAttachmentContext}
@@ -785,6 +757,128 @@ export function CardsScreen() {
 }
 
 const styles = StyleSheet.create({
+  heroCard: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 14,
+    padding: 16,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.05,
+    shadowRadius: 22,
+    elevation: 2
+  },
+  heroHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between'
+  },
+  heroText: {
+    flex: 1,
+    gap: 4
+  },
+  heroEyebrow: {
+    color: colors.accentStrong,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase'
+  },
+  heroTitle: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '800'
+  },
+  heroCopy: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18
+  },
+  heroMeta: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 2,
+    minWidth: 78,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  heroMetaValue: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  heroMetaLabel: {
+    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase'
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  infoChip: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+    minWidth: 96,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  infoValue: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 16
+  },
+  infoLabel: {
+    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase'
+  },
+  heroActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  actionCell: {
+    flexBasis: '48%',
+    flexGrow: 1
+  },
+  deckSummary: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 6,
+    padding: 14
+  },
+  deckSummaryTitle: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  deckSummaryMeta: {
+    color: colors.textSubtle,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase'
+  },
+  handSummary: {
+    gap: 10
+  },
   copy: {
     color: colors.textMuted,
     fontSize: 13,

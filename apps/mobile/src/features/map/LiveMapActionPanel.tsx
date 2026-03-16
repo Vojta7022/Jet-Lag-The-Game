@@ -2,10 +2,10 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../ui/AppButton.tsx';
-import { FactList } from '../../ui/FactList.tsx';
 import { colors } from '../../ui/theme.ts';
 
 import type { LiveGameplayGuideModel } from './live-gameplay-model.ts';
+import { LiveMapInfoChips } from './LiveMapInfoChips.tsx';
 
 interface LiveMapActionPanelProps {
   model: LiveGameplayGuideModel;
@@ -24,24 +24,27 @@ export function LiveMapActionPanel(props: LiveMapActionPanelProps) {
       ]}
     >
       <View style={styles.header}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeLabel}>{props.model.badge}</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.badge}>
+            <Text style={styles.badgeLabel}>{props.model.badge}</Text>
+          </View>
         </View>
         <Text style={styles.title}>{props.model.title}</Text>
         <Text style={styles.copy}>{props.model.detail}</Text>
       </View>
-      <FactList items={props.model.facts} />
+      <LiveMapInfoChips items={props.model.facts} />
       {props.model.actions.length > 0 ? (
         <View style={styles.actions}>
           {props.model.actions.map((action) => (
-            <AppButton
-              key={`${action.href}:${action.label}`}
-              label={action.label}
-              tone={action.tone}
-              onPress={() => {
-                router.push(action.href);
-              }}
-            />
+            <View key={`${action.href}:${action.label}`} style={styles.actionCell}>
+              <AppButton
+                label={action.label}
+                tone={action.tone}
+                onPress={() => {
+                  router.push(action.href);
+                }}
+              />
+            </View>
           ))}
         </View>
       ) : null}
@@ -52,10 +55,10 @@ export function LiveMapActionPanel(props: LiveMapActionPanelProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 24,
     borderWidth: 1,
-    gap: 12,
-    padding: 14
+    gap: 14,
+    padding: 16
   },
   cardInfo: {
     backgroundColor: colors.accentMuted,
@@ -72,6 +75,11 @@ const styles = StyleSheet.create({
   header: {
     gap: 6
   },
+  headerRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
   badge: {
     alignSelf: 'flex-start',
     backgroundColor: colors.surface,
@@ -87,7 +95,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '800'
   },
   copy: {
@@ -96,7 +104,13 @@ const styles = StyleSheet.create({
     lineHeight: 18
   },
   actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10
+  },
+  actionCell: {
+    flexBasis: '48%',
+    flexGrow: 1
   },
   helper: {
     color: colors.textMuted,

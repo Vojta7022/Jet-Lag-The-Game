@@ -44,9 +44,16 @@ export function ChatMessageList(props: ChatMessageListProps) {
                   entry.message.senderPlayerId === props.currentPlayerId ? styles.senderOwn : null
                 ]}
               >
-                {entry.message.senderDisplayName}
+                {entry.message.senderPlayerId === props.currentPlayerId ? 'You' : entry.message.senderDisplayName}
               </Text>
-              <Text style={styles.role}>{entry.message.senderRole}</Text>
+              <Text
+                style={[
+                  styles.role,
+                  entry.message.senderPlayerId === props.currentPlayerId ? styles.roleOwn : null
+                ]}
+              >
+                {entry.message.senderRole}
+              </Text>
             </View>
             <Text
               style={[
@@ -109,15 +116,20 @@ const styles = StyleSheet.create({
   message: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 22,
+    borderRadius: 24,
     borderWidth: 1,
     gap: 8,
-    maxWidth: '88%',
-    padding: 13
+    maxWidth: '84%',
+    padding: 14,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.03,
+    shadowRadius: 14,
+    elevation: 1
   },
   messageOwn: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    backgroundColor: colors.accentStrong,
+    borderColor: colors.accentStrong
   },
   messageHeader: {
     alignItems: 'center',
@@ -146,6 +158,11 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     textTransform: 'uppercase'
   },
+  roleOwn: {
+    backgroundColor: 'rgba(255, 250, 242, 0.18)',
+    borderColor: 'rgba(255, 250, 242, 0.28)',
+    color: colors.inkInverse
+  },
   timestamp: {
     color: colors.textMuted,
     fontSize: 11
@@ -162,7 +179,12 @@ const styles = StyleSheet.create({
     color: colors.inkInverse
   },
   placeholderBlock: {
-    gap: 8
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+    padding: 12
   },
   placeholderTitle: {
     color: colors.text,

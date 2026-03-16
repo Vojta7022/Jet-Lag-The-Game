@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
@@ -24,13 +24,10 @@ import {
   type ChatComposerDraft
 } from '../features/chat/index.ts';
 import {
-  EvidenceCapturePanel,
   useLocalMediaAttachments,
   type LocalEvidenceContextDescriptor
 } from '../features/evidence/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
-import { FactList } from '../ui/FactList.tsx';
-import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
@@ -124,9 +121,9 @@ export function ChatScreen() {
 
   return (
     <ScreenContainer
-      title={liveGameplayState ? 'Team Chat' : 'Chat'}
+      title="Chat"
       eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
-      subtitle="Stay with your team conversation, switch channels quickly, and attach evidence when the current role allows it."
+      subtitle={liveGameplayState ? 'Conversation and media.' : 'Conversation, channels, and shared media.'}
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="chat" />}
       bottomSlot={liveGameplayState ? <GameplayTabBar current="chat" /> : undefined}
     >
@@ -147,38 +144,54 @@ export function ChatScreen() {
       ) : null}
 
       {activeMatch ? (
-        <Panel
-          title={liveGameplayState ? 'Stay In Sync' : 'Conversation'}
-          subtitle={
-            liveGameplayState
-              ? 'Use chat as a supporting live screen, then jump back to the map when you are ready.'
-              : 'Everything here follows the current projection scope and private-team visibility rules.'
-          }
-          tone="soft"
-        >
-          <FactList
-            items={[
-              { label: 'Role', value: viewerRole },
-              { label: 'Visible Channels', value: channelViewModels.length },
-              { label: 'Selected Channel', value: selectedChannel?.channel.displayName ?? 'None' }
-            ]}
-          />
-          {liveGameplayState ? (
-            <AppButton label="Back To Live Map" onPress={() => router.push('/map')} tone="secondary" />
-          ) : null}
-          {liveGameplayState && canOpenMatchControls ? (
-            <AppButton label="Open Match Controls" onPress={() => router.push('/status')} tone="ghost" />
-          ) : null}
-        </Panel>
+        <View style={styles.chatHeaderCard}>
+          <View style={styles.chatHeaderTop}>
+            <View style={styles.chatHeaderText}>
+              <Text style={styles.chatHeaderEyebrow}>Conversation</Text>
+              <Text style={styles.chatHeaderTitle}>
+                {selectedChannel?.channel.displayName ?? 'Choose a channel'}
+              </Text>
+              <Text style={styles.chatHeaderCopy}>
+                {selectedChannel
+                  ? `${formatChannelScope(selectedChannel.channel)} · ${selectedChannel.messages.length} message${selectedChannel.messages.length === 1 ? '' : 's'}`
+                  : 'Pick a visible channel to join the conversation.'}
+              </Text>
+            </View>
+            <View style={styles.chatRoleChip}>
+              <Text style={styles.chatRoleValue}>{viewerRole}</Text>
+              <Text style={styles.chatRoleLabel}>Role</Text>
+            </View>
+          </View>
+          <View style={styles.chatHeaderActions}>
+            {liveGameplayState ? (
+              <View style={styles.actionCell}>
+                <AppButton label="Back To Live Map" onPress={() => router.push('/map')} tone="secondary" />
+              </View>
+            ) : null}
+            {liveGameplayState && canOpenMatchControls ? (
+              <View style={styles.actionCell}>
+                <AppButton label="Match Controls" onPress={() => router.push('/status')} tone="ghost" />
+              </View>
+            ) : null}
+            <View style={styles.actionCell}>
+              <AppButton
+                label="Refresh"
+                onPress={() => {
+                  void refreshActiveMatch();
+                }}
+                tone="secondary"
+                disabled={!activeMatch || state.loadState === 'loading'}
+              />
+            </View>
+          </View>
+        </View>
       ) : null}
 
-      <Panel
-        title="Channels"
-        subtitle="Pick where you want to read and send messages."
-      >
+      <View style={styles.channelRail}>
+        <Text style={styles.sectionEyebrow}>Channels</Text>
         {channelViewModels.length === 0 ? (
           <Text style={styles.copy}>
-            No chat channels are visible in the current projection scope right now. A different reconnect scope may expose more channels.
+            No chat channels are visible in this scope right now.
           </Text>
         ) : (
           <ChatChannelList
@@ -187,66 +200,99 @@ export function ChatScreen() {
             onSelect={setSelectedChannelId}
           />
         )}
-      </Panel>
+      </View>
 
-      <Panel
-        title={selectedChannel ? selectedChannel.channel.displayName : 'Messages'}
-        subtitle={selectedChannel ? 'Newest visible messages and evidence for this channel.' : 'Choose a channel to load the conversation.'}
-        tone={selectedChannel ? 'accent' : 'default'}
-      >
-        <FactList
-          items={[
-            { label: 'Channel Scope', value: selectedChannel?.channel ? formatChannelScope(selectedChannel.channel) : 'Unavailable' },
-            { label: 'Visible Messages', value: selectedChannelSummary },
-            { label: 'Recorded Evidence', value: selectedChannelAttachmentSummary }
-          ]}
-        />
+      <View style={styles.conversationShell}>
+        <View style={styles.conversationHeader}>
+          <View style={styles.conversationText}>
+            <Text style={styles.conversationTitle}>
+              {selectedChannel ? selectedChannel.channel.displayName : 'Messages'}
+            </Text>
+            <Text style={styles.conversationSubtitle}>
+              {selectedChannel
+                ? `${selectedChannelSummary} · ${selectedChannelAttachmentSummary}`
+                : 'Choose a channel to load the conversation.'}
+            </Text>
+          </View>
+        </View>
         <ChatMessageList
           channel={selectedChannel}
           currentPlayerId={activeMatch?.recipient.playerId}
           localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
         />
-        <AppButton
-          label="Refresh Conversation"
-          onPress={() => {
-            void refreshActiveMatch();
-          }}
-          tone="secondary"
-          disabled={!activeMatch || state.loadState === 'loading'}
-        />
-      </Panel>
+      </View>
 
-      <Panel
-        title="Write A Message"
-        subtitle="Send a quick update, an image, or both without leaving the live flow."
-      >
-          <ChatComposer
-            channel={selectedChannel}
-            draft={draft}
-            disabled={!activeMatch || state.loadState === 'loading'}
-            canAttach={canAttach}
+      <View style={styles.composerShell}>
+        <ChatComposer
+          channel={selectedChannel}
+          draft={draft}
+          disabled={!activeMatch || state.loadState === 'loading'}
+          canAttach={canAttach}
           canSend={canSend && canSendMessage(viewerRole, selectedChannel?.channel)}
           attachmentSlot={
             chatAttachmentContext ? (
-              <EvidenceCapturePanel
-                context={chatAttachmentContext}
-                drafts={selectedAttachments}
-                visibleAttachments={[]}
-                disabled={!activeMatch || state.loadState === 'loading' || !canAttach}
-                busy={localMedia.isContextBusy(chatAttachmentContext.contextId)}
-                feedback={localMedia.getContextFeedback(chatAttachmentContext.contextId)}
-                localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
-                submitHint={attachmentSubmitHint}
-                emptyVisibleText="Recorded attachments for this channel will appear here after a successful send."
-                onChooseFromLibrary={() => {
-                  void localMedia.chooseFromLibrary(chatAttachmentContext);
-                }}
-                onTakePhoto={() => {
-                  void localMedia.takePhoto(chatAttachmentContext);
-                }}
-                onUpdateDraft={localMedia.updateDraft}
-                onRemoveDraft={localMedia.removeDraft}
-              />
+              <View style={styles.attachmentTray}>
+                <View style={styles.attachmentActions}>
+                  <View style={styles.actionCell}>
+                    <AppButton
+                      label={localMedia.isContextBusy(chatAttachmentContext.contextId) ? 'Opening Library...' : 'Choose Photo'}
+                      onPress={() => {
+                        void localMedia.chooseFromLibrary(chatAttachmentContext);
+                      }}
+                      disabled={!activeMatch || state.loadState === 'loading' || !canAttach || localMedia.isContextBusy(chatAttachmentContext.contextId)}
+                      tone="secondary"
+                    />
+                  </View>
+                  <View style={styles.actionCell}>
+                    <AppButton
+                      label={localMedia.isContextBusy(chatAttachmentContext.contextId) ? 'Opening Camera...' : 'Take Photo'}
+                      onPress={() => {
+                        void localMedia.takePhoto(chatAttachmentContext);
+                      }}
+                      disabled={!activeMatch || state.loadState === 'loading' || !canAttach || localMedia.isContextBusy(chatAttachmentContext.contextId)}
+                      tone="secondary"
+                    />
+                  </View>
+                </View>
+
+                {localMedia.getContextFeedback(chatAttachmentContext.contextId) ? (
+                  <StateBanner
+                    tone={localMedia.getContextFeedback(chatAttachmentContext.contextId)!.tone}
+                    title={localMedia.getContextFeedback(chatAttachmentContext.contextId)!.title}
+                    detail={localMedia.getContextFeedback(chatAttachmentContext.contextId)!.detail}
+                  />
+                ) : null}
+
+                {selectedAttachments.length > 0 ? (
+                  <View style={styles.selectedMediaRow}>
+                    {selectedAttachments.map((attachment) => (
+                      <View key={attachment.attachmentId} style={styles.selectedMediaCard}>
+                        <Image source={{ uri: attachment.uri }} style={styles.selectedMediaPreview} resizeMode="cover" />
+                        <View style={styles.selectedMediaText}>
+                          <Text style={styles.selectedMediaLabel}>{attachment.label}</Text>
+                          <Text style={styles.selectedMediaMeta}>
+                            {attachment.source === 'camera' ? 'Camera' : 'Library'} · {attachment.stage === 'selected_local' ? 'Ready' : attachment.stage === 'submitting_runtime' ? 'Sending' : 'Recorded'}
+                          </Text>
+                        </View>
+                        <AppButton
+                          label="Remove"
+                          tone="secondary"
+                          onPress={() => {
+                            localMedia.removeDraft(attachment.attachmentId);
+                          }}
+                          disabled={state.loadState === 'loading' || attachment.stage === 'submitting_runtime'}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.attachmentHint}>
+                    Add a photo if this message needs media.
+                  </Text>
+                )}
+
+                <Text style={styles.attachmentHint}>{attachmentSubmitHint}</Text>
+              </View>
             ) : undefined
           }
           onChange={setDraft}
@@ -255,12 +301,169 @@ export function ChatScreen() {
             void handleSendMessage();
           }}
         />
-      </Panel>
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  chatHeaderCard: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 14,
+    padding: 16,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.05,
+    shadowRadius: 22,
+    elevation: 2
+  },
+  chatHeaderTop: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between'
+  },
+  chatHeaderText: {
+    flex: 1,
+    gap: 4
+  },
+  chatHeaderEyebrow: {
+    color: colors.accentStrong,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase'
+  },
+  chatHeaderTitle: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '800'
+  },
+  chatHeaderCopy: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18
+  },
+  chatRoleChip: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 2,
+    minWidth: 78,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  chatRoleValue: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  chatRoleLabel: {
+    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase'
+  },
+  chatHeaderActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  actionCell: {
+    flexBasis: '48%',
+    flexGrow: 1
+  },
+  sectionEyebrow: {
+    color: colors.textSubtle,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase'
+  },
+  channelRail: {
+    gap: 10
+  },
+  conversationShell: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 14,
+    padding: 16
+  },
+  conversationHeader: {
+    gap: 4
+  },
+  conversationText: {
+    gap: 4
+  },
+  conversationTitle: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '800'
+  },
+  conversationSubtitle: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18
+  },
+  composerShell: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 28,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16
+  },
+  attachmentTray: {
+    gap: 10
+  },
+  attachmentActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  selectedMediaRow: {
+    gap: 10
+  },
+  selectedMediaCard: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 10,
+    overflow: 'hidden',
+    padding: 10
+  },
+  selectedMediaPreview: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    height: 180,
+    width: '100%'
+  },
+  selectedMediaText: {
+    gap: 4
+  },
+  selectedMediaLabel: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  selectedMediaMeta: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 16
+  },
+  attachmentHint: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17
+  },
   copy: {
     color: colors.textMuted,
     fontSize: 13,

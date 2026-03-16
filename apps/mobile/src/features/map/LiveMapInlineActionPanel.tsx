@@ -53,11 +53,10 @@ import {
 } from '../questions/index.ts';
 import { formatCountdown, useMatchTimingModel } from '../timers/index.ts';
 import { AppButton } from '../../ui/AppButton.tsx';
-import { FactList } from '../../ui/FactList.tsx';
-import { Panel } from '../../ui/Panel.tsx';
 import { StateBanner } from '../../ui/StateBanner.tsx';
 import { colors } from '../../ui/theme.ts';
 
+import { LiveMapInfoChips } from './LiveMapInfoChips.tsx';
 import { resolveInlineLiveMapActionMode } from './live-map-action-flow-model.ts';
 
 export function LiveMapInlineActionPanel() {
@@ -357,15 +356,24 @@ export function LiveMapInlineActionPanel() {
     });
 
     return (
-      <Panel
-        title="Ask A Clue Here"
-        subtitle="Stay on the map, choose the next workbook clue, and send it without leaving the live play screen."
-      >
-        <FactList
+      <View style={[styles.sheet, styles.sheetAccent]}>
+        <View style={styles.sheetHeader}>
+          <View style={styles.sheetBadge}>
+            <Text style={styles.sheetBadgeLabel}>Ask from map</Text>
+          </View>
+          <Text style={styles.sheetTitle}>Ask the next clue</Text>
+          <Text style={styles.sheetCopy}>
+            Choose the live workbook draw and send it without leaving the map.
+          </Text>
+        </View>
+        <LiveMapInfoChips
           items={[
-            { label: 'Clue type', value: selectedCategory.name },
+            { label: 'Clue type', value: selectedCategory.name, tone: 'accent' },
             { label: 'Workbook rule', value: formatQuestionDrawRule(selectedCategory) },
-            { label: 'Answer timer', value: formatTimerPolicyLabel(selectedCategory.defaultTimerPolicy, selectedScale) }
+            {
+              label: 'Timer',
+              value: formatTimerPolicyLabel(selectedCategory.defaultTimerPolicy, selectedScale)
+            }
           ]}
         />
         <QuestionCategoryList
@@ -376,9 +384,6 @@ export function LiveMapInlineActionPanel() {
         />
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Current workbook draw</Text>
-          <Text style={styles.copy}>
-            {describeQuestionCategoryForPlayers(selectedCategory)}
-          </Text>
           <QuestionTemplateList
             templates={readyTemplates}
             category={selectedCategory}
@@ -395,13 +400,16 @@ export function LiveMapInlineActionPanel() {
               setSelectedTemplateId(templateId);
             }}
           />
+          <Text style={styles.helper}>
+            {describeQuestionCategoryForPlayers(selectedCategory)}
+          </Text>
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ask this clue</Text>
+          <Text style={styles.sectionTitle}>Selected clue</Text>
           <Text style={styles.highlight}>{readyTemplate.name}</Text>
           <Text style={styles.copy}>{describeQuestionTemplateForPlayers(readyTemplate, selectedCategory)}</Text>
           <StateBanner tone={impact.tone} title={impact.label} detail={impact.detail} />
-          <FactList
+          <LiveMapInfoChips
             items={[
               { label: 'How to answer', value: describeExpectedAnswerGuidance(readyTemplate) },
               { label: 'Game sizes', value: formatQuestionScaleSet(readyTemplate.scaleSet.appliesTo) },
@@ -417,7 +425,7 @@ export function LiveMapInlineActionPanel() {
           />
           {previewFeatureData.length > 0 ? (
             <Text style={styles.helper}>
-              This region already has matching place data for this clue, so the result can do more than just record evidence.
+              This map already has matching place data for this clue, so it can do more than record evidence.
             </Text>
           ) : null}
           <View style={styles.actionRow}>
@@ -435,20 +443,29 @@ export function LiveMapInlineActionPanel() {
             />
           </View>
         </View>
-      </Panel>
+      </View>
     );
   }
 
   if (inlineMode === 'answer' && activeQuestion && activeQuestionTemplate && activeQuestionCategory) {
     return (
-      <Panel
-        title="Answer The Clue Here"
-        subtitle="The live clue is already open. Answer it from the map, keep your hand context visible, and get back to play quickly."
-      >
-        <FactList
+      <View style={[styles.sheet, styles.sheetWarning]}>
+        <View style={styles.sheetHeader}>
+          <View style={styles.sheetBadge}>
+            <Text style={styles.sheetBadgeLabel}>Answer from map</Text>
+          </View>
+          <Text style={styles.sheetTitle}>Answer the live clue</Text>
+          <Text style={styles.sheetCopy}>
+            Send the hider response here and keep your hand in view while the timer is running.
+          </Text>
+        </View>
+        <LiveMapInfoChips
           items={[
-            { label: 'Live clue', value: activeQuestionTemplate.name },
-            { label: 'Response timer', value: activeQuestionTimerSeconds !== undefined ? formatCountdown(activeQuestionTimerSeconds) : 'Waiting for timer' },
+            { label: 'Live clue', value: activeQuestionTemplate.name, tone: 'warning' },
+            {
+              label: 'Timer',
+              value: activeQuestionTimerSeconds !== undefined ? formatCountdown(activeQuestionTimerSeconds) : 'Waiting'
+            },
             { label: 'Response cards', value: `${selectedResponseCardIds.length} of ${responseSelectionLimit}` }
           ]}
         />
@@ -463,11 +480,11 @@ export function LiveMapInlineActionPanel() {
         {hiderDeck ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Hand context</Text>
-            <FactList
+            <LiveMapInfoChips
               items={[
                 { label: 'Hand', value: `${hiderDeck.visibleByZone.hand.length} / ${HIDER_HAND_TARGET}` },
                 { label: 'Draw pile', value: hiderDeck.visibleByZone.draw_pile.length },
-                { label: 'Current clue type', value: activeQuestionCategory.name }
+                { label: 'Clue type', value: activeQuestionCategory.name }
               ]}
             />
             <CardZoneSection
@@ -595,25 +612,31 @@ export function LiveMapInlineActionPanel() {
             }}
           />
         </View>
-      </Panel>
+      </View>
     );
   }
 
   if (inlineMode === 'apply' && activeQuestion && activeQuestionTemplate && activeQuestionCategory) {
     return (
-      <Panel
-        title="Apply The Result Here"
-        subtitle="Review the live clue outcome and update the map in place so everyone immediately sees the new search area."
-      >
+      <View style={[styles.sheet, styles.sheetSuccess]}>
+        <View style={styles.sheetHeader}>
+          <View style={styles.sheetBadge}>
+            <Text style={styles.sheetBadgeLabel}>Apply from map</Text>
+          </View>
+          <Text style={styles.sheetTitle}>Apply the result</Text>
+          <Text style={styles.sheetCopy}>
+            Review the live answer and update the map in place so everyone sees the new search area immediately.
+          </Text>
+        </View>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ready to update the map</Text>
           <Text style={styles.highlight}>{activeQuestionTemplate.name}</Text>
           <Text style={styles.copy}>{describeQuestionTemplateForPlayers(activeQuestionTemplate, activeQuestionCategory)}</Text>
-          <FactList
+          <LiveMapInfoChips
             items={[
-              { label: 'Answer recorded', value: activeQuestion.answer ? 'Yes' : 'Waiting' },
+              { label: 'Answer recorded', value: activeQuestion.answer ? 'Yes' : 'Waiting', tone: 'success' },
               { label: 'Clue type', value: activeQuestionCategory.name },
-              { label: 'Current search area', value: visibleMap?.remainingArea?.precision ?? 'Waiting for map' }
+              { label: 'Search area', value: visibleMap?.remainingArea?.precision ?? 'Waiting for map' }
             ]}
           />
           <Text style={styles.helper}>
@@ -644,7 +667,7 @@ export function LiveMapInlineActionPanel() {
             }}
           />
         </View>
-      </Panel>
+      </View>
     );
   }
 
@@ -652,9 +675,58 @@ export function LiveMapInlineActionPanel() {
 }
 
 const styles = StyleSheet.create({
+  sheet: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
+    borderRadius: 26,
+    borderWidth: 1,
+    gap: 14,
+    padding: 16,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 2
+  },
+  sheetAccent: {
+    backgroundColor: colors.accentMuted
+  },
+  sheetWarning: {
+    backgroundColor: colors.warningMuted
+  },
+  sheetSuccess: {
+    backgroundColor: colors.successMuted
+  },
+  sheetHeader: {
+    gap: 6
+  },
+  sheetBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5
+  },
+  sheetBadgeLabel: {
+    color: colors.text,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase'
+  },
+  sheetTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: '800'
+  },
+  sheetCopy: {
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 18
+  },
   section: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 14,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: 18,
     gap: 10,
     padding: 12
   },

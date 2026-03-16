@@ -94,8 +94,9 @@ test('live gameplay guide makes the next seeker action map-first and obvious', (
 
   assert.equal(model.badge, 'Your move');
   assert.equal(model.actions[0]?.href, '/questions');
-  assert.equal(model.actions[0]?.label, 'Ask A Clue');
+  assert.equal(model.actions[0]?.label, 'Clue Review');
   assert.equal(model.facts[1]?.value, 'Ready for the next clue');
+  assert.match(model.detail, /live map/i);
 });
 
 test('live gameplay guide sends the hider to answer the active clue before anything else', () => {
@@ -114,9 +115,9 @@ test('live gameplay guide sends the hider to answer the active clue before anyth
   });
 
   assert.equal(model.badge, 'Answer now');
-  assert.equal(model.actions[0]?.href, '/questions');
-  assert.equal(model.actions[1]?.href, '/cards');
-  assert.match(model.detail, /within 500 m/i);
+  assert.equal(model.actions[0]?.href, '/cards');
+  assert.equal(model.actions[1]?.href, '/questions');
+  assert.match(model.detail, /answer from the map/i);
 });
 
 test('live deck summary keeps the hider hand tied to the current chase state', () => {
@@ -192,4 +193,5 @@ test('live deck summary keeps the hider hand tied to the current chase state', (
   assert.equal(summary?.title, 'Refill the hand before the next clue');
   assert.equal(summary?.facts[0]?.value, '4 / 6');
   assert.equal(summary?.action.href, '/cards');
+  assert.equal(summary?.action.label, 'Hand & Effects');
 });

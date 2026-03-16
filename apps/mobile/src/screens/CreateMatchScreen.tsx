@@ -47,7 +47,7 @@ export function CreateMatchScreen() {
     <ScreenContainer
       title={runtimeKind === 'online_foundation' ? 'Create Online Match' : 'Create Match'}
       eyebrow="Pregame"
-      subtitle="Start a match with the saved player profile, then continue into the match room and live map."
+      subtitle="Create the room, share the join code, then move into teams and map setup."
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Create match failed" detail={state.errorMessage} />
@@ -56,7 +56,7 @@ export function CreateMatchScreen() {
       <Panel
         title="Match Setup"
         subtitle={runtimeKind === 'online_foundation'
-          ? 'Choose the game size, then create the room. A short join code appears right after creation.'
+          ? 'Choose the room size, then create the room. A short join code appears right after creation.'
           : 'Choose a match code and game size, then create the session.'}
         tone="accent"
       >

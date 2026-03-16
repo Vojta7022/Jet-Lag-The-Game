@@ -41,11 +41,12 @@ export function VisibleAttachmentList(props: VisibleAttachmentListProps) {
               />
             ) : null}
             <Text style={styles.label}>{attachment.label}</Text>
-            <Text style={styles.meta}>{describeVisibleAttachmentStatus(attachment)}</Text>
-            <Text style={styles.meta}>{formatAttachmentVisibilityScope(attachment.visibilityScope)}</Text>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaChip}>{describeVisibleAttachmentStatus(attachment)}</Text>
+              <Text style={styles.metaChip}>{formatAttachmentVisibilityScope(attachment.visibilityScope)}</Text>
+            </View>
             <Text style={styles.copy}>{describeVisibleAttachmentDetail(attachment)}</Text>
             {attachment.note ? <Text style={styles.note}>Note: {attachment.note}</Text> : null}
-            <Text style={styles.meta}>{attachment.attachmentId}</Text>
           </View>
         );
       })}
@@ -63,11 +64,11 @@ const styles = StyleSheet.create({
     lineHeight: 18
   },
   card: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    gap: 6,
+    gap: 8,
     padding: 12
   },
   preview: {
@@ -78,13 +79,25 @@ const styles = StyleSheet.create({
   },
   label: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700'
   },
-  meta: {
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6
+  },
+  metaChip: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
     color: colors.textMuted,
-    fontSize: 11,
-    lineHeight: 15
+    fontSize: 10,
+    fontWeight: '700',
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 4
   },
   copy: {
     color: colors.text,

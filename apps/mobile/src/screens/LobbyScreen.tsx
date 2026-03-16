@@ -9,7 +9,7 @@ import {
   hasRequiredRoleAssignments,
   isRoleAssignmentStage
 } from '../features/roles/role-assignment.ts';
-import { shouldRedirectSetupScreen } from '../navigation/player-flow.ts';
+import { formatLifecycleLabel, shouldRedirectSetupScreen } from '../navigation/player-flow.ts';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
@@ -30,8 +30,34 @@ export function LobbyScreen() {
   const rolesReady = hasRequiredRoleAssignments(projection);
   const currentPlayerId = state.activeMatch?.recipient.playerId;
   const onlineJoinCode = state.activeMatch?.runtimeKind === 'online_foundation' ? state.activeMatch.joinCode : undefined;
-  const primaryNextRoute = rolesReady || projection?.visibleMap ? '/map' : '/dashboard';
-  const primaryNextLabel = rolesReady || projection?.visibleMap ? 'Continue To Map Setup' : 'Open Team View';
+  const primaryNextRoute = liveGameplayState ? '/map' : rolesReady || projection?.visibleMap ? '/map' : '/dashboard';
+  const primaryNextLabel = liveGameplayState
+    ? 'Go To Live Map'
+    : rolesReady || projection?.visibleMap
+      ? 'Continue To Map Setup'
+      : 'Open Teams';
+  const roomStatusTitle = !projection
+    ? 'Waiting for room state'
+    : liveGameplayState
+      ? 'Live play is ready'
+      : !rolesReady
+        ? canManageRoles
+          ? 'Choose teams'
+          : 'Waiting for teams'
+        : projection.visibleMap
+          ? 'Playable area is ready'
+          : 'Continue to map setup';
+  const roomStatusDetail = !projection
+    ? 'Connect to a match first.'
+    : liveGameplayState
+      ? 'Setup is complete. The normal player path now continues on the live map.'
+      : !rolesReady
+        ? canManageRoles
+          ? 'Pick one hider and at least one seeker, then continue into map setup.'
+          : 'The host is still choosing the hider and seeker sides for this match.'
+        : projection.visibleMap
+          ? 'Teams are locked in and the playable area is applied. The host can finish setup from map setup.'
+          : 'Teams are ready. The next step is choosing and applying the playable area.';
 
   useEffect(() => {
     if (shouldRedirectSetupScreen(projection?.lifecycleState)) {
@@ -43,7 +69,7 @@ export function LobbyScreen() {
     <ScreenContainer
       title="Match Room"
       eyebrow="Pregame"
-      subtitle="See who is in the match, confirm your current view, and move into the next step of play."
+      subtitle="Share the join code, choose teams, and move into map setup."
       topSlot={<ProductNavBar current="lobby" />}
     >
       {!state.activeMatch ? (
@@ -56,25 +82,22 @@ export function LobbyScreen() {
 
       {state.activeMatch ? (
         <Panel
-          title="Match Overview"
-          subtitle="This summary comes from the current live match view on this device."
+          title="Pregame Status"
+          subtitle={roomStatusDetail}
         >
           <FactList
             items={[
-              { label: 'Stage', value: state.activeMatch.lifecycleState },
-              { label: 'Role', value: roleLabel },
-              {
-                label: 'Your View',
-                value: state.activeMatch.recipient.scope
-                  .replace(/_/g, ' ')
-                  .replace(/\b\w/g, (character) => character.toUpperCase())
-              },
-              { label: 'Visible Players', value: String(projection?.players.length ?? 0) },
-              { label: 'Visible Teams', value: String(projection?.teams.length ?? 0) }
+              { label: 'Current Step', value: roomStatusTitle },
+              { label: 'Your Role', value: roleLabel },
+              { label: 'Match Stage', value: formatLifecycleLabel(state.activeMatch.lifecycleState) },
+              { label: 'Game Size', value: formatScaleLabel(projection?.selectedScale) },
+              { label: 'Playable Area', value: projection?.visibleMap?.displayName ?? 'Not applied yet' }
             ]}
           />
+          <AppButton label={primaryNextLabel} onPress={() => router.push(primaryNextRoute)} />
           <AppButton
-            label="Refresh Lobby"
+            label="Refresh Room"
+            tone="ghost"
             onPress={() => {
               void refreshActiveMatch();
             }}
@@ -185,8 +208,8 @@ export function LobbyScreen() {
 
       {projection ? (
         <Panel
-          title="Visible Players"
-          subtitle="Only players visible to the current match view appear here."
+          title="Players In Room"
+          subtitle="Everyone currently visible in this match room appears here."
         >
           {projection.players.length === 0 ? <Text style={styles.copy}>No players are visible yet.</Text> : null}
           {projection.players.map((player) => (
@@ -201,19 +224,24 @@ export function LobbyScreen() {
         </Panel>
       ) : null}
 
-      {projection ? (
-        <Panel
-          title="Next Step"
-          subtitle="Keep setup linear: finish teams, continue to map setup, then start the live game."
-        >
-          <AppButton label={primaryNextLabel} onPress={() => router.push(primaryNextRoute)} />
-          {role === 'host' ? (
-            <AppButton label="Open Match Controls" onPress={() => router.push('/status')} tone="ghost" />
-          ) : null}
-        </Panel>
+      {projection && role === 'host' ? (
+        <AppButton label="Open Match Controls" onPress={() => router.push('/status')} tone="ghost" />
       ) : null}
     </ScreenContainer>
   );
+}
+
+function formatScaleLabel(scale: 'small' | 'medium' | 'large' | undefined) {
+  switch (scale) {
+    case 'small':
+      return 'Small';
+    case 'medium':
+      return 'Medium';
+    case 'large':
+      return 'Large';
+    default:
+      return 'Waiting for match size';
+  }
 }
 
 const styles = StyleSheet.create({

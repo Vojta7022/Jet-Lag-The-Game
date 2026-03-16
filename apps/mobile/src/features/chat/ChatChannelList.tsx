@@ -63,15 +63,20 @@ const styles = StyleSheet.create({
   item: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.borderStrong,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     gap: 6,
-    minWidth: 120,
+    minWidth: 128,
     paddingHorizontal: 16,
-    paddingVertical: 12
+    paddingVertical: 13,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.03,
+    shadowRadius: 14,
+    elevation: 1
   },
   itemSelected: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.accentMuted,
     borderColor: colors.accent
   },
   name: {
@@ -80,14 +85,16 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   nameSelected: {
-    color: colors.inkInverse
+    color: colors.accentStrong
   },
   meta: {
     color: colors.textMuted,
-    fontSize: 12
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase'
   },
   metaSelected: {
-    color: colors.inkInverse
+    color: colors.accentStrong
   },
   count: {
     color: colors.textSubtle,
@@ -95,6 +102,6 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   countSelected: {
-    color: colors.inkInverse
+    color: colors.accentStrong
   }
 });

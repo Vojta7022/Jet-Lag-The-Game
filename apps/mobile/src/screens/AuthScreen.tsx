@@ -17,14 +17,14 @@ export function AuthScreen() {
   return (
     <ScreenContainer
       title="Player Profile"
-      subtitle="Choose the name other players see for this device. The app keeps a private player identity automatically in the background."
+      subtitle="Choose the display name other players see. This device keeps its own private player identity automatically."
     >
       <Panel title="Profile">
         {onlineMatchConnected ? (
           <StateBanner
             tone="warning"
             title="Reconnect to switch online players"
-            detail={`The current online match is still connected as ${state.sessionProfile.displayName}. Save changes now, then disconnect and reconnect the match to use the updated profile.`}
+            detail={`The current online match is still connected as ${state.sessionProfile.displayName}. Save your new display name, then reconnect the match to use it.`}
           />
         ) : null}
         <Field

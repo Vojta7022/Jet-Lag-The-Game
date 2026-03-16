@@ -16,6 +16,8 @@ import { defaultContentPack } from '../runtime/default-content-pack.ts';
 
 import {
   LiveMapActionPanel,
+  LiveMapImpactCard,
+  LiveMapInfoChips,
   LiveMapInlineActionPanel,
   MapLegend,
   SelectedRegionChipList,
@@ -24,10 +26,13 @@ import {
   buildAppliedRegionDraft,
   buildLiveDeckSummaryModel,
   buildLiveGameplayGuideModel,
+  describeLiveClueStep,
+  formatRoleLabel,
   buildMapOverlayModel,
   buildCompositePlayableRegion,
   buildMapScaleGuidanceModel,
   buildMapSetupBootstrapCommands,
+  buildPregameMapSetupFlowModel,
   clearSelectedRegions,
   mobileRegionDataSource,
   removeRegionFromSelection,
@@ -37,7 +42,6 @@ import {
   useRegionSearch
 } from '../features/map/index.ts';
 import {
-  QuestionResolutionPanel,
   findActiveQuestion,
   buildQuestionMapEffectModel,
   findConstraintForQuestion,
@@ -47,7 +51,6 @@ import {
 } from '../features/questions/index.ts';
 import {
   MatchTimingBanner,
-  MatchTimingPanel,
   formatCountdown,
   useMatchTimingModel
 } from '../features/timers/index.ts';
@@ -56,7 +59,6 @@ import type { AppShellState } from '../state/app-shell-state.ts';
 import { isSameMapSetupDraft } from '../state/app-shell-state.ts';
 import { hasRequiredRoleAssignments } from '../features/roles/role-assignment.ts';
 import { AppButton } from '../ui/AppButton.tsx';
-import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
@@ -83,20 +85,6 @@ function sameSelection(left: PlayableRegionCatalogEntry[], right: PlayableRegion
   return left.every((region, index) => region.regionId === right[index]?.regionId);
 }
 
-function describeSetupMode(runtimeKind: string | undefined) {
-  switch (runtimeKind) {
-    case 'single_device_referee':
-      return 'Single-device referee session on this device';
-    case 'nearby_host_authority':
-      return 'Nearby host session on the local network';
-    case 'online_foundation':
-      return 'Online cloud session';
-    case 'in_memory':
-    default:
-      return 'Local on-device test session';
-  }
-}
-
 function formatScaleLabel(scale: 'small' | 'medium' | 'large') {
   switch (scale) {
     case 'small':
@@ -108,28 +96,18 @@ function formatScaleLabel(scale: 'small' | 'medium' | 'large') {
   }
 }
 
-function describeSetupState(args: {
-  loadState: string;
-  freshnessLabel?: string;
-  activeMatchExists: boolean;
-}) {
-  if (!args.activeMatchExists) {
-    return 'Connect a match to start map setup.';
+function resolvePrecisionTone(
+  precision: 'exact' | 'approximate' | 'metadata_only' | undefined
+): 'default' | 'success' | 'warning' {
+  if (precision === 'exact') {
+    return 'success';
   }
 
-  if (args.loadState === 'loading') {
-    return 'Updating the active match state.';
+  if (precision === 'approximate') {
+    return 'warning';
   }
 
-  if (args.loadState === 'error') {
-    return 'The latest setup action needs attention.';
-  }
-
-  if (args.freshnessLabel) {
-    return `Updated ${args.freshnessLabel.toLowerCase()}.`;
-  }
-
-  return 'Waiting for the first synced match state.';
+  return 'default';
 }
 
 function hasOnlineIdentityMismatch(
@@ -149,7 +127,14 @@ function hasOnlineIdentityMismatch(
 
 export function MapScreen() {
   const dimensions = useWindowDimensions();
-  const { state, submitCommands, refreshActiveMatch, saveMapSetupDraft, clearMapSetupDraft } = useAppShell();
+  const {
+    state,
+    submitCommand,
+    submitCommands,
+    refreshActiveMatch,
+    saveMapSetupDraft,
+    clearMapSetupDraft
+  } = useAppShell();
   const [showLegend, setShowLegend] = useState(false);
   const activeMatch = state.activeMatch;
   const mapSetupDraft = activeMatch ? state.uiState.mapSetupDrafts[activeMatch.matchId] : undefined;
@@ -164,6 +149,7 @@ export function MapScreen() {
   const projection = activeMatch?.projection;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
+  const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
   const appliedRegion = buildAppliedRegionDraft(projection?.visibleMap)[0];
   const scaleGuidance = buildMapScaleGuidanceModel({
     selectedRegions: selectedRegions.length > 0 ? selectedRegions : appliedRegion ? [appliedRegion] : [],
@@ -202,10 +188,6 @@ export function MapScreen() {
       projection?.visibleMap
     ]
   );
-  const lastSyncAppliedConstraint = Boolean(
-    state.lastSync?.eventStream.events.some((eventFrame) => eventFrame.type === 'constraint_applied') &&
-      latestQuestionEffect
-  );
   const compositePreviewRegion = useMemo(
     () => buildCompositePlayableRegion(selectedRegions),
     [selectedRegions]
@@ -229,6 +211,7 @@ export function MapScreen() {
   const activeQuestionTimerLabel = activeQuestionTimerSeconds !== undefined
     ? formatCountdown(activeQuestionTimerSeconds)
     : undefined;
+  const primaryLiveTimer = timingModel?.timers.find((timer) => timer.status !== 'completed');
   const canvasPreviewRegion = useMemo(
     () =>
       resolveMapCanvasPreviewRegion({
@@ -300,12 +283,26 @@ export function MapScreen() {
     selectedRegions.length > 1
       ? 'Composite'
       : compositePreviewRegion?.regionKind ?? previewRegion?.regionKind ?? 'Preview';
-  const setupStateSummary = describeSetupState({
-    loadState: state.loadState,
-    freshnessLabel: timingModel?.freshnessLabel,
-    activeMatchExists: Boolean(activeMatch)
-  });
   const onlineIdentityMismatch = hasOnlineIdentityMismatch(state.sessionProfile, activeMatch);
+  const pregameFlowModel = useMemo(
+    () =>
+      buildPregameMapSetupFlowModel({
+        isHostView,
+        rolesReadyForMapSetup,
+        lifecycleState: projection?.lifecycleState,
+        mapHasBeenApplied,
+        hasDraftSelection: Boolean(compositePreviewRegion),
+        draftDiffersFromApplied
+      }),
+    [
+      compositePreviewRegion,
+      draftDiffersFromApplied,
+      isHostView,
+      mapHasBeenApplied,
+      projection?.lifecycleState,
+      rolesReadyForMapSetup
+    ]
+  );
   const inlineActionMode = resolveInlineLiveMapActionMode(viewerRole, projection);
   const liveGuideModel = useMemo(
     () =>
@@ -343,10 +340,45 @@ export function MapScreen() {
       }),
     [activeQuestionCategory, hiderDeck, projection, viewerRole]
   );
-  const screenTitle = liveGameplayState ? 'Live Map' : 'Map Setup';
+  const liveStatusItems = useMemo(
+    () =>
+      liveGameplayState
+        ? [
+            {
+              label: 'Role',
+              value: formatRoleLabel(viewerRole),
+              tone: 'accent' as const
+            },
+            {
+              label: 'Clue status',
+              value: describeLiveClueStep(projection, activeQuestionTemplate?.name)
+            },
+            {
+              label: primaryLiveTimer?.label ?? 'Timer',
+              value: projection?.paused ? 'Frozen' : primaryLiveTimer?.remainingLabel ?? 'Waiting'
+            },
+            {
+              label: 'Search',
+              value: candidateSummary,
+              tone: resolvePrecisionTone(displayedVisibleMap?.remainingArea?.precision)
+            }
+          ]
+        : [],
+    [
+      activeQuestionTemplate?.name,
+      candidateSummary,
+      displayedVisibleMap?.remainingArea?.precision,
+      liveGameplayState,
+      primaryLiveTimer?.label,
+      primaryLiveTimer?.remainingLabel,
+      projection,
+      viewerRole
+    ]
+  );
+  const screenTitle = liveGameplayState ? 'Map' : 'Map Setup';
   const screenSubtitle = liveGameplayState
-    ? 'The live map is the center of play. Follow clue results here, then jump to the next role-specific action only when you need it.'
-    : 'Choose the playable region before the chase begins, then apply it to the match.';
+    ? undefined
+    : 'Choose teams, apply the playable area, then start the game.';
   const liveGuideModelForDisplay = useMemo(() => {
     if (!liveGuideModel || !inlineActionMode) {
       return liveGuideModel;
@@ -441,10 +473,58 @@ export function MapScreen() {
     selectedRegions.length
   ]);
 
+  const canShowSetupBuilder = Boolean(!liveGameplayState && isHostView && projection?.lifecycleState === 'map_setup');
+  const canShowReadonlySetupPreview = Boolean(!liveGameplayState && !canShowSetupBuilder && projection?.visibleMap);
+
+  const clearDraftSelection = () => {
+    setSelectedRegions(clearSelectedRegions());
+    regionSearch.setQuery('');
+    regionSearch.clearSelection();
+    if (activeMatch) {
+      clearMapSetupDraft(activeMatch.matchId);
+    }
+  };
+
+  const handlePrepareMapSetup = () => {
+    if (!projection || !canPrepareMapSetup) {
+      return;
+    }
+
+    const commands = buildMapSetupBootstrapCommands(projection);
+    if (commands.length === 0) {
+      void refreshActiveMatch();
+      return;
+    }
+
+    void submitCommands(commands);
+  };
+
+  const handleApplyPlayableRegion = () => {
+    if (!canApplySelectedRegion || !compositePreviewRegion) {
+      return;
+    }
+
+    void (async () => {
+      const succeeded = await submitCommands([createMapRegionCommand(compositePreviewRegion)]);
+      if (!succeeded || !activeMatch) {
+        return;
+      }
+
+      clearDraftSelection();
+    })();
+  };
+
+  const handleStartMatch = () => {
+    void submitCommand({
+      type: 'start_match',
+      payload: {}
+    });
+  };
+
   return (
     <ScreenContainer
       title={screenTitle}
-      eyebrow={liveGameplayState ? 'Live Game' : 'Pregame'}
+      eyebrow={liveGameplayState ? 'Live' : 'Pregame'}
       subtitle={screenSubtitle}
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="map" />}
       bottomSlot={liveGameplayState ? <GameplayTabBar current="map" /> : undefined}
@@ -454,30 +534,6 @@ export function MapScreen() {
             tone="warning"
             title="No active match"
             detail="Create or join a match first. Map changes are applied through the active match connection."
-          />
-        ) : null}
-
-        {activeMatch && !isHostView && !liveGameplayState ? (
-          <StateBanner
-            tone="warning"
-            title="Host access required"
-            detail="Only host views can move the match into map setup or apply a new playable region."
-          />
-        ) : null}
-
-        {activeMatch && isHostView && !liveGameplayState && !rolesReadyForMapSetup ? (
-          <StateBanner
-            tone="warning"
-            title="Assign teams before map setup"
-            detail="Choose one hider and at least one seeker in Match Room before preparing the playable region."
-          />
-        ) : null}
-
-        {projection?.lifecycleState === 'map_setup' ? (
-          <StateBanner
-            tone="info"
-            title="Ready to apply"
-            detail="Applying the current selection updates the playable boundary and resets the candidate search area inside it."
           />
         ) : null}
 
@@ -497,437 +553,395 @@ export function MapScreen() {
           />
         ) : null}
 
-        <MatchTimingBanner model={timingModel} />
-
-        {lastSyncAppliedConstraint && latestQuestionEffect ? (
-          <StateBanner
-            tone={latestQuestionEffect.mapEffectTone}
-            title={latestQuestionEffect.mapEffectTitle}
-            detail={latestQuestionEffect.mapEffectDetail}
-          />
-        ) : null}
+        {projection?.paused ? <MatchTimingBanner model={timingModel} /> : null}
 
         {activeMatch && !liveGameplayState ? (
-          <Panel
-            title="Match Timing"
-            subtitle="Hide phase, cooldowns, and pause state stay visible while you work on the playable region."
-          >
-            <MatchTimingPanel model={timingModel} />
-          </Panel>
-        ) : null}
+          <View style={styles.setupShell}>
+            <View style={styles.setupHero}>
+              <Text style={styles.setupStepBadge}>{pregameFlowModel.badge}</Text>
+              <Text style={styles.setupHeroTitle}>{pregameFlowModel.title}</Text>
+              <Text style={styles.copy}>{pregameFlowModel.detail}</Text>
 
-        {activeMatch && !liveGameplayState ? (
-          <Panel
-            title="Setup Status"
-            subtitle="Keep track of what is already applied, what is still in draft, and which scale best fits the current boundary."
-          >
-            <FactList
-              items={[
-                { label: 'Session Mode', value: describeSetupMode(activeMatch.runtimeKind) },
-                { label: 'State Update', value: setupStateSummary },
-                { label: 'Applied Region', value: projection?.visibleMap?.displayName ?? 'Not applied yet' },
-                {
-                  label: 'Draft Selection',
-                  value:
-                    selectedRegions.length === 0
-                      ? 'No draft regions selected'
-                      : selectedRegions.length === 1
-                        ? selectedRegions[0]?.displayName ?? '1 region selected'
-                        : `${selectedRegions.length} regions selected`
-                },
-                { label: 'Suggested Scale', value: formatScaleLabel(scaleGuidance.suggestedScale) }
-              ]}
-            />
-            <Text style={styles.copy}>{scaleGuidance.title}</Text>
-            <Text style={styles.copy}>{scaleGuidance.detail}</Text>
-            <Text style={styles.helperCopy}>{scaleGuidance.note}</Text>
-            <View style={styles.scaleRow}>
-              {(['small', 'medium', 'large'] as const).map((scale) => {
-                const recommended = scaleGuidance.suggestedScale === scale;
-                return (
-                  <View
-                    key={scale}
-                    style={[
-                      styles.scaleChip,
-                      recommended ? styles.scaleChipRecommended : null
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.scaleChipLabel,
-                        recommended ? styles.scaleChipLabelRecommended : null
-                      ]}
-                    >
-                      {formatScaleLabel(scale)}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-            {draftDiffersFromApplied ? (
-              <StateBanner
-                tone="info"
-                title="Draft changes are ready to apply"
-                detail="The previewed boundary is different from the region currently applied to the match."
-              />
-            ) : null}
-          </Panel>
-        ) : null}
-
-        {activeMatch && liveGameplayState ? (
-          <Panel
-            title="What To Do Now"
-            subtitle="The live map stays in the center. Use this card to know the next move for your role without bouncing through every tool."
-            tone="soft"
-          >
-            {liveGuideModelForDisplay ? <LiveMapActionPanel model={liveGuideModelForDisplay} /> : null}
-            {isHostView ? (
-              <AppButton
-                label="Open Match Controls"
-                tone="ghost"
-                onPress={() => {
-                  router.push('/status');
-                }}
-              />
-            ) : null}
-          </Panel>
-        ) : null}
-
-        {activeMatch && liveGameplayState ? (
-          <Panel
-            title="Main Game Map"
-            subtitle="Watch the current search area, visible movement, and the latest bounded clue overlays from one place."
-            tone="accent"
-          >
-            <FactList
-              items={[
-                { label: 'Playable Region', value: displayedVisibleMap?.displayName ?? 'Not selected yet' },
-                { label: 'Current Search Area', value: candidateSummary },
-                {
-                  label: 'Latest Clue',
-                  value: latestQuestionEffect?.mapEffectTitle ?? 'No resolved clue yet'
-                },
-                {
-                  label: 'Live Timer',
-                  value: activeQuestionTimerLabel ?? 'No active clue timer'
-                }
-              ]}
-            />
-            <MapCanvas
-              height={mapHeight}
-              maxWidth={dimensions.width - 32}
-              visibleMap={displayedVisibleMap}
-              visibleMovementTracks={projection?.visibleMovementTracks}
-              previewRegion={canvasPreviewRegion}
-            />
-            <View style={styles.previewHeader}>
-              <Text style={styles.copy}>
-                The live map shows the current playable region, the visible search area, and any movement or clue overlays allowed in this role.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setShowLegend((value) => !value)}
-                style={({ pressed }) => [
-                  styles.legendToggle,
-                  pressed ? styles.legendTogglePressed : null
-                ]}
-              >
-                <Text style={styles.legendToggleLabel}>{showLegend ? 'Hide Legend' : 'Show Legend'}</Text>
-              </Pressable>
-            </View>
-            {showLegend ? (
-              <View style={styles.legendCard}>
-                <MapLegend overlayModel={overlayModel} compact />
-              </View>
-            ) : null}
-            <Text style={styles.previewMeta}>
-              Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)}
-            </Text>
-          </Panel>
-        ) : null}
-
-        {liveGameplayState ? <LiveMapInlineActionPanel /> : null}
-
-        {liveGameplayState && inlineActionMode !== 'answer' && liveDeckSummary ? (
-          <Panel
-            title="Deck And Response"
-            subtitle="The hider hand and live card effects stay tied to the chase, not off in a separate utility."
-          >
-            <View style={styles.liveSupportCard}>
-              <Text style={styles.title}>{liveDeckSummary.title}</Text>
-              <Text style={styles.copy}>{liveDeckSummary.detail}</Text>
-              <FactList items={liveDeckSummary.facts} />
-              <AppButton
-                label={liveDeckSummary.action.label}
-                tone={liveDeckSummary.action.tone}
-                onPress={() => {
-                  router.push(liveDeckSummary.action.href);
-                }}
-              />
-            </View>
-          </Panel>
-        ) : null}
-
-        {projection?.visibleMap ? (
-          <Panel
-            title={liveGameplayState ? 'Latest Search Update' : 'Latest Question Update'}
-            subtitle={
-              liveGameplayState
-                ? 'The latest resolved clue, including whether it changed the search area or only recorded evidence.'
-                : 'The most recent resolved question, including whether it changed the search area or only recorded evidence.'
-            }
-          >
-            <QuestionResolutionPanel
-              title={liveGameplayState ? 'Latest Clue Result' : 'Question-To-Map Summary'}
-              question={latestResolvedQuestion}
-              template={latestResolvedTemplate}
-              category={latestResolvedCategory}
-              constraint={latestResolvedConstraint}
-              visibleMap={projection.visibleMap}
-              actionSlot={
-                latestResolvedQuestion ? (
-                  <AppButton
-                    label="Open Question Center"
-                    tone="secondary"
-                    onPress={() => {
-                      router.push('/questions');
-                    }}
-                  />
-                ) : undefined
-              }
-            />
-          </Panel>
-        ) : null}
-
-        {!liveGameplayState ? (
-        <Panel
-          title="Choose Play Area"
-          subtitle="Search by city or administrative region, review the returned boundary, and add it to the match map."
-        >
-          <SearchableRegionPicker
-            query={regionSearch.query}
-            minimumQueryLengthMet={regionSearch.minimumQueryLengthMet}
-            results={regionSearch.regions}
-            previewRegion={regionSearch.selectedRegion}
-            selectedRegionId={regionSearch.selectedRegionId}
-            selectedRegionCount={selectedRegions.length}
-            sourceLabel={regionSearch.sourceLabel}
-            usingFallback={regionSearch.usingFallback}
-            noticeMessage={regionSearch.noticeMessage}
-            attribution={regionSearch.attribution}
-            isLoading={regionSearch.isLoading}
-            errorMessage={regionSearch.errorMessage}
-            onChangeQuery={regionSearch.setQuery}
-            onRetry={regionSearch.retrySearch}
-            onSelect={(regionId) => {
-              void regionSearch.selectRegion(regionId);
-            }}
-            onAddPreviewRegion={() => {
-              if (!regionSearch.selectedRegion) {
-                return;
-              }
-
-              setSelectedRegions((currentRegions) => addRegionToSelection(currentRegions, regionSearch.selectedRegion!));
-            }}
-            canAddPreviewRegion={Boolean(regionSearch.selectedRegion) && !previewRegionAlreadyAdded}
-            previewRegionAlreadyAdded={previewRegionAlreadyAdded}
-          />
-        </Panel>
-        ) : null}
-
-        {!liveGameplayState ? (
-        <Panel
-          title="Match Boundary"
-          subtitle="Build a draft playable boundary, then apply it to the match."
-        >
-          {compositePreviewRegion ? (
-            <View style={styles.selectedSection}>
-              <View style={styles.selectedHeader}>
-                <View style={styles.selectedTextBlock}>
-                  <Text style={styles.title}>{compositePreviewRegion.displayName}</Text>
-                  <Text style={styles.copy}>{compositePreviewRegion.summary}</Text>
-                </View>
-                <View style={styles.selectedBadge}>
-                  <Text style={styles.selectedBadgeLabel}>{selectionBadgeLabel}</Text>
-                </View>
-              </View>
-
-              <SelectedRegionChipList
-                regions={selectedRegions}
-                onRemove={(regionId) => {
-                  setSelectedRegions((currentRegions) => removeRegionFromSelection(currentRegions, regionId));
-                }}
-                onClearAll={() => {
-                  setSelectedRegions(clearSelectedRegions());
-                }}
-              />
-
-              {disconnectedWarning ? (
-                <StateBanner
-                  tone="warning"
-                  title="Selections appear disconnected"
-                  detail={disconnectedWarning.summary}
-                />
-              ) : null}
-
-              {compositeDissolveNotice ? (
-                <StateBanner
-                  tone="warning"
-                  title="Using safe composite fallback"
-                  detail={compositeDissolveNotice}
-                />
-              ) : null}
-
-              <View style={styles.metricGrid}>
-                <View style={styles.metricCard}>
-                  <Text style={styles.metricLabel}>Components</Text>
-                  <Text style={styles.metricValue}>
-                    {selectedRegions.length} {selectedRegions.length === 1 ? 'region' : 'regions'}
+              <View style={styles.setupChipRow}>
+                <View style={[styles.scaleChip, styles.scaleChipRecommended]}>
+                  <Text style={[styles.scaleChipLabel, styles.scaleChipLabelRecommended]}>
+                    Recommended {formatScaleLabel(scaleGuidance.suggestedScale)}
                   </Text>
                 </View>
-                <View style={styles.metricCard}>
-                  <Text style={styles.metricLabel}>Candidate</Text>
-                  <Text style={styles.metricValue}>{candidateSummary}</Text>
+                <View style={styles.scaleChip}>
+                  <Text style={styles.scaleChipLabel}>
+                    Room Size {selectedScale ? formatScaleLabel(selectedScale) : 'Waiting'}
+                  </Text>
                 </View>
-                <View style={styles.metricCard}>
-                  <Text style={styles.metricLabel}>Region</Text>
-                  <Text style={styles.metricValue}>{regionSummary}</Text>
-                </View>
-                <View style={styles.metricCard}>
-                  <Text style={styles.metricLabel}>Sources</Text>
-                  <Text style={styles.metricValue}>{selectedSourcesSummary}</Text>
+                <View style={styles.scaleChip}>
+                  <Text style={styles.scaleChipLabel}>
+                    {projection?.visibleMap?.displayName ?? 'No play area applied'}
+                  </Text>
                 </View>
               </View>
 
-              {activeSelectionCoverage ? (
-                <Text style={styles.copy}>
-                  Coverage: {activeSelectionCoverage}
-                  {activeSelectionParentLabel && activeSelectionParentLabel !== compositePreviewRegion.displayName
-                    ? ` · ${activeSelectionParentLabel}`
-                    : ''}
-                </Text>
+              <Text style={styles.helperCopy}>{scaleGuidance.note}</Text>
+
+              {pregameFlowModel.primaryAction ? (
+                <AppButton
+                  label={state.loadState === 'loading'
+                    ? 'Working...'
+                    : pregameFlowModel.primaryAction.label}
+                  disabled={state.loadState === 'loading'}
+                  onPress={() => {
+                    switch (pregameFlowModel.primaryAction?.kind) {
+                      case 'open_match_room':
+                        router.push('/lobby');
+                        break;
+                      case 'prepare_map':
+                        handlePrepareMapSetup();
+                        break;
+                      case 'apply_region':
+                        handleApplyPlayableRegion();
+                        break;
+                      case 'start_match':
+                        handleStartMatch();
+                        break;
+                      default:
+                        break;
+                    }
+                  }}
+                />
+              ) : null}
+
+              {(selectedRegions.length > 0 || regionSearch.query.length > 0 || Boolean(regionSearch.selectedRegionId)) &&
+              canShowSetupBuilder ? (
+                <AppButton
+                  label="Clear Draft"
+                  tone="ghost"
+                  disabled={state.loadState === 'loading'}
+                  onPress={clearDraftSelection}
+                />
               ) : null}
             </View>
-          ) : regionSearch.selectedRegion ? (
-            <StateBanner
-              tone="info"
-              title="Region selected"
-              detail="The current search result is being previewed. Add it to the playable region to keep it in the final selection."
-            />
-          ) : (
-            <StateBanner
-              tone="info"
-              title="No regions selected"
-              detail="Search above, preview a boundary, then add one or more regions to build the playable map."
-            />
-          )}
 
-          <View style={styles.actionGrid}>
-            <AppButton
-              label={state.loadState === 'loading' ? 'Preparing...' : 'Prepare Match For Map Setup'}
-              onPress={() => {
-                if (!projection || !canPrepareMapSetup) {
-                  return;
-                }
+            {canShowSetupBuilder ? (
+              <Panel
+                title={mapHasBeenApplied ? 'Adjust Play Area' : 'Build Play Area'}
+                subtitle="Search and add region boundaries, review the preview, then apply the final playable area."
+              >
+                <SearchableRegionPicker
+                  query={regionSearch.query}
+                  minimumQueryLengthMet={regionSearch.minimumQueryLengthMet}
+                  results={regionSearch.regions}
+                  previewRegion={regionSearch.selectedRegion}
+                  selectedRegionId={regionSearch.selectedRegionId}
+                  selectedRegionCount={selectedRegions.length}
+                  sourceLabel={regionSearch.sourceLabel}
+                  usingFallback={regionSearch.usingFallback}
+                  noticeMessage={regionSearch.noticeMessage}
+                  attribution={regionSearch.attribution}
+                  isLoading={regionSearch.isLoading}
+                  errorMessage={regionSearch.errorMessage}
+                  onChangeQuery={regionSearch.setQuery}
+                  onRetry={regionSearch.retrySearch}
+                  onSelect={(regionId) => {
+                    void regionSearch.selectRegion(regionId);
+                  }}
+                  onAddPreviewRegion={() => {
+                    if (!regionSearch.selectedRegion) {
+                      return;
+                    }
 
-                const commands = buildMapSetupBootstrapCommands(projection);
-                if (commands.length === 0) {
-                  void refreshActiveMatch();
-                  return;
-                }
+                    setSelectedRegions((currentRegions) =>
+                      addRegionToSelection(currentRegions, regionSearch.selectedRegion!)
+                    );
+                  }}
+                  canAddPreviewRegion={Boolean(regionSearch.selectedRegion) && !previewRegionAlreadyAdded}
+                  previewRegionAlreadyAdded={previewRegionAlreadyAdded}
+                />
 
-                void submitCommands(commands);
-              }}
-              disabled={!canPrepareMapSetup || state.loadState === 'loading'}
-            />
-            <AppButton
-              label={
-                mapHasBeenApplied
-                  ? 'Replace Playable Region'
-                  : 'Apply Playable Region'
-              }
-              onPress={() => {
-                if (!canApplySelectedRegion || !compositePreviewRegion) {
-                  return;
-                }
+                <View style={styles.setupSection}>
+                  <Text style={styles.supportEyebrow}>Recommended Game Size</Text>
+                  <View style={styles.scaleRow}>
+                    {(['small', 'medium', 'large'] as const).map((scale) => {
+                      const recommended = scaleGuidance.suggestedScale === scale;
+                      const selected = selectedScale === scale;
+                      return (
+                        <View
+                          key={scale}
+                          style={[
+                            styles.scaleChip,
+                            recommended ? styles.scaleChipRecommended : null,
+                            selected ? styles.scaleChipSelected : null
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.scaleChipLabel,
+                              recommended ? styles.scaleChipLabelRecommended : null,
+                              selected ? styles.scaleChipLabelSelected : null
+                            ]}
+                          >
+                            {formatScaleLabel(scale)}
+                            {recommended ? ' Recommended' : selected ? ' Current' : ''}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.copy}>{scaleGuidance.detail}</Text>
+                  <Text style={styles.helperCopy}>
+                    The room size stays {selectedScale ? formatScaleLabel(selectedScale) : 'the current size'} in this build.
+                  </Text>
+                </View>
 
-                void (async () => {
-                  const succeeded = await submitCommands([createMapRegionCommand(compositePreviewRegion)]);
-                  if (!succeeded || !activeMatch) {
-                    return;
-                  }
+                {draftDiffersFromApplied ? (
+                  <StateBanner
+                    tone="info"
+                    title="A new draft is ready"
+                    detail="The preview below is different from the playable area currently applied to the match."
+                  />
+                ) : null}
 
-                  setSelectedRegions(clearSelectedRegions());
-                  regionSearch.setQuery('');
-                  regionSearch.clearSelection();
-                  clearMapSetupDraft(activeMatch.matchId);
-                })();
-              }}
-              disabled={!canApplySelectedRegion || state.loadState === 'loading'}
-            />
-            <AppButton
-              label="Clear Draft Selection"
-              onPress={() => {
-                setSelectedRegions(clearSelectedRegions());
-                regionSearch.setQuery('');
-                regionSearch.clearSelection();
-                if (activeMatch) {
-                  clearMapSetupDraft(activeMatch.matchId);
-                }
-              }}
-              tone="secondary"
-              disabled={selectedRegions.length === 0 || state.loadState === 'loading'}
-            />
-            <AppButton
-              label="Refresh Match State"
-              onPress={() => {
-                void refreshActiveMatch();
-              }}
-              tone="secondary"
-              disabled={!activeMatch || state.loadState === 'loading'}
-            />
+                {disconnectedWarning ? (
+                  <StateBanner
+                    tone="warning"
+                    title="Selections appear disconnected"
+                    detail={disconnectedWarning.summary}
+                  />
+                ) : null}
+
+                {compositeDissolveNotice ? (
+                  <StateBanner
+                    tone="warning"
+                    title="Using safe composite fallback"
+                    detail={compositeDissolveNotice}
+                  />
+                ) : null}
+
+                {compositePreviewRegion ? (
+                  <View style={styles.selectedSection}>
+                    <View style={styles.selectedHeader}>
+                      <View style={styles.selectedTextBlock}>
+                        <Text style={styles.title}>{compositePreviewRegion.displayName}</Text>
+                        <Text style={styles.copy}>{compositePreviewRegion.summary}</Text>
+                      </View>
+                      <View style={styles.selectedBadge}>
+                        <Text style={styles.selectedBadgeLabel}>{selectionBadgeLabel}</Text>
+                      </View>
+                    </View>
+
+                    <SelectedRegionChipList
+                      regions={selectedRegions}
+                      onRemove={(regionId) => {
+                        setSelectedRegions((currentRegions) => removeRegionFromSelection(currentRegions, regionId));
+                      }}
+                      onClearAll={clearDraftSelection}
+                    />
+
+                    <View style={styles.metricGrid}>
+                      <View style={styles.metricCard}>
+                        <Text style={styles.metricLabel}>Regions</Text>
+                        <Text style={styles.metricValue}>
+                          {selectedRegions.length} {selectedRegions.length === 1 ? 'region' : 'regions'}
+                        </Text>
+                      </View>
+                      <View style={styles.metricCard}>
+                        <Text style={styles.metricLabel}>Preview</Text>
+                        <Text style={styles.metricValue}>{candidateSummary}</Text>
+                      </View>
+                      <View style={styles.metricCard}>
+                        <Text style={styles.metricLabel}>Area</Text>
+                        <Text style={styles.metricValue}>{regionSummary}</Text>
+                      </View>
+                      <View style={styles.metricCard}>
+                        <Text style={styles.metricLabel}>Source</Text>
+                        <Text style={styles.metricValue}>{selectedSourcesSummary}</Text>
+                      </View>
+                    </View>
+
+                    {activeSelectionCoverage ? (
+                      <Text style={styles.copy}>
+                        Coverage: {activeSelectionCoverage}
+                        {activeSelectionParentLabel && activeSelectionParentLabel !== compositePreviewRegion.displayName
+                          ? ` · ${activeSelectionParentLabel}`
+                          : ''}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : regionSearch.selectedRegion ? (
+                  <StateBanner
+                    tone="info"
+                    title="Preview ready"
+                    detail="Add this previewed region to the draft if you want it included in the final playable area."
+                  />
+                ) : mapHasBeenApplied ? (
+                  <StateBanner
+                    tone="info"
+                    title="Playable area already applied"
+                    detail="You can still search and add a new draft here if you want to change the map before starting."
+                  />
+                ) : (
+                  <StateBanner
+                    tone="info"
+                    title="Search for the playable area"
+                    detail="Start with a city or region, add it to the draft, and review the preview before applying it."
+                  />
+                )}
+
+                <View style={styles.previewBlock}>
+                  <View style={styles.previewHeader}>
+                    <View style={styles.previewTextBlock}>
+                      <Text style={styles.supportEyebrow}>Preview</Text>
+                      <Text style={styles.copy}>
+                        This map shows the currently applied boundary and any draft preview that has not been applied yet.
+                      </Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setShowLegend((value) => !value)}
+                      style={({ pressed }) => [
+                        styles.legendToggle,
+                        pressed ? styles.legendTogglePressed : null
+                      ]}
+                    >
+                      <Text style={styles.legendToggleLabel}>{showLegend ? 'Hide Legend' : 'Show Legend'}</Text>
+                    </Pressable>
+                  </View>
+                  <MapCanvas
+                    height={mapHeight}
+                    maxWidth={dimensions.width - 32}
+                    visibleMap={projection?.visibleMap}
+                    visibleMovementTracks={projection?.visibleMovementTracks}
+                    previewRegion={canvasPreviewRegion}
+                  />
+                  {showLegend ? (
+                    <View style={styles.legendCard}>
+                      <MapLegend overlayModel={overlayModel} compact />
+                    </View>
+                  ) : null}
+                </View>
+              </Panel>
+            ) : null}
+
+            {canShowReadonlySetupPreview ? (
+              <Panel
+                title="Current Play Area"
+                subtitle="The host has the map setup controls. This screen shows the currently applied playable area."
+              >
+                <View style={styles.scaleRow}>
+                  <View style={[styles.scaleChip, styles.scaleChipRecommended]}>
+                    <Text style={[styles.scaleChipLabel, styles.scaleChipLabelRecommended]}>
+                      Recommended {formatScaleLabel(scaleGuidance.suggestedScale)}
+                    </Text>
+                  </View>
+                  <View style={styles.scaleChip}>
+                    <Text style={styles.scaleChipLabel}>
+                      Room Size {selectedScale ? formatScaleLabel(selectedScale) : 'Waiting'}
+                    </Text>
+                  </View>
+                </View>
+                <MapCanvas
+                  height={mapHeight}
+                  maxWidth={dimensions.width - 32}
+                  visibleMap={projection?.visibleMap}
+                  visibleMovementTracks={projection?.visibleMovementTracks}
+                  previewRegion={undefined}
+                />
+              </Panel>
+            ) : null}
           </View>
-        </Panel>
         ) : null}
 
-        {!liveGameplayState ? (
-        <Panel
-          title="Preview The Match Map"
-          subtitle="Use the preview to confirm the current playable boundary and candidate area before or after applying changes."
-        >
-          <View style={styles.previewHeader}>
-            <View style={styles.previewTextBlock}>
-              <Text style={styles.copy}>
-                The preview shows the selected boundary, the current candidate area, and any visible overlays inside the active playable region.
+        {activeMatch && liveGameplayState ? (
+          <View style={styles.liveShell}>
+            <View style={styles.liveHero}>
+              <View style={styles.liveHeroHeader}>
+                <View style={styles.liveHeroTextBlock}>
+                  <Text style={styles.liveHeroEyebrow}>Live search area</Text>
+                  <Text style={styles.liveHeroTitle}>
+                    {displayedVisibleMap?.displayName ?? 'Live map'}
+                  </Text>
+                  <Text style={styles.liveHeroSubtitle}>{candidateSummary}</Text>
+                </View>
+                <View style={styles.liveHeroControls}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setShowLegend((value) => !value)}
+                    style={({ pressed }) => [
+                      styles.liveControlButton,
+                      pressed ? styles.legendTogglePressed : null
+                    ]}
+                  >
+                    <Text style={styles.liveControlLabel}>
+                      {showLegend ? 'Hide Legend' : 'Legend'}
+                    </Text>
+                  </Pressable>
+                  {isHostView ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        router.push('/status');
+                      }}
+                      style={({ pressed }) => [
+                        styles.liveControlButton,
+                        pressed ? styles.legendTogglePressed : null
+                      ]}
+                    >
+                      <Text style={styles.liveControlLabel}>Match Controls</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+
+              <LiveMapInfoChips items={liveStatusItems} />
+
+              <View style={styles.liveMapFrame}>
+                <MapCanvas
+                  height={mapHeight}
+                  maxWidth={dimensions.width - 32}
+                  visibleMap={displayedVisibleMap}
+                  visibleMovementTracks={projection?.visibleMovementTracks}
+                  previewRegion={canvasPreviewRegion}
+                />
+              </View>
+
+              {showLegend ? (
+                <View style={styles.liveLegendSheet}>
+                  <MapLegend overlayModel={overlayModel} compact />
+                </View>
+              ) : null}
+
+              <Text style={styles.liveMeta}>
+                Constraint layers {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)}
               </Text>
+
+              {liveGuideModelForDisplay ? <LiveMapActionPanel model={liveGuideModelForDisplay} /> : null}
             </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setShowLegend((value) => !value)}
-              style={({ pressed }) => [
-                styles.legendToggle,
-                pressed ? styles.legendTogglePressed : null
-              ]}
-            >
-              <Text style={styles.legendToggleLabel}>{showLegend ? 'Hide Legend' : 'Show Legend'}</Text>
-            </Pressable>
+
+            <LiveMapInlineActionPanel />
+
+            {latestQuestionEffect ? (
+              <LiveMapImpactCard
+                model={latestQuestionEffect}
+                onOpenDetails={() => {
+                  router.push('/questions');
+                }}
+              />
+            ) : null}
+
+            {inlineActionMode !== 'answer' && liveDeckSummary ? (
+              <View style={styles.liveSupportCard}>
+                <Text style={styles.supportEyebrow}>Hand support</Text>
+                <Text style={styles.title}>{liveDeckSummary.title}</Text>
+                <Text style={styles.copy}>{liveDeckSummary.detail}</Text>
+                <LiveMapInfoChips items={liveDeckSummary.facts} />
+                <AppButton
+                  label={liveDeckSummary.action.label}
+                  tone={liveDeckSummary.action.tone}
+                  onPress={() => {
+                    router.push(liveDeckSummary.action.href);
+                  }}
+                />
+              </View>
+            ) : null}
           </View>
-          <MapCanvas
-            height={mapHeight}
-            maxWidth={dimensions.width - 32}
-            visibleMap={projection?.visibleMap}
-            visibleMovementTracks={projection?.visibleMovementTracks}
-            previewRegion={canvasPreviewRegion}
-          />
-          {showLegend ? (
-            <View style={styles.legendCard}>
-              <MapLegend overlayModel={overlayModel} compact />
-            </View>
-          ) : null}
-          <Text style={styles.previewMeta}>
-            Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)} · Selected regions: {String(selectedRegions.length)}
-          </Text>
-        </Panel>
         ) : null}
     </ScreenContainer>
   );
@@ -938,6 +952,49 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 18,
     fontWeight: '700'
+  },
+  setupShell: {
+    gap: 16
+  },
+  setupHero: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+    padding: 18,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 18,
+    elevation: 2
+  },
+  setupStepBadge: {
+    color: colors.accentStrong,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase'
+  },
+  setupHeroTitle: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '800'
+  },
+  setupChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  setupSection: {
+    gap: 10
+  },
+  supportEyebrow: {
+    color: colors.accentStrong,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase'
   },
   selectedSection: {
     gap: 10
@@ -974,6 +1031,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17
   },
+  previewBlock: {
+    gap: 12
+  },
   scaleRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -991,6 +1051,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentMuted,
     borderColor: colors.accent
   },
+  scaleChipSelected: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong
+  },
   scaleChipLabel: {
     color: colors.text,
     fontSize: 12,
@@ -998,6 +1062,9 @@ const styles = StyleSheet.create({
   },
   scaleChipLabelRecommended: {
     color: colors.accent
+  },
+  scaleChipLabelSelected: {
+    color: colors.text
   },
   metricGrid: {
     flexDirection: 'row',
@@ -1026,11 +1093,90 @@ const styles = StyleSheet.create({
   actionGrid: {
     gap: 10
   },
-  liveSupportCard: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 16,
+  liveShell: {
+    gap: 16
+  },
+  liveHero: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 30,
+    borderWidth: 1,
+    gap: 16,
+    padding: 14,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.06,
+    shadowRadius: 28,
+    elevation: 3
+  },
+  liveHeroHeader: {
+    flexDirection: 'row',
     gap: 12,
-    padding: 14
+    justifyContent: 'space-between'
+  },
+  liveHeroTextBlock: {
+    flex: 1,
+    gap: 4
+  },
+  liveHeroEyebrow: {
+    color: colors.accentStrong,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase'
+  },
+  liveHeroTitle: {
+    color: colors.text,
+    fontSize: 26,
+    fontWeight: '800'
+  },
+  liveHeroSubtitle: {
+    color: colors.textMuted,
+    fontSize: 14,
+    lineHeight: 18
+  },
+  liveHeroControls: {
+    alignItems: 'flex-end',
+    gap: 8
+  },
+  liveControlButton: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  liveControlLabel: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  liveMapFrame: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 24,
+    overflow: 'hidden',
+    padding: 4
+  },
+  liveLegendSheet: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 12
+  },
+  liveMeta: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  liveSupportCard: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16
   },
   previewHeader: {
     alignItems: 'center',
@@ -1039,7 +1185,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   previewTextBlock: {
-    flex: 1
+    flex: 1,
+    gap: 6
   },
   legendToggle: {
     backgroundColor: colors.surfaceMuted,
@@ -1063,10 +1210,5 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     padding: 10
-  },
-  previewMeta: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600'
   }
 });

@@ -170,12 +170,11 @@ export function buildLiveGameplayGuideModel(
       return {
         badge: 'Your move',
         title: 'Ask the next clue',
-        detail:
-          'Open the clue screen, use the workbook draw that is live for this match, and send the next question from there.',
+        detail: 'Start the next workbook clue from the live map and keep the search area in view while you do it.',
         tone: 'success',
         facts: baseFacts,
         actions: [
-          { label: 'Ask A Clue', href: '/questions', tone: 'primary' },
+          { label: 'Clue Review', href: '/questions', tone: 'secondary' },
           { label: 'Open Chat', href: '/chat', tone: 'secondary' }
         ]
       };
@@ -201,10 +200,10 @@ export function buildLiveGameplayGuideModel(
           }
         ],
         actions: [
-          { label: 'Review The Clue', href: '/questions', tone: 'primary' },
+          { label: 'Clue Review', href: '/questions', tone: 'secondary' },
           { label: 'Open Chat', href: '/chat', tone: 'secondary' }
         ],
-        footnote: 'Stay on the map to watch for the next bounded update as soon as the answer lands.'
+        footnote: 'Stay on the map. The next trustworthy search update lands here first.'
       };
     }
 
@@ -221,7 +220,7 @@ export function buildLiveGameplayGuideModel(
         tone: args.latestQuestionEffect?.mapEffectTone ?? 'info',
         facts: baseFacts,
         actions: [
-          { label: 'Review Latest Result', href: '/questions', tone: 'primary' },
+          { label: 'Clue Review', href: '/questions', tone: 'secondary' },
           { label: 'Open Chat', href: '/chat', tone: 'secondary' }
         ]
       };
@@ -238,8 +237,8 @@ export function buildLiveGameplayGuideModel(
         title: 'Respond to the live clue',
         detail:
           activeQuestionPrompt
-            ? `Open the clue screen and answer this prompt: ${activeQuestionPrompt}`
-            : 'Open the clue screen and send the hider answer now.',
+            ? `Answer from the map now: ${activeQuestionPrompt}`
+            : 'Answer the live clue from the map now.',
         tone: 'warning',
         facts: [
           ...baseFacts,
@@ -248,13 +247,13 @@ export function buildLiveGameplayGuideModel(
             value: args.activeQuestionTimerLabel ?? 'Waiting for live timer'
           }
         ],
-        actions: [
-          { label: 'Answer The Clue', href: '/questions', tone: 'primary' },
-          ...(args.hasDeckAccess
-            ? [{ label: 'Open Deck', href: '/cards', tone: 'secondary' } satisfies LiveGameplayAction]
-            : [])
-        ],
-        footnote: 'Use the deck if you need response cards or a live card effect before sending the answer.'
+        actions: args.hasDeckAccess
+          ? [
+              { label: 'Hand & Effects', href: '/cards', tone: 'secondary' },
+              { label: 'Clue Review', href: '/questions', tone: 'secondary' }
+            ]
+          : [{ label: 'Clue Review', href: '/questions', tone: 'secondary' }],
+        footnote: 'Use the deck only when you need response cards or an open effect.'
       };
     }
 
@@ -269,7 +268,7 @@ export function buildLiveGameplayGuideModel(
       facts: baseFacts,
       actions: args.hasDeckAccess
         ? [
-            { label: 'Open Deck', href: '/cards', tone: 'primary' },
+            { label: 'Hand & Effects', href: '/cards', tone: 'secondary' },
             { label: 'Open Chat', href: '/chat', tone: 'secondary' }
           ]
         : [{ label: 'Open Chat', href: '/chat', tone: 'secondary' } satisfies LiveGameplayAction]
@@ -284,14 +283,13 @@ export function buildLiveGameplayGuideModel(
       return {
         badge: 'Resolve now',
         title: 'Update the map from the latest answer',
-        detail:
-          'Open the clue screen, apply the bounded result, and return here to confirm the new search area.',
+        detail: 'Review the answer below, apply it from the live map, and watch the search area update in place.',
         tone: 'warning',
         facts: baseFacts,
         actions: [
-          { label: 'Apply Result', href: '/questions', tone: 'primary' },
+          { label: 'Clue Review', href: '/questions', tone: 'secondary' },
           ...(args.hasDeckAccess
-            ? [{ label: 'Open Deck', href: '/cards', tone: 'secondary' } satisfies LiveGameplayAction]
+            ? [{ label: 'Hand & Effects', href: '/cards', tone: 'secondary' } satisfies LiveGameplayAction]
             : [])
         ]
       };
@@ -305,7 +303,7 @@ export function buildLiveGameplayGuideModel(
         badge: 'Support',
         title: 'The match is waiting for an answer',
         detail:
-          'Stay on top of the live clue, then resolve it from the clue screen once the answer is in.',
+          'Stay on the live map while the answer comes in, then resolve the result here as soon as it is ready.',
         tone: 'info',
         facts: [
           ...baseFacts,
@@ -315,9 +313,9 @@ export function buildLiveGameplayGuideModel(
           }
         ],
         actions: [
-          { label: 'Open Questions', href: '/questions', tone: 'primary' },
+          { label: 'Clue Review', href: '/questions', tone: 'secondary' },
           ...(args.hasDeckAccess
-            ? [{ label: 'Open Deck', href: '/cards', tone: 'secondary' } satisfies LiveGameplayAction]
+            ? [{ label: 'Hand & Effects', href: '/cards', tone: 'secondary' } satisfies LiveGameplayAction]
             : [])
         ]
       };
@@ -326,14 +324,13 @@ export function buildLiveGameplayGuideModel(
     return {
       badge: 'Run play',
       title: 'Drive the next live step',
-      detail:
-        'Use the map as the shared source of truth, then open questions or the deck only when the next live action needs them.',
+      detail: 'Use the map as the shared source of truth. Open review screens only when the live step needs more detail.',
       tone: 'success',
       facts: baseFacts,
       actions: [
-        { label: 'Open Questions', href: '/questions', tone: 'primary' },
+        { label: 'Clue Review', href: '/questions', tone: 'secondary' },
         ...(args.hasDeckAccess
-          ? [{ label: 'Open Deck', href: '/cards', tone: 'secondary' } satisfies LiveGameplayAction]
+          ? [{ label: 'Hand & Effects', href: '/cards', tone: 'secondary' } satisfies LiveGameplayAction]
           : [])
       ]
     };
@@ -379,7 +376,7 @@ export function buildLiveDeckSummaryModel(
         { label: 'Hand', value: `${handCount} / ${HIDER_HAND_TARGET}` },
         { label: 'Active clue', value: activeClueLabel }
       ],
-      action: { label: 'Open Deck', href: '/cards', tone: 'primary' }
+      action: { label: 'Hand & Effects', href: '/cards', tone: 'primary' }
     };
   }
 
@@ -392,7 +389,7 @@ export function buildLiveDeckSummaryModel(
         { label: 'Need to draw', value: `${cardsNeeded}` },
         { label: 'Active clue', value: activeClueLabel }
       ],
-      action: { label: 'Open Deck', href: '/cards', tone: 'primary' }
+      action: { label: 'Hand & Effects', href: '/cards', tone: 'primary' }
     };
   }
 
@@ -405,6 +402,6 @@ export function buildLiveDeckSummaryModel(
       { label: 'Active clue', value: activeClueLabel },
       { label: 'Visible discards', value: args.hiderDeck.visibleByZone.discard_pile.length }
     ],
-    action: { label: 'Open Deck', href: '/cards', tone: 'secondary' }
+    action: { label: 'Hand & Effects', href: '/cards', tone: 'secondary' }
   };
 }

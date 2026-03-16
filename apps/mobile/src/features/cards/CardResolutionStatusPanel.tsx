@@ -33,69 +33,74 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         : `Discard ${discardRequirement.requiredCards} other card${discardRequirement.requiredCards === 1 ? '' : 's'} first.`
       : undefined;
   const followThroughDetail = props.resolution?.drawCountOnResolve
-    ? `Closing this window will draw ${props.resolution.drawCountOnResolve} replacement card${props.resolution.drawCountOnResolve === 1 ? '' : 's'} automatically.`
+    ? `Closing this window draws ${props.resolution.drawCountOnResolve} replacement card${props.resolution.drawCountOnResolve === 1 ? '' : 's'}.`
     : props.resolution?.timeBonusMinutes
-      ? `This effect adds ${props.resolution.timeBonusMinutes} minute${props.resolution.timeBonusMinutes === 1 ? '' : 's'} to the active hide timer.`
+      ? `This effect adds ${props.resolution.timeBonusMinutes} minute${props.resolution.timeBonusMinutes === 1 ? '' : 's'} to the hide timer.`
       : undefined;
+
+  if (!props.activeCard) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>{guidance.title}</Text>
+        <Text style={styles.copy}>{guidance.detail}</Text>
+        <Text style={styles.copy}>{guidance.nextStep}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {!props.activeCard ? (
-        <>
-          <Text style={styles.title}>{guidance.title}</Text>
-          <Text style={styles.copy}>{guidance.detail}</Text>
-          <Text style={styles.copy}>{guidance.nextStep}</Text>
-        </>
-      ) : (
-        <>
-          <Text style={styles.title}>{guidance.title}</Text>
-          <View style={styles.headerRow}>
-            <View style={styles.headerText}>
-              <Text style={styles.cardName}>{props.activeCard.definition.name}</Text>
-              <Text style={styles.copy}>
-                {formatCardKindLabel(props.activeCard.definition.kind)} from {props.activeCard.deck.name}
-              </Text>
-            </View>
-            {behavior ? <CardAutomationPill label={behavior.label} tone={behavior.tone} /> : null}
-          </View>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Why the hand is locked</Text>
-            <Text style={styles.copy}>{guidance.detail}</Text>
+      <View style={styles.hero}>
+        <Text style={styles.title}>{guidance.title}</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerText}>
+            <Text style={styles.cardName}>{props.activeCard.definition.name}</Text>
             <Text style={styles.copy}>
-              This window stays open until an allowed role resolves it. The app is tracking the lock honestly instead of inventing a timer or auto-result.
+              {formatCardKindLabel(props.activeCard.definition.kind)} from {props.activeCard.deck.name}
             </Text>
           </View>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>How to continue play</Text>
-            <Text style={styles.copy}>{guidance.nextStep}</Text>
-            <Text style={styles.copy}>
-              Players or a referee still need to handle any unresolved manual steps themselves before the match can continue.
-            </Text>
-            {discardDetail ? <Text style={styles.copy}>{discardDetail}</Text> : null}
-            {followThroughDetail ? <Text style={styles.copy}>{followThroughDetail}</Text> : null}
-            {props.resolveDisabledReason ? (
-              <Text style={styles.warning}>{props.resolveDisabledReason}</Text>
-            ) : null}
-          </View>
-          <AppButton
-            label="Close Resolution Window"
-            onPress={props.onResolve}
-            disabled={!props.canResolve || props.disabled}
-          />
-        </>
-      )}
+          {behavior ? <CardAutomationPill label={behavior.label} tone={behavior.tone} /> : null}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Lock</Text>
+        <Text style={styles.copy}>{guidance.detail}</Text>
+        {discardDetail ? <Text style={styles.metaChip}>{discardDetail}</Text> : null}
+        {followThroughDetail ? <Text style={styles.metaChip}>{followThroughDetail}</Text> : null}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Next step</Text>
+        <Text style={styles.copy}>{guidance.nextStep}</Text>
+        {props.resolveDisabledReason ? (
+          <Text style={styles.warning}>{props.resolveDisabledReason}</Text>
+        ) : null}
+      </View>
+
+      <AppButton
+        label="Close Card Window"
+        onPress={props.onResolve}
+        disabled={!props.canResolve || props.disabled}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8
+    gap: 10
+  },
+  hero: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 18,
+    gap: 10,
+    padding: 14
   },
   title: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '700'
+    fontSize: 16,
+    fontWeight: '800'
   },
   headerRow: {
     alignItems: 'flex-start',
@@ -113,10 +118,10 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   section: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 14,
-    gap: 6,
-    padding: 12
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: 18,
+    gap: 8,
+    padding: 14
   },
   sectionTitle: {
     color: colors.text,
@@ -127,6 +132,18 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 12,
     lineHeight: 17
+  },
+  metaChip: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    color: colors.text,
+    fontSize: 12,
+    lineHeight: 17,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 8
   },
   warning: {
     color: colors.warning,

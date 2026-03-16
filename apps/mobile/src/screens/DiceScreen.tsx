@@ -7,8 +7,6 @@ import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { canAccessHostControls } from '../navigation/player-flow.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
-import { FactList } from '../ui/FactList.tsx';
-import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
@@ -61,7 +59,7 @@ export function DiceScreen() {
     <ScreenContainer
       title="Dice"
       eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
-      subtitle="Roll for card costs, curse checks, and other live-play moments that still need a simple player-side die."
+      subtitle={liveGameplayState ? 'Quick player-side rolls.' : 'Quick player-side rolls and checks.'}
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="dice" />}
       bottomSlot={liveGameplayState ? <GameplayTabBar current="dice" /> : undefined}
     >
@@ -74,87 +72,199 @@ export function DiceScreen() {
       ) : null}
 
       {liveGameplayState ? (
-        <Panel title="Quick Utility" subtitle="Use dice as a supporting live tool, then jump back to the map." tone="soft">
-          <AppButton label="Back To Live Map" onPress={() => router.push('/map')} tone="secondary" />
+        <View style={styles.utilityBar}>
+          <View style={styles.actionCell}>
+            <AppButton label="Back To Live Map" onPress={() => router.push('/map')} tone="secondary" />
+          </View>
           {canOpenMatchControls ? (
-            <AppButton label="Open Match Controls" onPress={() => router.push('/status')} tone="ghost" />
+            <View style={styles.actionCell}>
+              <AppButton label="Match Controls" onPress={() => router.push('/status')} tone="ghost" />
+            </View>
           ) : null}
-        </Panel>
+        </View>
       ) : null}
 
-      <Panel
-        title="Dice Table"
-        subtitle="This is a simple player-facing dice helper. The engine still treats these rolls as local utility, not stored match state."
-        tone="accent"
-      >
-        <FactList
-          items={[
-            { label: 'Role', value: activeMatch?.playerRole ?? activeMatch?.recipient.role ?? 'spectator' },
-            { label: 'Stage', value: activeMatch?.projection.seekPhaseSubstate ?? activeMatch?.projection.lifecycleState ?? 'Unavailable' },
-            { label: 'Latest Roll', value: latestRoll ? `${latestRoll.label} = ${latestRoll.total}` : 'No roll yet' }
-          ]}
-        />
-        <View style={styles.rollRow}>
-          <AppButton label="Roll 1d6" onPress={() => pushRoll('1d6')} />
-          <AppButton label="Roll 2d6" onPress={() => pushRoll('2d6')} tone="secondary" />
-        </View>
-      </Panel>
-
-      <Panel
-        title="Current Result"
-        subtitle="Read the latest total at a glance, then keep the last few rolls visible for checks and card costs."
-        tone="soft"
-      >
-        {latestRoll ? (
-          <View style={styles.resultCard}>
-            <Text style={styles.resultLabel}>{latestRoll.label}</Text>
-            <Text style={styles.resultTotal}>{latestRoll.total}</Text>
-            <Text style={styles.resultBreakdown}>
-              {latestRoll.values.join(' + ')}
+      <View style={styles.hero}>
+        <View style={styles.heroHeader}>
+          <View style={styles.heroText}>
+            <Text style={styles.heroEyebrow}>Dice utility</Text>
+            <Text style={styles.heroTitle}>{latestRoll ? latestRoll.label : 'Ready to roll'}</Text>
+            <Text style={styles.heroCopy}>
+              Local helper only. Use it for quick card and curse checks, then jump back into play.
             </Text>
           </View>
-        ) : (
-          <Text style={styles.copy}>
-            Roll once to start. Recent results stay on this device so players can resolve manual curse and card checks without leaving the game shell.
-          </Text>
-        )}
-      </Panel>
+          <View style={styles.heroMeta}>
+            <Text style={styles.heroMetaValue}>
+              {activeMatch?.projection.seekPhaseSubstate ?? activeMatch?.projection.lifecycleState ?? 'Unavailable'}
+            </Text>
+            <Text style={styles.heroMetaLabel}>Stage</Text>
+          </View>
+        </View>
 
-      <Panel
-        title="Recent Rolls"
-        subtitle="Keep a short memory of the last few dice checks."
-      >
+        <View style={styles.chipRow}>
+          <View style={styles.infoChip}>
+            <Text style={styles.infoValue}>{activeMatch?.playerRole ?? activeMatch?.recipient.role ?? 'spectator'}</Text>
+            <Text style={styles.infoLabel}>Role</Text>
+          </View>
+          <View style={styles.infoChip}>
+            <Text style={styles.infoValue}>{latestRoll ? latestRoll.label : 'No roll yet'}</Text>
+            <Text style={styles.infoLabel}>Mode</Text>
+          </View>
+        </View>
+
+        <View style={styles.resultCard}>
+          <Text style={styles.resultLabel}>{latestRoll ? latestRoll.label : 'Tap to roll'}</Text>
+          <Text style={styles.resultTotal}>{latestRoll ? latestRoll.total : '--'}</Text>
+          <Text style={styles.resultBreakdown}>
+            {latestRoll ? latestRoll.values.join(' + ') : '1d6 or 2d6'}
+          </Text>
+        </View>
+
+        <View style={styles.rollRow}>
+          <View style={styles.actionCell}>
+            <AppButton label="Roll 1d6" onPress={() => pushRoll('1d6')} />
+          </View>
+          <View style={styles.actionCell}>
+            <AppButton label="Roll 2d6" onPress={() => pushRoll('2d6')} tone="secondary" />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.historyShell}>
+        <Text style={styles.historyTitle}>Recent rolls</Text>
         {history.length === 0 ? (
-          <Text style={styles.copy}>No dice rolls yet.</Text>
+          <Text style={styles.copy}>No rolls yet.</Text>
         ) : (
           <View style={styles.historyList}>
             {history.map((entry) => (
               <View key={entry.rollKey} style={styles.historyCard}>
-                <Text style={styles.historyLabel}>{entry.label}</Text>
+                <View style={styles.historyText}>
+                  <Text style={styles.historyLabel}>{entry.label}</Text>
+                  <Text style={styles.historyDetail}>{entry.values.join(' + ')}</Text>
+                </View>
                 <Text style={styles.historyTotal}>{entry.total}</Text>
-                <Text style={styles.historyDetail}>{entry.values.join(' + ')}</Text>
               </View>
             ))}
           </View>
         )}
-      </Panel>
+      </View>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  utilityBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  actionCell: {
+    flexBasis: '48%',
+    flexGrow: 1
+  },
+  hero: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 30,
+    borderWidth: 1,
+    gap: 16,
+    padding: 16,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.05,
+    shadowRadius: 22,
+    elevation: 2
+  },
+  heroHeader: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between'
+  },
+  heroText: {
+    flex: 1,
+    gap: 4
+  },
+  heroEyebrow: {
+    color: colors.accentStrong,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase'
+  },
+  heroTitle: {
+    color: colors.text,
+    fontSize: 24,
+    fontWeight: '800'
+  },
+  heroCopy: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18
+  },
+  heroMeta: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 2,
+    minWidth: 88,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  heroMetaValue: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  heroMetaLabel: {
+    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase'
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  infoChip: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+    minWidth: 96,
+    paddingHorizontal: 12,
+    paddingVertical: 10
+  },
+  infoValue: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  infoLabel: {
+    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase'
+  },
   rollRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10
   },
   resultCard: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    borderRadius: 26,
+    gap: 8,
+    borderRadius: 30,
     borderWidth: 1,
     borderColor: colors.accent,
-    backgroundColor: colors.surfaceRaised,
-    paddingVertical: 28,
+    backgroundColor: colors.accentMuted,
+    paddingVertical: 34,
     paddingHorizontal: 16
   },
   resultLabel: {
@@ -165,12 +275,25 @@ const styles = StyleSheet.create({
   },
   resultTotal: {
     color: colors.accentStrong,
-    fontSize: 52,
+    fontSize: 64,
     fontWeight: '800'
   },
   resultBreakdown: {
     color: colors.textMuted,
     fontSize: 14
+  },
+  historyShell: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 12,
+    padding: 16
+  },
+  historyTitle: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: '800'
   },
   historyList: {
     gap: 10
@@ -182,9 +305,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.borderStrong,
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.surfaceMuted,
     paddingHorizontal: 14,
     paddingVertical: 12
+  },
+  historyText: {
+    flex: 1,
+    gap: 2
   },
   historyLabel: {
     color: colors.text,
