@@ -312,3 +312,13 @@ test('app shell reducer ignores identical runtime and session sync actions', () 
   assert.equal(sameRuntimeState, state);
   assert.equal(sameSessionState, state);
 });
+
+test('initial shell state generates a friendly display name with a unique internal player identity', () => {
+  const first = createInitialShellState('online_foundation');
+  const second = createInitialShellState('online_foundation');
+
+  assert.match(first.sessionProfile.displayName, /^Player /);
+  assert.match(first.sessionProfile.playerId, /^player-/);
+  assert.match(first.sessionProfile.authUserId ?? '', /^device-player-/);
+  assert.notEqual(first.sessionProfile.playerId, second.sessionProfile.playerId);
+});

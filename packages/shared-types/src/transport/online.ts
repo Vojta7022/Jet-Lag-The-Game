@@ -53,6 +53,7 @@ export interface OnlineReconnectAccessRequest extends OnlineProjectionAccessRequ
 
 export interface MatchRecord {
   matchId: string;
+  joinCode?: string;
   mode: MatchMode;
   lifecycleState: MatchLifecycleState;
   revision: number;

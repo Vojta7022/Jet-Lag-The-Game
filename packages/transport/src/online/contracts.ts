@@ -30,6 +30,7 @@ export interface ProjectionLookupQuery {
 export interface MatchRepository {
   save(record: MatchRecord): Promise<void>;
   getByMatchId(matchId: string): Promise<MatchRecord | undefined>;
+  getByJoinCode(joinCode: string): Promise<MatchRecord | undefined>;
 }
 
 export interface EventRepository {

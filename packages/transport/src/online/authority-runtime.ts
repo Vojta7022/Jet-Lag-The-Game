@@ -74,6 +74,10 @@ function toMatchRecord(aggregate: MatchAggregate) {
   };
 }
 
+function makeJoinCode(): string {
+  return createRandomUuid().replace(/-/g, '').slice(0, 6).toUpperCase();
+}
+
 export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransportService {
   readonly mode = 'online_cloud' as const;
   readonly gateway: CommandGateway;
@@ -83,6 +87,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   private readonly sessionBinder: OnlineSessionBinder;
   private readonly contentPacksById: Map<string, ContentPack>;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
+  private readonly joinCodesByMatchId = new Map<string, string>();
   private readonly subscriptionsByMatchId = new Map<string, Map<string, OnlineRuntimeSubscriptionRecord>>();
 
   constructor(options: OnlineAuthorityRuntimeOptions) {
@@ -219,13 +224,20 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     const recoveredSnapshot = createMatchSnapshot(aggregate, this.mode);
     this.aggregateCache.set(matchId, aggregate);
     await this.repositories.snapshots.save(recoveredSnapshot);
-    await this.repositories.matches.save(toMatchRecord(aggregate));
+    const joinCode = await this.getOrCreateJoinCode(matchId);
+    await this.repositories.matches.save({
+      ...toMatchRecord(aggregate),
+      joinCode
+    });
     return recoveredSnapshot;
   }
 
   private async submitBoundCommand(envelope: CommandEnvelope): Promise<CommandSubmissionResult> {
     const reconciled = await this.reconcileAggregate(envelope.matchId, envelope.occurredAt);
     const aggregate = reconciled?.aggregate;
+    if (!aggregate && envelope.command.type !== 'create_match') {
+      await this.throwForMissingAggregateState(envelope.matchId);
+    }
     const contentPack = await this.resolveContentPack(aggregate, envelope);
     const result = await this.gateway.submit({
       aggregate,
@@ -263,17 +275,17 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   ): Promise<SyncEnvelope> {
     const aggregate = (await this.reconcileAggregate(matchId))?.aggregate;
     if (!aggregate) {
-      throw new TransportRuntimeError('MATCH_NOT_FOUND', `No match with id "${matchId}" is available.`);
+      await this.throwForMissingAggregateState(matchId);
     }
 
     const contentPack = await this.resolveContentPack(aggregate);
     const events = cursor
       ? await this.repositories.events.listAfterSequence(matchId, cursor.lastEventSequence ?? 0)
       : [];
-    const storedProjection = await this.loadProjectionRecord(matchId, recipient, aggregate, contentPack);
+    const storedProjection = await this.loadProjectionRecord(matchId, recipient, aggregate!, contentPack);
 
     return buildSyncEnvelope({
-      aggregate,
+      aggregate: aggregate!,
       contentPack,
       runtimeMode: this.mode,
       recipient,
@@ -398,11 +410,22 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     aggregate?: MatchAggregate,
     envelope?: CommandEnvelope
   ): Promise<ContentPack> {
+    const storedMatch = envelope?.matchId
+      ? await this.tryLoadMatchRecord(envelope.matchId)
+      : undefined;
     const packId =
       aggregate?.contentPackId ??
-      (envelope?.command.type === 'create_match' ? envelope.command.payload.contentPackId : undefined);
+      (envelope?.command.type === 'create_match' ? envelope.command.payload.contentPackId : undefined) ??
+      storedMatch?.contentPackId;
 
     if (!packId) {
+      if (storedMatch) {
+        throw new TransportRuntimeError(
+          'MATCH_METADATA_INCOMPLETE',
+          `Online match "${storedMatch.matchId}" is missing its content pack metadata. Ask the host to recreate the match or check the online matches table before joining again.`
+        );
+      }
+
       throw new TransportRuntimeError(
         'CONTENT_PACK_REQUIRED',
         'Online runtime could not determine which content pack should be used.'
@@ -433,12 +456,73 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     return contentPack;
   }
 
+  private async throwForMissingAggregateState(matchId: string): Promise<never> {
+    const storedMatch = await this.tryLoadMatchRecord(matchId);
+
+    if (!storedMatch) {
+      throw new TransportRuntimeError('MATCH_NOT_FOUND', `No match with id "${matchId}" is available.`);
+    }
+
+    if (!storedMatch.contentPackId) {
+      throw new TransportRuntimeError(
+        'MATCH_METADATA_INCOMPLETE',
+        `Online match "${matchId}" is missing its content pack metadata. Ask the host to recreate the match or check the online matches table before joining again.`
+      );
+    }
+
+    throw new TransportRuntimeError(
+      'MATCH_STATE_UNAVAILABLE',
+      `Online match "${matchId}" exists and uses content pack "${storedMatch.contentPackId}", but its event or snapshot state is not available yet. Wait a moment and try joining again.`
+    );
+  }
+
   private async tryLoadMatchRecord(matchId: string) {
     try {
-      return await this.repositories.matches.getByMatchId(matchId);
+      const record = await this.repositories.matches.getByMatchId(matchId);
+      if (record?.joinCode) {
+        this.joinCodesByMatchId.set(matchId, record.joinCode);
+      }
+      return record;
     } catch {
       return undefined;
     }
+  }
+
+  private async getOrCreateJoinCode(matchId: string): Promise<string> {
+    const cached = this.joinCodesByMatchId.get(matchId);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      const stored = await this.repositories.matches.getByMatchId(matchId);
+      if (stored?.joinCode) {
+        this.joinCodesByMatchId.set(matchId, stored.joinCode);
+        return stored.joinCode;
+      }
+    } catch {
+      // If the match row is unavailable, continue with an in-memory join code.
+    }
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const candidate = makeJoinCode();
+
+      try {
+        const existing = await this.repositories.matches.getByJoinCode(candidate);
+        if (existing?.matchId && existing.matchId !== matchId) {
+          continue;
+        }
+      } catch {
+        // If lookup fails, keep the generated code as a best-effort fallback.
+      }
+
+      this.joinCodesByMatchId.set(matchId, candidate);
+      return candidate;
+    }
+
+    const fallback = makeJoinCode();
+    this.joinCodesByMatchId.set(matchId, fallback);
+    return fallback;
   }
 
   private async tryLoadProjectionRecord(
@@ -461,8 +545,13 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     contentPack: ContentPack,
     snapshot: MatchRuntimeSnapshot
   ): Promise<void> {
+    const joinCode = await this.getOrCreateJoinCode(aggregate.matchId);
+
     await Promise.allSettled([
-      this.repositories.matches.save(toMatchRecord(aggregate)),
+      this.repositories.matches.save({
+        ...toMatchRecord(aggregate),
+        joinCode
+      }),
       this.repositories.snapshots.save(snapshot)
     ]);
 

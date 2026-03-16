@@ -9,6 +9,7 @@ import type { PlayableRegionCatalogEntry } from '../features/map/region-types.ts
 
 import type { MobileRuntimeKind } from '../config/env.ts';
 import type { ConnectionSnapshotSummary, SessionProfileDraft } from '../runtime/types.ts';
+import { createGeneratedSessionProfile } from '../runtime/session-profile.ts';
 
 export type ShellLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -94,11 +95,7 @@ export function createInitialShellState(runtimeKind: MobileRuntimeKind): AppShel
     uiState: {
       mapSetupDrafts: {}
     },
-    sessionProfile: {
-      displayName: 'Player',
-      playerId: 'player-1',
-      authUserId: 'player-1'
-    }
+    sessionProfile: createGeneratedSessionProfile()
   };
 }
 

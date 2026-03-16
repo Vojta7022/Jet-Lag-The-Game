@@ -23,7 +23,7 @@ export function getAssignablePlayers(projection: MatchProjection | undefined) {
     return [];
   }
 
-  return projection.players.filter((player) => player.role !== 'host');
+  return projection.players;
 }
 
 export function buildRoleAssignmentCommands(

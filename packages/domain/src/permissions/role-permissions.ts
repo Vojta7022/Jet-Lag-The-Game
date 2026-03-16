@@ -12,6 +12,10 @@ function resolveActorRole(aggregate: MatchAggregate | undefined, actor: ActorRef
     return 'system';
   }
 
+  if (aggregate && actor.role === 'host' && actor.playerId === aggregate.createdByPlayerId) {
+    return 'host';
+  }
+
   const aggregateRole = aggregate ? getPlayerRole(aggregate, actor.playerId) : undefined;
   return aggregateRole ?? actor.role;
 }

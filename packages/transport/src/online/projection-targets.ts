@@ -61,6 +61,7 @@ export function enumerateProjectionRecipients(aggregate: MatchAggregate): Projec
   for (const player of Object.values(aggregate.players)) {
     const role = getPlayerRole(aggregate, player.playerId);
     const teamId = aggregate.roleAssignments[player.playerId]?.teamId;
+    const hasHostAdminAccess = player.playerId === aggregate.createdByPlayerId;
 
     recipients.push(
       makeRecipient('player_private', player.playerId, {
@@ -70,7 +71,7 @@ export function enumerateProjectionRecipients(aggregate: MatchAggregate): Projec
       })
     );
 
-    if (role === 'host') {
+    if (role === 'host' || hasHostAdminAccess) {
       recipients.push(
         makeRecipient('host_admin', player.playerId, {
           playerId: player.playerId,

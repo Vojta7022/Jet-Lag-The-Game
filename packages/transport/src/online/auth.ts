@@ -46,6 +46,14 @@ function withPlayerPrivateScope(scopes: ProjectionScope[]): ProjectionScope[] {
   return ['player_private', ...scopes];
 }
 
+function withHostAdminScope(scopes: ProjectionScope[]): ProjectionScope[] {
+  if (scopes.includes('host_admin')) {
+    return scopes;
+  }
+
+  return ['host_admin', ...scopes];
+}
+
 function assertCommandPlayerMatch(
   session: OnlineAuthSession,
   request: OnlineCommandRequest,
@@ -92,13 +100,18 @@ async function resolveAccessBinding(
   const playerId = membership?.playerId ?? session.defaultPlayerId;
   const derivedRole = aggregate ? getPlayerRole(aggregate, playerId) : undefined;
   const derivedTeamId = aggregate ? getPlayerTeam(aggregate, playerId)?.teamId : undefined;
+  const hasHostAdminAccess = Boolean(playerId && aggregate?.createdByPlayerId === playerId);
   const role = membership?.role ?? derivedRole ?? (playerId ? 'spectator' : 'spectator');
   const teamId = membership?.teamId ?? derivedTeamId;
   const hasJoinedPlayerBinding = Boolean(playerId && (membership || aggregate?.players[playerId]));
   const allowedScopes = membership?.allowedScopes ?? (
     hasJoinedPlayerBinding
-      ? withPlayerPrivateScope(defaultScopesForRole(role))
-      : defaultScopesForRole(role)
+      ? (hasHostAdminAccess
+          ? withHostAdminScope(withPlayerPrivateScope(defaultScopesForRole(role)))
+          : withPlayerPrivateScope(defaultScopesForRole(role)))
+      : (hasHostAdminAccess
+          ? withHostAdminScope(defaultScopesForRole(role))
+          : defaultScopesForRole(role))
   );
 
   if (!session.defaultPlayerId && !membership && !aggregate) {
@@ -128,6 +141,7 @@ export class DefaultOnlineSessionBinder implements OnlineSessionBinder {
     envelope: CommandEnvelope;
   }> {
     const access = await resolveAccessBinding(session, request.matchId, aggregate);
+    const hasHostAdminAccess = Boolean(access.playerId && aggregate?.createdByPlayerId === access.playerId);
     assertCommandPlayerMatch(session, request, access.role);
 
     if (!session.serviceRole && request.command.type !== 'create_match' && request.command.type !== 'join_match' && !access.playerId) {
@@ -142,7 +156,7 @@ export class DefaultOnlineSessionBinder implements OnlineSessionBinder {
       {
         matchId: request.matchId,
         requestedScope:
-          access.role === 'host'
+          hasHostAdminAccess || access.role === 'host'
             ? 'host_admin'
             : access.role === 'spectator'
               ? 'public_match'
@@ -164,7 +178,9 @@ export class DefaultOnlineSessionBinder implements OnlineSessionBinder {
               ? 'host'
               : request.command.type === 'join_match'
                 ? 'spectator'
-                : access.role
+                : hasHostAdminAccess
+                  ? 'host'
+                  : access.role
         },
         occurredAt: request.occurredAt,
         idempotencyKey: request.idempotencyKey,

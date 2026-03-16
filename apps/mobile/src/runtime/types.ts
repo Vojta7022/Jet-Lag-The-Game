@@ -41,6 +41,7 @@ export interface RuntimeConnection {
   runtimeKind: MobileRuntimeKind;
   runtimeMode: AuthorityRuntimeMode;
   matchId: string;
+  joinCode?: string;
   matchMode: MatchMode;
   transport: TransportAdapter;
   transportFlavor: 'in_memory' | 'online' | 'nearby_guest' | 'single_device';
@@ -60,6 +61,7 @@ export interface ConnectionSnapshotSummary {
   runtimeKind: MobileRuntimeKind;
   runtimeMode: AuthorityRuntimeMode;
   matchId: string;
+  joinCode?: string;
   matchMode: MatchMode;
   transportFlavor: RuntimeConnection['transportFlavor'];
   connectionState: TransportConnectionState;

@@ -104,22 +104,22 @@ export function HomeScreen() {
 
       <Panel
         title="Player Profile"
-        subtitle="This name is used when this device creates or joins a match."
+        subtitle="This is the name other players see when this device creates or joins a match."
       >
         <FactList
           items={[
             { label: 'Display Name', value: state.sessionProfile.displayName },
             {
               label: 'Online sign-in',
-              value: state.sessionProfile.authUserId ? 'Ready' : 'Uses the saved player profile'
+              value: 'Automatic on this device'
             }
           ]}
         />
         {onlineIdentityMismatch ? (
           <StateBanner
             tone="warning"
-            title="Online match is still using the previous player"
-            detail={`This match is connected as ${state.activeMatch?.recipient.playerId}. Disconnect and reconnect to switch the active online session to the profile shown here.`}
+            title="Reconnect to switch players"
+            detail={`This match is still using the previous online player for ${state.activeMatch?.projection.players.find((player) => player.playerId === state.activeMatch?.recipient.playerId)?.displayName ?? 'this device'}. Disconnect and reconnect to use the profile shown here.`}
           />
         ) : null}
         <AppButton label="Edit Profile" onPress={() => router.push('/auth')} tone="secondary" />

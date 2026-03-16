@@ -36,6 +36,7 @@ import {
   SupabaseRestTableClient,
   SupabaseSnapshotRepository
 } from '../../../../packages/transport/src/index.ts';
+import type { OnlineRepositoryBundle } from '../../../../packages/transport/src/index.ts';
 
 import type { MobileAppEnvironment, MobileRuntimeKind } from '../config/env.ts';
 import {
@@ -61,10 +62,16 @@ import type {
 
 interface OnlineFoundationServices {
   runtime: OnlineAuthorityRuntime;
+  repositories: OnlineRepositoryBundle;
   realtime: OnlineRealtimeFanout;
   storageClient?: SupabaseAttachmentStorageClient;
   sessionManager?: SupabaseMobileSessionManager;
   persistenceKind: 'mock_in_memory' | 'supabase_rest';
+}
+
+function normalizeJoinCode(joinCode: string | undefined): string | undefined {
+  const trimmed = joinCode?.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
 function makeTimestamp(sequence: number): string {
@@ -304,6 +311,7 @@ export class MobileRuntimeOrchestrator {
       runtimeKind: connection.runtimeKind,
       runtimeMode: connection.runtimeMode,
       matchId: connection.matchId,
+      joinCode: connection.joinCode,
       matchMode: connection.matchMode,
       transportFlavor: connection.transportFlavor,
       connectionState: connection.transport.getConnectionState(),
@@ -412,12 +420,14 @@ export class MobileRuntimeOrchestrator {
 
     await this.submitCreateMatch(transport, input.matchId, 'online', boundProfile, input.initialScale);
     const initialSync = await transport.requestSnapshot({ matchId: input.matchId });
+    const joinCode = (await this.getOrCreateOnlineFoundation().repositories.matches.getByMatchId(input.matchId))?.joinCode;
 
     return {
       connection: {
         runtimeKind: input.runtimeKind,
         runtimeMode: runtime.mode,
         matchId: input.matchId,
+        joinCode,
         matchMode: 'online',
         transport,
         transportFlavor: 'online',
@@ -433,8 +443,33 @@ export class MobileRuntimeOrchestrator {
     profile: SessionProfileDraft,
     input: JoinMatchInput
   ): Promise<ConnectedMatchResult> {
-    const matchId = input.matchId ?? `${this.environment.defaultMatchPrefix}-missing`;
-    const { runtime, realtime } = this.getOrCreateOnlineFoundation();
+    const foundation = this.getOrCreateOnlineFoundation();
+    const normalizedJoinCode = normalizeJoinCode(input.joinCode);
+    const directMatchRecord = input.matchId
+      ? await foundation.repositories.matches.getByMatchId(input.matchId)
+      : undefined;
+    const matchRecord = directMatchRecord ?? (
+      normalizedJoinCode
+        ? await foundation.repositories.matches.getByJoinCode(normalizedJoinCode)
+        : undefined
+    );
+    const matchId = matchRecord?.matchId;
+    if (input.matchId && !directMatchRecord) {
+      throw new Error(`No online match is available for match id "${input.matchId}".`);
+    }
+    if (!matchId) {
+      throw new Error(
+        normalizedJoinCode
+          ? `No online match is available for join code "${normalizedJoinCode}".`
+          : 'Enter a valid join code before joining the online match.'
+      );
+    }
+    if (!matchRecord?.contentPackId) {
+      throw new Error(
+        `Online match "${matchId}" is missing its content pack metadata. Ask the host to recreate the match or check the online matches table before joining again.`
+      );
+    }
+    const { runtime, realtime } = foundation;
     const authSession = await this.buildOnlineSession(profile);
     const boundProfile = buildBoundOnlineSessionProfile(profile, authSession);
     const recipient = buildParticipantRecipient(boundProfile, input.requestedScope ?? 'player_private');
@@ -455,6 +490,7 @@ export class MobileRuntimeOrchestrator {
         runtimeKind: input.runtimeKind,
         runtimeMode: runtime.mode,
         matchId,
+        joinCode: matchRecord?.joinCode ?? normalizedJoinCode,
         matchMode: 'online',
         transport,
         transportFlavor: 'online',
@@ -716,6 +752,7 @@ export class MobileRuntimeOrchestrator {
         repositories,
         realtimeFanout: realtime
       }),
+      repositories,
       realtime,
       storageClient: usingRealSupabase
         ? new SupabaseAttachmentStorageClient({

@@ -55,10 +55,14 @@ export function CreateMatchScreen() {
 
       <Panel
         title="Match Setup"
-        subtitle="Choose a match code and game size, then create the session."
+        subtitle={runtimeKind === 'online_foundation'
+          ? 'Choose the game size, then create the room. A short join code appears right after creation.'
+          : 'Choose a match code and game size, then create the session.'}
         tone="accent"
       >
-        <Field label="Match Code" value={matchId} onChangeText={setMatchId} placeholder="prague-night-run" />
+        {runtimeKind === 'online_foundation' ? null : (
+          <Field label="Match Code" value={matchId} onChangeText={setMatchId} placeholder="prague-night-run" />
+        )}
         <View style={styles.choiceGroup}>
           <Text style={styles.choiceLabel}>Game Size</Text>
           <View style={styles.choiceRow}>

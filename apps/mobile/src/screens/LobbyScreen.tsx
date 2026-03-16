@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Share, StyleSheet, Text, View } from 'react-native';
 
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
 import {
@@ -28,6 +28,8 @@ export function LobbyScreen() {
   const canManageRoles = Boolean(role === 'host' && projection && isRoleAssignmentStage(projection.lifecycleState));
   const assignablePlayers = getAssignablePlayers(projection);
   const rolesReady = hasRequiredRoleAssignments(projection);
+  const currentPlayerId = state.activeMatch?.recipient.playerId;
+  const onlineJoinCode = state.activeMatch?.runtimeKind === 'online_foundation' ? state.activeMatch.joinCode : undefined;
   const primaryNextRoute = rolesReady || projection?.visibleMap ? '/map' : '/dashboard';
   const primaryNextLabel = rolesReady || projection?.visibleMap ? 'Continue To Map Setup' : 'Open Team View';
 
@@ -80,6 +82,25 @@ export function LobbyScreen() {
         </Panel>
       ) : null}
 
+      {onlineJoinCode ? (
+        <Panel
+          title="Join Code"
+          subtitle="Share this short code with other players so they can join from their own devices."
+          tone="accent"
+        >
+          <Text selectable style={styles.joinCodeValue}>{onlineJoinCode}</Text>
+          <AppButton
+            label="Share Join Code"
+            tone="secondary"
+            onPress={() => {
+              void Share.share({
+                message: `Join my match in Transit Hide and Seek with code ${onlineJoinCode}.`
+              });
+            }}
+          />
+        </Panel>
+      ) : null}
+
       {projection && liveGameplayState ? (
         <StateBanner
           tone="info"
@@ -91,7 +112,7 @@ export function LobbyScreen() {
       {projection && canManageRoles ? (
         <Panel
           title="Choose Teams"
-          subtitle="Assign one hider and at least one seeker before moving into map setup."
+          subtitle="Assign one hider and at least one seeker before moving into map setup. The host can also join either side."
         >
           {assignablePlayers.length === 0 ? (
             <StateBanner
@@ -104,7 +125,10 @@ export function LobbyScreen() {
               {assignablePlayers.map((player) => (
                 <View key={player.playerId} style={styles.assignmentCard}>
                   <View style={styles.assignmentHeader}>
-                    <Text style={styles.label}>{player.displayName}</Text>
+                    <Text style={styles.label}>
+                      {player.displayName}
+                      {player.playerId === currentPlayerId ? ' (You)' : ''}
+                    </Text>
                     <Text style={styles.assignmentRole}>
                       {player.role ? formatVisibleRole(player.role) : 'Unassigned'}
                     </Text>
@@ -167,7 +191,10 @@ export function LobbyScreen() {
           {projection.players.length === 0 ? <Text style={styles.copy}>No players are visible yet.</Text> : null}
           {projection.players.map((player) => (
             <View key={player.playerId} style={styles.row}>
-              <Text style={styles.label}>{player.displayName}</Text>
+              <Text style={styles.label}>
+                {player.displayName}
+                {player.playerId === currentPlayerId ? ' (You)' : ''}
+              </Text>
               <Text style={styles.value}>{player.role || 'role hidden'}</Text>
             </View>
           ))}
@@ -212,6 +239,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase'
+  },
+  joinCodeValue: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 4,
+    textAlign: 'center'
   },
   copy: {
     color: colors.textMuted,

@@ -67,7 +67,10 @@ test('online authority runtime persists repository records and publishes scoped 
   );
 
   assert.equal(result.accepted, true);
-  assert.equal((await repositories.matches.getByMatchId(matchId))?.revision, 1);
+  const storedMatch = await repositories.matches.getByMatchId(matchId);
+  assert.equal(storedMatch?.revision, 1);
+  assert.match(storedMatch?.joinCode ?? '', /^[A-Z0-9]{6}$/);
+  assert.equal((await repositories.matches.getByJoinCode(storedMatch?.joinCode ?? ''))?.matchId, matchId);
   assert.equal((await repositories.events.listAfterSequence(matchId, 0)).length, 1);
   assert.equal((await repositories.snapshots.getLatest(matchId))?.snapshotVersion, 1);
   assert.equal((await repositories.contentPackReferences.getByPackId(contentPack.packId))?.packVersion, contentPack.packVersion);
@@ -202,6 +205,157 @@ test('online joiners can request player_private after joining even before role a
       requestedScope: 'player_private'
     }),
     /not allowed for this authenticated session/i
+  );
+});
+
+test('online join fails with a precise state-unavailable error when match metadata exists but events are not ready yet', async () => {
+  const { contentPack, runtime, tableClient } = createOnlineHarness();
+  const joiningSession = makeOnlineSession('auth-joining-state-wait', { defaultPlayerId: 'player-2' });
+  const matchId = 'online-join-state-wait';
+
+  await tableClient.upsert(
+    'matches',
+    {
+      matchId,
+      joinCode: 'WAIT42',
+      mode: 'online',
+      lifecycleState: 'draft',
+      revision: 1,
+      contentPackId: contentPack.packId,
+      createdByPlayerId: 'host-1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    ['matchId']
+  );
+
+  await assert.rejects(
+    runtime.submitAuthenticatedCommand(
+      joiningSession,
+      makeOnlineCommandRequest(joiningSession, matchId, 1, {
+        type: 'join_match',
+        payload: {
+          playerId: 'player-2',
+          displayName: 'Joining Player'
+        }
+      })
+    ),
+    /event or snapshot state is not available yet/i
+  );
+});
+
+test('online join fails with a precise metadata error when the stored match row lacks content-pack metadata', async () => {
+  const { runtime, tableClient } = createOnlineHarness();
+  const joiningSession = makeOnlineSession('auth-joining-metadata-missing', { defaultPlayerId: 'player-3' });
+  const matchId = 'online-join-metadata-missing';
+
+  await tableClient.upsert(
+    'matches',
+    {
+      matchId,
+      joinCode: 'META42',
+      mode: 'online',
+      lifecycleState: 'draft',
+      revision: 1,
+      createdByPlayerId: 'host-1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z'
+    },
+    ['matchId']
+  );
+
+  await assert.rejects(
+    runtime.submitAuthenticatedCommand(
+      joiningSession,
+      makeOnlineCommandRequest(joiningSession, matchId, 1, {
+        type: 'join_match',
+        payload: {
+          playerId: 'player-3',
+          displayName: 'Joining Player'
+        }
+      })
+    ),
+    /missing its content pack metadata/i
+  );
+});
+
+test('online host keeps host-admin access even after joining a team during role assignment', async () => {
+  const { contentPack, runtime } = createOnlineHarness();
+  const hostSession = makeOnlineSession('auth-host-team-play', { defaultPlayerId: 'host-1' });
+  const seekerSession = makeOnlineSession('auth-seeker-team-play', { defaultPlayerId: 'player-2' });
+  const matchId = 'online-host-team-play';
+
+  await runtime.submitAuthenticatedCommand(
+    hostSession,
+    makeOnlineCommandRequest(hostSession, matchId, 1, {
+      type: 'create_match',
+      payload: {
+        mode: 'online',
+        contentPackId: contentPack.packId,
+        hostPlayerId: 'host-1',
+        hostDisplayName: 'Host',
+        initialScale: 'small'
+      }
+    })
+  );
+
+  await runtime.submitAuthenticatedCommand(
+    seekerSession,
+    makeOnlineCommandRequest(seekerSession, matchId, 2, {
+      type: 'join_match',
+      payload: {
+        playerId: 'player-2',
+        displayName: 'Second Player'
+      }
+    })
+  );
+
+  const assignedHost = await runtime.submitAuthenticatedCommand(
+    hostSession,
+    makeOnlineCommandRequest(hostSession, matchId, 3, {
+      type: 'assign_role',
+      payload: {
+        targetPlayerId: 'host-1',
+        role: 'hider',
+        teamId: 'team-hider'
+      }
+    })
+  );
+
+  const assignedSeeker = await runtime.submitAuthenticatedCommand(
+    hostSession,
+    makeOnlineCommandRequest(hostSession, matchId, 4, {
+      type: 'assign_role',
+      payload: {
+        targetPlayerId: 'player-2',
+        role: 'seeker',
+        teamId: 'team-seeker'
+      }
+    })
+  );
+
+  const confirmed = await runtime.submitAuthenticatedCommand(
+    hostSession,
+    makeOnlineCommandRequest(hostSession, matchId, 5, {
+      type: 'confirm_roles',
+      payload: {}
+    })
+  );
+
+  assert.equal(assignedHost.accepted, true);
+  assert.equal(assignedSeeker.accepted, true);
+  assert.equal(confirmed.accepted, true);
+
+  const hostAdminSnapshot = await runtime.requestAuthenticatedSnapshot(hostSession, {
+    matchId,
+    requestedScope: 'host_admin'
+  });
+
+  assert.equal(hostAdminSnapshot.projectionScope, 'host_admin');
+  assert.ok(
+    hostAdminSnapshot.projectionDelivery.projection.players.some(
+      (player) => player.playerId === 'host-1' && player.role === 'hider'
+    )
   );
 });
 

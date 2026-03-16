@@ -61,7 +61,9 @@ function resolveCommandActor(
   return {
     actorId: connection.recipient.actorId,
     playerId: connection.recipient.playerId ?? sessionProfile.playerId,
-    role: activePlayerRole ?? connection.recipient.role ?? 'spectator'
+    role: connection.recipient.scope === 'host_admin'
+      ? 'host'
+      : activePlayerRole ?? connection.recipient.role ?? 'spectator'
   };
 }
 

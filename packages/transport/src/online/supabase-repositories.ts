@@ -36,6 +36,10 @@ export class SupabaseMatchRepository implements MatchRepository {
   async getByMatchId(matchId: string): Promise<MatchRecord | undefined> {
     return this.client.selectOne<MatchRecord>(MATCHES_TABLE, { matchId });
   }
+
+  async getByJoinCode(joinCode: string): Promise<MatchRecord | undefined> {
+    return this.client.selectOne<MatchRecord>(MATCHES_TABLE, { joinCode });
+  }
 }
 
 export class SupabaseEventRepository implements EventRepository {
