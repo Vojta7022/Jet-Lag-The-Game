@@ -7,8 +7,10 @@ import type {
   DomainCommand,
   MatchAggregate,
   MatchRole,
+  QuestionTemplateDefinition,
   RulesetDefinition
 } from '../../packages/shared-types/src/index.ts';
+import { buildQuestionSelectionState } from '../../packages/domain/src/index.ts';
 import { executeCommand } from '../../packages/engine/src/index.ts';
 
 const generatedPackPath = fileURLToPath(
@@ -107,7 +109,10 @@ export function dispatchSequence(
   return aggregate;
 }
 
-export function setupMatchToHidePhase(contentPack: ContentPack): MatchAggregate {
+export function setupMatchToHidePhase(
+  contentPack: ContentPack,
+  initialScale: 'small' | 'medium' | 'large' = 'small'
+): MatchAggregate {
   const matchId = 'match-1';
 
   return dispatchSequence(contentPack, [
@@ -121,7 +126,7 @@ export function setupMatchToHidePhase(contentPack: ContentPack): MatchAggregate 
           contentPackId: contentPack.packId,
           hostPlayerId: 'host-1',
           hostDisplayName: 'Host',
-          initialScale: 'small'
+          initialScale
         }
       },
       1
@@ -232,8 +237,11 @@ export function setupMatchToHidePhase(contentPack: ContentPack): MatchAggregate 
   ]);
 }
 
-export function setupMatchToSeekReady(contentPack: ContentPack): MatchAggregate {
-  const match = setupMatchToHidePhase(contentPack);
+export function setupMatchToSeekReady(
+  contentPack: ContentPack,
+  initialScale: 'small' | 'medium' | 'large' = 'small'
+): MatchAggregate {
+  const match = setupMatchToHidePhase(contentPack, initialScale);
 
   const afterLock = executeCommand(
     match,
@@ -327,6 +335,55 @@ export function recordLocationUpdate(
   ).aggregate;
 }
 
+export function getCurrentQuestionTemplate(
+  aggregate: MatchAggregate,
+  contentPack: ContentPack,
+  categoryId: string,
+  preferredTemplateId?: string
+): QuestionTemplateDefinition {
+  const category = contentPack.questionCategories.find((entry) => entry.categoryId === categoryId);
+
+  if (!category) {
+    throw new Error(`Question category not found: ${categoryId}`);
+  }
+
+  const selection = buildQuestionSelectionState({
+    contentPack,
+    category,
+    selectedScale: aggregate.selectedScale,
+    askedQuestions: Object.values(aggregate.questionInstances)
+  });
+  const availableTemplates = contentPack.questionTemplates.filter(
+    (template) => selection.availableTemplateIds.includes(template.templateId)
+  );
+
+  if (preferredTemplateId) {
+    const preferredTemplate = availableTemplates.find((template) => template.templateId === preferredTemplateId);
+
+    if (preferredTemplate) {
+      return preferredTemplate;
+    }
+  }
+
+  const firstAvailableTemplate = availableTemplates[0];
+
+  if (!firstAvailableTemplate) {
+    throw new Error(`No authoritative question template is available for category ${categoryId}`);
+  }
+
+  return firstAvailableTemplate;
+}
+
+export function getPrimaryFeatureClassId(template: QuestionTemplateDefinition): string {
+  const featureClassId = template.featureClassRefs?.[0]?.featureClassId;
+
+  if (!featureClassId) {
+    throw new Error(`Question template ${template.templateId} does not define a primary feature class.`);
+  }
+
+  return featureClassId;
+}
+
 export function openAnsweredQuestion(
   aggregate: MatchAggregate,
   contentPack: ContentPack,
@@ -366,6 +423,36 @@ export function openAnsweredQuestion(
     contentPack
   ).aggregate;
 
+  const attachmentIds = Array.isArray(args.answer.attachmentIds)
+    ? args.answer.attachmentIds.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : [];
+
+  for (const [index, attachmentId] of attachmentIds.entries()) {
+    next = executeCommand(
+      next,
+      makeEnvelope(
+        next.matchId,
+        { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+        {
+          type: 'upload_attachment',
+          payload: {
+            attachmentId,
+            kind: 'photo_evidence',
+            label: `Evidence ${index + 1}`,
+            note: 'Engine test attachment placeholder',
+            visibilityScope: 'team_private',
+            questionInstanceId: args.questionInstanceId,
+            captureMetadata: {
+              source: 'engine-tests'
+            }
+          }
+        },
+        args.startStep + 2 + index
+      ),
+      contentPack
+    ).aggregate;
+  }
+
   return executeCommand(
     next,
     makeEnvelope(
@@ -378,7 +465,7 @@ export function openAnsweredQuestion(
           answer: args.answer
         }
       },
-      args.startStep + 2
+      args.startStep + 2 + attachmentIds.length
     ),
     contentPack
   ).aggregate;

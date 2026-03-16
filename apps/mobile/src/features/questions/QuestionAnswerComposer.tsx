@@ -9,6 +9,9 @@ import type { GeoFeatureRecord } from '../../../../../packages/geo/src/index.ts'
 import type { QuestionAnswerDraft } from './question-flow-state.ts';
 import { getAnswerOptions } from './question-flow-state.ts';
 import {
+  describeWorkbookAvailability,
+  describeWorkbookRequirementSummary,
+  describeWorkbookRuleSummary,
   describeExpectedAnswerGuidance,
   describeQuestionTemplateForPlayers
 } from './question-guidance.ts';
@@ -46,6 +49,9 @@ function OptionButton(props: {
 export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
   const answerKind = String(props.template.answerSchema.kind ?? 'manual');
   const options = getAnswerOptions(props.template);
+  const workbookRequirement = describeWorkbookRequirementSummary(props.template);
+  const workbookRule = describeWorkbookRuleSummary(props.template, props.category);
+  const workbookAvailability = describeWorkbookAvailability(props.template);
 
   return (
     <View style={styles.container}>
@@ -55,6 +61,12 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
       <View style={styles.guidanceCard}>
         <Text style={styles.guidanceTitle}>How to answer honestly</Text>
         <Text style={styles.copy}>{describeExpectedAnswerGuidance(props.template)}</Text>
+      </View>
+      <View style={styles.guidanceCard}>
+        <Text style={styles.guidanceTitle}>Workbook rule</Text>
+        <Text style={styles.copy}>{workbookRule}</Text>
+        <Text style={styles.copy}>Availability: {workbookAvailability}</Text>
+        {workbookRequirement ? <Text style={styles.copy}>Requirement: {workbookRequirement}</Text> : null}
       </View>
 
       {(answerKind === 'boolean' || answerKind === 'enum') ? (

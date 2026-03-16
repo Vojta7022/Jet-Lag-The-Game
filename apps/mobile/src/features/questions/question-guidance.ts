@@ -36,11 +36,21 @@ function getFeatureLabel(template: QuestionTemplateDefinition): string {
   const parameters = template.parameters ?? {};
   const subject = typeof parameters.subjectLabel === 'string'
     ? parameters.subjectLabel
+    : typeof parameters.targetLabel === 'string'
+      ? parameters.targetLabel
+      : typeof parameters.placeLabel === 'string'
+        ? parameters.placeLabel
     : typeof parameters.subject === 'string'
       ? parameters.subject
       : undefined;
 
   return subject ?? template.name;
+}
+
+function readWorkbookParameterText(template: QuestionTemplateDefinition, key: string): string | undefined {
+  const parameters = template.parameters ?? {};
+  const value = parameters[key];
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 function getDistanceLabel(template: QuestionTemplateDefinition): string | undefined {
@@ -128,6 +138,39 @@ export function formatQuestionScaleSet(appliesTo: ScaleKey[]): string {
   }
 
   return `${joinList(labels)} games`;
+}
+
+export function describeWorkbookAvailability(template: QuestionTemplateDefinition): string {
+  const explicitAvailability = readWorkbookParameterText(template, 'workbookAvailabilityText');
+  if (explicitAvailability) {
+    return explicitAvailability;
+  }
+
+  return template.scaleSet.rawLabel?.trim() || formatQuestionScaleSet(template.scaleSet.appliesTo);
+}
+
+export function describeWorkbookRuleSummary(
+  template: QuestionTemplateDefinition,
+  category: QuestionCategoryDefinition
+): string {
+  const cost = readWorkbookParameterText(template, 'workbookCostText') ?? category.drawRule.rawText.trim();
+  const time = readWorkbookParameterText(template, 'workbookTimeText');
+  const availability = describeWorkbookAvailability(template);
+  const values = [cost, time, availability].filter(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
+
+  return values.join(' · ');
+}
+
+export function describeWorkbookRequirementSummary(template: QuestionTemplateDefinition): string | undefined {
+  const workbookRequirement = readWorkbookParameterText(template, 'workbookRequirementsText');
+  if (workbookRequirement) {
+    return workbookRequirement;
+  }
+
+  const manualRequirement = template.requirements?.find((requirement) => requirement.requirementType === 'manual_approval');
+  return manualRequirement?.description?.trim() || undefined;
 }
 
 export function describeQuestionCategoryForPlayers(category: QuestionCategoryDefinition): string {

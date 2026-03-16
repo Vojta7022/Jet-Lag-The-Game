@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
@@ -50,6 +51,47 @@ import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
+
+function formatRoleLabel(role: string) {
+  return role.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function describeDeckFlowStep(lifecycleState: string | undefined, seekPhaseSubstate: string | undefined) {
+  if (!lifecycleState) {
+    return 'Waiting for the live match';
+  }
+
+  if (lifecycleState === 'hide_phase') {
+    return 'Draw up and prepare the hand';
+  }
+
+  if (lifecycleState === 'endgame') {
+    return 'Use the last card effects carefully';
+  }
+
+  if (lifecycleState === 'game_complete') {
+    return 'Match complete';
+  }
+
+  if (lifecycleState !== 'seek_phase') {
+    return lifecycleState.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  }
+
+  switch (seekPhaseSubstate) {
+    case 'ready':
+      return 'Keep the hand ready for the next clue';
+    case 'awaiting_question_answer':
+      return 'Prepare response cards while the clue is live';
+    case 'awaiting_card_resolution':
+      return 'Resolve the open card effect';
+    case 'applying_constraints':
+      return 'Hold while the map updates';
+    case 'cooldown':
+      return 'Refill and reset during cooldown';
+    default:
+      return 'Use the deck when the live flow needs it';
+  }
+}
 
 export function CardsScreen() {
   const { state, submitCommand, submitCommands, refreshActiveMatch, prepareAttachmentUploadCommands } = useAppShell();
@@ -265,7 +307,11 @@ export function CardsScreen() {
   return (
     <ScreenContainer
       title={liveGameplayState ? 'Deck' : 'Cards'}
-      subtitle="Review visible hands and piles, understand what each card can really do, and manage card windows through the live match flow."
+      subtitle={
+        liveGameplayState
+          ? 'Use the deck when the chase needs it, then return to the live map once the hand or card effect is settled.'
+          : 'Review visible hands and piles, understand what each card can really do, and manage card windows through the live match flow.'
+      }
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="cards" />}
       bottomSlot={liveGameplayState ? <GameplayTabBar current="deck" /> : undefined}
     >
@@ -305,19 +351,20 @@ export function CardsScreen() {
       ) : null}
 
       <Panel
-        title="Card Context"
-        subtitle="Visibility, hand access, and card-lock rules for the current role."
+        title={liveGameplayState ? 'Deck And Live Play' : 'Card Context'}
+        subtitle={
+          liveGameplayState
+            ? 'This screen supports the live map. Use it to ready the hider hand or finish a card effect, then head back to play.'
+            : 'Visibility, hand access, and card-lock rules for the current role.'
+        }
       >
         <FactList
           items={[
-            { label: 'Role', value: viewerRole },
+            { label: 'Role', value: formatRoleLabel(viewerRole) },
             {
-              label: 'Stage',
-              value: projection?.seekPhaseSubstate
-                ? `${projection.lifecycleState} / ${projection.seekPhaseSubstate}`
-                : projection?.lifecycleState ?? 'Unavailable'
+              label: 'Next Step',
+              value: describeDeckFlowStep(projection?.lifecycleState, projection?.seekPhaseSubstate)
             },
-            { label: 'Scope', value: activeMatch?.recipient.scope ?? 'None' },
             { label: 'Visible Decks', value: deckViewModels.length },
             { label: 'State Update', value: timingModel?.freshnessLabel ?? 'Waiting for live state' }
           ]}
@@ -325,11 +372,20 @@ export function CardsScreen() {
         <Text style={styles.copy}>
           Draw, play, discard, and resolution controls respect the real state machine. Manual and assisted cards never claim automated effects that the engine does not actually perform.
         </Text>
+        {liveGameplayState ? (
+          <AppButton
+            label="Back To Live Map"
+            tone="secondary"
+            onPress={() => {
+              router.push('/map');
+            }}
+          />
+        ) : null}
       </Panel>
 
       <Panel
-        title="Deck Actions"
-        subtitle="Prepare the match for card play, draw from a visible deck, or refresh the live card state."
+        title="Hand Actions"
+        subtitle="Prepare the deck, refill the hand, or refresh the live card state when the chase needs it."
       >
         <AppButton
           label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Card Play'}
@@ -418,7 +474,7 @@ export function CardsScreen() {
         <>
           <Panel
             title="Selected Deck"
-            subtitle="Understand who this deck belongs to, what is visible now, and whether anything is waiting for resolution."
+            subtitle="See what this deck is doing for the live chase, what is visible now, and whether anything is waiting for resolution."
           >
             <FactList
               items={[
@@ -434,8 +490,8 @@ export function CardsScreen() {
 
           {canManageHiderDeck ? (
             <Panel
-              title="Hider Deck Loop"
-              subtitle="Keep a hand of six, track fresh draws, and hold the cards you want ready for the current clue."
+              title="Keep The Hider Hand Ready"
+              subtitle="Stay at six cards, track fresh draws, and keep likely response cards ready for the current clue."
             >
               <FactList
                 items={[
@@ -600,7 +656,7 @@ export function CardsScreen() {
 
       <Panel
         title="Card Detail"
-        subtitle="Review the currently selected card, how it resolves, and which actions are honestly available right now."
+        subtitle="Review the selected card, understand what it really does, and then return to the live map when you are ready."
       >
         <CardDetailPanel
           card={selectedCard}
@@ -643,10 +699,11 @@ export function CardsScreen() {
 
       <Panel
         title="Resolution Status"
-        subtitle="Track manual or assisted card windows that still need referee action before play can continue."
+        subtitle="Finish manual or assisted card windows here so the live chase can continue cleanly."
       >
         <CardResolutionStatusPanel
           activeCard={activeCard}
+          resolution={projection?.activeCardResolution}
           canResolve={canResolve}
           resolveDisabledReason={resolveDisabledReason}
           disabled={state.loadState === 'loading'}

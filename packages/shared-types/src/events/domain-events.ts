@@ -43,7 +43,7 @@ import type {
   TimerModel
 } from '../domain/match.ts';
 import type { AttachmentModel, ChatMessageModel } from '../domain/chat.ts';
-import type { ProjectionScope } from '../content.ts';
+import type { CardKind, ProjectionScope } from '../content.ts';
 
 export interface DomainEventEnvelope<TEvent extends DomainEvent = DomainEvent> {
   eventId: string;
@@ -77,6 +77,7 @@ export type DomainEvent =
   | AttachmentUploadedEvent
   | CardDrawnEvent
   | CardPlayedEvent
+  | TimerAdjustedEvent
   | CardDiscardedEvent
   | CardResolutionOpenedEvent
   | CardResolutionClosedEvent
@@ -206,6 +207,7 @@ export interface QuestionAskedEvent {
     question: QuestionInstanceModel;
     lifecycleState: MatchLifecycleState;
     seekPhaseSubstate: SeekPhaseSubstate;
+    questionTimer?: TimerModel;
   };
 }
 
@@ -255,6 +257,14 @@ export interface CardPlayedEvent {
   };
 }
 
+export interface TimerAdjustedEvent {
+  type: 'timer_adjusted';
+  payload: {
+    timer: TimerModel;
+    sourceCardInstanceId?: string;
+  };
+}
+
 export interface CardDiscardedEvent {
   type: 'card_discarded';
   payload: DiscardCardCommand['payload'] & {
@@ -268,6 +278,18 @@ export interface CardResolutionOpenedEvent {
     sourceCardInstanceId: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
+    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus';
+    discardRequirement?: {
+      requiredCards?: number;
+      requiredKind?: CardKind;
+      discardWholeHand?: boolean;
+    };
+    drawCountOnResolve?: number;
+    timeBonusMinutes?: number;
+    sourceDeckId?: string;
+    holderType?: CardInstanceModel['holderType'];
+    holderId?: string;
+    openingHandCardInstanceIds?: string[];
   };
 }
 

@@ -27,6 +27,7 @@ import { reduceMatchAggregate } from '../../../engine/src/index.ts';
 
 import { TransportRuntimeError } from '../errors.ts';
 import { EngineCommandGateway } from '../engine-command-gateway.ts';
+import { reconcileRuntimeState } from '../reconcile-runtime-state.ts';
 import { buildSyncEnvelope, createMatchSnapshot } from '../sync.ts';
 
 import { DefaultOnlineSessionBinder } from './auth.ts';
@@ -223,7 +224,8 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   }
 
   private async submitBoundCommand(envelope: CommandEnvelope): Promise<CommandSubmissionResult> {
-    const aggregate = await this.loadAggregate(envelope.matchId);
+    const reconciled = await this.reconcileAggregate(envelope.matchId, envelope.occurredAt);
+    const aggregate = reconciled?.aggregate;
     const contentPack = await this.resolveContentPack(aggregate, envelope);
     const result = await this.gateway.submit({
       aggregate,
@@ -232,26 +234,18 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     });
 
     if (!result.accepted || !result.aggregate) {
+      if (reconciled?.didChange) {
+        await this.notifyLocalSubscribers(envelope.matchId);
+      }
+
       return result;
     }
 
     await this.repositories.events.append(envelope.matchId, result.events);
-    await this.repositories.matches.save(toMatchRecord(result.aggregate));
-
-    const snapshot = createMatchSnapshot(result.aggregate, this.mode);
-    await this.repositories.snapshots.save(snapshot);
     this.aggregateCache.set(envelope.matchId, result.aggregate);
 
-    const projectionRecords = buildProjectionRecords(result.aggregate, contentPack, this.mode);
-    await this.repositories.projections.saveMany(projectionRecords);
-    await this.realtimeFanout.publish(
-      projectionRecords.map((record) =>
-        toFanoutNotice(
-          record,
-          buildProjectionChannelName(record.matchId, record.recipientId)
-        )
-      )
-    );
+    const snapshot = createMatchSnapshot(result.aggregate, this.mode);
+    await this.persistDerivedStateBestEffort(result.aggregate, contentPack, snapshot);
 
     await this.notifyLocalSubscribers(envelope.matchId);
 
@@ -267,7 +261,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     cursor?: SyncCursor,
     forceKind?: 'snapshot' | 'delta'
   ): Promise<SyncEnvelope> {
-    const aggregate = await this.loadAggregate(matchId);
+    const aggregate = (await this.reconcileAggregate(matchId))?.aggregate;
     if (!aggregate) {
       throw new TransportRuntimeError('MATCH_NOT_FOUND', `No match with id "${matchId}" is available.`);
     }
@@ -297,18 +291,14 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     aggregate: MatchAggregate,
     contentPack: ContentPack
   ): Promise<ProjectionRecord> {
-    const stored = await this.repositories.projections.getLatest({
-      matchId,
-      projectionScope: recipient.scope,
-      recipientId: recipient.recipientId
-    });
+    const stored = await this.tryLoadProjectionRecord(matchId, recipient);
 
     if (stored && stored.snapshotVersion >= aggregate.revision) {
       return stored;
     }
 
     const rebuilt = buildProjectionRecord(aggregate, contentPack, this.mode, recipient);
-    await this.repositories.projections.saveMany([rebuilt]);
+    await this.tryPersistProjectionRecords([rebuilt]);
     return rebuilt;
   }
 
@@ -346,7 +336,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   private async loadAggregate(matchId: string): Promise<MatchAggregate | undefined> {
     const cached = this.aggregateCache.get(matchId);
     if (cached) {
-      const storedMatch = await this.repositories.matches.getByMatchId(matchId);
+      const storedMatch = await this.tryLoadMatchRecord(matchId);
       if (!storedMatch || storedMatch.revision <= cached.revision) {
         return cached;
       }
@@ -362,6 +352,46 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     }
 
     return undefined;
+  }
+
+  private async reconcileAggregate(
+    matchId: string,
+    occurredAt = new Date().toISOString()
+  ): Promise<{ aggregate?: MatchAggregate; didChange: boolean }> {
+    const aggregate = await this.loadAggregate(matchId);
+    if (!aggregate) {
+      return {
+        aggregate: undefined,
+        didChange: false
+      };
+    }
+
+    const contentPack = await this.resolveContentPack(aggregate);
+    const reconciliation = reconcileRuntimeState({
+      aggregate,
+      contentPack,
+      occurredAt
+    });
+
+    if (reconciliation.events.length === 0) {
+      return {
+        aggregate,
+        didChange: false
+      };
+    }
+
+    await this.repositories.events.append(matchId, reconciliation.events);
+    this.aggregateCache.set(matchId, reconciliation.aggregate);
+    await this.persistDerivedStateBestEffort(
+      reconciliation.aggregate,
+      contentPack,
+      createMatchSnapshot(reconciliation.aggregate, this.mode)
+    );
+
+    return {
+      aggregate: reconciliation.aggregate,
+      didChange: true
+    };
   }
 
   private async resolveContentPack(
@@ -401,5 +431,63 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     }
 
     return contentPack;
+  }
+
+  private async tryLoadMatchRecord(matchId: string) {
+    try {
+      return await this.repositories.matches.getByMatchId(matchId);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async tryLoadProjectionRecord(
+    matchId: string,
+    recipient: SnapshotRequest['recipient']
+  ): Promise<ProjectionRecord | undefined> {
+    try {
+      return await this.repositories.projections.getLatest({
+        matchId,
+        projectionScope: recipient.scope,
+        recipientId: recipient.recipientId
+      });
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async persistDerivedStateBestEffort(
+    aggregate: MatchAggregate,
+    contentPack: ContentPack,
+    snapshot: MatchRuntimeSnapshot
+  ): Promise<void> {
+    await Promise.allSettled([
+      this.repositories.matches.save(toMatchRecord(aggregate)),
+      this.repositories.snapshots.save(snapshot)
+    ]);
+
+    const projectionRecords = buildProjectionRecords(aggregate, contentPack, this.mode);
+    await this.tryPersistProjectionRecords(projectionRecords);
+
+    try {
+      await this.realtimeFanout.publish(
+        projectionRecords.map((record) =>
+          toFanoutNotice(
+            record,
+            buildProjectionChannelName(record.matchId, record.recipientId)
+          )
+        )
+      );
+    } catch {
+      // Fanout is a delivery cache; snapshot requests can still rebuild authoritative projections.
+    }
+  }
+
+  private async tryPersistProjectionRecords(records: ProjectionRecord[]): Promise<void> {
+    try {
+      await this.repositories.projections.saveMany(records);
+    } catch {
+      // Projection rows are a cache of the aggregate. If this write fails, snapshot requests can rebuild them.
+    }
   }
 }

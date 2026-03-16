@@ -12,14 +12,10 @@ export interface QuestionCategoryViewModel {
   templates: QuestionTemplateDefinition[];
 }
 
-function sortByName<T extends { name: string }>(values: T[]): T[] {
-  return [...values].sort((left, right) => left.name.localeCompare(right.name));
-}
-
 export function buildQuestionCategoryViewModels(contentPack: ContentPack): QuestionCategoryViewModel[] {
-  return sortByName(contentPack.questionCategories).map((category) => ({
+  return contentPack.questionCategories.map((category) => ({
     category,
-    templates: sortByName(
+    templates: (
       contentPack.questionTemplates.filter((template) => template.categoryId === category.categoryId)
     )
   }));
@@ -130,7 +126,7 @@ export function formatResolutionMode(mode: VisibleConstraintProjection['resoluti
   }
 
   if (mode === 'metadata_only') {
-    return 'Metadata-only';
+    return 'Evidence only';
   }
 
   return 'Pending';

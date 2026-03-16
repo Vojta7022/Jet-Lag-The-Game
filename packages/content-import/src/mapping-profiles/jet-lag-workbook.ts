@@ -30,7 +30,7 @@ import type { WorkbookDocument, WorkbookRow, WorkbookSheet } from '../types.ts';
 
 export const JET_LAG_MAPPING_PROFILE_ID = 'xlsx.jetlag.v1';
 
-const EXPECTED_SHEETS = [
+const LEGACY_EXPECTED_SHEETS = [
   'Form Responses 1',
   'Hider Deck',
   '💀Curses',
@@ -41,6 +41,28 @@ const EXPECTED_SHEETS = [
   '5. Tentacles',
   '6. Photos'
 ];
+
+const CLEANED_EXPECTED_SHEETS = [
+  'Hider Deck',
+  'Curses',
+  'Matching',
+  'Measuring',
+  'Thermometer',
+  'Radar',
+  'Tentacles',
+  'Photos'
+];
+
+const SHEET_ALIASES = {
+  hiderDeck: ['Hider Deck'],
+  curses: ['Curses', '💀Curses'],
+  matching: ['Matching', '1. Matching'],
+  measuring: ['Measuring', '2. Measuring'],
+  thermometer: ['Thermometer', '3. Thermometer'],
+  radar: ['Radar', '4. Radar'],
+  tentacles: ['Tentacles', '5. Tentacles'],
+  photos: ['Photos', '6. Photos']
+} as const;
 
 const PUBLIC_VISIBILITY: VisibilityPolicyRef = {
   visibleTo: ['authority', 'host_admin', 'public_match']
@@ -59,6 +81,16 @@ function getSheet(document: WorkbookDocument, name: string): WorkbookSheet {
 
   if (!sheet) {
     throw new Error(`Missing expected sheet: ${name}`);
+  }
+
+  return sheet;
+}
+
+function getSheetByAliases(document: WorkbookDocument, aliases: readonly string[]): WorkbookSheet {
+  const sheet = document.sheets.find((candidate) => aliases.includes(candidate.name));
+
+  if (!sheet) {
+    throw new Error(`Missing expected sheet: ${aliases.join(' or ')}`);
   }
 
   return sheet;
@@ -266,6 +298,55 @@ function collapseLineBreaks(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+function normalizeHeader(value: string | number | boolean | null): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return collapseLineBreaks(String(value)).toLowerCase();
+}
+
+function buildHeaderIndex(sheet: WorkbookSheet): Map<string, number> {
+  const headerRow = sheet.rows.find((row) => rowHasValues(row));
+  const entries = (headerRow?.values ?? []).map((value, index) => [normalizeHeader(value), index] as const);
+
+  return new Map(entries.filter(([header]) => header.length > 0));
+}
+
+function sheetHasHeaders(sheet: WorkbookSheet, headers: string[]): boolean {
+  const index = buildHeaderIndex(sheet);
+  return headers.every((header) => index.has(normalizeHeader(header)));
+}
+
+function tableCellText(
+  row: WorkbookRow,
+  headerIndex: Map<string, number>,
+  header: string
+): string | null {
+  const index = headerIndex.get(normalizeHeader(header));
+  return index === undefined ? null : cellText(row, index);
+}
+
+function tableCellNumber(
+  row: WorkbookRow,
+  headerIndex: Map<string, number>,
+  header: string
+): number | null {
+  const index = headerIndex.get(normalizeHeader(header));
+  const value = index === undefined ? null : cellValue(row, index);
+  return typeof value === 'number' ? value : null;
+}
+
+function dataRowsAfterHeader(sheet: WorkbookSheet): WorkbookRow[] {
+  const headerRow = sheet.rows.find((row) => rowHasValues(row));
+
+  if (!headerRow) {
+    return [];
+  }
+
+  return sheet.rows.filter((row) => row.rowNumber > headerRow.rowNumber && rowHasValues(row));
+}
+
 function buildNormalizationIssue(
   issues: ImportIssue[],
   sourceFileName: string,
@@ -305,6 +386,24 @@ function createGeneratedRequirement(description: string, rawText?: string | null
   };
 }
 
+function workbookQuestionParameters(args: {
+  question?: string | null;
+  cost?: string | null;
+  time?: string | null;
+  availability?: string | null;
+  requirements?: string | null;
+  values?: Record<string, unknown>;
+}): Record<string, unknown> {
+  return {
+    ...(args.values ?? {}),
+    ...(args.question ? { workbookQuestionText: applyWorkbookCorrections(args.question) } : {}),
+    ...(args.cost ? { workbookCostText: collapseLineBreaks(args.cost) } : {}),
+    ...(args.time ? { workbookTimeText: collapseLineBreaks(args.time) } : {}),
+    ...(args.availability ? { workbookAvailabilityText: collapseLineBreaks(args.availability) } : {}),
+    ...(args.requirements ? { workbookRequirementsText: applyWorkbookCorrections(args.requirements) } : {})
+  };
+}
+
 function buildTimeBonusCards(
   sourceFileName: string,
   packId: string,
@@ -312,6 +411,102 @@ function buildTimeBonusCards(
   sheet: WorkbookSheet,
   issues: ImportIssue[]
 ): { cards: CardDefinition[]; entries: DeckDefinition['entries'] } {
+  if (sheetHasHeaders(sheet, ['category', 'card', 'quantity', 'odds'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const cards: CardDefinition[] = [];
+    const entries: DeckDefinition['entries'] = [];
+
+    for (const row of dataRowsAfterHeader(sheet)) {
+      const categoryLabel = tableCellText(row, headerIndex, 'category');
+      const label = tableCellText(row, headerIndex, 'card');
+      const quantityValue = tableCellNumber(row, headerIndex, 'quantity');
+      const oddsValue = tableCellNumber(row, headerIndex, 'odds');
+
+      if (!label || typeof quantityValue !== 'number' || categoryLabel !== 'Time Bonus') {
+        continue;
+      }
+
+      const colorRaw = label.replace(/\s+\d.*$/, '').trim() || label;
+      const minutesByScale = parseScaleMinutes(label);
+
+      if (!minutesByScale) {
+        issues.push(
+          createIssue({
+            sheetName: sheet.name,
+            rowNumber: row.rowNumber,
+            columnName: 'card',
+            fieldPath: 'cards[].effects[].payload.minutesByScale',
+            severity: 'error',
+            code: 'TIME_BONUS_PARSE_FAILED',
+            message: 'Could not parse the scale-specific time bonus values.',
+            rawValue: label,
+            normalizedValue: null,
+            suggestedFix: 'Keep the card text in the format `Color Xm, Ym, Zm`.',
+            sheetCell: `B${row.rowNumber}`,
+            blocking: true
+          })
+        );
+        continue;
+      }
+
+      const normalizedColor = normalizeLabel(colorRaw);
+      buildNormalizationIssue(
+        issues,
+        sourceFileName,
+        sheet.name,
+        row.rowNumber,
+        'card',
+        colorRaw,
+        normalizedColor.displayText,
+        `cards[time-bonus-${normalizedColor.slug}].shortName`
+      );
+
+      const cardDefinitionId = `time-bonus-${normalizedColor.slug}`;
+      const minutesDescription = `Adds ${minutesByScale.small}/${minutesByScale.medium}/${minutesByScale.large} minutes in small/medium/large games.`;
+
+      cards.push({
+        cardDefinitionId,
+        packId,
+        deckId,
+        kind: 'time_bonus',
+        name: applyWorkbookCorrections(label),
+        shortName: normalizedColor.displayText,
+        description: minutesDescription,
+        automationLevel: 'authoritative',
+        effects: [
+          {
+            effectType: 'add_time_bonus',
+            description: minutesDescription,
+            automationLevel: 'authoritative',
+            rawText: label,
+            payload: {
+              minutesByScale
+            }
+          }
+        ],
+        visibilityPolicy: HIDER_DECK_VISIBILITY,
+        tags: ['time-bonus'],
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'card', label, categoryLabel),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'odds', oddsValue, label)
+        ]
+      });
+
+      entries.push({
+        cardDefinitionId,
+        quantity: quantityValue,
+        weight: oddsValue ?? undefined,
+        notes: oddsValue !== null ? `Workbook odds: ${oddsValue}` : undefined,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'quantity', quantityValue, label),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'odds', oddsValue, label)
+        ]
+      });
+    }
+
+    return { cards, entries };
+  }
+
   const cards: CardDefinition[] = [];
   const entries: DeckDefinition['entries'] = [];
 
@@ -410,6 +605,92 @@ function buildPowerUpCards(
   sheet: WorkbookSheet,
   issues: ImportIssue[]
 ): { cards: CardDefinition[]; entries: DeckDefinition['entries'] } {
+  if (sheetHasHeaders(sheet, ['category', 'card', 'quantity', 'odds'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const cards: CardDefinition[] = [];
+    const entries: DeckDefinition['entries'] = [];
+
+    for (const row of dataRowsAfterHeader(sheet)) {
+      const categoryLabel = tableCellText(row, headerIndex, 'category');
+      const label = tableCellText(row, headerIndex, 'card');
+      const quantityValue = tableCellNumber(row, headerIndex, 'quantity');
+      const oddsValue = tableCellNumber(row, headerIndex, 'odds');
+
+      if (!label || typeof quantityValue !== 'number' || categoryLabel !== 'Power Ups') {
+        continue;
+      }
+
+      const normalized = normalizeLabel(label);
+      buildNormalizationIssue(
+        issues,
+        sourceFileName,
+        sheet.name,
+        row.rowNumber,
+        'card',
+        label,
+        normalized.displayText,
+        `cards[power-up-${normalized.slug}].name`
+      );
+
+      const cardDefinitionId = `power-up-${normalized.slug}`;
+      const description = 'Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.';
+
+      cards.push({
+        cardDefinitionId,
+        packId,
+        deckId,
+        kind: 'power_up',
+        name: normalized.displayText,
+        shortName: normalized.displayText,
+        description,
+        automationLevel: 'manual',
+        effects: [
+          {
+            effectType: 'manual_power_up',
+            description,
+            automationLevel: 'manual',
+            rawText: label
+          }
+        ],
+        visibilityPolicy: HIDER_DECK_VISIBILITY,
+        tags: ['power-up'],
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'card', label, categoryLabel),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'odds', oddsValue, label)
+        ]
+      });
+
+      entries.push({
+        cardDefinitionId,
+        quantity: quantityValue,
+        weight: oddsValue ?? undefined,
+        notes: oddsValue !== null ? `Workbook odds: ${oddsValue}` : undefined,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'quantity', quantityValue, label),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'odds', oddsValue, label)
+        ]
+      });
+
+      issues.push(
+        createIssue({
+          sheetName: sheet.name,
+          rowNumber: row.rowNumber,
+          columnName: 'card',
+          fieldPath: `cards[${cardDefinitionId}].description`,
+          severity: 'warning',
+          code: 'POWER_UP_EFFECT_UNSPECIFIED',
+          message: 'The workbook provides a power-up name but no detailed effect text.',
+          rawValue: label,
+          normalizedValue: description,
+          suggestedFix: 'Keep the imported card name and add authored effect details later if fuller automation is needed.',
+          sheetCell: `B${row.rowNumber}`
+        })
+      );
+    }
+
+    return { cards, entries };
+  }
+
   const cards: CardDefinition[] = [];
   const entries: DeckDefinition['entries'] = [];
 
@@ -498,6 +779,44 @@ function buildBlankCard(
   deckId: string,
   sheet: WorkbookSheet
 ): { card: CardDefinition; entry: DeckDefinition['entries'][number] } {
+  if (sheetHasHeaders(sheet, ['category', 'card', 'quantity', 'odds'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const blankRow = dataRowsAfterHeader(sheet).find((row) => tableCellText(row, headerIndex, 'category') === 'Blanks');
+    const quantityValue = blankRow ? tableCellNumber(blankRow, headerIndex, 'quantity') : 0;
+    const oddsValue = blankRow ? tableCellNumber(blankRow, headerIndex, 'odds') : null;
+    const label = blankRow ? tableCellText(blankRow, headerIndex, 'card') : 'Blank';
+    const quantity = typeof quantityValue === 'number' ? quantityValue : 0;
+
+    return {
+      card: {
+        cardDefinitionId: 'blank-card',
+        packId,
+        deckId,
+        kind: 'blank',
+        name: applyWorkbookCorrections(label ?? 'Blank'),
+        shortName: applyWorkbookCorrections(label ?? 'Blank'),
+        description: 'No special effect.',
+        automationLevel: 'authoritative',
+        effects: [],
+        visibilityPolicy: HIDER_DECK_VISIBILITY,
+        tags: ['blank'],
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, blankRow?.rowNumber ?? 1, 'card', label ?? 'Blank', 'Blanks')
+        ]
+      },
+      entry: {
+        cardDefinitionId: 'blank-card',
+        quantity,
+        weight: oddsValue ?? undefined,
+        notes: oddsValue !== null ? `Workbook odds: ${oddsValue}` : undefined,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, blankRow?.rowNumber ?? 1, 'quantity', quantityValue, label ?? 'Blank'),
+          sourceProvenance(sourceFileName, sheet.name, blankRow?.rowNumber ?? 1, 'odds', oddsValue, label ?? 'Blank')
+        ]
+      }
+    };
+  }
+
   const blankRow = sheet.rows.find((row) => row.rowNumber === 19);
   const quantityValue = blankRow ? cellValue(blankRow, 3) : 0;
   const quantity = typeof quantityValue === 'number' ? quantityValue : 0;
@@ -533,8 +852,105 @@ function buildCurseCards(
   packId: string,
   deckId: string,
   sheet: WorkbookSheet,
-  issues: ImportIssue[]
+  issues: ImportIssue[],
+  deckSheet?: WorkbookSheet
 ): { cards: CardDefinition[]; entries: DeckDefinition['entries'] } {
+  if (sheetHasHeaders(sheet, ['name', 'description', 'casting_cost'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const deckHeaderIndex = deckSheet ? buildHeaderIndex(deckSheet) : undefined;
+    const curseDeckRow = deckSheet
+      ? dataRowsAfterHeader(deckSheet).find((row) => tableCellText(row, deckHeaderIndex!, 'category') === 'Curses')
+      : undefined;
+    const categoryOdds = curseDeckRow ? tableCellNumber(curseDeckRow, deckHeaderIndex!, 'odds') : null;
+    const curseRows = dataRowsAfterHeader(sheet);
+    const perCardWeight = categoryOdds !== null && curseRows.length > 0
+      ? Number((categoryOdds / curseRows.length).toFixed(6))
+      : undefined;
+    const cards: CardDefinition[] = [];
+    const entries: DeckDefinition['entries'] = [];
+
+    for (const row of curseRows) {
+      const nameRaw = tableCellText(row, headerIndex, 'name');
+      const descriptionRaw = tableCellText(row, headerIndex, 'description');
+      const costRaw = tableCellText(row, headerIndex, 'casting_cost');
+
+      if (!nameRaw || !descriptionRaw) {
+        continue;
+      }
+
+      const normalizedName = normalizeLabel(nameRaw);
+      buildNormalizationIssue(
+        issues,
+        sourceFileName,
+        sheet.name,
+        row.rowNumber,
+        'name',
+        nameRaw,
+        normalizedName.displayText,
+        `cards[curse-${normalizedName.slug}].name`
+      );
+
+      const cardDefinitionId = `curse-${normalizedName.slug}`;
+
+      cards.push({
+        cardDefinitionId,
+        packId,
+        deckId,
+        kind: 'curse',
+        subtype: 'challenge',
+        name: normalizedName.displayText,
+        shortName: normalizedName.displayText,
+        description: applyWorkbookCorrections(descriptionRaw),
+        automationLevel: 'manual',
+        castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
+        effects: [
+          {
+            effectType: 'curse_challenge',
+            description: applyWorkbookCorrections(descriptionRaw),
+            automationLevel: 'manual',
+            rawText: descriptionRaw,
+            payload: {
+              workbookName: normalizedName.displayText
+            }
+          }
+        ],
+        rewardsOrPenalties: [],
+        requirements: {
+          requiresManualApproval: true
+        },
+        visibilityPolicy: HIDER_DECK_VISIBILITY,
+        tags: ['curse', 'manual-resolution'],
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'name', nameRaw, nameRaw),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'description', descriptionRaw, nameRaw),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'casting_cost', costRaw ?? null, nameRaw)
+        ]
+      });
+
+      entries.push({
+        cardDefinitionId,
+        quantity: 1,
+        weight: perCardWeight,
+        notes: categoryOdds !== null ? `Workbook category odds: ${categoryOdds}` : undefined,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'name', nameRaw, nameRaw),
+          ...(curseDeckRow
+            ? [sourceProvenance(
+                sourceFileName,
+                deckSheet!.name,
+                curseDeckRow.rowNumber,
+                'odds',
+                categoryOdds,
+                'Curses'
+              )]
+            : [])
+        ]
+      });
+    }
+
+    return { cards, entries };
+  }
+
   const cards: CardDefinition[] = [];
   const entries: DeckDefinition['entries'] = [];
   const rows = sheet.rows.filter((row) => rowHasValues(row) && row.rowNumber >= 2);
@@ -660,7 +1076,8 @@ function buildDeckDefinition(
     ownerScope: 'hider_team',
     drawPolicy: {
       shuffleOnCreate: true,
-      reshuffleDiscardIntoDraw: false
+      reshuffleDiscardIntoDraw: false,
+      initialDrawCount: 6
     },
     visibilityPolicy: HIDER_DECK_VISIBILITY,
     entries,
@@ -734,6 +1151,98 @@ function buildMatchingTemplates(
   taxonomyById: Map<string, FeatureTaxonomyEntry>,
   issues: ImportIssue[]
 ): { category: QuestionCategoryDefinition; templates: QuestionTemplateDefinition[] } {
+  if (sheetHasHeaders(sheet, ['subject', 'cost', 'time', 'question'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const rows = dataRowsAfterHeader(sheet);
+    const firstRow = rows[0];
+    const category = buildCategory(
+      sourceFileName,
+      packId,
+      sheet,
+      'matching',
+      'nearest_feature_match',
+      'Matching',
+      tableCellText(firstRow!, headerIndex, 'cost') ?? 'Draw 3, Pick 1',
+      tableCellText(firstRow!, headerIndex, 'time') ?? '5 Minutes',
+      tableCellText(firstRow!, headerIndex, 'question') ?? 'Is your nearest _____ the same as my nearest _____?',
+      allScales(),
+      {
+        kind: 'boolean',
+        allowedValues: ['yes', 'no']
+      },
+      ['nearest-feature-match']
+    );
+
+    const templates: QuestionTemplateDefinition[] = [];
+
+    for (const row of rows) {
+      const rawLabel = tableCellText(row, headerIndex, 'subject');
+      const questionRaw = tableCellText(row, headerIndex, 'question');
+      const costRaw = tableCellText(row, headerIndex, 'cost');
+      const timeRaw = tableCellText(row, headerIndex, 'time');
+
+      if (!rawLabel) {
+        continue;
+      }
+
+      const normalized = normalizeLabel(rawLabel);
+      const featureClassId = registerFeatureTaxonomy(taxonomyById, rawLabel, sourceFileName, sheet.name, row.rowNumber);
+      buildNormalizationIssue(
+        issues,
+        sourceFileName,
+        sheet.name,
+        row.rowNumber,
+        'subject',
+        rawLabel,
+        normalized.displayText,
+        `questionTemplates[matching-${normalized.slug}].name`
+      );
+
+      const constraintRefs = featureClassId.includes('admin')
+        ? ['same-admin-region']
+        : ['nearest-feature-match'];
+
+      templates.push({
+        templateId: `matching-${normalized.slug}`,
+        packId,
+        categoryId: category.categoryId,
+        name: normalized.displayText,
+        promptOverrides: questionRaw ? { promptTemplate: applyWorkbookCorrections(questionRaw) } : undefined,
+        featureClassRefs: [
+          {
+            featureClassId,
+            label: normalized.displayText,
+            rawLabel
+          }
+        ],
+        parameters: workbookQuestionParameters({
+          question: questionRaw,
+          cost: costRaw,
+          time: timeRaw,
+          values: {
+            subjectLabel: normalized.displayText
+          }
+        }),
+        answerSchema: {
+          kind: 'boolean',
+          allowedValues: ['yes', 'no']
+        },
+        resolverConfig: {
+          compareMode: featureClassId.includes('admin') ? 'metadata' : 'nearest_feature'
+        },
+        constraintRefs,
+        scaleSet: allScales(),
+        visibilityPolicy: PUBLIC_VISIBILITY,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'subject', rawLabel, rawLabel),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'question', questionRaw, rawLabel)
+        ]
+      });
+    }
+
+    return { category, templates };
+  }
+
   const category = buildCategory(
     sourceFileName,
     packId,
@@ -818,6 +1327,94 @@ function buildMeasuringTemplates(
   taxonomyById: Map<string, FeatureTaxonomyEntry>,
   issues: ImportIssue[]
 ): { category: QuestionCategoryDefinition; templates: QuestionTemplateDefinition[] } {
+  if (sheetHasHeaders(sheet, ['target', 'cost', 'time', 'question'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const rows = dataRowsAfterHeader(sheet);
+    const firstRow = rows[0];
+    const category = buildCategory(
+      sourceFileName,
+      packId,
+      sheet,
+      'measuring',
+      'comparative_distance',
+      'Measuring',
+      tableCellText(firstRow!, headerIndex, 'cost') ?? 'Draw 3, Pick 1',
+      tableCellText(firstRow!, headerIndex, 'time') ?? '5 Minutes',
+      tableCellText(firstRow!, headerIndex, 'question') ?? 'Compared to me, are you closer to or further from _____?',
+      allScales(),
+      {
+        kind: 'enum',
+        allowedValues: ['closer', 'further', 'same']
+      },
+      ['comparative-distance']
+    );
+
+    const templates: QuestionTemplateDefinition[] = [];
+
+    for (const row of rows) {
+      const rawLabel = tableCellText(row, headerIndex, 'target');
+      const questionRaw = tableCellText(row, headerIndex, 'question');
+      const costRaw = tableCellText(row, headerIndex, 'cost');
+      const timeRaw = tableCellText(row, headerIndex, 'time');
+
+      if (!rawLabel) {
+        continue;
+      }
+
+      const normalized = normalizeLabel(rawLabel);
+      const featureClassId = registerFeatureTaxonomy(taxonomyById, rawLabel, sourceFileName, sheet.name, row.rowNumber);
+      buildNormalizationIssue(
+        issues,
+        sourceFileName,
+        sheet.name,
+        row.rowNumber,
+        'target',
+        rawLabel,
+        normalized.displayText,
+        `questionTemplates[measuring-${normalized.slug}].name`
+      );
+
+      templates.push({
+        templateId: `measuring-${normalized.slug}`,
+        packId,
+        categoryId: category.categoryId,
+        name: normalized.displayText,
+        promptOverrides: questionRaw ? { promptTemplate: applyWorkbookCorrections(questionRaw) } : undefined,
+        featureClassRefs: [
+          {
+            featureClassId,
+            label: normalized.displayText,
+            rawLabel
+          }
+        ],
+        parameters: workbookQuestionParameters({
+          question: questionRaw,
+          cost: costRaw,
+          time: timeRaw,
+          values: {
+            targetLabel: normalized.displayText
+          }
+        }),
+        answerSchema: {
+          kind: 'enum',
+          allowedValues: ['closer', 'further', 'same']
+        },
+        resolverConfig: {
+          comparisonTarget: featureClassId
+        },
+        constraintRefs: ['comparative-distance'],
+        scaleSet: allScales(),
+        visibilityPolicy: PUBLIC_VISIBILITY,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'target', rawLabel, rawLabel),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'question', questionRaw, rawLabel)
+        ]
+      });
+    }
+
+    return { category, templates };
+  }
+
   const category = buildCategory(
     sourceFileName,
     packId,
@@ -897,6 +1494,100 @@ function buildThermometerTemplates(
   sheet: WorkbookSheet,
   issues: ImportIssue[]
 ): { category: QuestionCategoryDefinition; templates: QuestionTemplateDefinition[] } {
+  if (sheetHasHeaders(sheet, ['distance', 'availability', 'cost', 'time', 'question'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const rows = dataRowsAfterHeader(sheet);
+    const firstRow = rows[0];
+    const category = buildCategory(
+      sourceFileName,
+      packId,
+      sheet,
+      'thermometer',
+      'hotter_colder',
+      'Thermometer',
+      tableCellText(firstRow!, headerIndex, 'cost') ?? 'Draw 2, Pick 1',
+      tableCellText(firstRow!, headerIndex, 'time') ?? '5 Minutes',
+      tableCellText(firstRow!, headerIndex, 'question') ?? 'I just traveled (at least) [Distance]. Am I hotter or colder?',
+      allScales(),
+      {
+        kind: 'enum',
+        allowedValues: ['hotter', 'colder', 'same']
+      },
+      ['hotter-colder']
+    );
+
+    const templates: QuestionTemplateDefinition[] = [];
+
+    for (const row of rows) {
+      const rawDistance = tableCellText(row, headerIndex, 'distance');
+      const availabilityRaw = tableCellText(row, headerIndex, 'availability');
+      const costRaw = tableCellText(row, headerIndex, 'cost');
+      const timeRaw = tableCellText(row, headerIndex, 'time');
+      const questionRaw = tableCellText(row, headerIndex, 'question');
+
+      if (!rawDistance) {
+        continue;
+      }
+
+      const distance = parseDistanceValue(rawDistance);
+      if (!distance) {
+        issues.push(
+          createIssue({
+            sheetName: sheet.name,
+            rowNumber: row.rowNumber,
+            columnName: 'distance',
+            fieldPath: 'questionTemplates[].parameters.minimumDistance',
+            severity: 'error',
+            code: 'DISTANCE_PARSE_FAILED',
+            message: 'Could not parse the thermometer distance value.',
+            rawValue: rawDistance,
+            normalizedValue: null,
+            suggestedFix: 'Use a distance value with miles and metric text.',
+            sheetCell: `A${row.rowNumber}`,
+            blocking: true
+          })
+        );
+        continue;
+      }
+
+      const scaleSet = availabilityRaw ? normalizeScaleGate(availabilityRaw) ?? allScales(availabilityRaw) : allScales();
+
+      templates.push({
+        templateId: `thermometer-${Math.round(distance.meters)}`,
+        packId,
+        categoryId: category.categoryId,
+        name: collapseLineBreaks(rawDistance),
+        promptOverrides: questionRaw ? { promptTemplate: applyWorkbookCorrections(questionRaw) } : undefined,
+        parameters: workbookQuestionParameters({
+          question: questionRaw,
+          cost: costRaw,
+          time: timeRaw,
+          availability: availabilityRaw,
+          values: {
+            minimumDistance: distance
+          }
+        }),
+        answerSchema: {
+          kind: 'enum',
+          allowedValues: ['hotter', 'colder', 'same']
+        },
+        resolverConfig: {
+          requiresSeekerMovementHistory: true
+        },
+        constraintRefs: ['hotter-colder'],
+        scaleSet,
+        visibilityPolicy: PUBLIC_VISIBILITY,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'distance', rawDistance, rawDistance),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'availability', availabilityRaw, rawDistance),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'question', questionRaw, rawDistance)
+        ]
+      });
+    }
+
+    return { category, templates };
+  }
+
   const category = buildCategory(
     sourceFileName,
     packId,
@@ -984,6 +1675,143 @@ function buildRadarTemplates(
   sheet: WorkbookSheet,
   issues: ImportIssue[]
 ): { category: QuestionCategoryDefinition; templates: QuestionTemplateDefinition[] } {
+  if (sheetHasHeaders(sheet, ['distance', 'cost', 'time', 'question'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const rows = dataRowsAfterHeader(sheet);
+    const firstRow = rows[0];
+    const category = buildCategory(
+      sourceFileName,
+      packId,
+      sheet,
+      'radar',
+      'threshold_distance',
+      'Radar',
+      tableCellText(firstRow!, headerIndex, 'cost') ?? 'Draw 2, Pick 1',
+      tableCellText(firstRow!, headerIndex, 'time') ?? '5 Minutes',
+      tableCellText(firstRow!, headerIndex, 'question') ?? 'Are you within [Distance] of me?',
+      allScales(),
+      {
+        kind: 'boolean',
+        allowedValues: ['yes', 'no']
+      },
+      ['within-radius', 'outside-radius']
+    );
+
+    const templates: QuestionTemplateDefinition[] = [];
+
+    for (const row of rows) {
+      const rawDistance = tableCellText(row, headerIndex, 'distance');
+      const costRaw = tableCellText(row, headerIndex, 'cost');
+      const timeRaw = tableCellText(row, headerIndex, 'time');
+      const questionRaw = tableCellText(row, headerIndex, 'question');
+
+      if (!rawDistance) {
+        continue;
+      }
+
+      if (collapseLineBreaks(rawDistance).toLowerCase() === 'choose') {
+        templates.push({
+          templateId: 'radar-choose',
+          packId,
+          categoryId: category.categoryId,
+          name: 'Choose Distance',
+          promptOverrides: questionRaw ? { promptTemplate: applyWorkbookCorrections(questionRaw) } : undefined,
+          parameters: workbookQuestionParameters({
+            question: questionRaw,
+            cost: costRaw,
+            time: timeRaw,
+            values: {
+              distanceMode: 'manual-choice'
+            }
+          }),
+          answerSchema: {
+            kind: 'boolean',
+            allowedValues: ['yes', 'no']
+          },
+          resolverConfig: {
+            requiresRulesetDefinedChoiceBounds: true
+          },
+          constraintRefs: ['within-radius', 'outside-radius'],
+          scaleSet: allScales(),
+          visibilityPolicy: PUBLIC_VISIBILITY,
+          sourceProvenance: [
+            sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'distance', rawDistance, rawDistance)
+          ]
+        });
+
+        issues.push(
+          createIssue({
+            sheetName: sheet.name,
+            rowNumber: row.rowNumber,
+            columnName: 'distance',
+            fieldPath: 'questionTemplates[radar-choose].parameters.distanceMode',
+            severity: 'warning',
+            code: 'AMBIGUOUS_MANUAL_TEMPLATE',
+            message: 'The workbook includes a `Choose` radar row without bounded choice rules.',
+            rawValue: rawDistance,
+            normalizedValue: 'manual-choice',
+            suggestedFix: 'Provide a ruleset or editor-authored bounded distance policy before publishing.',
+            sheetCell: `A${row.rowNumber}`
+          })
+        );
+        continue;
+      }
+
+      const distance = parseDistanceValue(rawDistance);
+      if (!distance) {
+        issues.push(
+          createIssue({
+            sheetName: sheet.name,
+            rowNumber: row.rowNumber,
+            columnName: 'distance',
+            fieldPath: 'questionTemplates[].parameters.distanceThreshold',
+            severity: 'error',
+            code: 'DISTANCE_PARSE_FAILED',
+            message: 'Could not parse the radar distance value.',
+            rawValue: rawDistance,
+            normalizedValue: null,
+            suggestedFix: 'Use a distance value with miles and metric text.',
+            sheetCell: `A${row.rowNumber}`,
+            blocking: true
+          })
+        );
+        continue;
+      }
+
+      templates.push({
+        templateId: `radar-${Math.round(distance.meters)}`,
+        packId,
+        categoryId: category.categoryId,
+        name: collapseLineBreaks(rawDistance),
+        promptOverrides: questionRaw ? { promptTemplate: applyWorkbookCorrections(questionRaw) } : undefined,
+        parameters: workbookQuestionParameters({
+          question: questionRaw,
+          cost: costRaw,
+          time: timeRaw,
+          values: {
+            distanceThreshold: distance
+          }
+        }),
+        answerSchema: {
+          kind: 'boolean',
+          allowedValues: ['yes', 'no']
+        },
+        resolverConfig: {
+          thresholdMeters: distance.meters
+        },
+        constraintRefs: ['within-radius', 'outside-radius'],
+        scaleSet: allScales(),
+        visibilityPolicy: PUBLIC_VISIBILITY,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'distance', rawDistance, rawDistance),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'question', questionRaw, rawDistance)
+        ]
+      });
+    }
+
+    return { category, templates };
+  }
+
   const category = buildCategory(
     sourceFileName,
     packId,
@@ -1109,6 +1937,133 @@ function buildTentaclesTemplates(
   taxonomyById: Map<string, FeatureTaxonomyEntry>,
   issues: ImportIssue[]
 ): { category: QuestionCategoryDefinition; templates: QuestionTemplateDefinition[] } {
+  if (sheetHasHeaders(sheet, ['place', 'distance', 'availability', 'cost', 'time', 'question'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const rows = dataRowsAfterHeader(sheet);
+    const firstRow = rows[0];
+    const category: QuestionCategoryDefinition = {
+      categoryId: 'tentacles',
+      packId,
+      name: 'Tentacles',
+      resolverKind: 'nearest_candidate',
+      promptTemplate: applyWorkbookCorrections(
+        tableCellText(firstRow!, headerIndex, 'question') ?? 'Of all the [Places] within [Distance] of me, which are you closest to?'
+      ),
+      drawRule: parseDrawRule(tableCellText(firstRow!, headerIndex, 'cost') ?? 'Draw 4, Pick 2') ?? {
+        drawCount: 4,
+        pickCount: 2,
+        rawText: 'Draw 4, Pick 2'
+      },
+      defaultTimerPolicy: {
+        kind: 'fixed',
+        durationSeconds: (parseFixedMinutes(tableCellText(firstRow!, headerIndex, 'time') ?? '5 Minutes') as TimeValue).seconds,
+        pauseBehavior: 'freeze',
+        extensionPolicy: 'manual_only'
+      },
+      defaultAnswerSchema: {
+        kind: 'feature_choice'
+      },
+      visibilityPolicy: PUBLIC_VISIBILITY,
+      scaleSet: allScales(),
+      defaultConstraintRefs: ['nearest-candidate-feature'],
+      sourceProvenance: [
+        sourceProvenance(sourceFileName, sheet.name, 1, 'place', 'Tentacles', 'Tentacles')
+      ]
+    };
+
+    const templates: QuestionTemplateDefinition[] = [];
+
+    for (const row of rows) {
+      const rawPlace = tableCellText(row, headerIndex, 'place');
+      const rawDistance = tableCellText(row, headerIndex, 'distance');
+      const availabilityRaw = tableCellText(row, headerIndex, 'availability');
+      const costRaw = tableCellText(row, headerIndex, 'cost');
+      const timeRaw = tableCellText(row, headerIndex, 'time');
+      const questionRaw = tableCellText(row, headerIndex, 'question');
+
+      if (!rawPlace || !rawDistance) {
+        continue;
+      }
+
+      const normalizedPlace = normalizeLabel(rawPlace);
+      const distance = parseDistanceValue(rawDistance);
+
+      if (!distance) {
+        issues.push(
+          createIssue({
+            sheetName: sheet.name,
+            rowNumber: row.rowNumber,
+            columnName: 'distance',
+            fieldPath: 'questionTemplates[].parameters.distanceThreshold',
+            severity: 'error',
+            code: 'DISTANCE_PARSE_FAILED',
+            message: 'Could not parse the Tentacles distance value.',
+            rawValue: rawDistance,
+            normalizedValue: null,
+            suggestedFix: 'Use a distance value with miles and metric text.',
+            sheetCell: `B${row.rowNumber}`,
+            blocking: true
+          })
+        );
+        continue;
+      }
+
+      const scaleSet = availabilityRaw ? normalizeScaleGate(availabilityRaw) ?? allScales(availabilityRaw) : allScales();
+      const featureClassId = registerFeatureTaxonomy(taxonomyById, rawPlace, sourceFileName, sheet.name, row.rowNumber);
+      buildNormalizationIssue(
+        issues,
+        sourceFileName,
+        sheet.name,
+        row.rowNumber,
+        'place',
+        rawPlace,
+        normalizedPlace.displayText,
+        `questionTemplates[tentacles-${normalizedPlace.slug}-${Math.round(distance.meters)}].name`
+      );
+
+      templates.push({
+        templateId: `tentacles-${normalizedPlace.slug}-${Math.round(distance.meters)}`,
+        packId,
+        categoryId: category.categoryId,
+        name: `${normalizedPlace.displayText} within ${Math.round(distance.meters)}m`,
+        promptOverrides: questionRaw ? { promptTemplate: applyWorkbookCorrections(questionRaw) } : undefined,
+        featureClassRefs: [
+          {
+            featureClassId,
+            label: normalizedPlace.displayText,
+            rawLabel: rawPlace
+          }
+        ],
+        parameters: workbookQuestionParameters({
+          question: questionRaw,
+          cost: costRaw,
+          time: timeRaw,
+          availability: availabilityRaw,
+          values: {
+            placeLabel: normalizedPlace.displayText,
+            distanceThreshold: distance
+          }
+        }),
+        answerSchema: {
+          kind: 'feature_choice'
+        },
+        resolverConfig: {
+          candidateSource: 'nearby_features'
+        },
+        constraintRefs: ['nearest-candidate-feature'],
+        scaleSet,
+        visibilityPolicy: PUBLIC_VISIBILITY,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'place', rawPlace, rawPlace),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'distance', rawDistance, rawPlace),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'availability', availabilityRaw, rawPlace)
+        ]
+      });
+    }
+
+    return { category, templates };
+  }
+
   const category = {
     categoryId: 'tentacles',
     packId,
@@ -1236,6 +2191,124 @@ function buildPhotosTemplates(
   sheet: WorkbookSheet,
   issues: ImportIssue[]
 ): { category: QuestionCategoryDefinition; templates: QuestionTemplateDefinition[] } {
+  if (sheetHasHeaders(sheet, ['subject', 'requirements', 'availability', 'cost', 'time', 'question'])) {
+    const headerIndex = buildHeaderIndex(sheet);
+    const rows = dataRowsAfterHeader(sheet);
+    const firstRow = rows[0];
+    const timerByScale = parseScaleAwareMinutes(tableCellText(firstRow!, headerIndex, 'time') ?? 'S/M: 10 Minutes L: 20 Minutes');
+
+    if (!timerByScale) {
+      throw new Error('Unable to parse Photos timer policy.');
+    }
+
+    const category: QuestionCategoryDefinition = {
+      categoryId: 'photos',
+      packId,
+      name: 'Photos',
+      resolverKind: 'photo_challenge',
+      promptTemplate: applyWorkbookCorrections(tableCellText(firstRow!, headerIndex, 'question') ?? 'Send a photo of [subject].'),
+      drawRule: parseDrawRule(tableCellText(firstRow!, headerIndex, 'cost') ?? 'Draw 1') ?? {
+        drawCount: 1,
+        pickCount: 1,
+        rawText: 'Draw 1'
+      },
+      defaultTimerPolicy: {
+        kind: 'by_scale',
+        durationSecondsByScale: timerByScale,
+        pauseBehavior: 'freeze',
+        extensionPolicy: 'manual_only'
+      },
+      defaultAnswerSchema: {
+        kind: 'attachment',
+        minAttachments: 1
+      },
+      visibilityPolicy: PHOTO_VISIBILITY,
+      scaleSet: allScales(),
+      defaultConstraintRefs: ['photo-evidence', 'manual-review-only'],
+      sourceProvenance: [
+        sourceProvenance(sourceFileName, sheet.name, 1, 'subject', 'Photos', 'Photos')
+      ]
+    };
+
+    const templates: QuestionTemplateDefinition[] = [];
+
+    for (const row of rows) {
+      const rawSubject = tableCellText(row, headerIndex, 'subject');
+      const rawRequirements = tableCellText(row, headerIndex, 'requirements');
+      const availabilityRaw = tableCellText(row, headerIndex, 'availability');
+      const costRaw = tableCellText(row, headerIndex, 'cost');
+      const timeRaw = tableCellText(row, headerIndex, 'time');
+      const questionRaw = tableCellText(row, headerIndex, 'question');
+
+      if (!rawSubject) {
+        continue;
+      }
+
+      const normalizedSubject = normalizeLabel(rawSubject);
+      buildNormalizationIssue(
+        issues,
+        sourceFileName,
+        sheet.name,
+        row.rowNumber,
+        'subject',
+        rawSubject,
+        normalizedSubject.displayText,
+        `questionTemplates[photos-${normalizedSubject.slug}].name`
+      );
+
+      const requirements: RequirementDefinition[] = [
+        {
+          requirementType: 'photo',
+          description: 'Provide at least one photo attachment.',
+          rawText: rawRequirements
+        },
+        {
+          requirementType: 'manual_approval',
+          description: applyWorkbookCorrections(rawRequirements ?? 'Manual review required.'),
+          rawText: rawRequirements
+        }
+      ];
+
+      const scaleSet = availabilityRaw ? normalizeScaleGate(availabilityRaw) ?? allScales(availabilityRaw) : allScales();
+
+      templates.push({
+        templateId: `photos-${normalizedSubject.slug}`,
+        packId,
+        categoryId: category.categoryId,
+        name: normalizedSubject.displayText,
+        promptOverrides: questionRaw ? { promptTemplate: applyWorkbookCorrections(questionRaw) } : undefined,
+        parameters: workbookQuestionParameters({
+          question: questionRaw,
+          cost: costRaw,
+          time: timeRaw,
+          availability: availabilityRaw,
+          requirements: rawRequirements,
+          values: {
+            subject: normalizedSubject.displayText
+          }
+        }),
+        answerSchema: {
+          kind: 'attachment',
+          minAttachments: 1
+        },
+        resolverConfig: {
+          requiresManualApproval: true
+        },
+        constraintRefs: ['photo-evidence', 'manual-review-only'],
+        requirements,
+        scaleSet,
+        visibilityPolicy: PHOTO_VISIBILITY,
+        sourceProvenance: [
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'subject', rawSubject, rawSubject),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'requirements', rawRequirements, rawSubject),
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'availability', availabilityRaw, rawSubject)
+        ]
+      });
+    }
+
+    return { category, templates };
+  }
+
   const timerByScale = parseScaleAwareMinutes(cellText(sheet.rows[2], 1) ?? 'S/M: 10 Minutes L: 20 Minutes');
 
   if (!timerByScale) {
@@ -1364,7 +2437,11 @@ function buildPhotosTemplates(
 }
 
 export function looksLikeJetLagWorkbook(document: WorkbookDocument): boolean {
-  return EXPECTED_SHEETS.every((sheetName) => document.sheets.some((sheet) => sheet.name === sheetName));
+  const sheetNames = new Set(document.sheets.map((sheet) => sheet.name));
+  const matchesCleaned = CLEANED_EXPECTED_SHEETS.every((sheetName) => sheetNames.has(sheetName));
+  const matchesLegacy = LEGACY_EXPECTED_SHEETS.every((sheetName) => sheetNames.has(sheetName));
+
+  return matchesCleaned || matchesLegacy;
 }
 
 export function mapJetLagWorkbookToContentPack(
@@ -1374,21 +2451,21 @@ export function mapJetLagWorkbookToContentPack(
   const sourceFileName = document.sourceFileName;
   const packId = 'jet-lag-the-game-seed';
 
-  const deckSheet = getSheet(document, 'Hider Deck');
-  const cursesSheet = getSheet(document, '💀Curses');
-  const matchingSheet = getSheet(document, '1. Matching');
-  const measuringSheet = getSheet(document, '2. Measuring');
-  const thermometerSheet = getSheet(document, '3. Thermometer');
-  const radarSheet = getSheet(document, '4. Radar');
-  const tentaclesSheet = getSheet(document, '5. Tentacles');
-  const photosSheet = getSheet(document, '6. Photos');
+  const deckSheet = getSheetByAliases(document, SHEET_ALIASES.hiderDeck);
+  const cursesSheet = getSheetByAliases(document, SHEET_ALIASES.curses);
+  const matchingSheet = getSheetByAliases(document, SHEET_ALIASES.matching);
+  const measuringSheet = getSheetByAliases(document, SHEET_ALIASES.measuring);
+  const thermometerSheet = getSheetByAliases(document, SHEET_ALIASES.thermometer);
+  const radarSheet = getSheetByAliases(document, SHEET_ALIASES.radar);
+  const tentaclesSheet = getSheetByAliases(document, SHEET_ALIASES.tentacles);
+  const photosSheet = getSheetByAliases(document, SHEET_ALIASES.photos);
 
   const featureTaxonomy = new Map<string, FeatureTaxonomyEntry>();
 
   const timeBonus = buildTimeBonusCards(sourceFileName, packId, 'hider-main', deckSheet, issues);
   const powerUps = buildPowerUpCards(sourceFileName, packId, 'hider-main', deckSheet, issues);
   const blankCard = buildBlankCard(sourceFileName, packId, 'hider-main', deckSheet);
-  const curses = buildCurseCards(sourceFileName, packId, 'hider-main', cursesSheet, issues);
+  const curses = buildCurseCards(sourceFileName, packId, 'hider-main', cursesSheet, issues, deckSheet);
 
   const cards = [
     ...timeBonus.cards,
@@ -1433,7 +2510,10 @@ export function mapJetLagWorkbookToContentPack(
 
   const unmappedSheets = document.sheets
     .map((sheet) => sheet.name)
-    .filter((sheetName) => !EXPECTED_SHEETS.includes(sheetName) || sheetName === 'Form Responses 1');
+    .filter((sheetName) =>
+      ![...LEGACY_EXPECTED_SHEETS, ...CLEANED_EXPECTED_SHEETS].includes(sheetName) ||
+      sheetName === 'Form Responses 1'
+    );
 
   if (unmappedSheets.includes('Form Responses 1')) {
     issues.push(

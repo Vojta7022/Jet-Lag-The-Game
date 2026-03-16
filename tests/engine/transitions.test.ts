@@ -2,11 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { executeCommand } from '../../packages/engine/src/index.ts';
-import { loadEngineTestContentPack, makeEnvelope, setupMatchToSeekReady } from './helpers.ts';
+import { getCurrentQuestionTemplate, loadEngineTestContentPack, makeEnvelope, setupMatchToSeekReady } from './helpers.ts';
 
 test('core state machine transitions flow from hide phase into question cooldown and back to ready', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
+  const matchingTemplate = getCurrentQuestionTemplate(
+    aggregate,
+    contentPack,
+    'matching',
+    'matching-commercial-airport'
+  );
 
   assert.equal(aggregate.lifecycleState, 'seek_phase');
   assert.equal(aggregate.seekPhaseSubstate, 'ready');
@@ -33,7 +39,7 @@ test('core state machine transitions flow from hide phase into question cooldown
         type: 'ask_question',
         payload: {
           questionInstanceId: 'question-1',
-          templateId: 'matching-commercial-airport',
+          templateId: matchingTemplate.templateId,
           targetTeamId: 'team-hider'
         }
       },

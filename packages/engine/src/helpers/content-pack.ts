@@ -4,6 +4,7 @@ import type {
   ContentPack,
   QuestionCategoryDefinition,
   QuestionTemplateDefinition,
+  ScaleKey,
   RulesetDefinition
 } from '../../../shared-types/src/index.ts';
 
@@ -69,6 +70,34 @@ export function getQuestionCooldownSeconds(
 
   if (typeof categoryDuration === 'number' && categoryDuration > 0) {
     return categoryDuration;
+  }
+
+  return 300;
+}
+
+export function getQuestionTimerSeconds(
+  contentPack: ContentPack,
+  templateId: string,
+  selectedScale: ScaleKey | undefined
+): number {
+  const template = getQuestionTemplate(contentPack, templateId);
+  const category = template ? getQuestionCategory(contentPack, template.categoryId) : undefined;
+  const timerPolicy = category?.defaultTimerPolicy;
+
+  if (!timerPolicy) {
+    return 300;
+  }
+
+  if (timerPolicy.kind === 'fixed' && typeof timerPolicy.durationSeconds === 'number' && timerPolicy.durationSeconds > 0) {
+    return timerPolicy.durationSeconds;
+  }
+
+  if (
+    timerPolicy.kind === 'by_scale' &&
+    selectedScale &&
+    typeof timerPolicy.durationSecondsByScale?.[selectedScale] === 'number'
+  ) {
+    return timerPolicy.durationSecondsByScale[selectedScale]!;
   }
 
   return 300;

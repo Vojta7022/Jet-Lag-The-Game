@@ -18,7 +18,7 @@ export function GameplayTabBar(props: GameplayTabBarProps) {
   const items = buildGameplayTabItems({
     role,
     visibleCardCount: activeMatch?.projection.visibleCards.length ?? 0
-  });
+  }, props.current);
 
   return (
     <View style={styles.container}>
@@ -35,6 +35,7 @@ export function GameplayTabBar(props: GameplayTabBarProps) {
             }}
             style={({ pressed }) => [
               styles.item,
+              item.key === 'map' ? styles.itemMap : null,
               isActive ? styles.itemActive : null,
               pressed && !isActive ? styles.itemPressed : null
             ]}
@@ -64,6 +65,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     minHeight: 52,
     paddingHorizontal: 8
+  },
+  itemMap: {
+    flex: 1.2
   },
   itemActive: {
     backgroundColor: colors.accentMuted,

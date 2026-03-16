@@ -1,4 +1,5 @@
 import type {
+  CardKind,
   ConstraintDefinition,
   ContentPack,
   FeatureClassRef,
@@ -266,6 +267,18 @@ export interface CardResolutionWindow {
   sourceCardInstanceId: string;
   openedAt: string;
   openedByPlayerId: string;
+  resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus';
+  discardRequirement?: {
+    requiredCards?: number;
+    requiredKind?: CardKind;
+    discardWholeHand?: boolean;
+  };
+  drawCountOnResolve?: number;
+  timeBonusMinutes?: number;
+  sourceDeckId?: string;
+  holderType?: CardHolderType;
+  holderId?: string;
+  openingHandCardInstanceIds?: string[];
 }
 
 export interface MatchAggregate {

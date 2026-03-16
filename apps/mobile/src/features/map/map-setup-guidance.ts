@@ -73,3 +73,33 @@ export function buildAppliedRegionDraft(
     }
   ];
 }
+
+export function resolveMapCanvasPreviewRegion(args: {
+  appliedMap?: VisibleMapProjection;
+  compositePreviewRegion?: PlayableRegionCatalogEntry;
+  searchPreviewRegion?: PlayableRegionCatalogEntry;
+  liveGameplayState: boolean;
+  loadState: 'idle' | 'loading' | 'ready' | 'error';
+}): PlayableRegionCatalogEntry | undefined {
+  const draftPreviewRegion = args.compositePreviewRegion ?? args.searchPreviewRegion;
+
+  if (!draftPreviewRegion) {
+    return undefined;
+  }
+
+  if (args.liveGameplayState) {
+    return undefined;
+  }
+
+  if (!args.appliedMap) {
+    return draftPreviewRegion;
+  }
+
+  if (args.loadState === 'error') {
+    return undefined;
+  }
+
+  return draftPreviewRegion.regionId === args.appliedMap.regionId
+    ? undefined
+    : draftPreviewRegion;
+}

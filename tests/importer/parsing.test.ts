@@ -4,29 +4,28 @@ import { fileURLToPath } from 'node:url';
 
 import { pythonWorkbookParser } from '../../packages/content-import/src/xlsx/python-workbook-parser.ts';
 
-const workbookPath = fileURLToPath(new URL('../../Jet Lag The Game.xlsx', import.meta.url));
+const workbookPath = fileURLToPath(new URL('../../Jet Lag The Game - cleaned for import.xlsx', import.meta.url));
 
 test('python workbook parser reads the expected workbook sheets', () => {
   const workbook = pythonWorkbookParser.parse(workbookPath);
 
-  assert.equal(workbook.sourceFileName, 'Jet Lag The Game.xlsx');
+  assert.equal(workbook.sourceFileName, 'Jet Lag The Game - cleaned for import.xlsx');
   assert.deepEqual(
     workbook.sheets.map((sheet) => sheet.name),
     [
-      'Form Responses 1',
-      'Hider Deck',
-      '💀Curses',
-      '1. Matching',
-      '2. Measuring',
-      '3. Thermometer',
-      '4. Radar',
-      '5. Tentacles',
-      '6. Photos'
+      'Curses',
+      'Matching',
+      'Measuring',
+      'Thermometer',
+      'Radar',
+      'Tentacles',
+      'Photos',
+      'Hider Deck'
     ]
   );
 
   const hiderDeck = workbook.sheets.find((sheet) => sheet.name === 'Hider Deck');
   assert.ok(hiderDeck);
-  assert.equal(hiderDeck.maxRow, 20);
-  assert.equal(hiderDeck.rows[1]?.values[2], 'Red\n2m, 3m, 5m');
+  assert.equal(hiderDeck.maxRow, 15);
+  assert.equal(hiderDeck.rows[1]?.values[1], 'Red 2m, 3m, 5m');
 });

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the canonical import model for content packs, with `Jet Lag The Game.xlsx` as the first supported workbook. The importer must normalize workbook content into versioned JSON that is safe for long-term reuse, testing, and later content-pack authoring.
+This document defines the canonical import model for content packs, with `Jet Lag The Game - cleaned for import.xlsx` as the preferred workbook source. The importer must normalize workbook content into versioned JSON that is safe for long-term reuse, testing, and later content-pack authoring. Legacy workbook variants can still be supported behind the mapping profile.
 
 The canonical source of truth is JSON Schema Draft 2020-12. TypeScript and runtime validators should be generated or mirrored from these contracts later, but they are not the source of truth for Phase 0.
 
@@ -16,19 +16,20 @@ The canonical source of truth is JSON Schema Draft 2020-12. TypeScript and runti
 
 ## Workbook Inventory
 
-The current workbook contains these sheets:
+The cleaned workbook currently contains these sheets:
 
 | Sheet | Observed Structure | Canonical Mapping | Notes |
 | --- | --- | --- | --- |
-| `Form Responses 1` | empty in the provided workbook | ignored in v1, retained in provenance metadata if present | not treated as game content |
-| `Hider Deck` | merged summary sheet with formulas and grouped rows | one `DeckDefinition`, several `CardDefinition`s, and `DeckEntry`s | curses are summarized here but defined on another sheet |
-| `💀Curses` | 24 two-row pairs: curse row plus casting-cost row | 24 curse `CardDefinition`s | use generic challenge/effect card model |
-| `1. Matching` | header block plus body rows | one `QuestionCategoryDefinition` plus one `QuestionTemplateDefinition` per body row | feature-match yes/no questions |
-| `2. Measuring` | header block plus body rows | one category plus templates | comparative distance questions |
-| `3. Thermometer` | header block, scale-gate rows, distance rows | one category plus templates | depends on seeker movement history |
-| `4. Radar` | header block plus distance rows | one category plus templates | includes ambiguous `Choose` row |
-| `5. Tentacles` | header block, scale-gate rows, place+distance rows | one category plus templates | nearest candidate among nearby features |
-| `6. Photos` | header block, scale-gate rows, subject+requirements rows | one category plus templates | title cell says `Radar`, but the sheet content clearly describes photo prompts |
+| `Curses` | tabular rows with `name`, `description`, `casting_cost` | curse `CardDefinition`s plus casting-cost text | exact workbook wording should be preserved in card UI |
+| `Matching` | tabular rows with `subject`, `cost`, `time`, `question` | one `QuestionCategoryDefinition` plus one `QuestionTemplateDefinition` per row | subject-driven yes/no wording |
+| `Measuring` | tabular rows with `target`, `cost`, `time`, `question` | one category plus templates | target-driven comparative distance questions |
+| `Thermometer` | tabular rows with `distance`, `availability`, `cost`, `time`, `question`, `notes` | one category plus templates | uses seeker movement history and workbook availability text |
+| `Radar` | tabular rows with `distance`, `cost`, `time`, `question`, `notes` | one category plus templates | threshold-distance questions, including ambiguous rows that may still map to draft/manual templates |
+| `Tentacles` | tabular rows with `place`, `distance`, `availability`, `cost`, `time`, `question` | one category plus templates | nearest-candidate questions with imported place and availability text |
+| `Photos` | tabular rows with `subject`, `requirements`, `availability`, `cost`, `time`, `question` | one category plus templates | photo prompts with imported requirements and timing |
+| `Hider Deck` | tabular rows with `category`, `card`, `quantity`, `odds` | one `DeckDefinition`, several `CardDefinition`s, and `DeckEntry`s | time bonuses, power-ups, blanks, and curse odds all originate here |
+
+Legacy workbook layouts can still be supported in the mapping profile, but the cleaned workbook above is the preferred import source.
 
 ## Workbook-Specific Normalization
 

@@ -12,14 +12,25 @@ test('gameplay tab bar keeps the live player flow focused on map, questions, dec
     role: 'seeker',
     visibleCardCount: 0
   });
+  const hiderQuestionItems = buildGameplayTabItems(
+    {
+      role: 'hider',
+      visibleCardCount: 6
+    },
+    'questions'
+  );
 
   assert.deepEqual(
     hiderItems.map((item) => item.key),
-    ['map', 'questions', 'deck', 'chat', 'dice']
+    ['map', 'deck', 'chat', 'dice']
   );
   assert.deepEqual(
     seekerItems.map((item) => item.key),
     ['map', 'questions', 'chat', 'dice']
+  );
+  assert.deepEqual(
+    hiderQuestionItems.map((item) => item.key),
+    ['map', 'questions', 'deck', 'chat', 'dice']
   );
   assert.equal(isLiveGameplayState('seek_phase'), true);
   assert.equal(isLiveGameplayState('map_setup'), false);

@@ -74,7 +74,7 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Why this result is rated this way</Text>
+            <Text style={styles.sectionTitle}>Why the clue landed this way</Text>
             <Text style={styles.copy}>{model?.resolutionDetail}</Text>
             {props.constraint ? (
               <>
@@ -87,7 +87,7 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
                   <Text style={styles.value}>{model?.confidenceLabel}</Text>
                 </View>
                 <View style={styles.row}>
-                  <Text style={styles.label}>Visible Map Layers</Text>
+                  <Text style={styles.label}>Visible clue layers</Text>
                   <Text style={styles.value}>{model?.artifactCountLabel}</Text>
                 </View>
                 {model?.contradictionSummary ? (
@@ -97,7 +97,7 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
                 ) : null}
               </>
             ) : (
-              <Text style={styles.copy}>Constraint resolution is still pending.</Text>
+              <Text style={styles.copy}>The map has not been updated from this clue yet.</Text>
             )}
           </View>
 
@@ -119,7 +119,7 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
 
           {model?.reasoningSteps.length ? (
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>How the runtime explained it</Text>
+              <Text style={styles.sectionTitle}>How the game explained it</Text>
               {model.reasoningSteps.map((step, index) => (
                 <Text key={`${props.constraint?.constraintRecordId ?? question.questionInstanceId}:${index}`} style={styles.step}>
                   {index + 1}. {step}

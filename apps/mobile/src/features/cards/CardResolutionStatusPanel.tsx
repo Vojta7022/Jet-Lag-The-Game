@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import type { MatchProjection } from '../../../../../packages/shared-types/src/index.ts';
 import type { ResolvedVisibleCardModel } from './card-catalog.ts';
 
 import { CardAutomationPill } from './CardAutomationPill.tsx';
@@ -13,6 +14,7 @@ import { colors } from '../../ui/theme.ts';
 
 interface CardResolutionStatusPanelProps {
   activeCard?: ResolvedVisibleCardModel;
+  resolution?: MatchProjection['activeCardResolution'];
   disabled?: boolean;
   canResolve: boolean;
   resolveDisabledReason?: string;
@@ -22,6 +24,19 @@ interface CardResolutionStatusPanelProps {
 export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps) {
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
+  const discardRequirement = props.resolution?.discardRequirement;
+  const discardDetail = discardRequirement?.discardWholeHand
+    ? 'Discard the rest of the opening hand before closing this window.'
+    : discardRequirement?.requiredCards
+      ? discardRequirement.requiredKind
+        ? `Discard ${discardRequirement.requiredCards} ${discardRequirement.requiredKind.replace(/_/g, ' ')} card${discardRequirement.requiredCards === 1 ? '' : 's'} first.`
+        : `Discard ${discardRequirement.requiredCards} other card${discardRequirement.requiredCards === 1 ? '' : 's'} first.`
+      : undefined;
+  const followThroughDetail = props.resolution?.drawCountOnResolve
+    ? `Closing this window will draw ${props.resolution.drawCountOnResolve} replacement card${props.resolution.drawCountOnResolve === 1 ? '' : 's'} automatically.`
+    : props.resolution?.timeBonusMinutes
+      ? `This effect adds ${props.resolution.timeBonusMinutes} minute${props.resolution.timeBonusMinutes === 1 ? '' : 's'} to the active hide timer.`
+      : undefined;
 
   return (
     <View style={styles.container}>
@@ -56,6 +71,8 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             <Text style={styles.copy}>
               Players or a referee still need to handle any unresolved manual steps themselves before the match can continue.
             </Text>
+            {discardDetail ? <Text style={styles.copy}>{discardDetail}</Text> : null}
+            {followThroughDetail ? <Text style={styles.copy}>{followThroughDetail}</Text> : null}
             {props.resolveDisabledReason ? (
               <Text style={styles.warning}>{props.resolveDisabledReason}</Text>
             ) : null}

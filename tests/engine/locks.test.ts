@@ -2,11 +2,23 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { EngineCommandError, executeCommand } from '../../packages/engine/src/index.ts';
-import { loadEngineTestContentPack, makeEnvelope, moveCardToTeamHand, setupMatchToSeekReady } from './helpers.ts';
+import {
+  getCurrentQuestionTemplate,
+  loadEngineTestContentPack,
+  makeEnvelope,
+  moveCardToTeamHand,
+  setupMatchToSeekReady
+} from './helpers.ts';
 
 test('question flow and card resolution windows lock correctly', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
+  const matchingTemplate = getCurrentQuestionTemplate(
+    aggregate,
+    contentPack,
+    'matching',
+    'matching-commercial-airport'
+  );
 
   aggregate = executeCommand(
     aggregate,
@@ -28,7 +40,7 @@ test('question flow and card resolution windows lock correctly', () => {
         type: 'ask_question',
         payload: {
           questionInstanceId: 'question-lock',
-          templateId: 'matching-commercial-airport',
+          templateId: matchingTemplate.templateId,
           targetTeamId: 'team-hider'
         }
       },
@@ -48,7 +60,7 @@ test('question flow and card resolution windows lock correctly', () => {
             type: 'ask_question',
             payload: {
               questionInstanceId: 'question-locked-2',
-              templateId: 'matching-commercial-airport',
+              templateId: matchingTemplate.templateId,
               targetTeamId: 'team-hider'
             }
           },

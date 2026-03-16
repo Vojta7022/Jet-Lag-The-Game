@@ -37,8 +37,8 @@ Project rules and engineering instructions:
 
 ## Content input
 
-The first real content pack comes from:
-- `Jet Lag The Game.xlsx`
+The first real content pack now comes from the cleaned workbook seed:
+- `Jet Lag The Game - cleaned for import.xlsx`
 
 This workbook should be imported into canonical JSON content definitions rather than hardcoded directly into the app.
 
@@ -85,7 +85,7 @@ Run the workbook importer:
 npm run import:jetlag
 ```
 
-This reads `Jet Lag The Game.xlsx` and writes:
+This reads `Jet Lag The Game - cleaned for import.xlsx` and writes:
 
 - `samples/generated/jet-lag-the-game.content-pack.json`
 - `samples/generated/jet-lag-the-game.import-report.json`

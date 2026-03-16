@@ -417,7 +417,11 @@ export function buildMatchProjection(
       ? undefined
       : aggregate.activeCardResolution
         ? {
-            sourceCardInstanceId: aggregate.activeCardResolution.sourceCardInstanceId
+            sourceCardInstanceId: aggregate.activeCardResolution.sourceCardInstanceId,
+            resolutionKind: aggregate.activeCardResolution.resolutionKind,
+            discardRequirement: aggregate.activeCardResolution.discardRequirement,
+            drawCountOnResolve: aggregate.activeCardResolution.drawCountOnResolve,
+            timeBonusMinutes: aggregate.activeCardResolution.timeBonusMinutes
           }
         : undefined;
 

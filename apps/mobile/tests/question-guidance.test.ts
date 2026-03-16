@@ -11,6 +11,9 @@ import {
   describeExpectedAnswerGuidance,
   describeQuestionImpactExpectation,
   describeQuestionTemplateForPlayers,
+  describeWorkbookAvailability,
+  describeWorkbookRequirementSummary,
+  describeWorkbookRuleSummary,
   formatQuestionScaleSet
 } from '../src/features/questions/question-guidance.ts';
 
@@ -118,6 +121,36 @@ test('question guidance prefers imported workbook prompt templates when availabl
     buildQuestionPromptPreview(template, category),
     'Is your nearest Commercial Airport the same as my nearest Commercial Airport?'
   );
+});
+
+test('question guidance surfaces workbook rule, availability, and requirement text when present', () => {
+  const category = createCategory({
+    categoryId: 'photos',
+    name: 'Photos',
+    resolverKind: 'photo_challenge',
+    promptTemplate: 'Send a photo of [subject].',
+    drawRule: {
+      drawCount: 1,
+      pickCount: 1,
+      rawText: 'Draw 1'
+    }
+  });
+  const template = createTemplate({
+    templateId: 'photo-tree',
+    categoryId: 'photos',
+    name: 'A Tree',
+    parameters: {
+      subject: 'A Tree',
+      workbookCostText: 'Cost 2',
+      workbookTimeText: '10 minutes',
+      workbookAvailabilityText: 'S/M only',
+      workbookRequirementsText: 'Must include the entire tree'
+    }
+  });
+
+  assert.equal(describeWorkbookRuleSummary(template, category), 'Cost 2 · 10 minutes · S/M only');
+  assert.equal(describeWorkbookAvailability(template), 'S/M only');
+  assert.equal(describeWorkbookRequirementSummary(template), 'Must include the entire tree');
 });
 
 test('question guidance stays honest about metadata-only evidence flows', () => {

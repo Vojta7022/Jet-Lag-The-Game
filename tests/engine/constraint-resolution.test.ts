@@ -4,6 +4,8 @@ import test from 'node:test';
 import { geometryBoundingBox } from '../../packages/geo/src/index.ts';
 import { executeCommand } from '../../packages/engine/src/index.ts';
 import {
+  getCurrentQuestionTemplate,
+  getPrimaryFeatureClassId,
   loadEngineTestContentPack,
   makeEnvelope,
   openAnsweredQuestion,
@@ -72,6 +74,7 @@ function assertBoundsInsidePlayableRegion(aggregate: ReturnType<typeof setupMatc
 test('Radar resolves as an approximate bounded inclusion or exclusion constraint', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
+  const radarTemplate = getCurrentQuestionTemplate(aggregate, contentPack, 'radar', 'radar-1600');
   aggregate = recordLocationUpdate(aggregate, contentPack, {
     playerId: 'seeker-1',
     role: 'seeker',
@@ -81,7 +84,7 @@ test('Radar resolves as an approximate bounded inclusion or exclusion constraint
   });
   aggregate = openAnsweredQuestion(aggregate, contentPack, {
     questionInstanceId: 'question-radar',
-    templateId: 'radar-1600',
+    templateId: radarTemplate.templateId,
     answer: { value: 'yes' },
     startStep: 81
   });
@@ -90,7 +93,7 @@ test('Radar resolves as an approximate bounded inclusion or exclusion constraint
     questionInstanceId: 'question-radar',
     constraintId: 'within-radius',
     metadata: {
-      gridResolutionMeters: 1_000
+      gridResolutionMeters: 500
     },
     step: 84
   });
@@ -105,6 +108,7 @@ test('Radar resolves as an approximate bounded inclusion or exclusion constraint
 test('Thermometer uses seeker movement history and can resolve to an exact half-plane clip', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
+  const thermometerTemplate = getCurrentQuestionTemplate(aggregate, contentPack, 'thermometer', 'thermometer-805');
   aggregate = recordLocationUpdate(aggregate, contentPack, {
     playerId: 'seeker-1',
     role: 'seeker',
@@ -121,7 +125,7 @@ test('Thermometer uses seeker movement history and can resolve to an exact half-
   });
   aggregate = openAnsweredQuestion(aggregate, contentPack, {
     questionInstanceId: 'question-thermo',
-    templateId: 'thermometer-805',
+    templateId: thermometerTemplate.templateId,
     answer: { value: 'hotter' },
     startStep: 92
   });
@@ -143,6 +147,13 @@ test('Thermometer uses seeker movement history and can resolve to an exact half-
 test('Matching can produce an exact result when point-feature Voronoi clipping is available', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
+  const matchingTemplate = getCurrentQuestionTemplate(
+    aggregate,
+    contentPack,
+    'matching',
+    'matching-commercial-airport'
+  );
+  const featureClassId = getPrimaryFeatureClassId(matchingTemplate);
   aggregate = recordLocationUpdate(aggregate, contentPack, {
     playerId: 'seeker-1',
     role: 'seeker',
@@ -152,7 +163,7 @@ test('Matching can produce an exact result when point-feature Voronoi clipping i
   });
   aggregate = openAnsweredQuestion(aggregate, contentPack, {
     questionInstanceId: 'question-matching',
-    templateId: 'matching-commercial-airport',
+    templateId: matchingTemplate.templateId,
     answer: { value: 'yes' },
     startStep: 101
   });
@@ -162,8 +173,8 @@ test('Matching can produce an exact result when point-feature Voronoi clipping i
     constraintId: 'nearest-feature-match',
     metadata: {
       featureData: [
-        featurePoint('airport-west', 'commercial-airport', 14.1, 50.2, 'Airport West'),
-        featurePoint('airport-east', 'commercial-airport', 14.3, 50.2, 'Airport East')
+        featurePoint('feature-west', featureClassId, 14.1, 50.2, 'Feature West'),
+        featurePoint('feature-east', featureClassId, 14.3, 50.2, 'Feature East')
       ]
     },
     step: 104
@@ -180,6 +191,13 @@ test('Matching can produce an exact result when point-feature Voronoi clipping i
 test('Measuring resolves approximately when it depends on distance thresholds', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
+  const measuringTemplate = getCurrentQuestionTemplate(
+    aggregate,
+    contentPack,
+    'measuring',
+    'measuring-a-commercial-airport'
+  );
+  const featureClassId = getPrimaryFeatureClassId(measuringTemplate);
   aggregate = recordLocationUpdate(aggregate, contentPack, {
     playerId: 'seeker-1',
     role: 'seeker',
@@ -189,7 +207,7 @@ test('Measuring resolves approximately when it depends on distance thresholds', 
   });
   aggregate = openAnsweredQuestion(aggregate, contentPack, {
     questionInstanceId: 'question-measuring',
-    templateId: 'measuring-a-commercial-airport',
+    templateId: measuringTemplate.templateId,
     answer: { value: 'closer' },
     startStep: 111
   });
@@ -200,7 +218,7 @@ test('Measuring resolves approximately when it depends on distance thresholds', 
     metadata: {
       gridResolutionMeters: 1_000,
       featureData: [
-        featurePoint('airport-center', 'a-commercial-airport', 14.2, 50.2, 'Airport Center')
+        featurePoint('feature-center', featureClassId, 14.2, 50.2, 'Feature Center')
       ]
     },
     step: 114
@@ -214,11 +232,18 @@ test('Measuring resolves approximately when it depends on distance thresholds', 
 
 test('Tentacles resolves approximately using closest-among-candidates within the threshold', () => {
   const contentPack = loadEngineTestContentPack();
-  let aggregate = setupMatchToSeekReady(contentPack);
+  let aggregate = setupMatchToSeekReady(contentPack, 'medium');
+  const tentaclesTemplate = getCurrentQuestionTemplate(
+    aggregate,
+    contentPack,
+    'tentacles',
+    'tentacles-museums-1600'
+  );
+  const featureClassId = getPrimaryFeatureClassId(tentaclesTemplate);
   aggregate = openAnsweredQuestion(aggregate, contentPack, {
     questionInstanceId: 'question-tentacles',
-    templateId: 'tentacles-museums-1600',
-    answer: { selectedFeatureId: 'museum-east' },
+    templateId: tentaclesTemplate.templateId,
+    answer: { selectedFeatureId: 'feature-east' },
     startStep: 120
   });
 
@@ -228,9 +253,9 @@ test('Tentacles resolves approximately using closest-among-candidates within the
     metadata: {
       gridResolutionMeters: 1_000,
       featureData: [
-        featurePoint('museum-west', 'museums', 14.18, 50.2, 'Museum West'),
-        featurePoint('museum-east', 'museums', 14.24, 50.2, 'Museum East'),
-        featurePoint('museum-far', 'museums', 14.32, 50.25, 'Museum Far')
+        featurePoint('feature-west', featureClassId, 14.18, 50.2, 'Feature West'),
+        featurePoint('feature-east', featureClassId, 14.24, 50.2, 'Feature East'),
+        featurePoint('feature-far', featureClassId, 14.32, 50.25, 'Feature Far')
       ]
     },
     step: 123
@@ -238,17 +263,18 @@ test('Tentacles resolves approximately using closest-among-candidates within the
 
   const constraint = Object.values(aggregate.constraints)[0];
   assert.equal(constraint.resolutionMode, 'approximate');
-  assert.equal(constraint.metadata.selectedFeatureId, 'museum-east');
+  assert.equal(constraint.metadata.selectedFeatureId, 'feature-east');
   assertBoundsInsidePlayableRegion(aggregate);
 });
 
 test('Photos stay metadata-only and do not pretend to narrow geometry', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
+  const photosTemplate = getCurrentQuestionTemplate(aggregate, contentPack, 'photos', 'photos-a-tree');
   const originalGeometry = aggregate.searchArea?.remainingArea.geometry;
   aggregate = openAnsweredQuestion(aggregate, contentPack, {
     questionInstanceId: 'question-photo',
-    templateId: 'photos-a-tree',
+    templateId: photosTemplate.templateId,
     answer: { attachmentIds: ['attachment-1'] },
     startStep: 130
   });
@@ -268,6 +294,7 @@ test('Photos stay metadata-only and do not pretend to narrow geometry', () => {
 test('contradictions are detected and recorded when a constraint leaves no bounded area', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
+  const radarTemplate = getCurrentQuestionTemplate(aggregate, contentPack, 'radar', 'radar-402');
   aggregate = recordLocationUpdate(aggregate, contentPack, {
     playerId: 'seeker-1',
     role: 'seeker',
@@ -277,7 +304,7 @@ test('contradictions are detected and recorded when a constraint leaves no bound
   });
   aggregate = openAnsweredQuestion(aggregate, contentPack, {
     questionInstanceId: 'question-contradiction',
-    templateId: 'radar-402',
+    templateId: radarTemplate.templateId,
     answer: { value: 'yes' },
     startStep: 141
   });

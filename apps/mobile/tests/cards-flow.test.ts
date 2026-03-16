@@ -98,9 +98,28 @@ test('cards flow can bootstrap gameplay, draw, play, and discard through the rea
     ]
   );
 
-  assert.equal(afterPlay.projectionDelivery.projection.activeCardResolution, undefined);
+  const afterResolution = afterPlay.projectionDelivery.projection.activeCardResolution
+    ? await orchestrator.submitCommands(
+        created.connection,
+        {
+          actorId: hostProfile.playerId,
+          playerId: hostProfile.playerId,
+          role: 'host'
+        },
+        [
+          {
+            type: 'resolve_card_window',
+            payload: {
+              sourceCardInstanceId: firstHandCard!.card.cardInstanceId
+            }
+          }
+        ]
+      )
+    : afterPlay;
+
+  assert.equal(afterResolution.projectionDelivery.projection.activeCardResolution, undefined);
   assert.equal(
-    afterPlay.projectionDelivery.projection.visibleCards.some(
+    afterResolution.projectionDelivery.projection.visibleCards.some(
       (card) => card.cardInstanceId === firstHandCard!.card.cardInstanceId && card.zone === 'discard_pile'
     ),
     true

@@ -16,7 +16,7 @@ function printUsage(): void {
     [
       'Usage:',
       '  node --experimental-strip-types packages/content-import/src/cli.ts import \\',
-      '    --input "./Jet Lag The Game.xlsx" \\',
+      '    --input "./Jet Lag The Game - cleaned for import.xlsx" \\',
       '    --output "./samples/generated/jet-lag-the-game.content-pack.json" \\',
       '    --report "./samples/generated/jet-lag-the-game.import-report.json"',
       ''

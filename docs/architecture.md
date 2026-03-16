@@ -8,7 +8,7 @@ This document defines the Phase 0 architecture for a production-oriented, generi
 - local nearby host-authoritative multiplayer
 - single-device referee mode
 
-The workbook `Jet Lag The Game.xlsx` is treated as seed content only. No engine behavior is allowed to depend on workbook literals that are not first normalized into canonical content-pack JSON.
+The cleaned workbook `Jet Lag The Game - cleaned for import.xlsx` is the preferred seed-content source. Legacy workbook variants may still be supported by the importer, but no engine behavior is allowed to depend on workbook literals that are not first normalized into canonical content-pack JSON.
 
 ## Architectural Principles
 

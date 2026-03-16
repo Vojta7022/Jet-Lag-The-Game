@@ -88,19 +88,29 @@ export class SupabaseRestTableClient implements SupabaseTableClient {
   ): Promise<Response> {
     const query = options.query?.toString();
     const url = `${this.baseUrl}/rest/v1/${table}${query ? `?${query}` : ''}`;
-    const response = await fetch(url, {
-      method: options.method,
-      headers: {
-        apikey: this.anonKey,
-        Authorization: `Bearer ${this.anonKey}`,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        'Accept-Profile': this.schema,
-        'Content-Profile': this.schema,
-        ...options.headers
-      },
-      body: options.body
-    });
+    let response: Response;
+
+    try {
+      response = await fetch(url, {
+        method: options.method,
+        headers: {
+          apikey: this.anonKey,
+          Authorization: `Bearer ${this.anonKey}`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'Accept-Profile': this.schema,
+          'Content-Profile': this.schema,
+          ...options.headers
+        },
+        body: options.body
+      });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Network request failed.';
+      throw new TransportRuntimeError(
+        'SUPABASE_HTTP_NETWORK_ERROR',
+        `Supabase table request could not reach "${table}". ${detail}`
+      );
+    }
 
     if (!response.ok) {
       const detail = await response.text().catch(() => '');

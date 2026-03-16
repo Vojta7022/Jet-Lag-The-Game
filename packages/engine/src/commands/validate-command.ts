@@ -1,14 +1,20 @@
 import type {
+  CardDefinition,
   CardInstanceModel,
   CommandEnvelope,
   CommandValidationError,
   ContentPack,
+  DeckDefinition,
   MatchAggregate
 } from '../../../shared-types/src/index.ts';
 import { isPolygonBoundaryGeometry } from '../../../geo/src/index.ts';
 
 import {
+  buildCardResolutionPlan,
+  buildQuestionSelectionState,
   canActorExecuteCommand,
+  countPaidDiscardCost,
+  countPaidDiscardKindCost,
   getAttachment,
   getChatChannel,
   getActiveQuestion,
@@ -16,6 +22,7 @@ import {
   getHandCardsForHolder,
   getPlayerRole,
   getPlayerTeam,
+  getTimerByKind,
   hasActiveQuestion
 } from '../../../domain/src/index.ts';
 import {
@@ -39,11 +46,20 @@ function error(
   };
 }
 
+function getDeckDefinition(contentPack: ContentPack, deckId: string): DeckDefinition | undefined {
+  return contentPack.decks.find((candidate) => candidate.deckId === deckId);
+}
+
 function isCardAccessibleToActor(
   aggregate: MatchAggregate,
   card: CardInstanceModel,
-  playerId: string | undefined
+  playerId: string | undefined,
+  actorRole: CommandEnvelope['actor']['role']
 ): boolean {
+  if (actorRole === 'host' || actorRole === 'system') {
+    return true;
+  }
+
   if (!playerId) {
     return false;
   }
@@ -58,6 +74,93 @@ function isCardAccessibleToActor(
   }
 
   return false;
+}
+
+function canActorUseDeck(
+  aggregate: MatchAggregate,
+  deck: DeckDefinition,
+  playerId: string | undefined,
+  actorRole: CommandEnvelope['actor']['role']
+): boolean {
+  if (actorRole === 'host' || actorRole === 'system') {
+    return true;
+  }
+
+  if (!playerId) {
+    return false;
+  }
+
+  const role = getPlayerRole(aggregate, playerId) ?? actorRole;
+  const team = getPlayerTeam(aggregate, playerId);
+
+  switch (deck.ownerScope) {
+    case 'hider_team':
+      return role === 'hider' && team?.side === 'hider';
+    case 'seeker_team':
+      return role === 'seeker' && team?.side === 'seeker';
+    case 'hider_player':
+      return role === 'hider';
+    case 'seeker_player':
+      return role === 'seeker';
+    case 'shared_public':
+      return role !== 'spectator';
+    case 'host_only':
+      return role === 'host';
+    default:
+      return false;
+  }
+}
+
+function resolveDeckHolder(
+  aggregate: MatchAggregate,
+  deck: DeckDefinition,
+  playerId: string | undefined,
+  actorRole: CommandEnvelope['actor']['role']
+): { holderType: CardInstanceModel['holderType']; holderId: string } | undefined {
+  const hiderTeamId = Object.values(aggregate.teams).find((team) => team.side === 'hider')?.teamId ?? 'team-hider';
+  const seekerTeamId = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.teamId ?? 'team-seeker';
+  const team = getPlayerTeam(aggregate, playerId);
+
+  switch (deck.ownerScope) {
+    case 'hider_team':
+      return {
+        holderType: 'team',
+        holderId: hiderTeamId
+      };
+    case 'seeker_team':
+      return {
+        holderType: 'team',
+        holderId: seekerTeamId
+      };
+    case 'shared_public':
+      return team?.teamId
+        ? {
+            holderType: 'team',
+            holderId: team.teamId
+          }
+        : playerId
+          ? {
+              holderType: 'player',
+              holderId: playerId
+            }
+          : undefined;
+    case 'hider_player':
+    case 'seeker_player':
+    case 'host_only':
+      return playerId
+        ? {
+            holderType: 'player',
+            holderId: playerId
+          }
+        : actorRole === 'host'
+          ? {
+              holderType: 'player',
+              holderId: aggregate.createdByPlayerId
+            }
+          : undefined;
+    default:
+      return undefined;
+  }
 }
 
 function canActorUseChannel(
@@ -85,6 +188,210 @@ function canActorUseChannel(
   }
 
   return false;
+}
+
+function getAllowedAnswerValues(schema: Record<string, unknown>): string[] {
+  const candidateValues = schema.allowedValues ?? schema.values;
+  return Array.isArray(candidateValues)
+    ? candidateValues.filter((value): value is string => typeof value === 'string')
+    : [];
+}
+
+function validateAnswerPayload(args: {
+  commandType: CommandEnvelope['command']['type'];
+  aggregate: MatchAggregate;
+  templateAnswerSchema: Record<string, unknown>;
+  categoryAnswerSchema: Record<string, unknown>;
+  answer: Record<string, unknown>;
+}): CommandValidationError[] {
+  const schema =
+    Object.keys(args.templateAnswerSchema).length > 0 ? args.templateAnswerSchema : args.categoryAnswerSchema;
+  const kind = typeof schema.kind === 'string' ? schema.kind : 'manual';
+
+  if (kind === 'boolean' || kind === 'enum') {
+    const value = args.answer.value;
+    const allowedValues = getAllowedAnswerValues(schema);
+
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      return [
+        error(
+          args.commandType,
+          'ANSWER_VALUE_REQUIRED',
+          'This question answer must choose one of the allowed response values.'
+        )
+      ];
+    }
+
+    if (allowedValues.length > 0 && !allowedValues.includes(value)) {
+      return [
+        error(
+          args.commandType,
+          'ANSWER_VALUE_INVALID',
+          `The answer "${value}" is not valid for this question.`
+        )
+      ];
+    }
+
+    return [];
+  }
+
+  if (kind === 'feature_choice') {
+    const selectedFeatureId =
+      typeof args.answer.selectedFeatureId === 'string' && args.answer.selectedFeatureId.trim().length > 0
+        ? args.answer.selectedFeatureId.trim()
+        : typeof args.answer.value === 'string' && args.answer.value.trim().length > 0
+          ? args.answer.value.trim()
+          : undefined;
+
+    return selectedFeatureId
+      ? []
+      : [
+          error(
+            args.commandType,
+            'FEATURE_SELECTION_REQUIRED',
+            'This question answer must identify one of the candidate features.'
+          )
+        ];
+  }
+
+  if (kind === 'attachment') {
+    const attachmentIds = Array.isArray(args.answer.attachmentIds)
+      ? args.answer.attachmentIds.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      : [];
+    const minAttachments =
+      typeof schema.minAttachments === 'number' && Number.isFinite(schema.minAttachments)
+        ? schema.minAttachments
+        : 1;
+
+    if (attachmentIds.length < minAttachments) {
+      return [
+        error(
+          args.commandType,
+          'ATTACHMENT_REQUIRED',
+          `This question answer requires at least ${minAttachments} attachment${minAttachments === 1 ? '' : 's'}.`
+        )
+      ];
+    }
+
+    for (const attachmentId of attachmentIds) {
+      if (!getAttachment(args.aggregate, attachmentId)) {
+        return [
+          error(
+            args.commandType,
+            'ATTACHMENT_NOT_FOUND',
+            `The attachment "${attachmentId}" does not exist in this match.`
+          )
+        ];
+      }
+    }
+
+    return [];
+  }
+
+  const value = args.answer.value;
+  const note = args.answer.note;
+  if (
+    (typeof value !== 'string' || value.trim().length === 0) &&
+    (typeof note !== 'string' || note.trim().length === 0)
+  ) {
+    return [
+      error(
+        args.commandType,
+        'ANSWER_REQUIRED',
+        'This question answer requires a recorded response value or note.'
+      )
+    ];
+  }
+
+  return [];
+}
+
+function validateDiscardResolution(
+  aggregate: MatchAggregate,
+  contentPack: ContentPack,
+  envelope: CommandEnvelope<Extract<CommandEnvelope['command'], { type: 'resolve_card_window' }>>
+): CommandValidationError[] {
+  const activeResolution = aggregate.activeCardResolution;
+  if (!activeResolution?.discardRequirement) {
+    return [];
+  }
+
+  if (!activeResolution.openingHandCardInstanceIds) {
+    return [
+      error(
+        envelope.command.type,
+        'CARD_RESOLUTION_INVALID',
+        'The active card resolution is missing its opening hand snapshot.'
+      )
+    ];
+  }
+
+  const requiredCount =
+    activeResolution.discardRequirement.discardWholeHand
+      ? Math.max(0, activeResolution.openingHandCardInstanceIds.length - 1)
+      : activeResolution.discardRequirement.requiredCards ?? 0;
+
+  if (activeResolution.discardRequirement.requiredKind) {
+    const cardDefinitionsById = Object.fromEntries(
+      contentPack.cards.map((card) => [card.cardDefinitionId, card])
+    ) as Record<string, CardDefinition>;
+    const paidCount = countPaidDiscardKindCost({
+      resolution: activeResolution,
+      cardInstances: aggregate.cardInstances,
+      cardDefinitionsById,
+      requiredKind: activeResolution.discardRequirement.requiredKind
+    });
+
+    if (paidCount < requiredCount) {
+      return [
+          error(
+            envelope.command.type,
+            'DISCARD_COST_UNPAID',
+            'The card window cannot close until its discard cost is fully paid.'
+          )
+        ];
+    }
+  }
+  else {
+    const paidCount = countPaidDiscardCost({
+      resolution: activeResolution,
+      cardInstances: aggregate.cardInstances
+    });
+
+    if (paidCount < requiredCount) {
+      return [
+        error(
+          envelope.command.type,
+          'DISCARD_COST_UNPAID',
+          'The card window cannot close until its discard cost is fully paid.'
+        )
+      ];
+    }
+  }
+
+  if (
+    activeResolution.drawCountOnResolve &&
+    activeResolution.sourceDeckId
+  ) {
+    const remainingDrawCount = Object.values(aggregate.cardInstances).filter(
+      (card) =>
+        card.holderType === 'deck' &&
+        card.holderId === activeResolution.sourceDeckId &&
+        card.zone === 'draw_pile'
+    ).length;
+
+    if (remainingDrawCount < activeResolution.drawCountOnResolve) {
+      return [
+        error(
+          envelope.command.type,
+          'DRAW_PILE_EMPTY',
+          'The source deck does not have enough cards left to finish this effect.'
+        )
+      ];
+    }
+  }
+
+  return [];
 }
 
 export function validateCommandEnvelope(
@@ -198,6 +505,39 @@ export function validateCommandEnvelope(
       if (!template) {
         return [error(envelope.command.type, 'QUESTION_TEMPLATE_NOT_FOUND', 'The selected question template does not exist.')];
       }
+
+      const category = getQuestionCategory(contentPack, template.categoryId);
+      if (!category) {
+        return [error(envelope.command.type, 'QUESTION_CATEGORY_NOT_FOUND', 'The selected question category does not exist.')];
+      }
+
+      const selectionState = buildQuestionSelectionState({
+        contentPack,
+        category,
+        selectedScale: aggregate.selectedScale,
+        askedQuestions: Object.values(aggregate.questionInstances).filter((question) => question.status !== 'canceled')
+      });
+
+      if (!selectionState.drawnTemplateIds.includes(template.templateId)) {
+        return [
+          error(
+            envelope.command.type,
+            'QUESTION_NOT_IN_DRAW',
+            'This question is not part of the current workbook draw for its category.'
+          )
+        ];
+      }
+
+      if (!selectionState.availableTemplateIds.includes(template.templateId)) {
+        return [
+          error(
+            envelope.command.type,
+            'QUESTION_ALREADY_USED',
+            'This question has already been used from the current workbook draw.'
+          )
+        ];
+      }
+
       return [];
     }
     case 'answer_question': {
@@ -205,7 +545,24 @@ export function validateCommandEnvelope(
       if (!activeQuestion || activeQuestion.questionInstanceId !== envelope.command.payload.questionInstanceId) {
         return [error(envelope.command.type, 'QUESTION_NOT_ACTIVE', 'This question is not the active question.')];
       }
-      return [];
+
+      const template = getQuestionTemplate(contentPack, activeQuestion.templateId);
+      if (!template) {
+        return [error(envelope.command.type, 'QUESTION_TEMPLATE_NOT_FOUND', 'The active question template could not be resolved.')];
+      }
+
+      const category = getQuestionCategory(contentPack, template.categoryId);
+      if (!category) {
+        return [error(envelope.command.type, 'QUESTION_CATEGORY_NOT_FOUND', 'The active question category could not be resolved.')];
+      }
+
+      return validateAnswerPayload({
+        commandType: envelope.command.type,
+        aggregate,
+        templateAnswerSchema: template.answerSchema,
+        categoryAnswerSchema: category.defaultAnswerSchema,
+        answer: envelope.command.payload.answer
+      });
     }
     case 'apply_constraint': {
       const activeQuestion = getActiveQuestion(aggregate);
@@ -419,11 +776,40 @@ export function validateCommandEnvelope(
       return [];
     }
     case 'draw_card': {
-      const deckId = envelope.command.payload.deckId;
-      const deck = contentPack.decks.find((candidate) => candidate.deckId === deckId);
+      const deck = getDeckDefinition(contentPack, envelope.command.payload.deckId);
       if (!deck) {
         return [error(envelope.command.type, 'DECK_NOT_FOUND', 'The selected deck does not exist.')];
       }
+
+      if (!canActorUseDeck(aggregate, deck, envelope.actor.playerId, envelope.actor.role)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'The actor cannot draw from this deck.')];
+      }
+
+      const holder = resolveDeckHolder(aggregate, deck, envelope.actor.playerId, envelope.actor.role);
+      if (!holder) {
+        return [error(envelope.command.type, 'DECK_HOLDER_UNAVAILABLE', 'The deck does not have a valid hand owner in this match.')];
+      }
+
+      const hasCardToDraw = Object.values(aggregate.cardInstances).some(
+        (card) => card.holderType === 'deck' && card.holderId === deck.deckId && card.zone === 'draw_pile'
+      );
+      if (!hasCardToDraw) {
+        return [error(envelope.command.type, 'DRAW_PILE_EMPTY', 'This deck has no remaining cards to draw.')];
+      }
+
+      if (deck.ownerScope === 'hider_team') {
+        const handCount = getHandCardsForHolder(aggregate, holder.holderType, holder.holderId).length;
+        if (handCount >= 6) {
+          return [
+            error(
+              envelope.command.type,
+              'HAND_SIZE_LIMIT',
+              'The hider hand is already at the target size of 6 cards.'
+            )
+          ];
+        }
+      }
+
       return [];
     }
     case 'play_card': {
@@ -436,12 +822,59 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'CARD_NOT_IN_HAND', 'Only cards in hand can be played.')];
       }
 
-      if (!isCardAccessibleToActor(aggregate, cardInstance, envelope.actor.playerId)) {
+      if (!isCardAccessibleToActor(aggregate, cardInstance, envelope.actor.playerId, envelope.actor.role)) {
         return [error(envelope.command.type, 'FORBIDDEN', 'The actor cannot play this card.')];
       }
 
-      if (!getCardDefinition(contentPack, cardInstance.cardDefinitionId)) {
+      const cardDefinition = getCardDefinition(contentPack, cardInstance.cardDefinitionId);
+      if (!cardDefinition) {
         return [error(envelope.command.type, 'CARD_DEFINITION_NOT_FOUND', 'The card definition is missing from the content pack.')];
+      }
+
+      if (
+        aggregate.lifecycleState === 'endgame' &&
+        cardDefinition.kind === 'curse' &&
+        /cannot be played during the endgame/i.test(cardDefinition.description)
+      ) {
+        return [error(envelope.command.type, 'CARD_NOT_PLAYABLE_IN_ENDGAME', 'This curse cannot be played during the endgame.')];
+      }
+
+      const resolutionPlan = buildCardResolutionPlan(cardDefinition, aggregate.selectedScale);
+      if (resolutionPlan.kind === 'time_bonus' && !getTimerByKind(aggregate, 'hide')) {
+        return [error(envelope.command.type, 'TIME_BONUS_NOT_AVAILABLE', 'Time bonus cards only work while the hide timer is still running.')];
+      }
+
+      const handCards = getHandCardsForHolder(aggregate, cardInstance.holderType, cardInstance.holderId);
+      const otherHandCards = handCards.filter((card) => card.cardInstanceId !== cardInstance.cardInstanceId);
+      if (resolutionPlan.discardRequirement.discardWholeHand && otherHandCards.length === 0) {
+        return [error(envelope.command.type, 'DISCARD_COST_UNPAID', 'This card needs spare hand cards to pay its discard cost.')];
+      }
+
+      if (resolutionPlan.discardRequirement.requiredCards) {
+        if (resolutionPlan.discardRequirement.requiredKind) {
+          const matchingCards = otherHandCards.filter((card) => {
+            const definition = getCardDefinition(contentPack, card.cardDefinitionId);
+            return definition?.kind === resolutionPlan.discardRequirement.requiredKind;
+          }).length;
+
+          if (matchingCards < resolutionPlan.discardRequirement.requiredCards) {
+            return [
+              error(
+                envelope.command.type,
+                'DISCARD_COST_UNPAID',
+                `This card requires ${resolutionPlan.discardRequirement.requiredCards} ${resolutionPlan.discardRequirement.requiredKind.replace(/_/g, ' ')} discard payment.`
+              )
+            ];
+          }
+        } else if (otherHandCards.length < resolutionPlan.discardRequirement.requiredCards) {
+          return [
+            error(
+              envelope.command.type,
+              'DISCARD_COST_UNPAID',
+              `This card requires ${resolutionPlan.discardRequirement.requiredCards} additional discarded card${resolutionPlan.discardRequirement.requiredCards === 1 ? '' : 's'}.`
+            )
+          ];
+        }
       }
 
       return [];
@@ -456,7 +889,7 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'CARD_NOT_IN_HAND', 'Only cards in hand can be discarded.')];
       }
 
-      if (!isCardAccessibleToActor(aggregate, cardInstance, envelope.actor.playerId)) {
+      if (!isCardAccessibleToActor(aggregate, cardInstance, envelope.actor.playerId, envelope.actor.role)) {
         return [error(envelope.command.type, 'FORBIDDEN', 'The actor cannot discard this card.')];
       }
 
@@ -470,7 +903,12 @@ export function validateCommandEnvelope(
       if (aggregate.activeCardResolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
         return [error(envelope.command.type, 'CARD_WINDOW_NOT_ACTIVE', 'This card resolution window is not active.')];
       }
-      return [];
+
+      return validateDiscardResolution(
+        aggregate,
+        contentPack,
+        envelope as CommandEnvelope<Extract<CommandEnvelope['command'], { type: 'resolve_card_window' }>>
+      );
     }
     case 'resume_match':
       return [];

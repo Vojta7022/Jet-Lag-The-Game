@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { importContentPack } from '../../packages/content-import/src/importer.ts';
 import { validateContentPack } from '../../packages/content-import/src/validation.ts';
 
-const workbookPath = fileURLToPath(new URL('../../Jet Lag The Game.xlsx', import.meta.url));
+const workbookPath = fileURLToPath(new URL('../../Jet Lag The Game - cleaned for import.xlsx', import.meta.url));
 
 test('import reporting captures workbook ambiguities and draft-only gaps', () => {
   const result = importContentPack({
@@ -21,7 +21,6 @@ test('import reporting captures workbook ambiguities and draft-only gaps', () =>
   assert.ok(issueCodes.has('MISSING_MAP_PRESET'));
   assert.ok(issueCodes.has('POWER_UP_EFFECT_UNSPECIFIED'));
   assert.ok(issueCodes.has('NORMALIZATION_CORRECTION_APPLIED'));
-  assert.ok(issueCodes.has('SHEET_TITLE_MISMATCH'));
 
   const validationIssues = validateContentPack(result.pack);
   assert.ok(validationIssues.some((issue) => issue.code === 'MISSING_RULESET'));

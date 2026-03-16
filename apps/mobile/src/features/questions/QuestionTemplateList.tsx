@@ -10,6 +10,9 @@ import {
   describeExpectedAnswerGuidance,
   describeQuestionImpactExpectation,
   describeQuestionTemplateForPlayers,
+  describeWorkbookAvailability,
+  describeWorkbookRequirementSummary,
+  describeWorkbookRuleSummary,
   formatQuestionScaleSet
 } from './question-guidance.ts';
 
@@ -44,6 +47,9 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
           category: props.category,
           regionId: props.regionId
         });
+        const workbookRequirement = describeWorkbookRequirementSummary(template);
+        const workbookRule = describeWorkbookRuleSummary(template, props.category);
+        const workbookAvailability = describeWorkbookAvailability(template);
 
         return (
           <Pressable
@@ -62,9 +68,12 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
             </View>
             <ResolutionModePill label={impact.label} tone={impact.tone} />
             <Text style={styles.copy}>{describeQuestionTemplateForPlayers(template, props.category)}</Text>
+            <Text style={styles.meta}>Workbook rule: {workbookRule}</Text>
             <Text style={styles.meta}>How to answer: {describeExpectedAnswerGuidance(template)}</Text>
             <Text style={styles.meta}>What usually happens: {impact.detail}</Text>
+            {workbookRequirement ? <Text style={styles.meta}>Workbook requirement: {workbookRequirement}</Text> : null}
             {featureLabels ? <Text style={styles.support}>Places involved: {featureLabels}</Text> : null}
+            <Text style={styles.support}>Availability: {workbookAvailability}</Text>
             <Text style={styles.support}>Best for: {formatQuestionScaleSet(template.scaleSet.appliesTo)}</Text>
             <Text style={styles.support}>How it behaves today: {props.describeSupport(template, props.category)}.</Text>
           </Pressable>

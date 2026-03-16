@@ -12,7 +12,7 @@ import type {
   SeekPhaseSubstate,
   TeamSide
 } from '../domain/match.ts';
-import type { ProjectionScope, ScaleKey } from '../content.ts';
+import type { CardKind, ProjectionScope, ScaleKey } from '../content.ts';
 
 export interface ProjectionViewer {
   scope: ProjectionScope;
@@ -201,6 +201,14 @@ export interface MatchProjection {
   }>;
   activeCardResolution?: {
     sourceCardInstanceId: string;
+    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus';
+    discardRequirement?: {
+      requiredCards?: number;
+      requiredKind?: CardKind;
+      discardWholeHand?: boolean;
+    };
+    drawCountOnResolve?: number;
+    timeBonusMinutes?: number;
   };
   visibleEventLog: EventLogEntry[];
   hiddenState?: {

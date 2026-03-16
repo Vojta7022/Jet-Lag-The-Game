@@ -299,22 +299,34 @@ export function reduceMatchAggregate(
         questionInstances: {
           ...base.questionInstances,
           [eventEnvelope.event.payload.question.questionInstanceId]: eventEnvelope.event.payload.question
-        }
+        },
+        timers: eventEnvelope.event.payload.questionTimer
+          ? {
+              ...base.timers,
+              [eventEnvelope.event.payload.questionTimer.timerId]: eventEnvelope.event.payload.questionTimer
+            }
+          : base.timers
       };
     case 'question_answered': {
-      const question = base.questionInstances[eventEnvelope.event.payload.questionInstanceId];
+      const questionInstanceId = eventEnvelope.event.payload.questionInstanceId;
+      const question = base.questionInstances[questionInstanceId];
       return {
         ...base,
         lifecycleState: eventEnvelope.event.payload.lifecycleState,
         seekPhaseSubstate: eventEnvelope.event.payload.seekPhaseSubstate,
         questionInstances: {
           ...base.questionInstances,
-          [eventEnvelope.event.payload.questionInstanceId]: {
+          [questionInstanceId]: {
             ...question,
             status: 'applying_constraints',
             answer: eventEnvelope.event.payload.answer
           }
-        }
+        },
+        timers: mapTimers(base.timers, (timer) =>
+          timer.kind === 'question' && timer.ownerRef === questionInstanceId
+            ? { ...timer, status: 'completed', remainingSeconds: 0 }
+            : timer
+        )
       };
     }
     case 'constraint_applied': {
@@ -407,6 +419,14 @@ export function reduceMatchAggregate(
           [eventEnvelope.event.payload.cardInstance.cardInstanceId]: eventEnvelope.event.payload.cardInstance
         }
       };
+    case 'timer_adjusted':
+      return {
+        ...base,
+        timers: {
+          ...base.timers,
+          [eventEnvelope.event.payload.timer.timerId]: eventEnvelope.event.payload.timer
+        }
+      };
     case 'card_resolution_opened':
       return {
         ...base,
@@ -415,7 +435,15 @@ export function reduceMatchAggregate(
         activeCardResolution: {
           sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
           openedAt: eventEnvelope.occurredAt,
-          openedByPlayerId: eventEnvelope.actor.playerId ?? eventEnvelope.actor.actorId
+          openedByPlayerId: eventEnvelope.actor.playerId ?? eventEnvelope.actor.actorId,
+          resolutionKind: eventEnvelope.event.payload.resolutionKind,
+          discardRequirement: eventEnvelope.event.payload.discardRequirement,
+          drawCountOnResolve: eventEnvelope.event.payload.drawCountOnResolve,
+          timeBonusMinutes: eventEnvelope.event.payload.timeBonusMinutes,
+          sourceDeckId: eventEnvelope.event.payload.sourceDeckId,
+          holderType: eventEnvelope.event.payload.holderType,
+          holderId: eventEnvelope.event.payload.holderId,
+          openingHandCardInstanceIds: eventEnvelope.event.payload.openingHandCardInstanceIds
         }
       };
     case 'card_resolution_closed': {

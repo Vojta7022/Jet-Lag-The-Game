@@ -29,6 +29,10 @@ import {
   createSeedRegionDataSource
 } from '../src/features/map/region-data-source.ts';
 import {
+  buildAppliedRegionDraft,
+  resolveMapCanvasPreviewRegion
+} from '../src/features/map/map-setup-guidance.ts';
+import {
   createNominatimRegionProvider,
   RegionProviderRateLimitError,
   RegionProviderUnavailableError
@@ -222,6 +226,123 @@ test('composite region builder adds, removes, and clears selected regions withou
   assert.equal(removed.length, 1);
   assert.equal(removed[0]?.regionId, centralBohemia.regionId);
   assert.deepEqual(cleared, []);
+});
+
+test('map setup keeps draft previews out of the authoritative canvas during live play and failed apply states', () => {
+  const prague = seedPlayableRegions[0]!;
+  const appliedMap = buildAppliedRegionDraft({
+    regionId: 'applied-region',
+    displayName: 'Applied Region',
+    regionKind: 'city',
+    featureDatasetRefs: [],
+    playableBoundary: {
+      artifactId: 'artifact:playable',
+      kind: 'playable_boundary',
+      regionId: 'applied-region',
+      geometry: prague.geometry,
+      precision: 'exact',
+      confidenceScore: 1,
+      clippedToRegion: true,
+      featureCoverage: 'exact',
+      metadata: {}
+    },
+    remainingArea: {
+      artifactId: 'artifact:remaining',
+      kind: 'candidate_remaining',
+      regionId: 'applied-region',
+      geometry: prague.geometry,
+      precision: 'exact',
+      confidenceScore: 1,
+      clippedToRegion: true,
+      featureCoverage: 'exact',
+      metadata: {}
+    },
+    eliminatedAreas: [],
+    constraintArtifacts: [],
+    history: []
+  })[0];
+
+  assert.equal(
+    resolveMapCanvasPreviewRegion({
+      appliedMap: {
+        regionId: appliedMap.regionId,
+        displayName: appliedMap.displayName,
+        regionKind: appliedMap.regionKind,
+        featureDatasetRefs: appliedMap.featureDatasetRefs,
+        playableBoundary: {
+          artifactId: 'artifact:playable',
+          kind: 'playable_boundary',
+          regionId: appliedMap.regionId,
+          geometry: appliedMap.geometry,
+          precision: 'exact',
+          confidenceScore: 1,
+          clippedToRegion: true,
+          featureCoverage: 'exact',
+          metadata: {}
+        },
+        remainingArea: {
+          artifactId: 'artifact:remaining',
+          kind: 'candidate_remaining',
+          regionId: appliedMap.regionId,
+          geometry: appliedMap.geometry,
+          precision: 'exact',
+          confidenceScore: 1,
+          clippedToRegion: true,
+          featureCoverage: 'exact',
+          metadata: {}
+        },
+        eliminatedAreas: [],
+        constraintArtifacts: [],
+        history: []
+      },
+      compositePreviewRegion: prague,
+      searchPreviewRegion: undefined,
+      liveGameplayState: true,
+      loadState: 'ready'
+    }),
+    undefined
+  );
+
+  assert.equal(
+    resolveMapCanvasPreviewRegion({
+      appliedMap: {
+        regionId: appliedMap.regionId,
+        displayName: appliedMap.displayName,
+        regionKind: appliedMap.regionKind,
+        featureDatasetRefs: appliedMap.featureDatasetRefs,
+        playableBoundary: {
+          artifactId: 'artifact:playable',
+          kind: 'playable_boundary',
+          regionId: appliedMap.regionId,
+          geometry: appliedMap.geometry,
+          precision: 'exact',
+          confidenceScore: 1,
+          clippedToRegion: true,
+          featureCoverage: 'exact',
+          metadata: {}
+        },
+        remainingArea: {
+          artifactId: 'artifact:remaining',
+          kind: 'candidate_remaining',
+          regionId: appliedMap.regionId,
+          geometry: appliedMap.geometry,
+          precision: 'exact',
+          confidenceScore: 1,
+          clippedToRegion: true,
+          featureCoverage: 'exact',
+          metadata: {}
+        },
+        eliminatedAreas: [],
+        constraintArtifacts: [],
+        history: []
+      },
+      compositePreviewRegion: prague,
+      searchPreviewRegion: undefined,
+      liveGameplayState: false,
+      loadState: 'error'
+    }),
+    undefined
+  );
 });
 
 test('composite region builder previews multiple selected regions as one combined playable region and warns when disconnected', () => {

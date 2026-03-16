@@ -219,7 +219,7 @@ test('question map effect model stays honest for metadata-only evidence flows', 
   });
 
   assert.ok(model);
-  assert.equal(model?.resolutionModeLabel, 'Metadata-only');
+  assert.equal(model?.resolutionModeLabel, 'Evidence only');
   assert.equal(model?.mapEffectTitle, 'Map stayed the same');
   assert.match(model?.mapEffectDetail ?? '', /did not pretend to change/i);
   assert.equal(model?.artifactCountLabel, '0 visible map layers');

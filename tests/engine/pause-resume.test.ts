@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { executeCommand } from '../../packages/engine/src/index.ts';
-import { loadEngineTestContentPack, makeEnvelope, setupMatchToHidePhase, setupMatchToSeekReady } from './helpers.ts';
+import {
+  getCurrentQuestionTemplate,
+  loadEngineTestContentPack,
+  makeEnvelope,
+  setupMatchToHidePhase,
+  setupMatchToSeekReady
+} from './helpers.ts';
 
 test('pause and resume preserve the interrupted state and pause timers', () => {
   const contentPack = loadEngineTestContentPack();
@@ -44,6 +50,12 @@ test('pause and resume preserve the interrupted state and pause timers', () => {
   assert.equal(aggregate.timers['hide-phase']?.status, 'running');
 
   aggregate = setupMatchToSeekReady(contentPack);
+  const matchingTemplate = getCurrentQuestionTemplate(
+    aggregate,
+    contentPack,
+    'matching',
+    'matching-commercial-airport'
+  );
   aggregate = executeCommand(
     aggregate,
     makeEnvelope(
@@ -63,7 +75,7 @@ test('pause and resume preserve the interrupted state and pause timers', () => {
         type: 'ask_question',
         payload: {
           questionInstanceId: 'question-pause',
-          templateId: 'matching-commercial-airport',
+          templateId: matchingTemplate.templateId,
           targetTeamId: 'team-hider'
         }
       },

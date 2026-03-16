@@ -19,7 +19,7 @@ import {
   resolveQuestionConstraint
 } from '../../../geo/src/index.ts';
 
-import { getPlayerRole, getPlayerTeam } from '../../../domain/src/index.ts';
+import { buildCardResolutionPlan, getPlayerRole, getPlayerTeam } from '../../../domain/src/index.ts';
 import { getChatChannel } from '../../../domain/src/index.ts';
 import {
   getCardDefinition,
@@ -27,6 +27,7 @@ import {
   getHidePhaseDurationSeconds,
   getQuestionCategory,
   getQuestionCooldownSeconds,
+  getQuestionTimerSeconds,
   getQuestionTemplate
 } from '../helpers/content-pack.ts';
 import { reduceMatchAggregate } from '../reducer.ts';
@@ -153,6 +154,71 @@ function buildHideTimer(contentPack: ContentPack, rulesetId: string | undefined,
     durationSeconds,
     remainingSeconds: durationSeconds,
     startedAt: occurredAt
+  };
+}
+
+function buildQuestionTimer(
+  aggregate: MatchAggregate,
+  contentPack: ContentPack,
+  questionInstanceId: string,
+  templateId: string,
+  occurredAt: string
+): TimerModel {
+  const durationSeconds = getQuestionTimerSeconds(contentPack, templateId, aggregate.selectedScale);
+  return {
+    timerId: `question:${questionInstanceId}`,
+    kind: 'question',
+    status: 'running',
+    durationSeconds,
+    remainingSeconds: durationSeconds,
+    startedAt: occurredAt,
+    ownerRef: questionInstanceId
+  };
+}
+
+function getDeckDefinition(contentPack: ContentPack, deckId: string) {
+  return contentPack.decks.find((deck) => deck.deckId === deckId);
+}
+
+function resolveDeckHolderForDefinition(
+  aggregate: MatchAggregate,
+  contentPack: ContentPack,
+  deckId: string,
+  playerId: string | undefined,
+  _actorRole: CommandEnvelope['actor']['role']
+): { holderType: CardInstanceModel['holderType']; holderId: string } {
+  const deck = getDeckDefinition(contentPack, deckId);
+  const hiderTeamId = Object.values(aggregate.teams).find((team) => team.side === 'hider')?.teamId ?? 'team-hider';
+  const seekerTeamId = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.teamId ?? 'team-seeker';
+  const team = getPlayerTeam(aggregate, playerId);
+
+  switch (deck?.ownerScope) {
+    case 'hider_team':
+      return { holderType: 'team', holderId: hiderTeamId };
+    case 'seeker_team':
+      return { holderType: 'team', holderId: seekerTeamId };
+    case 'shared_public':
+      return team?.teamId
+        ? { holderType: 'team', holderId: team.teamId }
+        : { holderType: 'player', holderId: playerId ?? aggregate.createdByPlayerId };
+    case 'hider_player':
+    case 'seeker_player':
+    case 'host_only':
+    default:
+      return { holderType: 'player', holderId: playerId ?? aggregate.createdByPlayerId };
+  }
+}
+
+function buildAdjustedTimer(timer: TimerModel, _occurredAt: string, deltaSeconds: number): TimerModel {
+  const nextDurationSeconds = Math.max(0, timer.durationSeconds + deltaSeconds);
+  const nextRemainingSeconds = Math.max(0, timer.remainingSeconds + deltaSeconds);
+
+  return {
+    ...timer,
+    durationSeconds: nextDurationSeconds,
+    remainingSeconds: nextRemainingSeconds,
+    startedAt: timer.startedAt,
+    pausedAt: timer.pausedAt ?? undefined
   };
 }
 
@@ -435,6 +501,13 @@ function eventsForCommand(
       ];
     case 'ask_question': {
       const template = getQuestionTemplate(contentPack, envelope.command.payload.templateId)!;
+      const questionTimer = buildQuestionTimer(
+        aggregate!,
+        contentPack,
+        envelope.command.payload.questionInstanceId,
+        template.templateId,
+        envelope.occurredAt
+      );
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
           type: 'question_asked',
@@ -450,7 +523,8 @@ function eventsForCommand(
               askedAt: envelope.occurredAt
             },
             lifecycleState: 'seek_phase',
-            seekPhaseSubstate: 'awaiting_question_answer'
+            seekPhaseSubstate: 'awaiting_question_answer',
+            questionTimer
           }
         })
       ];
@@ -547,9 +621,13 @@ function eventsForCommand(
         return [];
       }
 
-      const team = getPlayerTeam(aggregate!, envelope.actor.playerId);
-      const holderType = team ? 'team' : 'player';
-      const holderId = team?.teamId ?? envelope.actor.playerId ?? envelope.actor.actorId;
+      const holder = resolveDeckHolderForDefinition(
+        aggregate!,
+        contentPack,
+        envelope.command.payload.deckId,
+        envelope.actor.playerId,
+        envelope.actor.role
+      );
 
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'team_private', {
@@ -559,8 +637,8 @@ function eventsForCommand(
             cardInstance: {
               ...card,
               zone: 'hand',
-              holderType,
-              holderId,
+              holderType: holder.holderType,
+              holderId: holder.holderId,
               updatedAt: envelope.occurredAt
             }
           }
@@ -570,8 +648,9 @@ function eventsForCommand(
     case 'play_card': {
       const currentCard = aggregate!.cardInstances[envelope.command.payload.cardInstanceId];
       const cardDefinition = getCardDefinition(contentPack, currentCard.cardDefinitionId) as CardDefinition;
+      const resolutionPlan = buildCardResolutionPlan(cardDefinition, aggregate!.selectedScale);
       const opensResolutionWindow =
-        cardDefinition.automationLevel !== 'authoritative' && aggregate?.lifecycleState === 'seek_phase';
+        resolutionPlan.kind !== 'time_bonus' && aggregate?.lifecycleState === 'seek_phase';
       const playedCard: CardInstanceModel = {
         ...currentCard,
         zone: opensResolutionWindow ? 'pending_resolution' : 'discard_pile',
@@ -590,14 +669,53 @@ function eventsForCommand(
         })
       ];
 
-      if (opensResolutionWindow) {
+      if (resolutionPlan.kind === 'time_bonus') {
+        const hideTimer = Object.values(aggregate!.timers).find(
+          (timer) => timer.kind === 'hide' && timer.status !== 'completed'
+        );
+
+        if (hideTimer && resolutionPlan.timeBonusMinutes) {
+          events.push(
+            makeEventEnvelope(aggregate, envelope, 1, 'public_match', {
+              type: 'timer_adjusted',
+              payload: {
+                timer: buildAdjustedTimer(hideTimer, envelope.occurredAt, resolutionPlan.timeBonusMinutes * 60),
+                sourceCardInstanceId: currentCard.cardInstanceId
+              }
+            })
+          );
+        }
+      } else if (opensResolutionWindow) {
+        const openingHandCardInstanceIds = Object.values(aggregate!.cardInstances)
+          .filter(
+            (candidate) =>
+              candidate.zone === 'hand' &&
+              candidate.holderType === currentCard.holderType &&
+              candidate.holderId === currentCard.holderId
+          )
+          .map((candidate) => candidate.cardInstanceId)
+          .sort((left, right) => left.localeCompare(right));
+
         events.push(
           makeEventEnvelope(aggregate, envelope, 1, 'team_private', {
             type: 'card_resolution_opened',
             payload: {
               sourceCardInstanceId: currentCard.cardInstanceId,
               seekPhaseSubstate: 'awaiting_card_resolution',
-              lifecycleState: aggregate!.lifecycleState
+              lifecycleState: aggregate!.lifecycleState,
+              resolutionKind: resolutionPlan.kind,
+              discardRequirement:
+                resolutionPlan.discardRequirement.requiredCards ||
+                resolutionPlan.discardRequirement.requiredKind ||
+                resolutionPlan.discardRequirement.discardWholeHand
+                  ? resolutionPlan.discardRequirement
+                  : undefined,
+              drawCountOnResolve: resolutionPlan.drawCountOnResolve,
+              timeBonusMinutes: resolutionPlan.timeBonusMinutes,
+              sourceDeckId: cardDefinition.deckId,
+              holderType: currentCard.holderType,
+              holderId: currentCard.holderId,
+              openingHandCardInstanceIds
             }
           })
         );
@@ -628,9 +746,46 @@ function eventsForCommand(
       const activeQuestion = aggregate?.activeQuestionInstanceId
         ? aggregate.questionInstances[aggregate.activeQuestionInstanceId]
         : undefined;
+      const activeResolution = aggregate!.activeCardResolution;
+      const events: DomainEventEnvelope[] = [];
+      let workingAggregate = aggregate;
 
-      return [
-        makeEventEnvelope(aggregate, envelope, 0, 'team_private', {
+      if (
+        activeResolution?.resolutionKind === 'discard_then_draw' &&
+        activeResolution.drawCountOnResolve &&
+        activeResolution.sourceDeckId &&
+        activeResolution.holderType &&
+        activeResolution.holderId
+      ) {
+        for (let index = 0; index < activeResolution.drawCountOnResolve; index += 1) {
+          const nextCard = workingAggregate
+            ? findTopCardInDeck(workingAggregate, activeResolution.sourceDeckId)
+            : undefined;
+          if (!nextCard) {
+            break;
+          }
+
+          const drawEvent = makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {
+            type: 'card_drawn',
+            payload: {
+              deckId: activeResolution.sourceDeckId,
+              cardInstance: {
+                ...nextCard,
+                zone: 'hand',
+                holderType: activeResolution.holderType,
+                holderId: activeResolution.holderId,
+                updatedAt: envelope.occurredAt
+              }
+            }
+          });
+
+          events.push(drawEvent);
+          workingAggregate = reduceMatchAggregate(workingAggregate, drawEvent);
+        }
+      }
+
+      events.push(
+        makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {
           type: 'card_resolution_closed',
           payload: {
             ...envelope.command.payload,
@@ -641,7 +796,9 @@ function eventsForCommand(
               : undefined
           }
         })
-      ];
+      );
+
+      return events;
     }
     case 'complete_cooldown':
       return [

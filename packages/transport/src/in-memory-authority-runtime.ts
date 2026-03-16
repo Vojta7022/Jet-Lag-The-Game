@@ -24,6 +24,7 @@ import { reduceMatchAggregate } from '../../engine/src/index.ts';
 
 import { TransportRuntimeError } from './errors.ts';
 import { EngineCommandGateway } from './engine-command-gateway.ts';
+import { reconcileRuntimeState } from './reconcile-runtime-state.ts';
 import { buildSyncEnvelope, createMatchSnapshot } from './sync.ts';
 
 interface RuntimeSubscriptionRecord {
@@ -57,7 +58,8 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
   }
 
   async submitCommand(envelope: CommandEnvelope): Promise<CommandSubmissionResult> {
-    const aggregate = await this.loadAggregate(envelope.matchId);
+    const reconciled = await this.reconcileAggregate(envelope.matchId, envelope.occurredAt);
+    const aggregate = reconciled?.aggregate;
     const contentPack = this.resolveContentPack(aggregate, envelope);
     const result = await this.gateway.submit({
       aggregate,
@@ -66,6 +68,10 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
     });
 
     if (!result.accepted || !result.aggregate) {
+      if (reconciled?.didChange) {
+        await this.notifySubscribers(envelope.matchId);
+      }
+
       return result;
     }
 
@@ -169,7 +175,7 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
     cursor?: SyncCursor,
     forceKind?: 'snapshot' | 'delta'
   ): Promise<SyncEnvelope> {
-    const aggregate = await this.loadAggregate(matchId);
+    const aggregate = (await this.reconcileAggregate(matchId))?.aggregate;
 
     if (!aggregate) {
       throw new TransportRuntimeError('MATCH_NOT_FOUND', `No match with id "${matchId}" is available.`);
@@ -232,6 +238,44 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
 
     const recovered = await this.recoverMatch(matchId);
     return recovered?.aggregate;
+  }
+
+  private async reconcileAggregate(
+    matchId: string,
+    occurredAt = new Date().toISOString()
+  ): Promise<{ aggregate?: MatchAggregate; didChange: boolean }> {
+    const aggregate = await this.loadAggregate(matchId);
+    if (!aggregate) {
+      return {
+        aggregate: undefined,
+        didChange: false
+      };
+    }
+
+    const contentPack = this.resolveContentPack(aggregate);
+    const reconciliation = reconcileRuntimeState({
+      aggregate,
+      contentPack,
+      occurredAt
+    });
+
+    if (reconciliation.events.length === 0) {
+      return {
+        aggregate,
+        didChange: false
+      };
+    }
+
+    await this.persistence.appendEvents(matchId, reconciliation.events);
+
+    const snapshot = createMatchSnapshot(reconciliation.aggregate, this.mode);
+    await this.persistence.saveSnapshot(snapshot);
+    this.aggregateCache.set(matchId, reconciliation.aggregate);
+
+    return {
+      aggregate: reconciliation.aggregate,
+      didChange: true
+    };
   }
 
   private resolveContentPack(

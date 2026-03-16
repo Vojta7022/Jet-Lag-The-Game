@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { executeCommand } from '../../packages/engine/src/index.ts';
 import {
+  getCurrentQuestionTemplate,
   loadEngineTestContentPack,
   makeEnvelope,
   makeSquarePolygon,
@@ -13,6 +14,12 @@ import {
 function setupMatchToApplyingConstraints() {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
+  const matchingTemplate = getCurrentQuestionTemplate(
+    aggregate,
+    contentPack,
+    'matching',
+    'matching-commercial-airport'
+  );
 
   aggregate = executeCommand(
     aggregate,
@@ -34,7 +41,7 @@ function setupMatchToApplyingConstraints() {
         type: 'ask_question',
         payload: {
           questionInstanceId: 'question-geometry',
-          templateId: 'matching-commercial-airport',
+          templateId: matchingTemplate.templateId,
           targetTeamId: 'team-hider'
         }
       },

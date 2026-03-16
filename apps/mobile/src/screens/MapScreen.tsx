@@ -6,16 +6,23 @@ import type { DomainCommand } from '../../../../packages/shared-types/src/index.
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
+import {
+  buildDeckViewModels,
+  resolveCurrentRole
+} from '../features/cards/index.ts';
 import { MapCanvas } from '../features/map/MapCanvas';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 
 import {
+  LiveMapActionPanel,
   MapLegend,
   SelectedRegionChipList,
   SearchableRegionPicker,
   addRegionToSelection,
   buildAppliedRegionDraft,
+  buildLiveDeckSummaryModel,
+  buildLiveGameplayGuideModel,
   buildMapOverlayModel,
   buildCompositePlayableRegion,
   buildMapScaleGuidanceModel,
@@ -23,10 +30,12 @@ import {
   clearSelectedRegions,
   mobileRegionDataSource,
   removeRegionFromSelection,
+  resolveMapCanvasPreviewRegion,
   useRegionSearch
 } from '../features/map/index.ts';
 import {
   QuestionResolutionPanel,
+  findActiveQuestion,
   buildQuestionMapEffectModel,
   findConstraintForQuestion,
   findLatestResolvedQuestion,
@@ -36,6 +45,7 @@ import {
 import {
   MatchTimingBanner,
   MatchTimingPanel,
+  formatCountdown,
   useMatchTimingModel
 } from '../features/timers/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
@@ -133,59 +143,6 @@ function hasOnlineIdentityMismatch(
     activeMatch.recipient.actorId !== (profile.authUserId ?? profile.playerId);
 }
 
-function formatRoleLabel(role: string | undefined) {
-  switch (role) {
-    case 'host':
-      return 'Host';
-    case 'hider':
-      return 'Hider';
-    case 'seeker':
-      return 'Seeker';
-    default:
-      return 'Spectator';
-  }
-}
-
-function formatPlayerViewLabel(scope: string | undefined) {
-  switch (scope) {
-    case 'player_private':
-      return 'Personal view';
-    case 'team_private':
-      return 'Team view';
-    case 'host_admin':
-      return 'Host view';
-    case 'public_match':
-      return 'Public match view';
-    default:
-      return 'Public match view';
-  }
-}
-
-function buildLiveMapActions(args: {
-  role: string | undefined;
-  canUseCards: boolean;
-}): Array<{ label: string; href: '/questions' | '/cards' | '/chat' | '/dice' | '/lobby' }> {
-  const actions: Array<{ label: string; href: '/questions' | '/cards' | '/chat' | '/dice' | '/lobby' }> = [
-    { label: 'Chat', href: '/chat' }
-  ];
-
-  if (args.role === 'host' || args.role === 'seeker' || args.role === 'hider') {
-    actions.unshift({ label: 'Questions', href: '/questions' });
-  }
-
-  if (args.canUseCards) {
-    actions.push({ label: 'Deck', href: '/cards' });
-  }
-
-  actions.push({ label: 'Dice', href: '/dice' });
-
-  if (args.role === 'spectator') {
-    actions.unshift({ label: 'Match Room', href: '/lobby' });
-  }
-
-  return actions.slice(0, 4);
-}
-
 export function MapScreen() {
   const dimensions = useWindowDimensions();
   const { state, submitCommands, refreshActiveMatch, saveMapSetupDraft, clearMapSetupDraft } = useAppShell();
@@ -202,11 +159,15 @@ export function MapScreen() {
   });
   const projection = activeMatch?.projection;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
+  const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const appliedRegion = buildAppliedRegionDraft(projection?.visibleMap)[0];
   const scaleGuidance = buildMapScaleGuidanceModel({
     selectedRegions: selectedRegions.length > 0 ? selectedRegions : appliedRegion ? [appliedRegion] : [],
     appliedMap: projection?.visibleMap
   });
+  const activeQuestion = findActiveQuestion(projection);
+  const activeQuestionTemplate = findQuestionTemplate(defaultContentPack, activeQuestion?.templateId);
+  const activeQuestionCategory = findQuestionCategory(defaultContentPack, activeQuestion?.categoryId);
   const latestResolvedQuestion = findLatestResolvedQuestion(projection);
   const latestResolvedConstraint = findConstraintForQuestion(
     projection,
@@ -246,17 +207,45 @@ export function MapScreen() {
     [selectedRegions]
   );
   const previewRegion = compositePreviewRegion ?? regionSearch.selectedRegion;
+  const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
+  const deckViewModels = useMemo(
+    () => buildDeckViewModels(defaultContentPack, projection, viewerRole),
+    [projection, viewerRole]
+  );
+  const hiderDeck = deckViewModels.find((deck) => deck.deck.ownerScope === 'hider_team') ??
+    deckViewModels.find((deck) => deck.deck.ownerScope === 'hider_player');
+  const activeQuestionTimerSeconds = timingModel?.timers.find(
+    (timer) => timer.kind === 'question' && timer.status !== 'completed'
+  )?.remainingSeconds;
+  const activeQuestionTimerLabel = activeQuestionTimerSeconds !== undefined
+    ? formatCountdown(activeQuestionTimerSeconds)
+    : undefined;
+  const canvasPreviewRegion = useMemo(
+    () =>
+      resolveMapCanvasPreviewRegion({
+        appliedMap: projection?.visibleMap,
+        compositePreviewRegion,
+        searchPreviewRegion: regionSearch.selectedRegion,
+        liveGameplayState,
+        loadState: state.loadState
+      }),
+    [
+      compositePreviewRegion,
+      liveGameplayState,
+      projection?.visibleMap,
+      regionSearch.selectedRegion,
+      state.loadState
+    ]
+  );
   const overlayModel = useMemo(
     () => buildMapOverlayModel({
       visibleMap: projection?.visibleMap,
       visibleMovementTracks: projection?.visibleMovementTracks,
-      previewRegion
+      previewRegion: canvasPreviewRegion
     }),
-    [previewRegion, projection?.visibleMap, projection?.visibleMovementTracks]
+    [canvasPreviewRegion, projection?.visibleMap, projection?.visibleMovementTracks]
   );
   const isHostView = activeMatch?.recipient.scope === 'host_admin' || activeMatch?.playerRole === 'host';
-  const viewerRole = activeMatch?.playerRole ?? activeMatch?.recipient.role ?? 'spectator';
-  const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
   const canPrepareMapSetup =
     isHostView &&
     projection &&
@@ -307,13 +296,45 @@ export function MapScreen() {
     activeMatchExists: Boolean(activeMatch)
   });
   const onlineIdentityMismatch = hasOnlineIdentityMismatch(state.sessionProfile, activeMatch);
-  const liveMapActions = buildLiveMapActions({
-    role: viewerRole,
-    canUseCards: viewerRole === 'host' || viewerRole === 'hider'
-  });
+  const liveGuideModel = useMemo(
+    () =>
+      liveGameplayState
+        ? buildLiveGameplayGuideModel({
+            role: viewerRole,
+            projection,
+            currentSearchAreaLabel: candidateSummary,
+            activeQuestionTemplate,
+            activeQuestionCategory,
+            activeQuestionTimerLabel,
+            latestQuestionEffect,
+            hasDeckAccess: Boolean(hiderDeck)
+          })
+        : undefined,
+    [
+      activeQuestionCategory,
+      activeQuestionTemplate,
+      activeQuestionTimerLabel,
+      candidateSummary,
+      hiderDeck,
+      latestQuestionEffect,
+      liveGameplayState,
+      projection,
+      viewerRole
+    ]
+  );
+  const liveDeckSummary = useMemo(
+    () =>
+      buildLiveDeckSummaryModel({
+        role: viewerRole,
+        projection,
+        hiderDeck,
+        activeQuestionCategory
+      }),
+    [activeQuestionCategory, hiderDeck, projection, viewerRole]
+  );
   const screenTitle = liveGameplayState ? 'Live Map' : 'Map Setup';
   const screenSubtitle = liveGameplayState
-    ? 'Stay on the main search map, follow the latest clue impact, and move quickly to the next action.'
+    ? 'The live map is the center of play. Follow clue results here, then jump to the next role-specific action only when you need it.'
     : 'Choose the playable region before the chase begins, then apply it to the match.';
 
   useEffect(() => {
@@ -477,15 +498,30 @@ export function MapScreen() {
 
         {activeMatch && liveGameplayState ? (
           <Panel
-            title="Main Search Map"
-            subtitle="This is the center of play once setup is done."
+            title="What To Do Now"
+            subtitle="The live map stays in the center. Use this card to know the next move for your role without bouncing through every tool."
+          >
+            {liveGuideModel ? <LiveMapActionPanel model={liveGuideModel} /> : null}
+          </Panel>
+        ) : null}
+
+        {activeMatch && liveGameplayState ? (
+          <Panel
+            title="Main Game Map"
+            subtitle="Watch the current search area, visible movement, and the latest bounded clue overlays from one place."
           >
             <FactList
               items={[
-                { label: 'Role', value: formatRoleLabel(viewerRole) },
-                { label: 'View', value: formatPlayerViewLabel(activeMatch.recipient.scope) },
                 { label: 'Playable Region', value: projection?.visibleMap?.displayName ?? 'Not selected yet' },
-                { label: 'Current Search Area', value: candidateSummary }
+                { label: 'Current Search Area', value: candidateSummary },
+                {
+                  label: 'Latest Clue',
+                  value: latestQuestionEffect?.mapEffectTitle ?? 'No resolved clue yet'
+                },
+                {
+                  label: 'Live Timer',
+                  value: activeQuestionTimerLabel ?? 'No active clue timer'
+                }
               ]}
             />
             <MapCanvas
@@ -493,7 +529,7 @@ export function MapScreen() {
               maxWidth={dimensions.width - 32}
               visibleMap={projection?.visibleMap}
               visibleMovementTracks={projection?.visibleMovementTracks}
-              previewRegion={previewRegion}
+              previewRegion={canvasPreviewRegion}
             />
             <View style={styles.previewHeader}>
               <Text style={styles.copy}>
@@ -518,17 +554,25 @@ export function MapScreen() {
             <Text style={styles.previewMeta}>
               Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)}
             </Text>
-            <View style={styles.actionGrid}>
-              {liveMapActions.map((action) => (
-                <AppButton
-                  key={action.href}
-                  label={action.label}
-                  onPress={() => {
-                    router.push(action.href);
-                  }}
-                  tone={action.href === '/questions' ? 'primary' : 'secondary'}
-                />
-              ))}
+          </Panel>
+        ) : null}
+
+        {liveGameplayState && liveDeckSummary ? (
+          <Panel
+            title="Deck And Response"
+            subtitle="The hider hand and live card effects stay tied to the chase, not off in a separate utility."
+          >
+            <View style={styles.liveSupportCard}>
+              <Text style={styles.title}>{liveDeckSummary.title}</Text>
+              <Text style={styles.copy}>{liveDeckSummary.detail}</Text>
+              <FactList items={liveDeckSummary.facts} />
+              <AppButton
+                label={liveDeckSummary.action.label}
+                tone={liveDeckSummary.action.tone}
+                onPress={() => {
+                  router.push(liveDeckSummary.action.href);
+                }}
+              />
             </View>
           </Panel>
         ) : null}
@@ -716,7 +760,17 @@ export function MapScreen() {
                   return;
                 }
 
-                void submitCommands([createMapRegionCommand(compositePreviewRegion)]);
+                void (async () => {
+                  const succeeded = await submitCommands([createMapRegionCommand(compositePreviewRegion)]);
+                  if (!succeeded || !activeMatch) {
+                    return;
+                  }
+
+                  setSelectedRegions(clearSelectedRegions());
+                  regionSearch.setQuery('');
+                  regionSearch.clearSelection();
+                  clearMapSetupDraft(activeMatch.matchId);
+                })();
               }}
               disabled={!canApplySelectedRegion || state.loadState === 'loading'}
             />
@@ -772,7 +826,7 @@ export function MapScreen() {
             maxWidth={dimensions.width - 32}
             visibleMap={projection?.visibleMap}
             visibleMovementTracks={projection?.visibleMovementTracks}
-            previewRegion={previewRegion}
+            previewRegion={canvasPreviewRegion}
           />
           {showLegend ? (
             <View style={styles.legendCard}>
@@ -880,6 +934,12 @@ const styles = StyleSheet.create({
   },
   actionGrid: {
     gap: 10
+  },
+  liveSupportCard: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 16,
+    gap: 12,
+    padding: 14
   },
   previewHeader: {
     alignItems: 'center',
