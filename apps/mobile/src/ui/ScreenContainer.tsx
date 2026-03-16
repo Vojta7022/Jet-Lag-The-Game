@@ -5,6 +5,7 @@ import { colors } from './theme.ts';
 interface ScreenContainerProps {
   title: string;
   subtitle?: string;
+  eyebrow?: string;
   topSlot?: React.ReactNode;
   bottomSlot?: React.ReactNode;
   children: React.ReactNode;
@@ -15,6 +16,7 @@ export function ScreenContainer(props: ScreenContainerProps) {
     <View style={styles.shell}>
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <View style={styles.header}>
+          {props.eyebrow ? <Text style={styles.eyebrow}>{props.eyebrow}</Text> : null}
           <Text style={styles.title}>{props.title}</Text>
           {props.subtitle ? <Text style={styles.subtitle}>{props.subtitle}</Text> : null}
         </View>
@@ -36,21 +38,38 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background
   },
   content: {
-    padding: 16,
-    gap: 16
+    padding: 18,
+    gap: 18
   },
   header: {
-    gap: 6,
-    paddingTop: 4
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 24,
+    elevation: 2
+  },
+  eyebrow: {
+    color: colors.accentStrong,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase'
   },
   title: {
-    fontSize: 30,
+    fontSize: 31,
     fontWeight: '800',
     color: colors.text
   },
   subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 21,
     color: colors.textMuted
   },
   topSlot: {
@@ -59,9 +78,14 @@ const styles = StyleSheet.create({
   bottomSlot: {
     borderTopColor: colors.border,
     borderTopWidth: 1,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 12,
+    backgroundColor: colors.surfaceRaised,
+    paddingHorizontal: 14,
     paddingTop: 10,
-    paddingBottom: 14
+    paddingBottom: 16,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.04,
+    shadowRadius: 18,
+    elevation: 3
   }
 });

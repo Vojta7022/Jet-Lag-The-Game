@@ -6,7 +6,8 @@ import { CardAutomationPill } from './CardAutomationPill.tsx';
 import {
   buildCardBehaviorModel,
   buildCardDescription,
-  buildCardListSubtitle
+  buildCardListSubtitle,
+  formatCardKindLabel
 } from './card-guidance.ts';
 import { colors } from '../../ui/theme.ts';
 
@@ -32,6 +33,7 @@ export function CardZoneSection(props: CardZoneSectionProps) {
           {props.cards.map((card) => {
             const selected = card.card.cardInstanceId === props.selectedCardInstanceId;
             const behavior = buildCardBehaviorModel(card.definition);
+            const accentStyle = resolveCardAccent(card.definition.kind);
             return (
               <Pressable
                 key={card.card.cardInstanceId}
@@ -39,8 +41,10 @@ export function CardZoneSection(props: CardZoneSectionProps) {
                 onPress={() => props.onSelect(card.card.cardInstanceId)}
                 style={[styles.item, selected ? styles.itemSelected : null]}
               >
+                <View style={[styles.topStripe, accentStyle]} />
                 <View style={styles.cardHeader}>
                   <View style={styles.cardText}>
+                    <Text style={styles.kind}>{formatCardKindLabel(card.definition.kind)}</Text>
                     <Text style={styles.name}>{card.definition.name}</Text>
                     <Text style={styles.meta}>{buildCardListSubtitle(card)}</Text>
                   </View>
@@ -65,7 +69,7 @@ export function CardZoneSection(props: CardZoneSectionProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8
+    gap: 10
   },
   header: {
     alignItems: 'center',
@@ -88,29 +92,54 @@ const styles = StyleSheet.create({
     lineHeight: 17
   },
   list: {
-    gap: 8
+    gap: 10
   },
   item: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
+    borderRadius: 18,
     borderWidth: 1,
-    gap: 4,
-    padding: 10
+    gap: 8,
+    overflow: 'hidden',
+    padding: 0
   },
   itemSelected: {
     backgroundColor: colors.accentMuted,
     borderColor: colors.accent
   },
+  topStripe: {
+    height: 8
+  },
+  topStripeTime: {
+    backgroundColor: colors.accentWarm
+  },
+  topStripePower: {
+    backgroundColor: colors.accent
+  },
+  topStripeCurse: {
+    backgroundColor: colors.danger
+  },
+  topStripeBlank: {
+    backgroundColor: colors.borderStrong
+  },
   cardHeader: {
     alignItems: 'flex-start',
     flexDirection: 'row',
     gap: 10,
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingTop: 12
   },
   cardText: {
     flex: 1,
     gap: 4
+  },
+  kind: {
+    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase'
   },
   badgeGroup: {
     alignItems: 'flex-end',
@@ -132,8 +161,8 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.text,
-    fontSize: 13,
-    fontWeight: '700'
+    fontSize: 16,
+    fontWeight: '800'
   },
   meta: {
     color: colors.textMuted,
@@ -142,7 +171,22 @@ const styles = StyleSheet.create({
   },
   copy: {
     color: colors.text,
-    fontSize: 12,
-    lineHeight: 17
+    fontSize: 13,
+    lineHeight: 19,
+    paddingHorizontal: 14,
+    paddingBottom: 14
   }
 });
+
+function resolveCardAccent(kind: ResolvedVisibleCardModel['definition']['kind']) {
+  switch (kind) {
+    case 'time_bonus':
+      return styles.topStripeTime;
+    case 'power_up':
+      return styles.topStripePower;
+    case 'curse':
+      return styles.topStripeCurse;
+    default:
+      return styles.topStripeBlank;
+  }
+}

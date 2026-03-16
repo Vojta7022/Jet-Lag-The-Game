@@ -444,6 +444,7 @@ export function MapScreen() {
   return (
     <ScreenContainer
       title={screenTitle}
+      eyebrow={liveGameplayState ? 'Live Game' : 'Pregame'}
       subtitle={screenSubtitle}
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="map" />}
       bottomSlot={liveGameplayState ? <GameplayTabBar current="map" /> : undefined}
@@ -506,14 +507,10 @@ export function MapScreen() {
           />
         ) : null}
 
-        {activeMatch ? (
+        {activeMatch && !liveGameplayState ? (
           <Panel
-            title={liveGameplayState ? 'Match Timing' : 'Match Timing'}
-            subtitle={
-              liveGameplayState
-                ? 'Hide phase, cooldowns, and pause state stay visible while everyone plays from the shared map.'
-                : 'Hide phase, cooldowns, and pause state stay visible while you work on the playable region.'
-            }
+            title="Match Timing"
+            subtitle="Hide phase, cooldowns, and pause state stay visible while you work on the playable region."
           >
             <MatchTimingPanel model={timingModel} />
           </Panel>
@@ -581,8 +578,18 @@ export function MapScreen() {
           <Panel
             title="What To Do Now"
             subtitle="The live map stays in the center. Use this card to know the next move for your role without bouncing through every tool."
+            tone="soft"
           >
             {liveGuideModelForDisplay ? <LiveMapActionPanel model={liveGuideModelForDisplay} /> : null}
+            {isHostView ? (
+              <AppButton
+                label="Open Match Controls"
+                tone="ghost"
+                onPress={() => {
+                  router.push('/status');
+                }}
+              />
+            ) : null}
           </Panel>
         ) : null}
 
@@ -590,6 +597,7 @@ export function MapScreen() {
           <Panel
             title="Main Game Map"
             subtitle="Watch the current search area, visible movement, and the latest bounded clue overlays from one place."
+            tone="accent"
           >
             <FactList
               items={[

@@ -70,8 +70,9 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.hero}>
         <View style={styles.headerText}>
+          <Text style={styles.kind}>{formatCardKindLabel(card.definition.kind)}</Text>
           <Text style={styles.title}>{card.definition.name}</Text>
           <Text style={styles.meta}>
             {formatCardKindLabel(card.definition.kind)} · {formatZoneLabel(card.card.zone as CardZoneView)} · {card.deck.name}
@@ -161,22 +162,32 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8
+    gap: 12
   },
-  header: {
+  hero: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 20,
     alignItems: 'flex-start',
     flexDirection: 'row',
     gap: 10,
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    padding: 14
   },
   headerText: {
     flex: 1,
     gap: 4
   },
+  kind: {
+    color: colors.textSubtle,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase'
+  },
   title: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '700'
+    fontSize: 20,
+    fontWeight: '800'
   },
   meta: {
     color: colors.textMuted,
@@ -184,10 +195,12 @@ const styles = StyleSheet.create({
     lineHeight: 16
   },
   section: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 14,
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
     gap: 8,
-    padding: 12
+    padding: 14
   },
   sectionTitle: {
     color: colors.text,

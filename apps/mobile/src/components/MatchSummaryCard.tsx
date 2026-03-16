@@ -59,15 +59,18 @@ export function MatchSummaryCard() {
   );
 
   return (
-    <Panel title="Current Match" subtitle="This stays in sync with the live session on this device.">
+    <Panel title="Current Match" subtitle="This device follows the current session and role automatically.">
       <FactList
         items={[
           { label: 'Session', value: formatSessionLabel(activeMatch.runtimeKind, activeMatch.matchMode) },
-          { label: 'Stage', value: formatValue(activeMatch.lifecycleState) },
-          { label: 'Role', value: formatValue(activeMatch.playerRole ?? activeMatch.recipient.role ?? 'spectator') },
-          { label: 'You', value: connectedPlayer?.displayName ?? state.sessionProfile.displayName },
-          { label: 'View', value: formatViewLabel(activeMatch.recipient.scope) },
-          { label: 'Connection', value: formatValue(activeMatch.connectionState) }
+          { label: 'Match Phase', value: formatValue(activeMatch.lifecycleState) },
+          { label: 'Your Side', value: formatValue(activeMatch.playerRole ?? activeMatch.recipient.role ?? 'spectator') },
+          { label: 'Player', value: connectedPlayer?.displayName ?? state.sessionProfile.displayName },
+          {
+            label: 'Current Map',
+            value: activeMatch.projection.visibleMap?.displayName ?? 'Match setup is still in progress'
+          },
+          { label: 'View', value: formatViewLabel(activeMatch.recipient.scope) }
         ]}
       />
     </Panel>

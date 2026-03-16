@@ -32,25 +32,27 @@ export function Field(props: FieldProps) {
 
 const styles = StyleSheet.create({
   field: {
-    gap: 6
+    gap: 8
   },
   label: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600'
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase'
   },
   input: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
-    borderRadius: 12,
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
+    borderRadius: 16,
     borderWidth: 1,
     color: colors.text,
-    minHeight: 46,
-    paddingHorizontal: 14,
-    paddingVertical: 10
+    minHeight: 50,
+    paddingHorizontal: 16,
+    paddingVertical: 12
   },
   inputMultiline: {
-    minHeight: 104,
+    minHeight: 112,
     textAlignVertical: 'top'
   }
 });

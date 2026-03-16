@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { useRuntimeMode } from '../providers/RuntimeModeProvider.tsx';
@@ -10,6 +10,13 @@ import { Field } from '../ui/Field.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
+import { colors } from '../ui/theme.ts';
+
+const SCALE_OPTIONS = [
+  { value: 'small', label: 'Small' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'large', label: 'Large' }
+] as const;
 
 export function CreateMatchScreen() {
   const { state, createMatch } = useAppShell();
@@ -39,6 +46,7 @@ export function CreateMatchScreen() {
   return (
     <ScreenContainer
       title={runtimeKind === 'online_foundation' ? 'Create Online Match' : 'Create Match'}
+      eyebrow="Pregame"
       subtitle="Start a match with the saved player profile, then continue into the match room and live map."
     >
       {state.errorMessage ? (
@@ -48,14 +56,29 @@ export function CreateMatchScreen() {
       <Panel
         title="Match Setup"
         subtitle="Choose a match code and game size, then create the session."
+        tone="accent"
       >
         <Field label="Match Code" value={matchId} onChangeText={setMatchId} placeholder="prague-night-run" />
-        <Field
-          label="Game Size"
-          value={initialScale}
-          onChangeText={(value) => setInitialScale(value as typeof initialScale)}
-          placeholder="small"
-        />
+        <View style={styles.choiceGroup}>
+          <Text style={styles.choiceLabel}>Game Size</Text>
+          <View style={styles.choiceRow}>
+            {SCALE_OPTIONS.map((option) => {
+              const selected = option.value === initialScale;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  onPress={() => setInitialScale(option.value)}
+                  style={[styles.choiceChip, selected ? styles.choiceChipSelected : null]}
+                >
+                  <Text style={[styles.choiceChipLabel, selected ? styles.choiceChipLabelSelected : null]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
         {runtimeKind === 'online_foundation' ? (
           <StateBanner
             tone="info"
@@ -71,7 +94,7 @@ export function CreateMatchScreen() {
         )}
         <Text>{runtimeHint}</Text>
         <AppButton
-          label={state.loadState === 'loading' ? 'Creating...' : 'Create Match'}
+          label={state.loadState === 'loading' ? 'Creating Match...' : 'Create Match Room'}
           disabled={state.loadState === 'loading'}
           onPress={() => {
             void createMatch({
@@ -89,3 +112,42 @@ export function CreateMatchScreen() {
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  choiceGroup: {
+    gap: 10
+  },
+  choiceLabel: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase'
+  },
+  choiceRow: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  choiceChip: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceRaised,
+    paddingHorizontal: 12,
+    paddingVertical: 12
+  },
+  choiceChipSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent
+  },
+  choiceChipLabel: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  choiceChipLabelSelected: {
+    color: colors.inkInverse
+  }
+});

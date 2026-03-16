@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
@@ -13,6 +14,7 @@ import {
   resolveLocationViewerRole
 } from '../features/location/index.ts';
 import { getSeedPlayableRegion } from '../features/map/index.ts';
+import { canAccessHostControls } from '../navigation/player-flow.ts';
 import {
   MatchTimingBanner,
   MatchTimingPanel,
@@ -45,6 +47,10 @@ export function MovementScreen() {
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const viewerRole = resolveLocationViewerRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const canShare = canViewerShareLiveLocation(viewerRole);
+  const canOpenMatchControls = canAccessHostControls(
+    activeMatch?.playerRole ?? activeMatch?.recipient.role,
+    activeMatch?.recipient.scope
+  );
   const movementTracks = useMemo(
     () => buildMovementTrackViewModels(projection),
     [projection]
@@ -55,10 +61,24 @@ export function MovementScreen() {
 
   return (
     <ScreenContainer
-      title="Movement"
-      subtitle="Share seeker movement when allowed, review recent tracks, and keep thermometer-style questions grounded in real history."
+      title="Movement Review"
+      eyebrow="Host Only"
+      subtitle="Use this as an advanced movement review screen. Normal live play should stay on the map."
       topSlot={<ProductNavBar current="movement" />}
     >
+      {activeMatch ? (
+        <Panel
+          title="Return To Live Play"
+          subtitle="Visible movement now belongs on the main map. Use this screen only when you need deeper review or sharing controls."
+          tone="soft"
+        >
+          <AppButton label="Back To Live Map" onPress={() => router.push('/map')} tone="secondary" />
+          {canOpenMatchControls ? (
+            <AppButton label="Open Match Controls" onPress={() => router.push('/status')} tone="ghost" />
+          ) : null}
+        </Panel>
+      ) : null}
+
       {!activeMatch ? (
         <StateBanner
           tone="warning"

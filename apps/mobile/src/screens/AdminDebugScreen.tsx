@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
+import { canAccessHostControls } from '../navigation/player-flow.ts';
 import {
   AdminControlPanel,
   buildAdminControlModels,
@@ -37,7 +39,8 @@ export function AdminDebugScreen() {
   } = useAppShell();
   const [actionStatus, setActionStatus] = useState<AdminActionStatus | undefined>(undefined);
   const activeMatch = state.activeMatch;
-  const canAccess = canAccessAdminTools(activeMatch);
+  const canAccess = canAccessAdminTools(activeMatch) &&
+    canAccessHostControls(activeMatch?.playerRole ?? activeMatch?.recipient.role, activeMatch?.recipient.scope);
   const controls = useMemo(() => buildAdminControlModels(activeMatch), [activeMatch]);
   const diagnostics = useMemo(
     () => buildRuntimeDiagnosticsModel(activeMatch, state.lastSync),
@@ -47,6 +50,12 @@ export function AdminDebugScreen() {
     () => buildProjectionInspectionModel(activeMatch?.projection, { allowSensitiveState: canAccess }),
     [activeMatch?.projection, canAccess]
   );
+
+  useEffect(() => {
+    if (activeMatch && !canAccess) {
+      router.replace('/map');
+    }
+  }, [activeMatch, canAccess]);
 
   const handleAction = async (action: AdminControlAction) => {
     const control = controls.find((candidate) => candidate.action === action);
@@ -105,8 +114,9 @@ export function AdminDebugScreen() {
 
   return (
     <ScreenContainer
-      title="Referee Tools"
-      subtitle="Manage match state, inspect scoped projections, and review runtime diagnostics from the host-admin view."
+      title="Referee Panel"
+      eyebrow="Host Only"
+      subtitle="Use this secondary panel for authority actions, diagnostics, and recovery after the main live shell is already in place."
       topSlot={<ProductNavBar current="admin" />}
     >
       {state.loadState === 'loading' ? (

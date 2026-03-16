@@ -6,6 +6,7 @@ import { buildQuestionSelectionState } from '../../../../packages/domain/src/ind
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
+import { canAccessHostControls } from '../navigation/player-flow.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
@@ -142,6 +143,10 @@ export function QuestionCenterScreen() {
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
+  const canOpenMatchControls = canAccessHostControls(
+    activeMatch?.playerRole ?? activeMatch?.recipient.role,
+    activeMatch?.recipient.scope
+  );
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
   const capabilities = getQuestionFlowCapabilities(viewerRole);
@@ -453,7 +458,8 @@ export function QuestionCenterScreen() {
 
   return (
     <ScreenContainer
-      title="Questions"
+      title={liveGameplayState ? 'Clue Review' : 'Questions'}
+      eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
       subtitle={
         liveGameplayState
           ? 'Use this as the full clue review screen when you need more detail than the live map flow.'
@@ -472,7 +478,7 @@ export function QuestionCenterScreen() {
 
       {activeMatch ? (
       <Panel
-        title={liveGameplayState ? 'Use This To Move The Map Forward' : 'Question Context'}
+        title={liveGameplayState ? 'Clue Review' : 'Question Context'}
         subtitle={
           liveGameplayState
             ? 'The map now handles the fastest live clue actions. Use this screen for deeper review, more room, or a full clue walkthrough.'
@@ -500,6 +506,15 @@ export function QuestionCenterScreen() {
             tone="secondary"
             onPress={() => {
               router.push('/map');
+            }}
+          />
+        ) : null}
+        {liveGameplayState && canOpenMatchControls ? (
+          <AppButton
+            label="Open Match Controls"
+            tone="ghost"
+            onPress={() => {
+              router.push('/status');
             }}
           />
         ) : null}
@@ -544,6 +559,7 @@ export function QuestionCenterScreen() {
       <Panel
         title="Latest Result"
         subtitle="Review the most recent clue in plain language before you ask the next one or head back to the map."
+        tone="soft"
       >
         <QuestionResolutionPanel
           title="Latest Question Outcome"
@@ -602,6 +618,7 @@ export function QuestionCenterScreen() {
       <Panel
         title="Workbook Rule"
         subtitle="This is the real draw, keep, and answer window rule imported from the workbook."
+        tone="soft"
       >
         {selectedCategory ? (
           <>
@@ -675,6 +692,7 @@ export function QuestionCenterScreen() {
       <Panel
         title="Ask The Clue"
         subtitle="Review the selected clue in plain language, including how it should affect the search map."
+        tone="accent"
       >
         {previewTemplate && selectedCategory ? (
           <>

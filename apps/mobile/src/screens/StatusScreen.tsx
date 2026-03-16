@@ -1,9 +1,13 @@
+import { router } from 'expo-router';
+import { useEffect } from 'react';
+
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import {
   MatchTimingBanner,
   MatchTimingPanel,
   useMatchTimingModel
 } from '../features/timers/index.ts';
+import { canAccessHostControls } from '../navigation/player-flow.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
@@ -15,11 +19,22 @@ export function StatusScreen() {
   const { state, clearError, refreshActiveMatch } = useAppShell();
   const activeMatch = state.activeMatch;
   const timingModel = useMatchTimingModel(activeMatch?.projection, activeMatch?.receivedAt);
+  const canAccess = canAccessHostControls(
+    activeMatch?.playerRole ?? activeMatch?.recipient.role,
+    activeMatch?.recipient.scope
+  );
+
+  useEffect(() => {
+    if (activeMatch && !canAccess) {
+      router.replace('/map');
+    }
+  }, [activeMatch, canAccess]);
 
   return (
     <ScreenContainer
-      title="Session Status"
-      subtitle="Review the current runtime connection, sync state, and nearby join details for this session."
+      title="Match Controls"
+      eyebrow="Host Only"
+      subtitle="Use this host-only overflow for referee access, movement review, and connection health."
       topSlot={<ProductNavBar current="status" />}
     >
       {state.errorMessage ? (
@@ -29,16 +44,36 @@ export function StatusScreen() {
       {!activeMatch ? (
         <StateBanner
           tone="warning"
-          title="No active transport session"
+          title="No active match"
           detail="There is nothing to inspect yet because no match connection has been established."
+        />
+      ) : null}
+
+      {activeMatch && !canAccess ? (
+        <StateBanner
+          tone="warning"
+          title="Host access required"
+          detail="Only the host or host-admin view can open match controls."
         />
       ) : null}
 
       <MatchTimingBanner model={timingModel} />
 
+      {activeMatch && canAccess ? (
+        <Panel
+          title="Control Room"
+          subtitle="Keep advanced tools out of the main player path while still making them easy for the host to reach."
+          tone="accent"
+        >
+          <AppButton label="Open Live Map" onPress={() => router.push('/map')} tone="secondary" />
+          <AppButton label="Open Referee Panel" onPress={() => router.push('/admin')} tone="secondary" />
+          <AppButton label="Open Movement Review" onPress={() => router.push('/movement')} tone="ghost" />
+        </Panel>
+      ) : null}
+
       {activeMatch ? (
         <Panel
-          title="Match Timing"
+          title="Live Timing"
           subtitle="The current screen-wide timing summary from the latest synced projection."
         >
           <MatchTimingPanel model={timingModel} />
@@ -48,7 +83,7 @@ export function StatusScreen() {
       {activeMatch ? (
         <Panel
           title="Connection Status"
-          subtitle="Core transport, persistence, and snapshot details for the active match session."
+          subtitle="Transport, persistence, and snapshot details for the active host session."
         >
           <FactList
             items={[
@@ -72,7 +107,7 @@ export function StatusScreen() {
             />
           ) : null}
           <AppButton
-            label="Refresh Status"
+            label="Refresh Match Controls"
             onPress={() => {
               void refreshActiveMatch();
             }}

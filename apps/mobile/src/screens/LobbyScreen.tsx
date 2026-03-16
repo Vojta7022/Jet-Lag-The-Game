@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
@@ -8,6 +9,7 @@ import {
   hasRequiredRoleAssignments,
   isRoleAssignmentStage
 } from '../features/roles/role-assignment.ts';
+import { shouldRedirectSetupScreen } from '../navigation/player-flow.ts';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
@@ -26,12 +28,19 @@ export function LobbyScreen() {
   const canManageRoles = Boolean(role === 'host' && projection && isRoleAssignmentStage(projection.lifecycleState));
   const assignablePlayers = getAssignablePlayers(projection);
   const rolesReady = hasRequiredRoleAssignments(projection);
-  const primaryNextRoute = liveGameplayState || projection?.visibleMap ? '/map' : '/dashboard';
-  const primaryNextLabel = liveGameplayState || projection?.visibleMap ? 'Open Live Map' : 'Open Team View';
+  const primaryNextRoute = rolesReady || projection?.visibleMap ? '/map' : '/dashboard';
+  const primaryNextLabel = rolesReady || projection?.visibleMap ? 'Continue To Map Setup' : 'Open Team View';
+
+  useEffect(() => {
+    if (shouldRedirectSetupScreen(projection?.lifecycleState)) {
+      router.replace('/map');
+    }
+  }, [projection?.lifecycleState]);
 
   return (
     <ScreenContainer
       title="Match Room"
+      eyebrow="Pregame"
       subtitle="See who is in the match, confirm your current view, and move into the next step of play."
       topSlot={<ProductNavBar current="lobby" />}
     >
@@ -74,8 +83,8 @@ export function LobbyScreen() {
       {projection && liveGameplayState ? (
         <StateBanner
           tone="info"
-          title="Live match in progress"
-          detail="Team assignment and setup are complete. Use the live map for normal play and return here only if you need a match-room summary."
+          title="Sending you back to the live map"
+          detail="Team assignment and setup are complete. Match Room is no longer part of the normal player path once live play begins."
         />
       ) : null}
 
@@ -167,16 +176,13 @@ export function LobbyScreen() {
 
       {projection ? (
         <Panel
-          title="Continue Playing"
-          subtitle="Jump to the screen that matters most from the current stage."
+          title="Next Step"
+          subtitle="Keep setup linear: finish teams, continue to map setup, then start the live game."
         >
           <AppButton label={primaryNextLabel} onPress={() => router.push(primaryNextRoute)} />
-          <AppButton label="Questions" onPress={() => router.push('/questions')} tone="secondary" />
-          {role === 'hider' || role === 'host' ? (
-            <AppButton label="Deck" onPress={() => router.push('/cards')} tone="secondary" />
+          {role === 'host' ? (
+            <AppButton label="Open Match Controls" onPress={() => router.push('/status')} tone="ghost" />
           ) : null}
-          <AppButton label="Dice" onPress={() => router.push('/dice')} tone="secondary" />
-          <AppButton label="Chat" onPress={() => router.push('/chat')} tone="secondary" />
         </Panel>
       ) : null}
     </ScreenContainer>

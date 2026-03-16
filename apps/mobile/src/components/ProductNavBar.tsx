@@ -18,6 +18,7 @@ export function ProductNavBar(props: ProductNavBarProps) {
   const navItems = buildProductNavItems({
     hasActiveMatch: Boolean(activeMatch),
     role,
+    scope: activeMatch?.recipient.scope,
     lifecycleState: activeMatch?.projection.lifecycleState,
     visibleCardCount: activeMatch?.projection.visibleCards.length ?? 0,
     visibleMovementTrackCount: activeMatch?.projection.visibleMovementTracks.length ?? 0,
@@ -52,13 +53,21 @@ export function ProductNavBar(props: ProductNavBarProps) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Match</Text>
+      <Text style={styles.label}>
+        {activeMatch?.projection.lifecycleState &&
+        activeMatch.projection.lifecycleState !== 'hide_phase' &&
+        activeMatch.projection.lifecycleState !== 'seek_phase' &&
+        activeMatch.projection.lifecycleState !== 'endgame' &&
+        activeMatch.projection.lifecycleState !== 'game_complete'
+          ? 'Pregame'
+          : 'Live'}
+      </Text>
       <View style={styles.list}>
         {primaryItems.map(renderItem)}
       </View>
       {secondaryItems.length > 0 ? (
         <View style={styles.secondaryGroup}>
-          <Text style={styles.secondaryLabel}>Host Tools</Text>
+          <Text style={styles.secondaryLabel}>Host Only</Text>
           <View style={styles.list}>
             {secondaryItems.map(renderItem)}
           </View>
@@ -73,10 +82,10 @@ const styles = StyleSheet.create({
     gap: 10
   },
   label: {
-    color: colors.textMuted,
+    color: colors.textSubtle,
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontWeight: '800',
+    letterSpacing: 0.7,
     textTransform: 'uppercase'
   },
   list: {
@@ -88,22 +97,22 @@ const styles = StyleSheet.create({
     gap: 8
   },
   secondaryLabel: {
-    color: colors.textMuted,
+    color: colors.textSubtle,
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.3,
+    fontWeight: '800',
+    letterSpacing: 0.6,
     textTransform: 'uppercase'
   },
   item: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
     borderRadius: 999,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 9
+    paddingHorizontal: 14,
+    paddingVertical: 10
   },
   itemActive: {
-    backgroundColor: colors.accentMuted,
+    backgroundColor: colors.accent,
     borderColor: colors.accent
   },
   itemPressed: {
@@ -112,9 +121,9 @@ const styles = StyleSheet.create({
   itemLabel: {
     color: colors.text,
     fontSize: 13,
-    fontWeight: '600'
+    fontWeight: '700'
   },
   itemLabelActive: {
-    color: colors.accent
+    color: colors.inkInverse
   }
 });

@@ -5,6 +5,7 @@ import { MatchSummaryCard } from '../components/MatchSummaryCard.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { RuntimeModeSwitcher } from '../components/RuntimeModeSwitcher.tsx';
 import { mobileAppEnvironment } from '../config/env.ts';
+import { canAccessHostControls } from '../navigation/player-flow.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import type { AppShellState } from '../state/app-shell-state.ts';
 import { AppButton } from '../ui/AppButton.tsx';
@@ -34,6 +35,10 @@ export function HomeScreen() {
   const onlineIdentityMismatch = hasOnlineIdentityMismatch(state.sessionProfile, state.activeMatch);
   const activeMatch = state.activeMatch;
   const activeStage = activeMatch?.projection.lifecycleState;
+  const canOpenMatchControls = canAccessHostControls(
+    activeMatch?.playerRole ?? activeMatch?.recipient.role,
+    activeMatch?.recipient.scope
+  );
   const continueRoute = activeMatch
     ? activeStage === 'draft' || activeStage === 'lobby' || activeStage === 'role_assignment'
       ? '/lobby'
@@ -48,6 +53,7 @@ export function HomeScreen() {
   return (
     <ScreenContainer
       title="Transit Hide and Seek"
+      eyebrow="Online Play"
       subtitle="Create or join an online match, then stay with your team on one shared live game flow."
       topSlot={<ProductNavBar current="home" />}
     >
@@ -58,6 +64,7 @@ export function HomeScreen() {
       <Panel
         title="Play Online"
         subtitle="Online cloud play is the main player path. Create or join a match, then move straight into the live map, questions, cards, and chat."
+        tone="accent"
       >
         {state.runtimeKind !== 'online_foundation' ? (
           <StateBanner
@@ -91,7 +98,7 @@ export function HomeScreen() {
           />
         ) : null}
         <Text style={styles.helper}>
-          Use local and referee modes only when you are testing the app, hosting a nearby session, or running single-device play.
+          Every normal player should use online mode on their own device. Local and referee sessions stay available for testing and demos only.
         </Text>
       </Panel>
 
@@ -122,16 +129,18 @@ export function HomeScreen() {
 
       {activeMatch ? (
         <Panel
-          title="Session Controls"
-          subtitle="Keep your current session tidy without leaving the main player flow."
+          title="Current Session"
+          subtitle="Reconnect, continue the match, or leave cleanly without digging through setup tools."
         >
-          <AppButton
-            label="Connection Details"
-            onPress={() => {
-              router.push('/status');
-            }}
-            tone="secondary"
-          />
+          {canOpenMatchControls ? (
+            <AppButton
+              label="Open Match Controls"
+              onPress={() => {
+                router.push('/status');
+              }}
+              tone="secondary"
+            />
+          ) : null}
           <AppButton
             label="Disconnect Match"
             onPress={() => {
@@ -143,7 +152,15 @@ export function HomeScreen() {
         </Panel>
       ) : null}
 
-      {mobileAppEnvironment.enableDeveloperTools ? <RuntimeModeSwitcher /> : null}
+      {mobileAppEnvironment.enableDeveloperTools ? (
+        <Panel
+          title="Other Ways To Play"
+          subtitle="These modes stay available for development, referee play, and local testing. They are not the main consumer player path."
+          tone="soft"
+        >
+          <RuntimeModeSwitcher />
+        </Panel>
+      ) : null}
     </ScreenContainer>
   );
 }

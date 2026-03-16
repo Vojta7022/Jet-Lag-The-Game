@@ -50,12 +50,12 @@ const styles = StyleSheet.create({
     gap: 10
   },
   item: {
-    backgroundColor: colors.surfaceMuted,
-    borderColor: colors.border,
-    borderRadius: 14,
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
+    borderRadius: 20,
     borderWidth: 1,
-    gap: 6,
-    padding: 12
+    gap: 8,
+    padding: 14
   },
   itemSelected: {
     backgroundColor: colors.accentMuted,
@@ -63,17 +63,18 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '700'
+    fontSize: 16,
+    fontWeight: '800'
   },
   meta: {
-    color: colors.textMuted,
+    color: colors.textSubtle,
     fontSize: 12,
-    fontWeight: '600'
+    fontWeight: '700',
+    textTransform: 'uppercase'
   },
   copy: {
     color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 17
+    fontSize: 13,
+    lineHeight: 18
   }
 });

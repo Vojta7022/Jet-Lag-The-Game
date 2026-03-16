@@ -8,6 +8,7 @@ import { VisibleAttachmentList } from '../evidence/index.ts';
 
 interface ChatMessageListProps {
   channel: ChatChannelViewModel | undefined;
+  currentPlayerId?: string;
   localPreviewByAttachmentId?: Record<string, LocalMediaAttachmentDraft>;
 }
 
@@ -23,20 +24,56 @@ export function ChatMessageList(props: ChatMessageListProps) {
   return (
     <View style={styles.list}>
       {props.channel.messages.map((entry) => (
-        <View key={entry.message.messageId} style={styles.message}>
-          <View style={styles.messageHeader}>
-            <Text style={styles.sender}>{entry.message.senderDisplayName}</Text>
-            <Text style={styles.role}>{entry.message.senderRole}</Text>
+        <View
+          key={entry.message.messageId}
+          style={[
+            styles.messageRow,
+            entry.message.senderPlayerId === props.currentPlayerId ? styles.messageRowOwn : null
+          ]}
+        >
+          <View
+            style={[
+              styles.message,
+              entry.message.senderPlayerId === props.currentPlayerId ? styles.messageOwn : null
+            ]}
+          >
+            <View style={styles.messageHeader}>
+              <Text
+                style={[
+                  styles.sender,
+                  entry.message.senderPlayerId === props.currentPlayerId ? styles.senderOwn : null
+                ]}
+              >
+                {entry.message.senderDisplayName}
+              </Text>
+              <Text style={styles.role}>{entry.message.senderRole}</Text>
+            </View>
+            <Text
+              style={[
+                styles.timestamp,
+                entry.message.senderPlayerId === props.currentPlayerId ? styles.timestampOwn : null
+              ]}
+            >
+              {entry.message.sentAt}
+            </Text>
+            {entry.message.body ? (
+              <Text
+                style={[
+                  styles.body,
+                  entry.message.senderPlayerId === props.currentPlayerId ? styles.bodyOwn : null
+                ]}
+              >
+                {entry.message.body}
+              </Text>
+            ) : null}
+            {entry.attachments.length > 0 ? (
+              <VisibleAttachmentList
+                attachments={entry.attachments}
+                emptyText="No visible attachments linked to this message."
+                localPreviewByAttachmentId={props.localPreviewByAttachmentId}
+              />
+            ) : null}
           </View>
-          <Text style={styles.timestamp}>{entry.message.sentAt}</Text>
-          {entry.message.body ? <Text style={styles.body}>{entry.message.body}</Text> : null}
-          {entry.attachments.length > 0 ? (
-            <VisibleAttachmentList
-              attachments={entry.attachments}
-              emptyText="No visible attachments linked to this message."
-              localPreviewByAttachmentId={props.localPreviewByAttachmentId}
-            />
-          ) : null}
         </View>
       ))}
 
@@ -63,13 +100,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18
   },
+  messageRow: {
+    alignItems: 'flex-start'
+  },
+  messageRowOwn: {
+    alignItems: 'flex-end'
+  },
   message: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 22,
     borderWidth: 1,
     gap: 8,
-    padding: 12
+    maxWidth: '88%',
+    padding: 13
+  },
+  messageOwn: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent
   },
   messageHeader: {
     alignItems: 'center',
@@ -80,11 +128,14 @@ const styles = StyleSheet.create({
   sender: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '800'
+  },
+  senderOwn: {
+    color: colors.inkInverse
   },
   role: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.borderStrong,
     borderRadius: 999,
     borderWidth: 1,
     color: colors.textMuted,
@@ -99,10 +150,16 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 11
   },
+  timestampOwn: {
+    color: colors.inkInverse
+  },
   body: {
     color: colors.text,
     fontSize: 15,
     lineHeight: 22
+  },
+  bodyOwn: {
+    color: colors.inkInverse
   },
   placeholderBlock: {
     gap: 8

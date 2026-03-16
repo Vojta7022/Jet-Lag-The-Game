@@ -5,12 +5,19 @@ import { colors } from './theme.ts';
 interface PanelProps {
   title?: string;
   subtitle?: string;
+  tone?: 'default' | 'accent' | 'soft';
   children: React.ReactNode;
 }
 
 export function Panel(props: PanelProps) {
+  const toneStyle = props.tone === 'accent'
+    ? styles.panelAccent
+    : props.tone === 'soft'
+      ? styles.panelSoft
+      : styles.panelDefault;
+
   return (
-    <View style={styles.panel}>
+    <View style={[styles.panel, toneStyle]}>
       {props.title || props.subtitle ? (
         <View style={styles.header}>
           {props.title ? <Text style={styles.title}>{props.title}</Text> : null}
@@ -24,25 +31,35 @@ export function Panel(props: PanelProps) {
 
 const styles = StyleSheet.create({
   panel: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 22,
     borderWidth: 1,
     gap: 14,
-    padding: 16,
+    padding: 18,
     shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 1
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 2
+  },
+  panelDefault: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border
+  },
+  panelAccent: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.accent
+  },
+  panelSoft: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.borderStrong
   },
   header: {
-    gap: 4
+    gap: 5
   },
   title: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '700'
+    fontSize: 17,
+    fontWeight: '800'
   },
   subtitle: {
     color: colors.textMuted,

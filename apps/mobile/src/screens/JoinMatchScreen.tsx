@@ -21,6 +21,7 @@ export function JoinMatchScreen() {
   return (
     <ScreenContainer
       title={runtimeKind === 'online_foundation' ? 'Join Online Match' : 'Join Match'}
+      eyebrow="Pregame"
       subtitle="Connect with the saved player profile, then continue in the match room and live map."
     >
       {state.errorMessage ? (
@@ -30,6 +31,7 @@ export function JoinMatchScreen() {
       <Panel
         title="Join Details"
         subtitle="Enter the match details for this connection mode."
+        tone="accent"
       >
         <Field
           label={runtimeKind === 'nearby_host_authority' ? 'Match Code Or ID' : 'Match Code'}
@@ -57,7 +59,7 @@ export function JoinMatchScreen() {
           />
         ) : null}
         <AppButton
-          label={state.loadState === 'loading' ? 'Joining...' : 'Join Match'}
+          label={state.loadState === 'loading' ? 'Joining Match...' : 'Join Match Room'}
           disabled={state.loadState === 'loading'}
           onPress={() => {
             void joinMatch({

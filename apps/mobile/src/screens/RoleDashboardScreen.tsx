@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { Text } from 'react-native';
 
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
+import { shouldRedirectSetupScreen } from '../navigation/player-flow.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
@@ -88,10 +90,17 @@ export function RoleDashboardScreen() {
   const { state } = useAppShell();
   const activeMatch = state.activeMatch;
 
+  useEffect(() => {
+    if (shouldRedirectSetupScreen(activeMatch?.projection.lifecycleState)) {
+      router.replace('/map');
+    }
+  }, [activeMatch?.projection.lifecycleState]);
+
   if (!activeMatch) {
     return (
       <ScreenContainer
-        title="Team"
+        title="Teams"
+        eyebrow="Pregame"
         subtitle="Your team view appears once a match is connected."
         topSlot={<ProductNavBar current="dashboard" />}
       >
@@ -105,13 +114,14 @@ export function RoleDashboardScreen() {
 
   return (
     <ScreenContainer
-      title="Team"
-      subtitle={`This device is currently playing from the ${formatRoleLabel(role).toLowerCase()} view.`}
+      title="Teams"
+      eyebrow="Pregame"
+      subtitle={`This device is currently joining from the ${formatRoleLabel(role).toLowerCase()} side.`}
       topSlot={<ProductNavBar current="dashboard" />}
     >
       <Panel
         title="Current Role"
-        subtitle="This summary follows the active match connection and only shows what this role is allowed to use."
+        subtitle="This is the role and view currently bound to this device before live play begins."
       >
         <FactList
           items={[
@@ -131,17 +141,12 @@ export function RoleDashboardScreen() {
       <Panel title={roleCopy.title} subtitle="Keep the next actions simple and role-based.">
         <Text>{roleCopy.detail}</Text>
         <AppButton
-          label={roleCopy.primaryAction.label}
-          onPress={() => router.push(roleCopy.primaryAction.href)}
+          label="Back To Match Room"
+          onPress={() => router.push('/lobby')}
         />
-        {roleCopy.secondaryActions.map((action) => (
-          <AppButton
-            key={action.href}
-            label={action.label}
-            onPress={() => router.push(action.href)}
-            tone="secondary"
-          />
-        ))}
+        {role === 'host' ? (
+          <AppButton label="Open Map Setup" onPress={() => router.push('/map')} tone="secondary" />
+        ) : null}
       </Panel>
     </ScreenContainer>
   );

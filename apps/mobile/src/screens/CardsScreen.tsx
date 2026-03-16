@@ -5,6 +5,7 @@ import { StyleSheet, Text } from 'react-native';
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
+import { canAccessHostControls } from '../navigation/player-flow.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
@@ -124,6 +125,10 @@ export function CardsScreen() {
   const activeQuestionCategory = findQuestionCategory(defaultContentPack, activeQuestion?.categoryId);
   const responseSelectionLimit = activeQuestionCategory?.categoryId === 'tentacles' ? 2 : 1;
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
+  const canOpenMatchControls = canAccessHostControls(
+    activeMatch?.playerRole ?? activeMatch?.recipient.role,
+    activeMatch?.recipient.scope
+  );
 
   useEffect(() => {
     if (!selectedDeckId && deckViewModels[0]) {
@@ -313,10 +318,11 @@ export function CardsScreen() {
 
   return (
     <ScreenContainer
-      title={liveGameplayState ? 'Deck' : 'Cards'}
+      title={liveGameplayState ? 'Hand & Effects' : 'Deck'}
+      eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
       subtitle={
         liveGameplayState
-          ? 'Use this as the full deck review screen when the map flow needs more hand detail or card management room.'
+          ? 'Use this as the full deck review screen when the map flow needs more hand detail, card picks, or effect cleanup.'
           : 'Review visible hands and piles, understand what each card can really do, and manage card windows through the live match flow.'
       }
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="cards" />}
@@ -358,7 +364,7 @@ export function CardsScreen() {
       ) : null}
 
       <Panel
-        title={liveGameplayState ? 'Deck And Live Play' : 'Card Context'}
+        title={liveGameplayState ? 'Hand Review' : 'Card Context'}
         subtitle={
           liveGameplayState
             ? 'The map now handles the fastest live actions. Use this screen for deeper hand review, longer card management, or full-resolution follow-through.'
@@ -388,11 +394,21 @@ export function CardsScreen() {
             }}
           />
         ) : null}
+        {liveGameplayState && canOpenMatchControls ? (
+          <AppButton
+            label="Open Match Controls"
+            tone="ghost"
+            onPress={() => {
+              router.push('/status');
+            }}
+          />
+        ) : null}
       </Panel>
 
       <Panel
         title="Hand Actions"
-        subtitle="Prepare the deck, refill the hand, or refresh the live card state when the chase needs it."
+        subtitle="Refill, draw, or refresh the hider hand without leaving the live chase."
+        tone="soft"
       >
         {canPrepareFlow ? (
           <AppButton
@@ -484,6 +500,7 @@ export function CardsScreen() {
           <Panel
             title="Selected Deck"
             subtitle="See what this deck is doing for the live chase, what is visible now, and whether anything is waiting for resolution."
+            tone="accent"
           >
             <FactList
               items={[
@@ -563,7 +580,7 @@ export function CardsScreen() {
           ) : null}
 
           <Panel
-            title="Hand"
+            title="Current Hand"
             subtitle="Cards currently visible in hand for the selected deck."
           >
             <CardZoneSection
@@ -666,6 +683,7 @@ export function CardsScreen() {
       <Panel
         title="Card Detail"
         subtitle="Review the selected card, understand what it really does, and then return to the live map when you are ready."
+        tone="soft"
       >
         <CardDetailPanel
           card={selectedCard}

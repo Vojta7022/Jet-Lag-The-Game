@@ -53,25 +53,30 @@ export function GameplayTabBar(props: GameplayTabBarProps) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: 8
+    gap: 8,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 6
   },
   item: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
-    minHeight: 52,
+    borderColor: 'transparent',
+    backgroundColor: 'transparent',
+    minHeight: 50,
     paddingHorizontal: 8
   },
   itemMap: {
     flex: 1.2
   },
   itemActive: {
-    backgroundColor: colors.accentMuted,
-    borderColor: colors.accent
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong
   },
   itemPressed: {
     opacity: 0.86
@@ -79,9 +84,9 @@ const styles = StyleSheet.create({
   label: {
     color: colors.textMuted,
     fontSize: 13,
-    fontWeight: '700'
+    fontWeight: '800'
   },
   labelActive: {
-    color: colors.accent
+    color: colors.accentStrong
   }
 });

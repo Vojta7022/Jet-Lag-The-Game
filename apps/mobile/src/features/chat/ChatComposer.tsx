@@ -79,20 +79,20 @@ export function ChatComposer(props: ChatComposerProps) {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 10
+    gap: 12
   },
   header: {
-    gap: 4
+    gap: 5
   },
   title: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '700'
+    fontSize: 17,
+    fontWeight: '800'
   },
   subtitle: {
     color: colors.textMuted,
-    fontSize: 12,
-    lineHeight: 17
+    fontSize: 13,
+    lineHeight: 18
   },
   copy: {
     color: colors.textMuted,

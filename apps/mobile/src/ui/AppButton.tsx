@@ -6,7 +6,7 @@ interface AppButtonProps {
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  tone?: 'primary' | 'secondary' | 'danger';
+  tone?: 'primary' | 'secondary' | 'danger' | 'ghost';
 }
 
 export function AppButton(props: AppButtonProps) {
@@ -15,8 +15,15 @@ export function AppButton(props: AppButtonProps) {
       ? styles.secondary
       : props.tone === 'danger'
         ? styles.danger
+        : props.tone === 'ghost'
+          ? styles.ghost
         : styles.primary;
-  const labelStyle = props.tone === 'secondary' ? styles.secondaryLabel : styles.label;
+  const labelStyle =
+    props.tone === 'secondary'
+      ? styles.secondaryLabel
+      : props.tone === 'ghost'
+        ? styles.ghostLabel
+        : styles.label;
 
   return (
     <Pressable
@@ -37,24 +44,28 @@ export function AppButton(props: AppButtonProps) {
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    minHeight: 46,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16
+    paddingHorizontal: 18
   },
   primary: {
     backgroundColor: colors.accent,
     borderColor: colors.accent
   },
   secondary: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceRaised,
     borderColor: colors.border
   },
   danger: {
     backgroundColor: colors.danger,
     borderColor: colors.danger
+  },
+  ghost: {
+    backgroundColor: 'transparent',
+    borderColor: colors.borderStrong
   },
   disabled: {
     opacity: 0.55
@@ -63,13 +74,18 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }]
   },
   label: {
-    color: '#ffffff',
+    color: colors.inkInverse,
     fontSize: 15,
-    fontWeight: '600'
+    fontWeight: '700'
   },
   secondaryLabel: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '600'
+    fontWeight: '700'
+  },
+  ghostLabel: {
+    color: colors.accentStrong,
+    fontSize: 14,
+    fontWeight: '700'
   }
 });

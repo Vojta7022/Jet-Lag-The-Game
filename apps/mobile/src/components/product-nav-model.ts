@@ -1,5 +1,7 @@
 import type { MatchRole } from '../../../../packages/shared-types/src/index.ts';
 
+import { isPregameState } from '../navigation/player-flow.ts';
+
 export type ProductNavKey =
   | 'home'
   | 'lobby'
@@ -23,18 +25,11 @@ export interface ProductNavItem {
 export interface ProductNavContext {
   hasActiveMatch: boolean;
   role: MatchRole | 'spectator';
+  scope?: string;
   lifecycleState?: string;
   visibleCardCount: number;
   visibleMovementTrackCount: number;
   canAccessAdmin: boolean;
-}
-
-function isSetupFlowVisible(lifecycleState: string | undefined): boolean {
-  return lifecycleState !== 'hide_phase' &&
-    lifecycleState !== 'seek_phase' &&
-    lifecycleState !== 'endgame' &&
-    lifecycleState !== 'game_complete' &&
-    lifecycleState !== 'archived';
 }
 
 const HOME_NAV_ITEM: ProductNavItem = {
@@ -46,35 +41,25 @@ const HOME_NAV_ITEM: ProductNavItem = {
 
 export function buildProductNavItems(context: ProductNavContext): ProductNavItem[] {
   const items: ProductNavItem[] = [HOME_NAV_ITEM];
+  const pregameState = isPregameState(context.lifecycleState);
 
   if (!context.hasActiveMatch) {
     return items;
   }
 
-  items.push(
-    { key: 'dashboard', label: 'Team', href: '/dashboard', group: 'primary' },
-    { key: 'map', label: 'Live Map', href: '/map', group: 'primary' },
-    { key: 'questions', label: 'Questions', href: '/questions', group: 'primary' },
-    { key: 'chat', label: 'Chat', href: '/chat', group: 'primary' },
-    { key: 'dice', label: 'Dice', href: '/dice', group: 'primary' }
-  );
-
-  if (isSetupFlowVisible(context.lifecycleState)) {
-    items.splice(1, 0, { key: 'lobby', label: 'Match', href: '/lobby', group: 'primary' });
-  }
-
-  if (context.role === 'host' || context.role === 'hider' || context.visibleCardCount > 0) {
-    items.push({ key: 'cards', label: 'Deck', href: '/cards', group: 'primary' });
-  }
-
-  if (context.role === 'host' || context.role === 'seeker' || context.visibleMovementTrackCount > 0) {
-    items.push({ key: 'movement', label: 'Movement', href: '/movement', group: 'primary' });
+  if (pregameState) {
+    items.push(
+      { key: 'lobby', label: 'Match Room', href: '/lobby', group: 'primary' },
+      { key: 'dashboard', label: 'Teams', href: '/dashboard', group: 'primary' },
+      { key: 'map', label: 'Map Setup', href: '/map', group: 'primary' }
+    );
+  } else {
+    items.push({ key: 'map', label: 'Live Map', href: '/map', group: 'primary' });
   }
 
   if (context.canAccessAdmin) {
     items.push(
-      { key: 'admin', label: 'Referee', href: '/admin', group: 'secondary' },
-      { key: 'status', label: 'Connection', href: '/status', group: 'secondary' }
+      { key: 'status', label: 'Match Controls', href: '/status', group: 'secondary' }
     );
   }
 

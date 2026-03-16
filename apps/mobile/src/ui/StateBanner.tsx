@@ -41,10 +41,10 @@ function toneDotStyle(tone: StateBannerProps['tone']) {
 
 const styles = StyleSheet.create({
   banner: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    gap: 6,
-    padding: 13
+    gap: 8,
+    padding: 14
   },
   info: {
     backgroundColor: colors.accentMuted,
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '800'
   },
   detail: {
     color: colors.textMuted,

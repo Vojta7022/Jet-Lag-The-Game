@@ -24,11 +24,28 @@ export function ChatChannelList(props: ChatChannelListProps) {
             entry.channel.channelId === props.selectedChannelId ? styles.itemSelected : null
           ]}
         >
-          <Text style={styles.name}>{entry.channel.displayName}</Text>
-          <Text style={styles.meta}>
+          <Text
+            style={[
+              styles.name,
+              entry.channel.channelId === props.selectedChannelId ? styles.nameSelected : null
+            ]}
+          >
+            {entry.channel.displayName}
+          </Text>
+          <Text
+            style={[
+              styles.meta,
+              entry.channel.channelId === props.selectedChannelId ? styles.metaSelected : null
+            ]}
+          >
             {formatChannelScope(entry.channel)}
           </Text>
-          <Text style={styles.count}>
+          <Text
+            style={[
+              styles.count,
+              entry.channel.channelId === props.selectedChannelId ? styles.countSelected : null
+            ]}
+          >
             {entry.messages.length} message{entry.messages.length === 1 ? '' : 's'}
           </Text>
         </Pressable>
@@ -41,34 +58,43 @@ const styles = StyleSheet.create({
   list: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8
+    gap: 10
   },
   item: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
+    borderRadius: 18,
     borderWidth: 1,
-    gap: 4,
+    gap: 6,
     minWidth: 120,
-    paddingHorizontal: 14,
-    paddingVertical: 10
+    paddingHorizontal: 16,
+    paddingVertical: 12
   },
   itemSelected: {
-    backgroundColor: colors.accentMuted,
+    backgroundColor: colors.accent,
     borderColor: colors.accent
   },
   name: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: '700'
+    fontWeight: '800'
+  },
+  nameSelected: {
+    color: colors.inkInverse
   },
   meta: {
     color: colors.textMuted,
     fontSize: 12
   },
+  metaSelected: {
+    color: colors.inkInverse
+  },
   count: {
-    color: colors.text,
+    color: colors.textSubtle,
     fontSize: 11,
     fontWeight: '700'
+  },
+  countSelected: {
+    color: colors.inkInverse
   }
 });

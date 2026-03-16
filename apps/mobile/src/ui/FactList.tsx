@@ -32,7 +32,7 @@ export function FactList(props: FactListProps) {
 
 const styles = StyleSheet.create({
   list: {
-    gap: 10
+    gap: 12
   },
   row: {
     alignItems: 'flex-start',
@@ -41,10 +41,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between'
   },
   label: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.2,
+    color: colors.textSubtle,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
     textTransform: 'uppercase'
   },
   valueWrap: {
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   },
   value: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     textAlign: 'right'
   }

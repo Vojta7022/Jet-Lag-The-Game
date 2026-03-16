@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
@@ -5,6 +6,7 @@ import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
+import { canAccessHostControls } from '../navigation/player-flow.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
   buildChatChannelViewModels,
@@ -88,6 +90,10 @@ export function ChatScreen() {
   const selectedChannelAttachmentSummary = selectedChannel
     ? `${selectedChannel.unattachedPlaceholders.length} recorded attachment${selectedChannel.unattachedPlaceholders.length === 1 ? '' : 's'} waiting for a visible message`
     : 'No channel selected';
+  const canOpenMatchControls = canAccessHostControls(
+    activeMatch?.playerRole ?? activeMatch?.recipient.role,
+    activeMatch?.recipient.scope
+  );
 
   const handleSendMessage = async () => {
     const attachmentIds = selectedAttachments.map((attachment) => attachment.attachmentId);
@@ -118,8 +124,9 @@ export function ChatScreen() {
 
   return (
     <ScreenContainer
-      title="Chat"
-      subtitle="Read the live conversation, switch between public and team channels, and attach evidence when the current role allows it."
+      title={liveGameplayState ? 'Team Chat' : 'Chat'}
+      eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
+      subtitle="Stay with your team conversation, switch channels quickly, and attach evidence when the current role allows it."
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="chat" />}
       bottomSlot={liveGameplayState ? <GameplayTabBar current="chat" /> : undefined}
     >
@@ -139,28 +146,31 @@ export function ChatScreen() {
         />
       ) : null}
 
-      <Panel
-        title="Conversation"
-        subtitle="Everything on this screen respects the live projection scope, including private channels and attachment visibility."
-      >
-        <FactList
-          items={[
-            { label: 'Role', value: viewerRole },
-            { label: 'Current Scope', value: activeMatch?.recipient.scope ?? 'None' },
-            {
-              label: 'Match Stage',
-              value: projection?.seekPhaseSubstate
-                ? `${projection.lifecycleState} / ${projection.seekPhaseSubstate}`
-                : projection?.lifecycleState ?? 'Unavailable'
-            },
-            { label: 'Visible Channels', value: channelViewModels.length },
-            { label: 'Selected Channel', value: selectedChannel?.channel.displayName ?? 'None' }
-          ]}
-        />
-        <Text style={styles.copy}>
-          Public and team-private visibility comes from the authoritative projection. This screen never guesses around hidden-info rules.
-        </Text>
-      </Panel>
+      {activeMatch ? (
+        <Panel
+          title={liveGameplayState ? 'Stay In Sync' : 'Conversation'}
+          subtitle={
+            liveGameplayState
+              ? 'Use chat as a supporting live screen, then jump back to the map when you are ready.'
+              : 'Everything here follows the current projection scope and private-team visibility rules.'
+          }
+          tone="soft"
+        >
+          <FactList
+            items={[
+              { label: 'Role', value: viewerRole },
+              { label: 'Visible Channels', value: channelViewModels.length },
+              { label: 'Selected Channel', value: selectedChannel?.channel.displayName ?? 'None' }
+            ]}
+          />
+          {liveGameplayState ? (
+            <AppButton label="Back To Live Map" onPress={() => router.push('/map')} tone="secondary" />
+          ) : null}
+          {liveGameplayState && canOpenMatchControls ? (
+            <AppButton label="Open Match Controls" onPress={() => router.push('/status')} tone="ghost" />
+          ) : null}
+        </Panel>
+      ) : null}
 
       <Panel
         title="Channels"
@@ -182,6 +192,7 @@ export function ChatScreen() {
       <Panel
         title={selectedChannel ? selectedChannel.channel.displayName : 'Messages'}
         subtitle={selectedChannel ? 'Newest visible messages and evidence for this channel.' : 'Choose a channel to load the conversation.'}
+        tone={selectedChannel ? 'accent' : 'default'}
       >
         <FactList
           items={[
@@ -192,6 +203,7 @@ export function ChatScreen() {
         />
         <ChatMessageList
           channel={selectedChannel}
+          currentPlayerId={activeMatch?.recipient.playerId}
           localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
         />
         <AppButton
@@ -205,8 +217,8 @@ export function ChatScreen() {
       </Panel>
 
       <Panel
-        title="Write a Message"
-        subtitle="Send text first, then add evidence naturally when this channel and role allow it."
+        title="Write A Message"
+        subtitle="Send a quick update, an image, or both without leaving the live flow."
       >
           <ChatComposer
             channel={selectedChannel}

@@ -1,8 +1,10 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
+import { canAccessHostControls } from '../navigation/player-flow.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
@@ -45,6 +47,10 @@ export function DiceScreen() {
   const liveGameplayState = isLiveGameplayState(activeMatch?.projection.lifecycleState);
   const [history, setHistory] = useState<DiceHistoryEntry[]>([]);
   const latestRoll = history[0];
+  const canOpenMatchControls = canAccessHostControls(
+    activeMatch?.playerRole ?? activeMatch?.recipient.role,
+    activeMatch?.recipient.scope
+  );
 
   const pushRoll = (label: '1d6' | '2d6') => {
     const nextEntry = createDiceEntry(label);
@@ -54,6 +60,7 @@ export function DiceScreen() {
   return (
     <ScreenContainer
       title="Dice"
+      eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
       subtitle="Roll for card costs, curse checks, and other live-play moments that still need a simple player-side die."
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="dice" />}
       bottomSlot={liveGameplayState ? <GameplayTabBar current="dice" /> : undefined}
@@ -66,9 +73,19 @@ export function DiceScreen() {
         />
       ) : null}
 
+      {liveGameplayState ? (
+        <Panel title="Quick Utility" subtitle="Use dice as a supporting live tool, then jump back to the map." tone="soft">
+          <AppButton label="Back To Live Map" onPress={() => router.push('/map')} tone="secondary" />
+          {canOpenMatchControls ? (
+            <AppButton label="Open Match Controls" onPress={() => router.push('/status')} tone="ghost" />
+          ) : null}
+        </Panel>
+      ) : null}
+
       <Panel
         title="Dice Table"
-        subtitle="This tab is a player-facing dice helper. The current engine does not yet store dice results as authoritative match state."
+        subtitle="This is a simple player-facing dice helper. The engine still treats these rolls as local utility, not stored match state."
+        tone="accent"
       >
         <FactList
           items={[
@@ -86,6 +103,7 @@ export function DiceScreen() {
       <Panel
         title="Current Result"
         subtitle="Read the latest total at a glance, then keep the last few rolls visible for checks and card costs."
+        tone="soft"
       >
         {latestRoll ? (
           <View style={styles.resultCard}>
@@ -132,21 +150,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    borderRadius: 18,
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceMuted,
-    paddingVertical: 24,
+    borderColor: colors.accent,
+    backgroundColor: colors.surfaceRaised,
+    paddingVertical: 28,
     paddingHorizontal: 16
   },
   resultLabel: {
-    color: colors.textMuted,
+    color: colors.textSubtle,
     fontSize: 13,
-    fontWeight: '700'
+    fontWeight: '800',
+    textTransform: 'uppercase'
   },
   resultTotal: {
-    color: colors.text,
-    fontSize: 42,
+    color: colors.accentStrong,
+    fontSize: 52,
     fontWeight: '800'
   },
   resultBreakdown: {
@@ -160,10 +179,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceRaised,
     paddingHorizontal: 14,
     paddingVertical: 12
   },
