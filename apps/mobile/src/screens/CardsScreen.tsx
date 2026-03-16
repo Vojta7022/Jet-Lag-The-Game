@@ -31,6 +31,11 @@ import {
   resolveCurrentRole
 } from '../features/cards/index.ts';
 import {
+  filterCardIdsByVisibleHand,
+  haveSameCardIdSequence,
+  reconcileDrawTrayCardIds
+} from '../features/cards/deck-ui-state.ts';
+import {
   findActiveQuestion,
   findQuestionCategory
 } from '../features/questions/index.ts';
@@ -139,8 +144,14 @@ export function CardsScreen() {
     }
   }, [selectedCardInstanceId, selectedDeck]);
 
-  const handCardIds = selectedDeck?.visibleByZone.hand.map((card) => card.card.cardInstanceId) ?? [];
-  const handCardDefinitions = selectedDeck?.visibleByZone.hand.map((card) => card.definition) ?? [];
+  const handCardIds = useMemo(
+    () => selectedDeck?.visibleByZone.hand.map((card) => card.card.cardInstanceId) ?? [],
+    [selectedDeck]
+  );
+  const handCardDefinitions = useMemo(
+    () => selectedDeck?.visibleByZone.hand.map((card) => card.definition) ?? [],
+    [selectedDeck]
+  );
   const handCardKindCounts = handCardDefinitions.reduce<Partial<Record<(typeof handCardDefinitions)[number]['kind'], number>>>(
     (counts, definition) => ({
       ...counts,
@@ -152,35 +163,31 @@ export function CardsScreen() {
 
   useEffect(() => {
     const previousHandIds = previousHandIdsRef.current;
-    const newHandIds = handCardIds.filter((cardId) => !previousHandIds.includes(cardId));
     previousHandIdsRef.current = handCardIds;
-
-    if (newHandIds.length === 0) {
-      setDrawTrayCardIds((current) => {
-        const filtered = current.filter((cardId) => handCardIds.includes(cardId));
-        return filtered.length === current.length ? current : filtered;
-      });
-      return;
-    }
-
-    setDrawTrayCardIds((current) => {
-      const next = [...newHandIds, ...current.filter((cardId) => handCardIds.includes(cardId))];
-      return next.join('|') === current.join('|') ? current : [...new Set(next)];
+    const nextDrawTrayCardIds = reconcileDrawTrayCardIds({
+      currentTrayCardIds: drawTrayCardIds,
+      previousHandCardIds: previousHandIds,
+      nextHandCardIds: handCardIds
     });
-  }, [handSignature, handCardIds]);
+
+    if (!haveSameCardIdSequence(drawTrayCardIds, nextDrawTrayCardIds)) {
+      setDrawTrayCardIds(nextDrawTrayCardIds);
+    }
+  }, [drawTrayCardIds, handCardIds, handSignature]);
 
   useEffect(() => {
-    setSelectedResponseCardIds((current) => {
-      const filtered = current.filter((cardId) => handCardIds.includes(cardId));
-      return filtered.length === current.length ? current : filtered;
-    });
-  }, [handSignature, handCardIds]);
+    const nextSelectedResponseCardIds = filterCardIdsByVisibleHand(selectedResponseCardIds, handCardIds);
+
+    if (!haveSameCardIdSequence(selectedResponseCardIds, nextSelectedResponseCardIds)) {
+      setSelectedResponseCardIds(nextSelectedResponseCardIds);
+    }
+  }, [handCardIds, handSignature, selectedResponseCardIds]);
 
   const canPrepareFlow = Boolean(
     activeMatch &&
       viewerRole === 'host' &&
       projection &&
-      ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup', 'hide_phase'].includes(
+      ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup'].includes(
         projection.lifecycleState
       )
   );
@@ -309,7 +316,7 @@ export function CardsScreen() {
       title={liveGameplayState ? 'Deck' : 'Cards'}
       subtitle={
         liveGameplayState
-          ? 'Use the deck when the chase needs it, then return to the live map once the hand or card effect is settled.'
+          ? 'Use this as the full deck review screen when the map flow needs more hand detail or card management room.'
           : 'Review visible hands and piles, understand what each card can really do, and manage card windows through the live match flow.'
       }
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="cards" />}
@@ -354,7 +361,7 @@ export function CardsScreen() {
         title={liveGameplayState ? 'Deck And Live Play' : 'Card Context'}
         subtitle={
           liveGameplayState
-            ? 'This screen supports the live map. Use it to ready the hider hand or finish a card effect, then head back to play.'
+            ? 'The map now handles the fastest live actions. Use this screen for deeper hand review, longer card management, or full-resolution follow-through.'
             : 'Visibility, hand access, and card-lock rules for the current role.'
         }
       >
@@ -387,23 +394,25 @@ export function CardsScreen() {
         title="Hand Actions"
         subtitle="Prepare the deck, refill the hand, or refresh the live card state when the chase needs it."
       >
-        <AppButton
-          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Card Play'}
-          onPress={() => {
-            if (!projection) {
-              return;
-            }
+        {canPrepareFlow ? (
+          <AppButton
+            label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Card Play'}
+            onPress={() => {
+              if (!projection) {
+                return;
+              }
 
-            const commands = buildCardFlowBootstrapCommands(projection);
-            if (commands.length === 0) {
-              void refreshActiveMatch();
-              return;
-            }
+              const commands = buildCardFlowBootstrapCommands(projection);
+              if (commands.length === 0) {
+                void refreshActiveMatch();
+                return;
+              }
 
-            void submitCommands(commands);
-          }}
-          disabled={!canPrepareFlow || state.loadState === 'loading'}
-        />
+              void submitCommands(commands);
+            }}
+            disabled={state.loadState === 'loading'}
+          />
+        ) : null}
         <AppButton
           label={
             canDrawToTarget

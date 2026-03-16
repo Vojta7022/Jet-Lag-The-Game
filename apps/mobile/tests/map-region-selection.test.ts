@@ -32,6 +32,7 @@ import {
   buildAppliedRegionDraft,
   resolveMapCanvasPreviewRegion
 } from '../src/features/map/map-setup-guidance.ts';
+import { buildLiveMapDisplayProjection } from '../src/features/map/live-map-display.ts';
 import {
   createNominatimRegionProvider,
   RegionProviderRateLimitError,
@@ -367,6 +368,74 @@ test('composite region builder previews multiple selected regions as one combine
   );
   assert.equal(Boolean(disconnectedComposite?.compositeMetadata?.disconnectedWarning), true);
   assert.equal(disconnectedWarning?.connectedGroupCount, 2);
+});
+
+test('live map display suppresses initial candidate geometry until real search updates exist', () => {
+  const appliedMap = buildAppliedRegionDraft(seedPlayableRegions[0] ? {
+    regionId: 'seed-prague',
+    displayName: 'Prague',
+    regionKind: 'city',
+    featureDatasetRefs: ['osm-core'],
+    playableBoundary: {
+      artifactId: 'artifact:playable',
+      kind: 'playable_boundary',
+      regionId: 'seed-prague',
+      geometry: seedPlayableRegions[0]!.geometry,
+      precision: 'exact',
+      confidenceScore: 1,
+      clippedToRegion: true,
+      featureCoverage: 'exact',
+      metadata: {}
+    },
+    remainingArea: {
+      artifactId: 'artifact:remaining',
+      kind: 'candidate_remaining',
+      regionId: 'seed-prague',
+      geometry: seedPlayableRegions[1]!.geometry,
+      precision: 'exact',
+      confidenceScore: 1,
+      clippedToRegion: true,
+      featureCoverage: 'exact',
+      metadata: {}
+    },
+    eliminatedAreas: [],
+    constraintArtifacts: [],
+    history: []
+  } : undefined)[0];
+
+  const displayedMap = buildLiveMapDisplayProjection(appliedMap ? {
+    regionId: appliedMap.regionId,
+    displayName: appliedMap.displayName,
+    regionKind: appliedMap.regionKind,
+    featureDatasetRefs: appliedMap.featureDatasetRefs,
+    playableBoundary: {
+      artifactId: 'artifact:playable',
+      kind: 'playable_boundary',
+      regionId: appliedMap.regionId,
+      geometry: appliedMap.geometry,
+      precision: 'exact',
+      confidenceScore: 1,
+      clippedToRegion: true,
+      featureCoverage: 'exact',
+      metadata: {}
+    },
+    remainingArea: {
+      artifactId: 'artifact:remaining',
+      kind: 'candidate_remaining',
+      regionId: appliedMap.regionId,
+      geometry: seedPlayableRegions[1]!.geometry,
+      precision: 'exact',
+      confidenceScore: 1,
+      clippedToRegion: true,
+      featureCoverage: 'exact',
+      metadata: {}
+    },
+    eliminatedAreas: [],
+    constraintArtifacts: [],
+    history: []
+  } : undefined);
+
+  assert.equal(displayedMap?.remainingArea, undefined);
 });
 
 test('composite region builder keeps enclosed-region components in the stable raw preview geometry', () => {

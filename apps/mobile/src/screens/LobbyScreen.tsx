@@ -1,6 +1,13 @@
 import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
+import {
+  buildRoleAssignmentCommands,
+  getAssignablePlayers,
+  hasRequiredRoleAssignments,
+  isRoleAssignmentStage
+} from '../features/roles/role-assignment.ts';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
@@ -11,12 +18,16 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 
 export function LobbyScreen() {
-  const { state, refreshActiveMatch } = useAppShell();
+  const { state, refreshActiveMatch, submitCommand, submitCommands } = useAppShell();
   const projection = state.activeMatch?.projection;
   const role = state.activeMatch?.playerRole ?? state.activeMatch?.recipient.role ?? 'spectator';
   const roleLabel = role.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
-  const primaryNextRoute = projection?.visibleMap ? '/map' : '/dashboard';
-  const primaryNextLabel = projection?.visibleMap ? 'Enter Game' : 'Open Team View';
+  const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
+  const canManageRoles = Boolean(role === 'host' && projection && isRoleAssignmentStage(projection.lifecycleState));
+  const assignablePlayers = getAssignablePlayers(projection);
+  const rolesReady = hasRequiredRoleAssignments(projection);
+  const primaryNextRoute = liveGameplayState || projection?.visibleMap ? '/map' : '/dashboard';
+  const primaryNextLabel = liveGameplayState || projection?.visibleMap ? 'Open Live Map' : 'Open Team View';
 
   return (
     <ScreenContainer
@@ -60,6 +71,85 @@ export function LobbyScreen() {
         </Panel>
       ) : null}
 
+      {projection && liveGameplayState ? (
+        <StateBanner
+          tone="info"
+          title="Live match in progress"
+          detail="Team assignment and setup are complete. Use the live map for normal play and return here only if you need a match-room summary."
+        />
+      ) : null}
+
+      {projection && canManageRoles ? (
+        <Panel
+          title="Choose Teams"
+          subtitle="Assign one hider and at least one seeker before moving into map setup."
+        >
+          {assignablePlayers.length === 0 ? (
+            <StateBanner
+              tone="warning"
+              title="Players still need to join"
+              detail="Wait for players to join the room, then place one player on the hider side and the others on the seeker side."
+            />
+          ) : (
+            <>
+              {assignablePlayers.map((player) => (
+                <View key={player.playerId} style={styles.assignmentCard}>
+                  <View style={styles.assignmentHeader}>
+                    <Text style={styles.label}>{player.displayName}</Text>
+                    <Text style={styles.assignmentRole}>
+                      {player.role ? formatVisibleRole(player.role) : 'Unassigned'}
+                    </Text>
+                  </View>
+                  <View style={styles.assignmentActions}>
+                    <AppButton
+                      label={player.role === 'hider' ? 'Hider Selected' : 'Make Hider'}
+                      tone={player.role === 'hider' ? 'secondary' : 'primary'}
+                      disabled={state.loadState === 'loading'}
+                      onPress={() => {
+                        void submitCommands(buildRoleAssignmentCommands(projection, player.playerId, 'hider'));
+                      }}
+                    />
+                    <AppButton
+                      label={player.role === 'seeker' ? 'Seeker Selected' : 'Make Seeker'}
+                      tone="secondary"
+                      disabled={state.loadState === 'loading'}
+                      onPress={() => {
+                        void submitCommands(buildRoleAssignmentCommands(projection, player.playerId, 'seeker'));
+                      }}
+                    />
+                  </View>
+                </View>
+              ))}
+              {!rolesReady ? (
+                <StateBanner
+                  tone="warning"
+                  title="Teams still need one hider and one seeker"
+                  detail="Choose exactly who will hide, then make sure at least one joined player stays on the seeker side."
+                />
+              ) : null}
+              <AppButton
+                label={state.loadState === 'loading' ? 'Saving Teams...' : 'Confirm Teams'}
+                disabled={!rolesReady || state.loadState === 'loading'}
+                onPress={() => {
+                  void submitCommand({
+                    type: 'confirm_roles',
+                    payload: {}
+                  });
+                }}
+              />
+            </>
+          )}
+        </Panel>
+      ) : null}
+
+      {projection && isRoleAssignmentStage(projection.lifecycleState) && !canManageRoles ? (
+        <StateBanner
+          tone="info"
+          title="Waiting for team assignment"
+          detail="The host is still assigning the hider and seeker sides for this match."
+        />
+      ) : null}
+
       {projection ? (
         <Panel
           title="Visible Players"
@@ -94,6 +184,29 @@ export function LobbyScreen() {
 }
 
 const styles = StyleSheet.create({
+  assignmentCard: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+    padding: 12
+  },
+  assignmentHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  assignmentActions: {
+    gap: 8
+  },
+  assignmentRole: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase'
+  },
   copy: {
     color: colors.textMuted,
     fontSize: 14,
@@ -115,3 +228,7 @@ const styles = StyleSheet.create({
     textAlign: 'right'
   }
 });
+
+function formatVisibleRole(role: string) {
+  return role.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}

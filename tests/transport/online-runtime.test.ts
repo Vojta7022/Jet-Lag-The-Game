@@ -144,6 +144,67 @@ test('online auth binding lets the host add setup players while still blocking n
   );
 });
 
+test('online joiners can request player_private after joining even before role assignment', async () => {
+  const { contentPack, runtime } = createOnlineHarness();
+  const hostSession = makeOnlineSession('auth-host-join-scope', { defaultPlayerId: 'host-1' });
+  const joiningSession = makeOnlineSession('auth-joining-player', { defaultPlayerId: 'player-2' });
+  const publicSession = makeOnlineSession('auth-public-player-private');
+  const matchId = 'online-join-player-private';
+
+  await runtime.submitAuthenticatedCommand(
+    hostSession,
+    makeOnlineCommandRequest(hostSession, matchId, 1, {
+      type: 'create_match',
+      payload: {
+        mode: 'online',
+        contentPackId: contentPack.packId,
+        hostPlayerId: 'host-1',
+        hostDisplayName: 'Host',
+        initialScale: 'small'
+      }
+    })
+  );
+
+  const joined = await runtime.submitAuthenticatedCommand(
+    joiningSession,
+    makeOnlineCommandRequest(joiningSession, matchId, 2, {
+      type: 'join_match',
+      payload: {
+        playerId: 'player-2',
+        displayName: 'Second Device Player'
+      }
+    })
+  );
+
+  assert.equal(joined.accepted, true);
+
+  const privateSnapshot = await runtime.requestAuthenticatedSnapshot(joiningSession, {
+    matchId,
+    requestedScope: 'player_private'
+  });
+
+  assert.equal(privateSnapshot.projectionScope, 'player_private');
+  assert.ok(
+    privateSnapshot.projectionDelivery.projection.players.some((player) => player.playerId === 'player-2')
+  );
+
+  await assert.rejects(
+    runtime.requestAuthenticatedSnapshot(joiningSession, {
+      matchId,
+      requestedScope: 'team_private'
+    }),
+    /not allowed for this authenticated session|require a bound team identity/i
+  );
+
+  await assert.rejects(
+    runtime.requestAuthenticatedSnapshot(publicSession, {
+      matchId,
+      requestedScope: 'player_private'
+    }),
+    /not allowed for this authenticated session/i
+  );
+});
+
 test('online runtime serves redacted public projections while keeping host-admin projections privileged', async () => {
   const { contentPack, runtime } = createOnlineHarness();
   const setup = await setupOnlineMatchToHidePhase(runtime, contentPack.packId, 'online-redaction-match');

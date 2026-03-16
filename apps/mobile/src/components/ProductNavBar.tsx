@@ -18,6 +18,7 @@ export function ProductNavBar(props: ProductNavBarProps) {
   const navItems = buildProductNavItems({
     hasActiveMatch: Boolean(activeMatch),
     role,
+    lifecycleState: activeMatch?.projection.lifecycleState,
     visibleCardCount: activeMatch?.projection.visibleCards.length ?? 0,
     visibleMovementTrackCount: activeMatch?.projection.visibleMovementTracks.length ?? 0,
     canAccessAdmin: role === 'host' || activeMatch?.recipient.scope === 'host_admin'

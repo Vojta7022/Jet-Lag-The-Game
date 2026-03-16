@@ -22,7 +22,6 @@ import {
   QuestionTemplateList,
   buildAnswerPayload,
   buildConstraintResolutionMetadata,
-  buildDemoMovementCommands,
   buildQuestionCategoryViewModels,
   buildQuestionFlowBootstrapCommands,
   describeExpectedAnswerGuidance,
@@ -305,19 +304,8 @@ export function QuestionCenterScreen() {
     activeMatch &&
       capabilities.canPrepareFlow &&
       projection &&
-      ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup', 'hide_phase'].includes(
+      ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup'].includes(
         projection.lifecycleState
-      )
-  );
-  const canSeedMovement = Boolean(
-    activeMatch &&
-      capabilities.canSeedMovement &&
-      visibleMap?.playableBoundary.geometry &&
-      (
-        projection?.lifecycleState === 'hide_phase' ||
-        (projection?.lifecycleState === 'seek_phase' &&
-          (projection.seekPhaseSubstate === 'ready' || projection.seekPhaseSubstate === 'cooldown')) ||
-        projection?.lifecycleState === 'endgame'
       )
   );
   const canAskQuestion = Boolean(
@@ -346,7 +334,7 @@ export function QuestionCenterScreen() {
     : activeMatch?.runtimeKind === 'online_foundation'
       ? 'Recording evidence here creates real attachment records through the runtime, but this online session is still falling back to metadata-only storage.'
       : 'Recording evidence here creates real attachment records through the runtime. The file preview stays local to this device session until fuller storage support is added.';
-  const showQuestionPrepPanel = canPrepareFlow || canSeedMovement;
+  const showQuestionPrepPanel = !liveGameplayState && canPrepareFlow;
   const activeQuestionTimerSeconds = timingModel?.timers.find(
     (timer) => timer.kind === 'question' && timer.status !== 'completed'
   )?.remainingSeconds;
@@ -362,15 +350,6 @@ export function QuestionCenterScreen() {
     const commands = buildQuestionFlowBootstrapCommands(projection);
     if (commands.length === 0) {
       void refreshActiveMatch();
-      return;
-    }
-
-    void submitCommands(commands);
-  };
-
-  const handleSeedMovement = () => {
-    const commands = buildDemoMovementCommands(visibleMap?.playableBoundary.geometry);
-    if (commands.length === 0) {
       return;
     }
 
@@ -477,7 +456,7 @@ export function QuestionCenterScreen() {
       title="Questions"
       subtitle={
         liveGameplayState
-          ? 'Ask or answer the live clue here, then head back to the map to see the search area update.'
+          ? 'Use this as the full clue review screen when you need more detail than the live map flow.'
           : 'Prepare the next clue, answer it honestly, and see clearly whether the map changed or the result stayed as evidence only.'
       }
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="questions" />}
@@ -496,7 +475,7 @@ export function QuestionCenterScreen() {
         title={liveGameplayState ? 'Use This To Move The Map Forward' : 'Question Context'}
         subtitle={
           liveGameplayState
-            ? 'This screen is the guided clue flow. Ask, answer, or apply the result here, then return to the live map.'
+            ? 'The map now handles the fastest live clue actions. Use this screen for deeper review, more room, or a full clue walkthrough.'
             : 'See who can act right now, which workbook scale is active, and what the next question should accomplish.'
         }
       >
@@ -590,18 +569,12 @@ export function QuestionCenterScreen() {
       {showQuestionPrepPanel ? (
         <Panel
           title="Match Controls"
-          subtitle="Use these only when the match still needs setup or when thermometer clues need movement history."
+          subtitle="Use this only while the match is still being prepared for the live clue loop."
         >
           <AppButton
             label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Questions'}
             onPress={handlePrepareFlow}
             disabled={!canPrepareFlow || state.loadState === 'loading'}
-          />
-          <AppButton
-            label="Add Seeker Movement Trail"
-            onPress={handleSeedMovement}
-            disabled={!canSeedMovement || state.loadState === 'loading'}
-            tone="secondary"
           />
           <AppButton
             label="Refresh Question State"

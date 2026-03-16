@@ -38,6 +38,14 @@ function findMembership(session: OnlineAuthSession, matchId: string) {
   return session.memberships.find((membership) => membership.matchId === matchId);
 }
 
+function withPlayerPrivateScope(scopes: ProjectionScope[]): ProjectionScope[] {
+  if (scopes.includes('player_private')) {
+    return scopes;
+  }
+
+  return ['player_private', ...scopes];
+}
+
 function assertCommandPlayerMatch(
   session: OnlineAuthSession,
   request: OnlineCommandRequest,
@@ -86,7 +94,12 @@ async function resolveAccessBinding(
   const derivedTeamId = aggregate ? getPlayerTeam(aggregate, playerId)?.teamId : undefined;
   const role = membership?.role ?? derivedRole ?? (playerId ? 'spectator' : 'spectator');
   const teamId = membership?.teamId ?? derivedTeamId;
-  const allowedScopes = membership?.allowedScopes ?? defaultScopesForRole(role);
+  const hasJoinedPlayerBinding = Boolean(playerId && (membership || aggregate?.players[playerId]));
+  const allowedScopes = membership?.allowedScopes ?? (
+    hasJoinedPlayerBinding
+      ? withPlayerPrivateScope(defaultScopesForRole(role))
+      : defaultScopesForRole(role)
+  );
 
   if (!session.defaultPlayerId && !membership && !aggregate) {
     return {

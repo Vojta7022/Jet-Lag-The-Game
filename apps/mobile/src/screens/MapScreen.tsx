@@ -16,6 +16,7 @@ import { defaultContentPack } from '../runtime/default-content-pack.ts';
 
 import {
   LiveMapActionPanel,
+  LiveMapInlineActionPanel,
   MapLegend,
   SelectedRegionChipList,
   SearchableRegionPicker,
@@ -30,7 +31,9 @@ import {
   clearSelectedRegions,
   mobileRegionDataSource,
   removeRegionFromSelection,
+  resolveInlineLiveMapActionMode,
   resolveMapCanvasPreviewRegion,
+  buildLiveMapDisplayProjection,
   useRegionSearch
 } from '../features/map/index.ts';
 import {
@@ -51,6 +54,7 @@ import {
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import type { AppShellState } from '../state/app-shell-state.ts';
 import { isSameMapSetupDraft } from '../state/app-shell-state.ts';
+import { hasRequiredRoleAssignments } from '../features/roles/role-assignment.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
@@ -208,6 +212,11 @@ export function MapScreen() {
   );
   const previewRegion = compositePreviewRegion ?? regionSearch.selectedRegion;
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
+  const displayedVisibleMap = useMemo(
+    () => liveGameplayState ? buildLiveMapDisplayProjection(projection?.visibleMap) : projection?.visibleMap,
+    [liveGameplayState, projection?.visibleMap]
+  );
+  const rolesReadyForMapSetup = hasRequiredRoleAssignments(projection);
   const deckViewModels = useMemo(
     () => buildDeckViewModels(defaultContentPack, projection, viewerRole),
     [projection, viewerRole]
@@ -223,7 +232,7 @@ export function MapScreen() {
   const canvasPreviewRegion = useMemo(
     () =>
       resolveMapCanvasPreviewRegion({
-        appliedMap: projection?.visibleMap,
+        appliedMap: displayedVisibleMap,
         compositePreviewRegion,
         searchPreviewRegion: regionSearch.selectedRegion,
         liveGameplayState,
@@ -232,23 +241,24 @@ export function MapScreen() {
     [
       compositePreviewRegion,
       liveGameplayState,
-      projection?.visibleMap,
+      displayedVisibleMap,
       regionSearch.selectedRegion,
       state.loadState
     ]
   );
   const overlayModel = useMemo(
     () => buildMapOverlayModel({
-      visibleMap: projection?.visibleMap,
+      visibleMap: displayedVisibleMap,
       visibleMovementTracks: projection?.visibleMovementTracks,
       previewRegion: canvasPreviewRegion
     }),
-    [canvasPreviewRegion, projection?.visibleMap, projection?.visibleMovementTracks]
+    [canvasPreviewRegion, displayedVisibleMap, projection?.visibleMovementTracks]
   );
   const isHostView = activeMatch?.recipient.scope === 'host_admin' || activeMatch?.playerRole === 'host';
   const canPrepareMapSetup =
     isHostView &&
     projection &&
+    rolesReadyForMapSetup &&
     ['draft', 'lobby', 'role_assignment', 'rules_confirmation'].includes(projection.lifecycleState);
   const canApplySelectedRegion =
     isHostView &&
@@ -296,6 +306,7 @@ export function MapScreen() {
     activeMatchExists: Boolean(activeMatch)
   });
   const onlineIdentityMismatch = hasOnlineIdentityMismatch(state.sessionProfile, activeMatch);
+  const inlineActionMode = resolveInlineLiveMapActionMode(viewerRole, projection);
   const liveGuideModel = useMemo(
     () =>
       liveGameplayState
@@ -336,6 +347,26 @@ export function MapScreen() {
   const screenSubtitle = liveGameplayState
     ? 'The live map is the center of play. Follow clue results here, then jump to the next role-specific action only when you need it.'
     : 'Choose the playable region before the chase begins, then apply it to the match.';
+  const liveGuideModelForDisplay = useMemo(() => {
+    if (!liveGuideModel || !inlineActionMode) {
+      return liveGuideModel;
+    }
+
+    return {
+      ...liveGuideModel,
+      actions: liveGuideModel.actions.filter((action, index) => {
+        if (index > 0) {
+          return true;
+        }
+
+        if (inlineActionMode === 'ask' || inlineActionMode === 'answer' || inlineActionMode === 'apply') {
+          return action.href !== '/questions';
+        }
+
+        return true;
+      })
+    };
+  }, [inlineActionMode, liveGuideModel]);
 
   useEffect(() => {
     const persistedSelection = mapSetupDraft?.selectedRegions ?? [];
@@ -343,7 +374,7 @@ export function MapScreen() {
   }, [activeMatch?.matchId, mapSetupDraft?.selectedRegions]);
 
   useEffect(() => {
-    if (!activeMatch) {
+    if (!activeMatch || liveGameplayState) {
       return;
     }
 
@@ -362,10 +393,52 @@ export function MapScreen() {
   }, [
     activeMatch,
     mapSetupDraft,
+    liveGameplayState,
     regionSearch.query,
     regionSearch.selectedRegionId,
     saveMapSetupDraft,
     selectedRegions
+  ]);
+
+  useEffect(() => {
+    if (!activeMatch || !liveGameplayState) {
+      return;
+    }
+
+    const shouldClearDraftState = selectedRegions.length > 0 ||
+      regionSearch.query.length > 0 ||
+      Boolean(regionSearch.selectedRegionId) ||
+      Boolean(mapSetupDraft);
+
+    if (!shouldClearDraftState) {
+      return;
+    }
+
+    if (selectedRegions.length > 0) {
+      setSelectedRegions(clearSelectedRegions());
+    }
+
+    if (regionSearch.query.length > 0) {
+      regionSearch.setQuery('');
+    }
+
+    if (regionSearch.selectedRegionId) {
+      regionSearch.clearSelection();
+    }
+
+    if (mapSetupDraft) {
+      clearMapSetupDraft(activeMatch.matchId);
+    }
+  }, [
+    activeMatch,
+    clearMapSetupDraft,
+    liveGameplayState,
+    mapSetupDraft,
+    regionSearch.clearSelection,
+    regionSearch.query,
+    regionSearch.selectedRegionId,
+    regionSearch.setQuery,
+    selectedRegions.length
   ]);
 
   return (
@@ -388,6 +461,14 @@ export function MapScreen() {
             tone="warning"
             title="Host access required"
             detail="Only host views can move the match into map setup or apply a new playable region."
+          />
+        ) : null}
+
+        {activeMatch && isHostView && !liveGameplayState && !rolesReadyForMapSetup ? (
+          <StateBanner
+            tone="warning"
+            title="Assign teams before map setup"
+            detail="Choose one hider and at least one seeker in Match Room before preparing the playable region."
           />
         ) : null}
 
@@ -501,7 +582,7 @@ export function MapScreen() {
             title="What To Do Now"
             subtitle="The live map stays in the center. Use this card to know the next move for your role without bouncing through every tool."
           >
-            {liveGuideModel ? <LiveMapActionPanel model={liveGuideModel} /> : null}
+            {liveGuideModelForDisplay ? <LiveMapActionPanel model={liveGuideModelForDisplay} /> : null}
           </Panel>
         ) : null}
 
@@ -512,7 +593,7 @@ export function MapScreen() {
           >
             <FactList
               items={[
-                { label: 'Playable Region', value: projection?.visibleMap?.displayName ?? 'Not selected yet' },
+                { label: 'Playable Region', value: displayedVisibleMap?.displayName ?? 'Not selected yet' },
                 { label: 'Current Search Area', value: candidateSummary },
                 {
                   label: 'Latest Clue',
@@ -527,7 +608,7 @@ export function MapScreen() {
             <MapCanvas
               height={mapHeight}
               maxWidth={dimensions.width - 32}
-              visibleMap={projection?.visibleMap}
+              visibleMap={displayedVisibleMap}
               visibleMovementTracks={projection?.visibleMovementTracks}
               previewRegion={canvasPreviewRegion}
             />
@@ -557,7 +638,9 @@ export function MapScreen() {
           </Panel>
         ) : null}
 
-        {liveGameplayState && liveDeckSummary ? (
+        {liveGameplayState ? <LiveMapInlineActionPanel /> : null}
+
+        {liveGameplayState && inlineActionMode !== 'answer' && liveDeckSummary ? (
           <Panel
             title="Deck And Response"
             subtitle="The hider hand and live card effects stay tied to the chase, not off in a separate utility."
