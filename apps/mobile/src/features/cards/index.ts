@@ -7,3 +7,4 @@ export * from './CardZoneStats.tsx';
 export * from './card-catalog.ts';
 export * from './card-flow-bootstrap.ts';
 export * from './card-guidance.ts';
+export * from './card-workbook-rules.ts';

@@ -44,19 +44,19 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         autoCapitalize="words"
       />
       <Text style={styles.helper}>
-        Search by city or larger administrative region name. Matching results come from an OSM-compatible provider first. Add one or more results to the current game-map selection, then apply the combined boundary through the real `create_map_region` command.
+        Search by city or larger administrative region name. The app tries live OpenStreetMap-compatible boundaries first, then falls back to bundled regions only when the live lookup is unavailable.
       </Text>
 
       {props.selectedRegionCount > 0 ? (
         <Text style={styles.meta}>
-          Game map builder: {props.selectedRegionCount === 1 ? '1 region added' : `${props.selectedRegionCount} regions added`}
+          Match map: {props.selectedRegionCount === 1 ? '1 region added' : `${props.selectedRegionCount} regions added`}
         </Text>
       ) : null}
 
       {props.attribution ? (
         <View style={styles.attributionCard}>
           <Text style={styles.attributionLabel}>
-            {props.usingFallback ? 'Fallback source' : 'Live boundary source'}
+            {props.usingFallback ? 'Fallback source' : 'Boundary source'}
           </Text>
           <Text style={styles.attributionTitle}>{props.attribution.label}</Text>
           <Text style={styles.attributionCopy}>{props.attribution.notice}</Text>
@@ -151,7 +151,7 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
                       : ''}
                   </Text>
                   <AppButton
-                    label={props.previewRegionAlreadyAdded ? 'Already Added To Game Map' : 'Add Region To Game Map'}
+                    label={props.previewRegionAlreadyAdded ? 'Already Added To Match Map' : 'Add Region To Match Map'}
                     onPress={props.onAddPreviewRegion}
                     disabled={!props.canAddPreviewRegion}
                     tone="secondary"

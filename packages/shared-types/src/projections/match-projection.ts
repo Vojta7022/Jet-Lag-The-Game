@@ -12,7 +12,7 @@ import type {
   SeekPhaseSubstate,
   TeamSide
 } from '../domain/match.ts';
-import type { ProjectionScope } from '../content.ts';
+import type { ProjectionScope, ScaleKey } from '../content.ts';
 
 export interface ProjectionViewer {
   scope: ProjectionScope;
@@ -181,6 +181,7 @@ export interface MatchProjection {
   lifecycleState: MatchLifecycleState;
   seekPhaseSubstate?: SeekPhaseSubstate;
   paused?: PauseOverlayState;
+  selectedScale?: ScaleKey;
   selectedRulesetId?: string;
   players: VisiblePlayerProjection[];
   teams: VisibleTeamProjection[];

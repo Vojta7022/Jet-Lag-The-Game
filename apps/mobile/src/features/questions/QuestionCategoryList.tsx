@@ -1,13 +1,16 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { ScaleKey } from '../../../../../packages/shared-types/src/index.ts';
 import type { QuestionCategoryViewModel } from './question-catalog.ts';
 import { describeQuestionCategoryForPlayers } from './question-guidance.ts';
+import { formatQuestionDrawRule, formatTimerPolicyLabel } from './question-rule-model.ts';
 
 import { colors } from '../../ui/theme.ts';
 
 interface QuestionCategoryListProps {
   categories: QuestionCategoryViewModel[];
   selectedCategoryId?: string;
+  selectedScale?: ScaleKey;
   onSelect: (categoryId: string) => void;
 }
 
@@ -25,8 +28,11 @@ export function QuestionCategoryList(props: QuestionCategoryListProps) {
           >
             <Text style={styles.title}>{entry.category.name}</Text>
             <Text style={styles.copy}>{describeQuestionCategoryForPlayers(entry.category)}</Text>
+            <Text style={styles.rule}>
+              {formatQuestionDrawRule(entry.category)} · {formatTimerPolicyLabel(entry.category.defaultTimerPolicy, props.selectedScale)}
+            </Text>
             <Text style={styles.meta}>
-              {entry.templates.length} {entry.templates.length === 1 ? 'question' : 'questions'} available
+              {entry.templates.length} {entry.templates.length === 1 ? 'question' : 'questions'} ready in this clue group
             </Text>
           </Pressable>
         );
@@ -59,6 +65,12 @@ const styles = StyleSheet.create({
   meta: {
     color: colors.textMuted,
     fontSize: 12,
+    lineHeight: 16
+  },
+  rule: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: '700',
     lineHeight: 16
   },
   copy: {

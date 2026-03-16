@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { MatchRole } from '../../../../../packages/shared-types/src/index.ts';
+import type { MatchRole, ScaleKey } from '../../../../../packages/shared-types/src/index.ts';
 
 import type {
   CardZoneView,
@@ -20,6 +20,7 @@ import {
   formatCardKindLabel,
   formatZoneLabel
 } from './card-guidance.ts';
+import { buildScaleAwareTimeBonusDescription, type CardWorkbookPlayability } from './card-workbook-rules.ts';
 import { describeEffectSupport } from './card-catalog.ts';
 import { AppButton } from '../../ui/AppButton.tsx';
 import { colors } from '../../ui/theme.ts';
@@ -27,6 +28,9 @@ import { colors } from '../../ui/theme.ts';
 interface CardDetailPanelProps {
   card?: ResolvedVisibleCardModel;
   viewerRole: MatchRole;
+  selectedScale?: ScaleKey;
+  workbookPlayability?: CardWorkbookPlayability;
+  responseReason?: string;
   disabled?: boolean;
   lockReason?: string;
   canPlay: boolean;
@@ -59,6 +63,7 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
   const requirementLines = buildCardRequirementLines(card.definition);
   const timingLines = buildCardTimingLines(card.definition);
   const scaleNotes = buildCardScaleNotes(card.definition);
+  const activeScaleSummary = buildScaleAwareTimeBonusDescription(card.definition, props.selectedScale);
   const fallbackDescription = buildCardDescription(card.definition);
   const purposeSummary = buildCardPurposeSummary(card.definition);
   const restrictionSummary = buildCardRestrictionSummary(card.definition);
@@ -81,6 +86,7 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
         <Text style={styles.copy}>{fallbackDescription}</Text>
         <Text style={styles.copy}>{behavior.detail}</Text>
         <Text style={styles.copy}>{describeEffectSupport(card.definition)}</Text>
+        {activeScaleSummary ? <Text style={styles.effect}>{activeScaleSummary}</Text> : null}
         {scaleNotes.map((note, index) => (
           <Text key={`${card.definition.cardDefinitionId}:scale:${index}`} style={styles.effect}>
             {note}
@@ -118,6 +124,21 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>What happens next</Text>
         <Text style={styles.copy}>{actionState.statusSummary}</Text>
+        {props.workbookPlayability ? (
+          <Text
+            style={[
+              styles.workbookStatus,
+              props.workbookPlayability.tone === 'success'
+                ? styles.workbookStatusSuccess
+                : props.workbookPlayability.tone === 'warning'
+                  ? styles.workbookStatusWarning
+                  : null
+            ]}
+          >
+            {props.workbookPlayability.label}: {props.workbookPlayability.detail}
+          </Text>
+        ) : null}
+        {props.responseReason ? <Text style={styles.meta}>Response use: {props.responseReason}</Text> : null}
         {props.lockReason ? <Text style={styles.warning}>{props.lockReason}</Text> : null}
         {props.playDisabledReason ? <Text style={styles.meta}>Play: {props.playDisabledReason}</Text> : null}
         {props.discardDisabledReason ? <Text style={styles.meta}>Discard: {props.discardDisabledReason}</Text> : null}
@@ -194,6 +215,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 17
+  },
+  workbookStatus: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17
+  },
+  workbookStatusSuccess: {
+    color: colors.success
+  },
+  workbookStatusWarning: {
+    color: colors.warning
   },
   empty: {
     color: colors.textMuted,

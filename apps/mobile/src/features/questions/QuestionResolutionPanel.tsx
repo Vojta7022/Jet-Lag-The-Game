@@ -42,7 +42,7 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
       ) : (
         <>
           <View style={styles.summaryCard}>
-            <Text style={styles.sectionTitle}>What happened</Text>
+            <Text style={styles.sectionTitle}>What changed</Text>
             <View style={styles.pillRow}>
               <ResolutionModePill
                 label={model?.resolutionModeLabel ?? 'Pending'}
@@ -74,7 +74,7 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
           </View>
 
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Why the result has this confidence</Text>
+            <Text style={styles.sectionTitle}>Why this result is rated this way</Text>
             <Text style={styles.copy}>{model?.resolutionDetail}</Text>
             {props.constraint ? (
               <>
@@ -87,7 +87,7 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
                   <Text style={styles.value}>{model?.confidenceLabel}</Text>
                 </View>
                 <View style={styles.row}>
-                  <Text style={styles.label}>Visible Artifacts</Text>
+                  <Text style={styles.label}>Visible Map Layers</Text>
                   <Text style={styles.value}>{model?.artifactCountLabel}</Text>
                 </View>
                 {model?.contradictionSummary ? (
@@ -105,11 +105,11 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
             <Text style={styles.sectionTitle}>How the map responded</Text>
             <Text style={styles.copy}>{model?.mapEffectDetail}</Text>
             <View style={styles.row}>
-              <Text style={styles.label}>Visible precision</Text>
+              <Text style={styles.label}>Visible boundary</Text>
               <Text style={styles.value}>{model?.candidatePrecisionLabel}</Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>Playable-region clipping</Text>
+              <Text style={styles.label}>Playable boundary check</Text>
               <Text style={styles.value}>{model?.boundedLabel}</Text>
             </View>
             {model?.historySummary ? (
@@ -119,7 +119,7 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
 
           {model?.reasoningSteps.length ? (
             <View style={styles.sectionCard}>
-              <Text style={styles.sectionTitle}>Reasoning trail</Text>
+              <Text style={styles.sectionTitle}>How the runtime explained it</Text>
               {model.reasoningSteps.map((step, index) => (
                 <Text key={`${props.constraint?.constraintRecordId ?? question.questionInstanceId}:${index}`} style={styles.step}>
                   {index + 1}. {step}

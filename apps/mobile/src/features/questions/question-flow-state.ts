@@ -164,11 +164,11 @@ export function describeTemplateSupport(args: {
 }): string {
   switch (args.category.resolverKind) {
     case 'photo_challenge':
-      return 'Metadata-only manual evidence';
+      return 'Records evidence without changing the map directly';
     case 'threshold_distance':
-      return 'Approximate bounded geometry';
+      return 'Usually narrows the map with an approximate boundary';
     case 'hotter_colder':
-      return 'Exact or approximate from movement history';
+      return 'Can become exact or approximate from seeker movement history';
     case 'nearest_feature_match':
     case 'comparative_distance':
     case 'nearest_candidate':
@@ -176,10 +176,10 @@ export function describeTemplateSupport(args: {
         args.regionId,
         (args.template.featureClassRefs ?? []).map((feature) => feature.featureClassId)
       )
-        ? 'Approximate seeded feature resolution'
-        : 'Metadata-only until feature data is available';
+        ? 'Can update the map from the available place data in this region'
+        : 'Will stay as recorded evidence until richer place data is available';
     default:
-      return 'Metadata-only fallback';
+      return 'Stays recorded without a map update for now';
   }
 }
 

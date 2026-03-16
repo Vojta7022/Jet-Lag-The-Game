@@ -11,6 +11,37 @@ function formatValue(value: string | undefined): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function formatSessionLabel(runtimeKind: string, matchMode: string): string {
+  if (runtimeKind === 'online_foundation') {
+    return 'Online shared match';
+  }
+
+  if (runtimeKind === 'nearby_host_authority') {
+    return 'Nearby host session';
+  }
+
+  if (runtimeKind === 'single_device_referee') {
+    return 'Single-device referee session';
+  }
+
+  return matchMode === 'online' ? 'Online-style local session' : 'Local test session';
+}
+
+function formatViewLabel(scope: string): string {
+  switch (scope) {
+    case 'player_private':
+      return 'Personal view';
+    case 'team_private':
+      return 'Team view';
+    case 'public_match':
+      return 'Public match view';
+    case 'host_admin':
+      return 'Host view';
+    default:
+      return formatValue(scope);
+  }
+}
+
 export function MatchSummaryCard() {
   const { state } = useAppShell();
   const activeMatch = state.activeMatch;
@@ -23,19 +54,19 @@ export function MatchSummaryCard() {
     );
   }
 
+  const connectedPlayer = activeMatch.projection.players.find(
+    (player) => player.playerId === activeMatch.recipient.playerId
+  );
+
   return (
-    <Panel title="Current Match" subtitle="This summary stays in sync with the active runtime connection.">
+    <Panel title="Current Match" subtitle="This stays in sync with the live session on this device.">
       <FactList
         items={[
-          { label: 'Match', value: activeMatch.matchId },
-          { label: 'Connection Mode', value: formatValue(activeMatch.runtimeKind) },
-          { label: 'Match Mode', value: formatValue(activeMatch.matchMode) },
+          { label: 'Session', value: formatSessionLabel(activeMatch.runtimeKind, activeMatch.matchMode) },
           { label: 'Stage', value: formatValue(activeMatch.lifecycleState) },
-          { label: 'Connected Player', value: activeMatch.recipient.playerId ?? 'Public scope only' },
-          { label: 'View', value: formatValue(activeMatch.recipient.scope) },
-          ...(activeMatch.runtimeKind === 'online_foundation'
-            ? [{ label: 'Auth Session User', value: activeMatch.recipient.actorId }]
-            : []),
+          { label: 'Role', value: formatValue(activeMatch.playerRole ?? activeMatch.recipient.role ?? 'spectator') },
+          { label: 'You', value: connectedPlayer?.displayName ?? state.sessionProfile.displayName },
+          { label: 'View', value: formatViewLabel(activeMatch.recipient.scope) },
           { label: 'Connection', value: formatValue(activeMatch.connectionState) }
         ]}
       />

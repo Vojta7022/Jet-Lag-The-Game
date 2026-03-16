@@ -1,66 +1,68 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { colors } from '../ui/theme.ts';
+import { buildProductNavItems } from './product-nav-model.ts';
 
-type ProductNavKey =
-  | 'home'
-  | 'lobby'
-  | 'dashboard'
-  | 'map'
-  | 'questions'
-  | 'cards'
-  | 'chat'
-  | 'movement'
-  | 'admin'
-  | 'status';
+import type { ProductNavKey } from './product-nav-model.ts';
 
 interface ProductNavBarProps {
   current: ProductNavKey;
 }
 
-const navItems: Array<{ key: ProductNavKey; label: string; href: string }> = [
-  { key: 'home', label: 'Home', href: '/' },
-  { key: 'lobby', label: 'Lobby', href: '/lobby' },
-  { key: 'dashboard', label: 'Role', href: '/dashboard' },
-  { key: 'map', label: 'Map', href: '/map' },
-  { key: 'questions', label: 'Questions', href: '/questions' },
-  { key: 'cards', label: 'Cards', href: '/cards' },
-  { key: 'chat', label: 'Chat', href: '/chat' },
-  { key: 'movement', label: 'Movement', href: '/movement' },
-  { key: 'admin', label: 'Referee', href: '/admin' },
-  { key: 'status', label: 'Status', href: '/status' }
-];
-
 export function ProductNavBar(props: ProductNavBarProps) {
+  const { state } = useAppShell();
+  const activeMatch = state.activeMatch;
+  const role = activeMatch?.playerRole ?? activeMatch?.recipient.role ?? 'spectator';
+  const navItems = buildProductNavItems({
+    hasActiveMatch: Boolean(activeMatch),
+    role,
+    visibleCardCount: activeMatch?.projection.visibleCards.length ?? 0,
+    visibleMovementTrackCount: activeMatch?.projection.visibleMovementTracks.length ?? 0,
+    canAccessAdmin: role === 'host' || activeMatch?.recipient.scope === 'host_admin'
+  });
+  const primaryItems = navItems.filter((item) => item.group === 'primary');
+  const secondaryItems = navItems.filter((item) => item.group === 'secondary');
+
+  const renderItem = (item: (typeof navItems)[number]) => {
+    const isActive = item.key === props.current;
+    return (
+      <Pressable
+        key={item.key}
+        accessibilityRole="button"
+        onPress={() => {
+          if (!isActive) {
+            router.push(item.href as Parameters<typeof router.push>[0]);
+          }
+        }}
+        style={({ pressed }) => [
+          styles.item,
+          isActive ? styles.itemActive : null,
+          pressed && !isActive ? styles.itemPressed : null
+        ]}
+      >
+        <Text style={[styles.itemLabel, isActive ? styles.itemLabelActive : null]}>
+          {item.label}
+        </Text>
+      </Pressable>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Workspace</Text>
+      <Text style={styles.label}>Match</Text>
       <View style={styles.list}>
-        {navItems.map((item) => {
-          const isActive = item.key === props.current;
-          return (
-            <Pressable
-              key={item.key}
-              accessibilityRole="button"
-              onPress={() => {
-                if (!isActive) {
-                  router.push(item.href as Parameters<typeof router.push>[0]);
-                }
-              }}
-              style={({ pressed }) => [
-                styles.item,
-                isActive ? styles.itemActive : null,
-                pressed && !isActive ? styles.itemPressed : null
-              ]}
-            >
-              <Text style={[styles.itemLabel, isActive ? styles.itemLabelActive : null]}>
-                {item.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {primaryItems.map(renderItem)}
       </View>
+      {secondaryItems.length > 0 ? (
+        <View style={styles.secondaryGroup}>
+          <Text style={styles.secondaryLabel}>Host Tools</Text>
+          <View style={styles.list}>
+            {secondaryItems.map(renderItem)}
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -80,6 +82,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8
+  },
+  secondaryGroup: {
+    gap: 8
+  },
+  secondaryLabel: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase'
   },
   item: {
     backgroundColor: colors.surface,

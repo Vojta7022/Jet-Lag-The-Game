@@ -4,6 +4,7 @@ import { StyleSheet, Text } from 'react-native';
 import { MatchSummaryCard } from '../components/MatchSummaryCard.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { RuntimeModeSwitcher } from '../components/RuntimeModeSwitcher.tsx';
+import { mobileAppEnvironment } from '../config/env.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import type { AppShellState } from '../state/app-shell-state.ts';
 import { AppButton } from '../ui/AppButton.tsx';
@@ -29,13 +30,25 @@ function hasOnlineIdentityMismatch(
 }
 
 export function HomeScreen() {
-  const { state, disconnectActiveMatch } = useAppShell();
+  const { state, disconnectActiveMatch, selectRuntimeKind } = useAppShell();
   const onlineIdentityMismatch = hasOnlineIdentityMismatch(state.sessionProfile, state.activeMatch);
+  const activeMatch = state.activeMatch;
+  const activeStage = activeMatch?.projection.lifecycleState;
+  const continueRoute = activeMatch
+    ? activeStage === 'draft' || activeStage === 'lobby' || activeStage === 'role_assignment'
+      ? '/lobby'
+      : '/map'
+    : undefined;
+  const continueLabel = activeMatch
+    ? activeMatch.projection.visibleMap
+      ? 'Continue Match'
+      : 'Continue Setup'
+    : undefined;
 
   return (
     <ScreenContainer
       title="Transit Hide and Seek"
-      subtitle="Create or join a match, then move between lobby, map, questions, cards, chat, movement, and referee tools from one shared mobile workspace."
+      subtitle="Create or join an online match, then stay with your team on one shared live game flow."
       topSlot={<ProductNavBar current="home" />}
     >
       {state.errorMessage ? (
@@ -43,14 +56,56 @@ export function HomeScreen() {
       ) : null}
 
       <Panel
+        title="Play Online"
+        subtitle="Online cloud play is the main player path. Create or join a match, then move straight into the live map, questions, cards, and chat."
+      >
+        {state.runtimeKind !== 'online_foundation' ? (
+          <StateBanner
+            tone="info"
+            title="Local mode is selected"
+            detail="The main player flow uses online cloud sessions. The buttons below switch this device back to online mode for normal play."
+          />
+        ) : null}
+        <AppButton
+          label="Create Online Match"
+          onPress={() => {
+            selectRuntimeKind('online_foundation');
+            router.push('/create-match');
+          }}
+        />
+        <AppButton
+          label="Join Online Match"
+          onPress={() => {
+            selectRuntimeKind('online_foundation');
+            router.push('/join-match');
+          }}
+          tone="secondary"
+        />
+        {continueRoute && continueLabel ? (
+          <AppButton
+            label={continueLabel}
+            onPress={() => {
+              router.push(continueRoute as Parameters<typeof router.push>[0]);
+            }}
+            tone="secondary"
+          />
+        ) : null}
+        <Text style={styles.helper}>
+          Use local and referee modes only when you are testing the app, hosting a nearby session, or running single-device play.
+        </Text>
+      </Panel>
+
+      <Panel
         title="Player Profile"
-        subtitle="This identity is used when you create or join a match."
+        subtitle="This name is used when this device creates or joins a match."
       >
         <FactList
           items={[
             { label: 'Display Name', value: state.sessionProfile.displayName },
-            { label: 'Player ID', value: state.sessionProfile.playerId },
-            { label: 'Auth ID', value: state.sessionProfile.authUserId || 'Matches player ID' }
+            {
+              label: 'Online sign-in',
+              value: state.sessionProfile.authUserId ? 'Ready' : 'Uses the saved player profile'
+            }
           ]}
         />
         {onlineIdentityMismatch ? (
@@ -63,27 +118,32 @@ export function HomeScreen() {
         <AppButton label="Edit Profile" onPress={() => router.push('/auth')} tone="secondary" />
       </Panel>
 
-      <RuntimeModeSwitcher />
       <MatchSummaryCard />
 
-      <Panel
-        title="Get Started"
-        subtitle="Start a new match or join an existing one, then use the workspace tabs above to continue."
-      >
-        <AppButton label="Create Match" onPress={() => router.push('/create-match')} />
-        <AppButton label="Join Match" onPress={() => router.push('/join-match')} tone="secondary" />
-        <Text style={styles.helper}>
-          Already connected? Use the workspace bar to move between setup, play, communication, and referee tools.
-        </Text>
-        <AppButton
-          label="Disconnect Match"
-          onPress={() => {
-            void disconnectActiveMatch();
-          }}
-          tone="danger"
-          disabled={!state.activeMatch}
-        />
-      </Panel>
+      {activeMatch ? (
+        <Panel
+          title="Session Controls"
+          subtitle="Keep your current session tidy without leaving the main player flow."
+        >
+          <AppButton
+            label="Connection Details"
+            onPress={() => {
+              router.push('/status');
+            }}
+            tone="secondary"
+          />
+          <AppButton
+            label="Disconnect Match"
+            onPress={() => {
+              void disconnectActiveMatch();
+            }}
+            tone="danger"
+            disabled={!state.activeMatch}
+          />
+        </Panel>
+      ) : null}
+
+      {mobileAppEnvironment.enableDeveloperTools ? <RuntimeModeSwitcher /> : null}
     </ScreenContainer>
   );
 }

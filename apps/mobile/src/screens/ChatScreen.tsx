@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
+import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
+import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
@@ -36,6 +38,7 @@ export function ChatScreen() {
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const viewerRole = resolveChatViewerRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
+  const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
   const localMedia = useLocalMediaAttachments(createUuid);
   const channelViewModels = useMemo(
     () => buildChatChannelViewModels(projection),
@@ -117,7 +120,8 @@ export function ChatScreen() {
     <ScreenContainer
       title="Chat"
       subtitle="Read the live conversation, switch between public and team channels, and attach evidence when the current role allows it."
-      topSlot={<ProductNavBar current="chat" />}
+      topSlot={liveGameplayState ? undefined : <ProductNavBar current="chat" />}
+      bottomSlot={liveGameplayState ? <GameplayTabBar current="chat" /> : undefined}
     >
       {!activeMatch ? (
         <StateBanner

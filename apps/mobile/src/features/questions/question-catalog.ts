@@ -102,7 +102,7 @@ export function summarizeAnswer(answer: Record<string, unknown> | undefined): st
   }
 
   if (typeof answer.selectedFeatureId === 'string' && answer.selectedFeatureId.length > 0) {
-    return answer.selectedFeatureId;
+    return 'Selected place recorded';
   }
 
   const attachmentIds = Array.isArray(answer.attachmentIds)

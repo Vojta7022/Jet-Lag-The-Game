@@ -222,7 +222,7 @@ test('question map effect model stays honest for metadata-only evidence flows', 
   assert.equal(model?.resolutionModeLabel, 'Metadata-only');
   assert.equal(model?.mapEffectTitle, 'Map stayed the same');
   assert.match(model?.mapEffectDetail ?? '', /did not pretend to change/i);
-  assert.equal(model?.artifactCountLabel, '0 visible artifacts');
+  assert.equal(model?.artifactCountLabel, '0 visible map layers');
 });
 
 test('question map effect model marks exact bounded updates as trustworthy geometry', () => {
@@ -279,5 +279,5 @@ test('question map effect model marks exact bounded updates as trustworthy geome
   assert.equal(model?.resolutionModeLabel, 'Exact');
   assert.equal(model?.resolutionTone, 'success');
   assert.match(model?.resolutionDetail ?? '', /directly clipped geometry/i);
-  assert.equal(model?.candidatePrecisionLabel, 'exact');
+  assert.equal(model?.candidatePrecisionLabel, 'Exact visible boundary');
 });

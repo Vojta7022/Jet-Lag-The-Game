@@ -310,6 +310,7 @@ export class MobileRuntimeOrchestrator {
       recipient: connection.recipient,
       lifecycleState: projection.lifecycleState,
       seekPhaseSubstate: projection.seekPhaseSubstate,
+      selectedScale: projection.selectedScale,
       playerRole: getPlayerRoleFromProjection(projection, connection.recipient.playerId, connection.recipient.role),
       snapshotVersion: syncEnvelope.snapshotVersion,
       lastEventSequence: syncEnvelope.lastEventSequence,

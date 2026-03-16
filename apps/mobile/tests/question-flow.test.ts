@@ -222,7 +222,7 @@ test('question support helper stays honest about approximate and metadata-only p
       category: photosCategory!,
       regionId: 'seed-prague-city'
     }),
-    'Metadata-only manual evidence'
+    'Records evidence without changing the map directly'
   );
   assert.equal(
     describeTemplateSupport({
@@ -230,7 +230,7 @@ test('question support helper stays honest about approximate and metadata-only p
       category: matchingCategory!,
       regionId: 'seed-prague-city'
     }),
-    'Approximate seeded feature resolution'
+    'Can update the map from the available place data in this region'
   );
   assert.equal(
     describeTemplateSupport({
@@ -238,6 +238,6 @@ test('question support helper stays honest about approximate and metadata-only p
       category: matchingCategory!,
       regionId: 'unknown-region'
     }),
-    'Metadata-only until feature data is available'
+    'Will stay as recorded evidence until richer place data is available'
   );
 });

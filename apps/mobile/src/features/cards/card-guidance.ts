@@ -9,6 +9,9 @@ import type {
   DeckViewModel,
   ResolvedVisibleCardModel
 } from './card-catalog.ts';
+import {
+  buildKnownPowerUpDescription
+} from './card-workbook-rules.ts';
 
 export type CardUiTone = 'info' | 'warning' | 'success';
 
@@ -129,6 +132,11 @@ export function buildCardPurposeSummary(cardDefinition: CardDefinition): string 
 export function buildCardDescription(cardDefinition: CardDefinition): string {
   if (!isWeakCardDescription(cardDefinition.description)) {
     return cardDefinition.description.trim();
+  }
+
+  const knownPowerUpDescription = buildKnownPowerUpDescription(cardDefinition);
+  if (knownPowerUpDescription) {
+    return knownPowerUpDescription;
   }
 
   const effectDescriptions = cardDefinition.effects

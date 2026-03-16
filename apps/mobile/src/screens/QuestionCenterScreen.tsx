@@ -2,7 +2,9 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text } from 'react-native';
 
+import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
+import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
@@ -26,7 +28,13 @@ import {
   describeQuestionCategoryForPlayers,
   describeQuestionImpactExpectation,
   describeQuestionTemplateForPlayers,
+  canAskPreparedQuestion,
+  consumePreparedQuestionTemplate,
+  createQuestionSelectionRound,
+  filterTemplatesForScale,
   formatQuestionScaleSet,
+  formatQuestionDrawRule,
+  formatTimerPolicyLabel,
   buildQuestionMapEffectModel,
   chooseConstraintIdForQuestion,
   createInitialAnswerDraft,
@@ -39,11 +47,14 @@ import {
   findQuestionTemplate,
   getQuestionFlowCapabilities,
   getSeedRegionFeatureData,
+  resolveTimerPolicyDurationSeconds,
+  toggleKeptQuestionTemplate,
   type QuestionAnswerDraft
 } from '../features/questions/index.ts';
 import {
   MatchTimingBanner,
   MatchTimingPanel,
+  formatCountdown,
   useMatchTimingModel
 } from '../features/timers/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
@@ -69,6 +80,24 @@ function resolveCurrentRole(role: string | undefined, scope: string | undefined)
   return 'spectator' as const;
 }
 
+function formatRoleLabel(role: string) {
+  return role.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatPhaseLabel(lifecycleState: string | undefined, seekPhaseSubstate: string | undefined) {
+  if (!lifecycleState) {
+    return 'Unavailable';
+  }
+
+  const lifecycleLabel = lifecycleState.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  if (!seekPhaseSubstate) {
+    return lifecycleLabel;
+  }
+
+  const substateLabel = seekPhaseSubstate.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  return `${lifecycleLabel} · ${substateLabel}`;
+}
+
 export function QuestionCenterScreen() {
   const { state, submitCommand, submitCommands, refreshActiveMatch, prepareAttachmentUploadCommands } = useAppShell();
   const activeMatch = state.activeMatch;
@@ -76,6 +105,8 @@ export function QuestionCenterScreen() {
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
+  const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
+  const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
   const capabilities = getQuestionFlowCapabilities(viewerRole);
   const categoryViewModels = useMemo(
     () => buildQuestionCategoryViewModels(defaultContentPack),
@@ -94,13 +125,31 @@ export function QuestionCenterScreen() {
   const resolvedQuestionTemplate = findQuestionTemplate(defaultContentPack, resolvedQuestion?.templateId);
   const resolvedQuestionCategory = findQuestionCategory(defaultContentPack, resolvedQuestion?.categoryId);
   const selectedCategory = findQuestionCategory(defaultContentPack, selectedCategoryId);
-  const availableTemplates = categoryViewModels.find(
-    (entry) => entry.category.categoryId === selectedCategoryId
-  )?.templates ?? [];
+  const availableTemplates = filterTemplatesForScale(
+    categoryViewModels.find((entry) => entry.category.categoryId === selectedCategoryId)?.templates ?? [],
+    selectedScale
+  );
+  const [selectionRounds, setSelectionRounds] = useState<Record<string, ReturnType<typeof createQuestionSelectionRound>>>({});
   const selectedTemplate = findQuestionTemplate(defaultContentPack, selectedTemplateId);
   const [answerDraft, setAnswerDraft] = useState<QuestionAnswerDraft>(() =>
     createInitialAnswerDraft(selectedTemplate)
   );
+  const activeSelectionRound = selectedCategoryId ? selectionRounds[selectedCategoryId] : undefined;
+  const drawnTemplates = availableTemplates.filter((template) =>
+    activeSelectionRound?.drawnTemplateIds.includes(template.templateId)
+  );
+  const keptTemplates = availableTemplates.filter((template) =>
+    activeSelectionRound?.keptTemplateIds.includes(template.templateId)
+  );
+  const readyTemplate = keptTemplates.find((template) => template.templateId === selectedTemplateId)
+    ?? keptTemplates[0]
+    ?? drawnTemplates.find((template) => template.templateId === selectedTemplateId)
+    ?? drawnTemplates[0];
+  const previewTemplate = readyTemplate ?? selectedTemplate;
+  const ruleLabel = selectedCategory ? formatQuestionDrawRule(selectedCategory) : undefined;
+  const timerLabel = selectedCategory
+    ? formatTimerPolicyLabel(selectedCategory.defaultTimerPolicy, selectedScale)
+    : undefined;
 
   useEffect(() => {
     if (!selectedCategoryId && categoryViewModels[0]) {
@@ -109,30 +158,42 @@ export function QuestionCenterScreen() {
   }, [categoryViewModels, selectedCategoryId]);
 
   useEffect(() => {
-    if (!availableTemplates.some((template) => template.templateId === selectedTemplateId)) {
-      setSelectedTemplateId(availableTemplates[0]?.templateId);
+    const selectableTemplateIds = [
+      ...(activeSelectionRound?.keptTemplateIds ?? []),
+      ...(activeSelectionRound?.drawnTemplateIds ?? [])
+    ];
+    if (
+      !selectedTemplateId ||
+      (selectableTemplateIds.length > 0 && !selectableTemplateIds.includes(selectedTemplateId)) ||
+      (selectableTemplateIds.length === 0 && !availableTemplates.some((template) => template.templateId === selectedTemplateId))
+    ) {
+      setSelectedTemplateId(
+        activeSelectionRound?.keptTemplateIds[0] ??
+        activeSelectionRound?.drawnTemplateIds[0] ??
+        availableTemplates[0]?.templateId
+      );
     }
-  }, [availableTemplates, selectedTemplateId]);
+  }, [activeSelectionRound, availableTemplates, selectedTemplateId]);
 
   useEffect(() => {
     const composerTemplate = activeQuestion?.status === 'awaiting_answer'
       ? activeQuestionTemplate
-      : selectedTemplate;
+      : readyTemplate;
     setAnswerDraft(createInitialAnswerDraft(composerTemplate));
-  }, [activeQuestion?.questionInstanceId, activeQuestion?.status, activeQuestionTemplate, selectedTemplate]);
+  }, [activeQuestion?.questionInstanceId, activeQuestion?.status, activeQuestionTemplate, readyTemplate]);
 
   const visibleMap = projection?.visibleMap;
   const selectedRegionId = visibleMap?.regionId;
-  const selectedQuestionImpact = selectedTemplate && selectedCategory
+  const selectedQuestionImpact = previewTemplate && selectedCategory
     ? describeQuestionImpactExpectation({
-        template: selectedTemplate,
+        template: previewTemplate,
         category: selectedCategory,
         regionId: selectedRegionId
       })
     : undefined;
   const previewFeatureData = getSeedRegionFeatureData(
     selectedRegionId,
-    (selectedTemplate?.featureClassRefs ?? []).map((feature) => feature.featureClassId)
+    (previewTemplate?.featureClassRefs ?? []).map((feature) => feature.featureClassId)
   );
   const answerFeatureData = getSeedRegionFeatureData(
     selectedRegionId,
@@ -191,6 +252,7 @@ export function QuestionCenterScreen() {
     projection?.lifecycleState === 'seek_phase' && projection.seekPhaseSubstate === 'awaiting_question_answer';
   const isApplyingConstraints =
     projection?.lifecycleState === 'seek_phase' && projection.seekPhaseSubstate === 'applying_constraints';
+  const [questionNowMs, setQuestionNowMs] = useState(() => Date.now());
   const canPrepareFlow = Boolean(
     activeMatch &&
       capabilities.canPrepareFlow &&
@@ -213,7 +275,8 @@ export function QuestionCenterScreen() {
   const canAskQuestion = Boolean(
     activeMatch &&
       capabilities.canAskQuestions &&
-      selectedTemplate &&
+      readyTemplate &&
+      canAskPreparedQuestion(activeSelectionRound, selectedCategory) &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
   const canAnswerQuestion = Boolean(
@@ -236,6 +299,33 @@ export function QuestionCenterScreen() {
     : activeMatch?.runtimeKind === 'online_foundation'
       ? 'Recording evidence here creates real attachment records through the runtime, but this online session is still falling back to metadata-only storage.'
       : 'Recording evidence here creates real attachment records through the runtime. The file preview stays local to this device session until fuller storage support is added.';
+  const showQuestionPrepPanel = canPrepareFlow || canSeedMovement;
+  const activeQuestionTimerSeconds = activeQuestionCategory
+    ? resolveTimerPolicyDurationSeconds(activeQuestionCategory.defaultTimerPolicy, selectedScale)
+    : undefined;
+
+  useEffect(() => {
+    if (!isAwaitingAnswer || activeQuestionTimerSeconds === undefined) {
+      setQuestionNowMs(Date.now());
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      setQuestionNowMs(Date.now());
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [activeQuestion?.questionInstanceId, activeQuestionTimerSeconds, isAwaitingAnswer]);
+
+  const activeQuestionRemainingSeconds =
+    activeQuestionTimerSeconds !== undefined && activeQuestion?.askedAt
+      ? Math.max(0, activeQuestionTimerSeconds - Math.floor((questionNowMs - Date.parse(activeQuestion.askedAt)) / 1000))
+      : undefined;
+  const keptSelectionLabel = selectedCategory
+    ? `${keptTemplates.length} of ${selectedCategory.drawRule.pickCount} kept`
+    : undefined;
 
   const handlePrepareFlow = () => {
     if (!projection) {
@@ -261,7 +351,7 @@ export function QuestionCenterScreen() {
   };
 
   const handleAskQuestion = () => {
-    if (!selectedTemplate || !projection) {
+    if (!readyTemplate || !projection || !selectedCategory) {
       return;
     }
 
@@ -277,12 +367,26 @@ export function QuestionCenterScreen() {
       type: 'ask_question' as const,
       payload: {
         questionInstanceId: `question:${createUuid()}`,
-        templateId: selectedTemplate.templateId,
+        templateId: readyTemplate.templateId,
         targetTeamId: projection.teams.find((team) => team.side === 'hider')?.teamId ?? 'team-hider'
       }
     });
 
-    void submitCommands(commands);
+    void submitCommands(commands).then((accepted) => {
+      if (!accepted || !selectedCategoryId) {
+        return;
+      }
+
+      setSelectionRounds((current) => {
+        const round = current[selectedCategoryId];
+        const consumed = consumePreparedQuestionTemplate(round, readyTemplate.templateId);
+
+        return {
+          ...current,
+          [selectedCategoryId]: consumed ?? round
+        };
+      });
+    });
   };
 
   const handleAnswerQuestion = () => {
@@ -357,9 +461,14 @@ export function QuestionCenterScreen() {
 
   return (
     <ScreenContainer
-      title="Question Center"
-      subtitle="Choose a clue, answer it in the right role, and review exactly how the result did or did not change the active search area."
-      topSlot={<ProductNavBar current="questions" />}
+      title="Questions"
+      subtitle={
+        liveGameplayState
+          ? 'Draw clue cards from the workbook rules, ask the next question, and see clearly what changed on the map.'
+          : 'Prepare the next clue, answer it honestly, and see clearly whether the map changed or the result stayed as evidence only.'
+      }
+      topSlot={liveGameplayState ? undefined : <ProductNavBar current="questions" />}
+      bottomSlot={liveGameplayState ? <GameplayTabBar current="questions" /> : undefined}
     >
       {!activeMatch ? (
         <StateBanner
@@ -370,28 +479,26 @@ export function QuestionCenterScreen() {
       ) : null}
 
       {activeMatch ? (
-        <Panel
-          title="Question context"
-          subtitle="Who can act, what stage the match is in, and which playable region is currently active."
-        >
-          <FactList
-            items={[
-              { label: 'Role', value: viewerRole },
-              {
-                label: 'Stage',
-                value: projection?.seekPhaseSubstate
-                  ? `${projection.lifecycleState} / ${projection.seekPhaseSubstate}`
-                  : projection?.lifecycleState ?? 'Unavailable'
-              },
-              { label: 'Playable Region', value: visibleMap?.displayName ?? 'Not selected yet' },
-              { label: 'Scope', value: activeMatch.recipient.scope },
-              { label: 'State Update', value: timingModel?.freshnessLabel ?? 'Waiting for live state' }
-            ]}
-          />
-          <Text style={styles.copy}>
-            Seekers and host-admin views can ask. Hiders and host-admin views can answer. Applying the final result remains host-authoritative so the map stays trustworthy.
-          </Text>
-        </Panel>
+      <Panel
+        title="Question Context"
+        subtitle="See who can act right now, which workbook scale is active, and what the next question should accomplish."
+      >
+        <FactList
+          items={[
+            { label: 'Your Role', value: formatRoleLabel(viewerRole) },
+            {
+              label: 'Current Phase',
+                value: formatPhaseLabel(projection?.lifecycleState, projection?.seekPhaseSubstate)
+            },
+            { label: 'Search Map', value: visibleMap?.displayName ?? 'Not selected yet' },
+            { label: 'Game Size', value: selectedScale ? formatQuestionScaleSet([selectedScale]) : 'Waiting for setup' },
+            { label: 'Live Update', value: timingModel?.freshnessLabel ?? 'Waiting for live state' }
+          ]}
+        />
+        <Text style={styles.copy}>
+          Seekers and host views can ask. Hiders and host views can answer. Host views still apply the final bounded map result so everyone can trust the search area.
+        </Text>
+      </Panel>
       ) : null}
 
       {activeMatch && !visibleMap ? (
@@ -454,78 +561,160 @@ export function QuestionCenterScreen() {
         />
       </Panel>
 
-      <Panel
-        title="Match prep"
-        subtitle="Get the question loop ready, refresh state, or add movement context for thermometer-style clues."
-      >
-        <AppButton
-          label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Questions'}
-          onPress={handlePrepareFlow}
-          disabled={!canPrepareFlow || state.loadState === 'loading'}
-        />
-        <AppButton
-          label="Add Seeker Movement Trail"
-          onPress={handleSeedMovement}
-          disabled={!canSeedMovement || state.loadState === 'loading'}
-          tone="secondary"
-        />
-        <AppButton
-          label="Refresh Question State"
-          onPress={() => {
-            void refreshActiveMatch();
-          }}
-          disabled={!activeMatch || state.loadState === 'loading'}
-          tone="secondary"
-        />
-      </Panel>
+      {showQuestionPrepPanel ? (
+        <Panel
+          title="Match Controls"
+          subtitle="Use these only when the match still needs setup or when thermometer clues need movement history."
+        >
+          <AppButton
+            label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Questions'}
+            onPress={handlePrepareFlow}
+            disabled={!canPrepareFlow || state.loadState === 'loading'}
+          />
+          <AppButton
+            label="Add Seeker Movement Trail"
+            onPress={handleSeedMovement}
+            disabled={!canSeedMovement || state.loadState === 'loading'}
+            tone="secondary"
+          />
+          <AppButton
+            label="Refresh Question State"
+            onPress={() => {
+              void refreshActiveMatch();
+            }}
+            disabled={!activeMatch || state.loadState === 'loading'}
+            tone="secondary"
+          />
+        </Panel>
+      ) : null}
 
       <Panel
-        title="Pick a clue type"
-        subtitle="Start with the kind of answer you want back from the other side."
+        title="Choose A Clue Type"
+        subtitle="Start with the kind of clue you want, then follow the workbook draw and keep rule for that category."
       >
         <QuestionCategoryList
           categories={categoryViewModels}
           selectedCategoryId={selectedCategoryId}
+          selectedScale={selectedScale}
           onSelect={setSelectedCategoryId}
         />
       </Panel>
 
       <Panel
-        title="Choose a question"
-        subtitle="Each question card tells you what it asks, how it should be answered, and how much map change to expect."
+        title="Workbook Rule"
+        subtitle="This is the real draw, keep, and answer window rule imported from the workbook."
       >
         {selectedCategory ? (
-          <QuestionTemplateList
-            templates={availableTemplates}
-            category={selectedCategory}
-            selectedTemplateId={selectedTemplateId}
-            regionId={selectedRegionId}
-            describeSupport={(template, category) =>
-              describeTemplateSupport({
-                template,
-                category,
-                regionId: selectedRegionId
-              })
-            }
-            onSelect={setSelectedTemplateId}
-          />
+          <>
+            <Text style={styles.title}>{selectedCategory.name}</Text>
+            <Text style={styles.copy}>{describeQuestionCategoryForPlayers(selectedCategory)}</Text>
+            <FactList
+              items={[
+                { label: 'Prompt', value: selectedCategory.promptTemplate },
+                { label: 'Draw / Keep', value: ruleLabel ?? 'Manual draw rule' },
+                { label: 'Response limit', value: timerLabel ?? 'Manual timer' },
+                { label: 'Templates in play', value: availableTemplates.length }
+              ]}
+            />
+            {selectedCategory.drawRule.pickCount > 1 ? (
+              <Text style={styles.helper}>
+                This category keeps multiple clue cards. Draw a set, keep {selectedCategory.drawRule.pickCount}, then ask them one at a time as the match opens question windows.
+              </Text>
+            ) : null}
+          </>
         ) : (
-          <Text style={styles.copy}>Choose a category to browse question templates.</Text>
+          <Text style={styles.copy}>Choose a category to load its workbook rule.</Text>
         )}
       </Panel>
 
       <Panel
-        title="Before you ask"
-        subtitle="Review the player-facing wording, expected answer format, and likely map effect."
+        title="Drawn Question Cards"
+        subtitle="Draw a clue set from the active category, then keep the allowed number before you ask."
       >
-        {selectedTemplate && selectedCategory ? (
+        {!selectedCategory ? (
+          <Text style={styles.copy}>Choose a category first.</Text>
+        ) : availableTemplates.length === 0 ? (
+          <Text style={styles.copy}>
+            This category has no imported templates for the current game size yet. Choose another clue type or change the match scale during setup.
+          </Text>
+        ) : (
           <>
-            <Text style={styles.title}>{selectedTemplate.name}</Text>
+            <FactList
+              items={[
+                { label: 'Workbook rule', value: ruleLabel ?? 'Manual draw rule' },
+                { label: 'Timer', value: timerLabel ?? 'Manual timer' },
+                { label: 'Current draw', value: activeSelectionRound ? `Round ${activeSelectionRound.round}` : 'No draw yet' },
+                { label: 'Kept cards', value: keptSelectionLabel ?? 'No kept cards yet' }
+              ]}
+            />
+            <AppButton
+              label={activeSelectionRound ? 'Draw A New Set' : 'Draw Question Cards'}
+              onPress={() => {
+                if (!selectedCategory || !selectedCategoryId) {
+                  return;
+                }
+
+                const nextRound = createQuestionSelectionRound({
+                  category: selectedCategory,
+                  templates: availableTemplates,
+                  selectedScale,
+                  previousRound: activeSelectionRound
+                });
+                setSelectionRounds((current) => ({
+                  ...current,
+                  [selectedCategoryId]: nextRound
+                }));
+                setSelectedTemplateId(nextRound.keptTemplateIds[0] ?? nextRound.drawnTemplateIds[0]);
+              }}
+              disabled={!capabilities.canAskQuestions || state.loadState === 'loading'}
+            />
+            {drawnTemplates.length > 0 ? (
+              <QuestionTemplateList
+                templates={drawnTemplates}
+                category={selectedCategory}
+                selectedTemplateId={selectedTemplateId}
+                selectedTemplateIds={activeSelectionRound?.keptTemplateIds}
+                selectionLimit={selectedCategory.drawRule.pickCount}
+                regionId={selectedRegionId}
+                describeSupport={(template, category) =>
+                  describeTemplateSupport({
+                    template,
+                    category,
+                    regionId: selectedRegionId
+                  })
+                }
+                onSelect={(templateId) => {
+                  setSelectedTemplateId(templateId);
+                  if (!activeSelectionRound) {
+                    return;
+                  }
+
+                  setSelectionRounds((current) => ({
+                    ...current,
+                    [selectedCategory.categoryId]: toggleKeptQuestionTemplate(
+                      current[selectedCategory.categoryId] ?? activeSelectionRound,
+                      templateId,
+                      selectedCategory.drawRule.pickCount
+                    )
+                  }));
+                }}
+              />
+            ) : (
+              <Text style={styles.copy}>Draw a set of clue cards to start this category.</Text>
+            )}
+          </>
+        )}
+      </Panel>
+
+      <Panel
+        title="Before You Ask"
+        subtitle="Review the selected clue in plain language, including how it should change the search map."
+      >
+        {previewTemplate && selectedCategory ? (
+          <>
+            <Text style={styles.title}>{previewTemplate.name}</Text>
             <Text style={styles.copy}>
-              {describeQuestionCategoryForPlayers(selectedCategory)}
-            </Text>
-            <Text style={styles.copy}>
-              {describeQuestionTemplateForPlayers(selectedTemplate, selectedCategory)}
+              You will ask: {describeQuestionTemplateForPlayers(previewTemplate, selectedCategory)}
             </Text>
             {selectedQuestionImpact ? (
               <StateBanner
@@ -536,12 +725,12 @@ export function QuestionCenterScreen() {
             ) : null}
             <FactList
               items={[
-                { label: 'How to answer', value: describeExpectedAnswerGuidance(selectedTemplate) },
-                { label: 'Scale fit', value: formatQuestionScaleSet(selectedTemplate.scaleSet.appliesTo) },
+                { label: 'How to answer', value: describeExpectedAnswerGuidance(previewTemplate) },
+                { label: 'Best for', value: formatQuestionScaleSet(previewTemplate.scaleSet.appliesTo) },
                 {
-                  label: 'Coverage today',
+                  label: 'How it behaves today',
                   value: describeTemplateSupport({
-                    template: selectedTemplate,
+                    template: previewTemplate,
                     category: selectedCategory,
                     regionId: selectedRegionId
                   })
@@ -550,38 +739,48 @@ export function QuestionCenterScreen() {
             />
             {previewFeatureData.length > 0 ? (
               <Text style={styles.copy}>
-                Region feature support: {previewFeatureData.length} approximate feature records are available for this question in the current playable region.
+                This playable region already has place data for this clue, so the result can do more than just record evidence.
+              </Text>
+            ) : null}
+            <AppButton
+              label="Ask Selected Question"
+              onPress={handleAskQuestion}
+              disabled={!canAskQuestion || state.loadState === 'loading'}
+            />
+            {!canAskPreparedQuestion(activeSelectionRound, selectedCategory) ? (
+              <Text style={styles.helper}>
+                Keep {selectedCategory.drawRule.pickCount} clue {selectedCategory.drawRule.pickCount === 1 ? 'card' : 'cards'} from the current draw before asking.
               </Text>
             ) : null}
           </>
         ) : (
-          <Text style={styles.copy}>Choose a category and question card to see a plain-language briefing here.</Text>
+          <Text style={styles.copy}>Draw a clue set and keep the allowed number of question cards first.</Text>
         )}
       </Panel>
 
       <Panel
-        title="Send this question"
-        subtitle="Ask the selected clue when the current match state allows it."
-      >
-        {selectedTemplate && selectedCategory ? (
-          <>
-            <AppButton
-              label="Ask Question"
-              onPress={handleAskQuestion}
-              disabled={!canAskQuestion || state.loadState === 'loading'}
-            />
-          </>
-        ) : (
-          <Text style={styles.copy}>Select a question card first.</Text>
-        )}
-      </Panel>
-
-      <Panel
-        title="Answer honestly"
-        subtitle="Respond from the hider or host-admin view when the live match is waiting for an answer."
+        title="Answer Honestly"
+        subtitle="Respond from the hider or host view when the live match is waiting for an answer."
       >
         {activeQuestion && activeQuestionTemplate && activeQuestionCategory ? (
           <>
+            <FactList
+              items={[
+                { label: 'Asked clue', value: activeQuestionTemplate.name },
+                { label: 'Workbook timer', value: formatTimerPolicyLabel(activeQuestionCategory.defaultTimerPolicy, selectedScale) },
+                {
+                  label: 'Time left',
+                  value: activeQuestionRemainingSeconds !== undefined
+                    ? formatCountdown(activeQuestionRemainingSeconds)
+                    : 'Waiting for question timer'
+                }
+              ]}
+            />
+            {activeQuestionRemainingSeconds !== undefined ? (
+              <Text style={styles.helper}>
+                This countdown follows the workbook response limit in the current app shell. Final enforcement is still a live match responsibility.
+              </Text>
+            ) : null}
             <QuestionAnswerComposer
               template={activeQuestionTemplate}
               category={activeQuestionCategory}
@@ -630,13 +829,13 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Apply the outcome"
-        subtitle="Host-admin applies the answer here, then confirms whether the map changed or the result only recorded evidence."
+        title="Apply The Outcome"
+        subtitle="The host applies the answer here, then confirms whether the map changed or the result only recorded evidence."
       >
         {activeQuestion && activeQuestionTemplate && activeQuestionCategory ? (
           <>
-            <Text style={styles.copy}>
-              Host-admin resolution uses the selected template's canonical mapping and refreshes the bounded search area inside the active playable region when the result supports geometry.
+          <Text style={styles.copy}>
+              The host applies the answer here. If the result supports geometry, the bounded search area updates inside the active playable region. If not, the match records the clue honestly as evidence only.
             </Text>
             <AppButton
               label="Apply Result"
@@ -669,6 +868,11 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     lineHeight: 18
+  },
+  helper: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 17
   },
   title: {
     color: colors.text,

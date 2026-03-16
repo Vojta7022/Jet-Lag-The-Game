@@ -64,6 +64,45 @@ function getDistanceLabel(template: QuestionTemplateDefinition): string | undefi
   return threshold.metricText ?? threshold.milesText ?? threshold.rawText;
 }
 
+function readPromptOverride(template: QuestionTemplateDefinition): string | undefined {
+  const promptOverrides = template.promptOverrides;
+  if (!promptOverrides) {
+    return undefined;
+  }
+
+  const candidateKeys = ['prompt', 'promptTemplate', 'question', 'text'];
+  for (const key of candidateKeys) {
+    const value = promptOverrides[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  const firstString = Object.values(promptOverrides).find(
+    (value): value is string => typeof value === 'string' && value.trim().length > 0
+  );
+  return firstString?.trim();
+}
+
+function fillPromptTemplate(
+  promptTemplate: string,
+  template: QuestionTemplateDefinition,
+  category: QuestionCategoryDefinition
+): string {
+  const featureLabel = getFeatureLabel(template);
+  const distanceLabel = getDistanceLabel(template) ?? 'the chosen distance';
+  const promptSubject = featureLabel === template.name ? featureLabel : featureLabel;
+
+  return promptTemplate
+    .replace(/\[Distance\]/gi, distanceLabel)
+    .replace(/\[Places\]/gi, featureLabel)
+    .replace(/\[subject\]/gi, promptSubject)
+    .replace(/_{3,}/g, featureLabel)
+    .replace(/\s+/g, ' ')
+    .trim()
+    || category.promptTemplate.trim();
+}
+
 function formatScaleLabel(scale: ScaleKey): string {
   switch (scale) {
     case 'small':
@@ -92,6 +131,10 @@ export function formatQuestionScaleSet(appliesTo: ScaleKey[]): string {
 }
 
 export function describeQuestionCategoryForPlayers(category: QuestionCategoryDefinition): string {
+  if (category.promptTemplate.trim().length > 0) {
+    return `Questions in this group sound like: "${category.promptTemplate.trim()}"`;
+  }
+
   switch (category.resolverKind) {
     case 'nearest_feature_match':
       return 'Compare the nearest matching place for the seeker and the hider.';
@@ -110,10 +153,31 @@ export function describeQuestionCategoryForPlayers(category: QuestionCategoryDef
   }
 }
 
+export function buildQuestionPromptPreview(
+  template: QuestionTemplateDefinition,
+  category: QuestionCategoryDefinition
+): string | undefined {
+  const promptOverride = readPromptOverride(template);
+  if (promptOverride) {
+    return fillPromptTemplate(promptOverride, template, category);
+  }
+
+  if (category.promptTemplate.trim().length > 0) {
+    return fillPromptTemplate(category.promptTemplate, template, category);
+  }
+
+  return undefined;
+}
+
 export function describeQuestionTemplateForPlayers(
   template: QuestionTemplateDefinition,
   category: QuestionCategoryDefinition
 ): string {
+  const workbookPrompt = buildQuestionPromptPreview(template, category);
+  if (workbookPrompt) {
+    return workbookPrompt;
+  }
+
   const featureLabel = getFeatureLabel(template);
   const distanceLabel = getDistanceLabel(template);
 
@@ -157,9 +221,9 @@ export function describeExpectedAnswerGuidance(template: QuestionTemplateDefinit
         ? `Choose one clear answer: ${joinList(allowedValues)}.`
         : 'Choose the option that best matches the real answer.';
     case 'feature_choice':
-      return 'Pick the closest matching place from the list. If the list looks incomplete, enter the best honest match you can.';
+      return 'Pick the place that honestly matches best. If the list looks incomplete, enter the closest real match you can.';
     case 'attachment':
-      return 'Attach one or more evidence photos, then add a short note if a referee or later review needs extra context.';
+      return 'Attach one or more evidence photos, then add a short note if the picture needs context or later review.';
     default:
       return 'Record the answer honestly using the available information.';
   }
@@ -172,7 +236,10 @@ export function describeQuestionImpactExpectation(args: {
 }): QuestionImpactExpectation {
   const support = describeTemplateSupport(args);
 
-  if (args.category.resolverKind === 'photo_challenge' || support.startsWith('Metadata-only')) {
+  if (
+    args.category.resolverKind === 'photo_challenge' ||
+    /evidence|recorded without a map update/i.test(support)
+  ) {
     return {
       label: 'Evidence only',
       tone: 'info',
@@ -180,27 +247,19 @@ export function describeQuestionImpactExpectation(args: {
     };
   }
 
-  if (support.startsWith('Exact') && !support.includes('approximate')) {
-    return {
-      label: 'Exact map update',
-      tone: 'success',
-      detail: 'This question is expected to create a directly clipped map result inside the active playable region.'
-    };
-  }
-
-  if (args.category.resolverKind === 'hotter_colder') {
+  if (
+    args.category.resolverKind === 'threshold_distance' ||
+    args.category.resolverKind === 'hotter_colder' ||
+    args.category.resolverKind === 'nearest_feature_match' ||
+    args.category.resolverKind === 'comparative_distance' ||
+    args.category.resolverKind === 'nearest_candidate'
+  ) {
     return {
       label: 'Approximate map update',
       tone: 'warning',
-      detail: 'This usually narrows the map from movement history, but the resulting shape should still be treated carefully unless the final result comes back exact.'
-    };
-  }
-
-  if (support.includes('Approximate')) {
-    return {
-      label: 'Approximate map update',
-      tone: 'warning',
-      detail: 'This question is expected to narrow or annotate the map, but the resulting shape should be treated as approximate.'
+      detail: args.category.resolverKind === 'hotter_colder'
+        ? 'This usually narrows the map from movement history, but the resulting shape should still be treated carefully unless the final result comes back exact.'
+        : 'This question is expected to narrow or annotate the map, but the resulting shape should be treated as approximate.'
     };
   }
 

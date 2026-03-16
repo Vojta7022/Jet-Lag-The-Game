@@ -427,6 +427,7 @@ export function buildMatchProjection(
     lifecycleState: aggregate.lifecycleState,
     seekPhaseSubstate: aggregate.seekPhaseSubstate,
     paused: aggregate.paused,
+    selectedScale: aggregate.selectedScale,
     selectedRulesetId:
       viewer.scope === 'authority' || viewer.scope === 'host_admin' ? aggregate.selectedRulesetId : undefined,
     players,

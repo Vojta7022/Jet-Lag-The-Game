@@ -13,11 +13,15 @@ import { colors } from '../ui/theme.ts';
 export function LobbyScreen() {
   const { state, refreshActiveMatch } = useAppShell();
   const projection = state.activeMatch?.projection;
+  const role = state.activeMatch?.playerRole ?? state.activeMatch?.recipient.role ?? 'spectator';
+  const roleLabel = role.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  const primaryNextRoute = projection?.visibleMap ? '/map' : '/dashboard';
+  const primaryNextLabel = projection?.visibleMap ? 'Enter Game' : 'Open Team View';
 
   return (
     <ScreenContainer
-      title="Lobby"
-      subtitle="Review the current match, confirm who is visible in your scope, and move into setup or play."
+      title="Match Room"
+      subtitle="See who is in the match, confirm your current view, and move into the next step of play."
       topSlot={<ProductNavBar current="lobby" />}
     >
       {!state.activeMatch ? (
@@ -31,13 +35,18 @@ export function LobbyScreen() {
       {state.activeMatch ? (
         <Panel
           title="Match Overview"
-          subtitle="This summary comes from the active scoped projection."
+          subtitle="This summary comes from the current live match view on this device."
         >
           <FactList
             items={[
-              { label: 'Match', value: state.activeMatch.matchId },
               { label: 'Stage', value: state.activeMatch.lifecycleState },
-              { label: 'View', value: state.activeMatch.recipient.scope },
+              { label: 'Role', value: roleLabel },
+              {
+                label: 'Your View',
+                value: state.activeMatch.recipient.scope
+                  .replace(/_/g, ' ')
+                  .replace(/\b\w/g, (character) => character.toUpperCase())
+              },
               { label: 'Visible Players', value: String(projection?.players.length ?? 0) },
               { label: 'Visible Teams', value: String(projection?.teams.length ?? 0) }
             ]}
@@ -53,8 +62,8 @@ export function LobbyScreen() {
 
       {projection ? (
         <Panel
-          title="Players"
-          subtitle="Player visibility follows the current connection scope."
+          title="Visible Players"
+          subtitle="Only players visible to the current match view appear here."
         >
           {projection.players.length === 0 ? <Text style={styles.copy}>No players are visible yet.</Text> : null}
           {projection.players.map((player) => (
@@ -68,12 +77,15 @@ export function LobbyScreen() {
 
       {projection ? (
         <Panel
-          title="Next Steps"
-          subtitle="Move into the areas most useful from the current match stage."
+          title="Continue Playing"
+          subtitle="Jump to the screen that matters most from the current stage."
         >
-          <AppButton label="Role Overview" onPress={() => router.push('/dashboard')} />
-          <AppButton label="Map Setup" onPress={() => router.push('/map')} tone="secondary" />
+          <AppButton label={primaryNextLabel} onPress={() => router.push(primaryNextRoute)} />
           <AppButton label="Questions" onPress={() => router.push('/questions')} tone="secondary" />
+          {role === 'hider' || role === 'host' ? (
+            <AppButton label="Deck" onPress={() => router.push('/cards')} tone="secondary" />
+          ) : null}
+          <AppButton label="Dice" onPress={() => router.push('/dice')} tone="secondary" />
           <AppButton label="Chat" onPress={() => router.push('/chat')} tone="secondary" />
         </Panel>
       ) : null}

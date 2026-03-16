@@ -50,8 +50,8 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{props.template.name}</Text>
-      <Text style={styles.copy}>Category: {props.category.name}</Text>
-      <Text style={styles.copy}>{describeQuestionTemplateForPlayers(props.template, props.category)}</Text>
+      <Text style={styles.copy}>Clue type: {props.category.name}</Text>
+      <Text style={styles.copy}>Question: {describeQuestionTemplateForPlayers(props.template, props.category)}</Text>
       <View style={styles.guidanceCard}>
         <Text style={styles.guidanceTitle}>How to answer honestly</Text>
         <Text style={styles.copy}>{describeExpectedAnswerGuidance(props.template)}</Text>
@@ -89,13 +89,13 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
             <View style={styles.guidanceCard}>
               <Text style={styles.guidanceTitle}>No candidate list is available</Text>
               <Text style={styles.copy}>
-                This region does not currently expose a candidate list for the selected template. Enter the best honest feature label or id, and the outcome may stay metadata-only until better feature data is available.
+                This region does not currently expose a candidate list for this clue. Enter the best honest place label you can, and the outcome may stay evidence-only until better place data is available.
               </Text>
               <Field
-                label="Selected feature id or label"
+                label="Selected place"
                 value={props.draft.selectedFeatureId}
                 onChangeText={(selectedFeatureId) => props.onChange({ ...props.draft, selectedFeatureId })}
-                placeholder="Feature id or label"
+                placeholder="Place label"
               />
             </View>
           )}
@@ -105,10 +105,10 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
       {answerKind === 'attachment' ? (
         <>
           <Field
-            label="Recorded attachment ids"
+            label="Recorded evidence"
             value={props.draft.attachmentIdsText}
             onChangeText={(attachmentIdsText) => props.onChange({ ...props.draft, attachmentIdsText })}
-            placeholder="Recorded attachment ids appear here"
+            placeholder="Recorded evidence appears here"
           />
           <Field
             label="Evidence note"

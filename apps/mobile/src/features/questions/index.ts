@@ -7,5 +7,6 @@ export * from './question-catalog.ts';
 export * from './question-flow-bootstrap.ts';
 export * from './question-flow-state.ts';
 export * from './question-guidance.ts';
+export * from './question-rule-model.ts';
 export * from './question-result-model.ts';
 export * from './seed-feature-data.ts';

@@ -110,7 +110,7 @@ test('card guidance provides honest fallback descriptions when workbook text is 
   });
 
   assert.match(buildCardPurposeSummary(weakCard), /special advantage|match effect/i);
-  assert.match(buildCardDescription(weakCard), /Resolve manually|special advantage|match effect/i);
+  assert.match(buildCardDescription(weakCard), /Redraw the current clue set/i);
   assert.equal(buildCardDescription(explicitCard), 'Steal one turn from the opposing team.');
   assert.match(buildCardRestrictionSummary(weakCard), /No extra timing|Needs|Playable during|Trigger/i);
 });

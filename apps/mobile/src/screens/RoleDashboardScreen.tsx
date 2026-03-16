@@ -9,54 +9,79 @@ import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 
-function HostDashboardPlaceholder() {
-  return (
-    <Panel
-      title="Host View"
-      subtitle="Guide the match through setup and use referee tools when the current stage needs host action."
-    >
-      <Text>Open map setup to define the playable region, keep the lobby aligned, and use referee tools for pause, recovery, and inspection.</Text>
-      <AppButton label="Referee Tools" onPress={() => router.push('/admin')} tone="secondary" />
-    </Panel>
-  );
+function formatRoleLabel(role: string) {
+  switch (role) {
+    case 'host':
+      return 'Host';
+    case 'hider':
+      return 'Hider';
+    case 'seeker':
+      return 'Seeker';
+    default:
+      return 'Spectator';
+  }
 }
 
-function HiderDashboardPlaceholder() {
-  return (
-    <Panel
-      title="Hider View"
-      subtitle="Focus on private hand management, answers, and team coordination."
-    >
-      <Text>Use Cards for visible hand state, Questions to answer seeker prompts, and Chat for private or public coordination. Protected hider-specific movement UX is still pending.</Text>
-      <AppButton label="Cards" onPress={() => router.push('/cards')} />
-      <AppButton label="Questions" onPress={() => router.push('/questions')} tone="secondary" />
-    </Panel>
-  );
+function formatStageLabel(lifecycleState: string, seekPhaseSubstate?: string) {
+  return seekPhaseSubstate
+    ? `${lifecycleState.replace(/_/g, ' ')} · ${seekPhaseSubstate.replace(/_/g, ' ')}`
+    : lifecycleState.replace(/_/g, ' ');
 }
 
-function SeekerDashboardPlaceholder() {
-  return (
-    <Panel
-      title="Seeker View"
-      subtitle="Track visible movement, ask questions, and work from the bounded search area."
-    >
-      <Text>Use Movement for visible seeker trails, Questions to narrow the search area, and Chat for coordination. Seeker deck content will grow with future content packs.</Text>
-      <AppButton label="Movement" onPress={() => router.push('/movement')} />
-      <AppButton label="Questions" onPress={() => router.push('/questions')} tone="secondary" />
-    </Panel>
-  );
-}
-
-function SpectatorDashboardPlaceholder() {
-  return (
-    <Panel
-      title="Spectator View"
-      subtitle="Stay on public information without crossing private match boundaries."
-    >
-      <Text>Spectators can review public match state, visible chat channels, and connection status, but private hands, hidden locations, and referee controls stay out of scope.</Text>
-      <AppButton label="Status" onPress={() => router.push('/status')} tone="secondary" />
-    </Panel>
-  );
+function buildRoleCopy(role: string) {
+  switch (role) {
+    case 'host':
+      return {
+        title: 'Guide setup and keep the match moving',
+        detail:
+          'Use the live map to manage the playable region before play begins, then keep questions, pauses, and referee-only actions moving smoothly.',
+        primaryAction: { label: 'Enter Game', href: '/map' },
+        secondaryActions: [
+          { label: 'Questions', href: '/questions' },
+          { label: 'Deck', href: '/cards' },
+          { label: 'Dice', href: '/dice' },
+          { label: 'Referee Tools', href: '/admin' },
+          { label: 'Chat', href: '/chat' }
+        ]
+      };
+    case 'hider':
+      return {
+        title: 'Stay hidden and answer honestly',
+        detail:
+          'Your main flow is the live map, your private cards, and the question answers your team needs to keep the search area trustworthy.',
+        primaryAction: { label: 'Enter Game', href: '/map' },
+        secondaryActions: [
+          { label: 'Deck', href: '/cards' },
+          { label: 'Questions', href: '/questions' },
+          { label: 'Dice', href: '/dice' },
+          { label: 'Chat', href: '/chat' }
+        ]
+      };
+    case 'seeker':
+      return {
+        title: 'Track the search and narrow the map',
+        detail:
+          'Your main flow is the live map, question asking, and team coordination while visible movement and clues update the search area.',
+        primaryAction: { label: 'Enter Game', href: '/map' },
+        secondaryActions: [
+          { label: 'Questions', href: '/questions' },
+          { label: 'Dice', href: '/dice' },
+          { label: 'Movement', href: '/movement' },
+          { label: 'Chat', href: '/chat' }
+        ]
+      };
+    default:
+      return {
+        title: 'Follow the match from the public view',
+        detail:
+          'You can stay with the live map and public chat without crossing private team or hidden-information boundaries.',
+        primaryAction: { label: 'Enter Game', href: '/map' },
+        secondaryActions: [
+          { label: 'Chat', href: '/chat' },
+          { label: 'Match Room', href: '/lobby' }
+        ]
+      };
+  }
 }
 
 export function RoleDashboardScreen() {
@@ -66,8 +91,8 @@ export function RoleDashboardScreen() {
   if (!activeMatch) {
     return (
       <ScreenContainer
-        title="Role"
-        subtitle="Your role summary appears once a match is connected."
+        title="Team"
+        subtitle="Your team view appears once a match is connected."
         topSlot={<ProductNavBar current="dashboard" />}
       >
         <StateBanner tone="warning" title="No active match" detail="Join or create a match first." />
@@ -76,34 +101,47 @@ export function RoleDashboardScreen() {
   }
 
   const role = activeMatch.playerRole ?? activeMatch.recipient.role ?? 'spectator';
+  const roleCopy = buildRoleCopy(role);
 
   return (
     <ScreenContainer
-      title="Role"
-      subtitle={`A role-focused overview for the current ${role} view.`}
+      title="Team"
+      subtitle={`This device is currently playing from the ${formatRoleLabel(role).toLowerCase()} view.`}
       topSlot={<ProductNavBar current="dashboard" />}
     >
       <Panel
-        title="Current View"
-        subtitle="The dashboard follows the active match scope and only shows what the current role is allowed to access."
+        title="Current Role"
+        subtitle="This summary follows the active match connection and only shows what this role is allowed to use."
       >
         <FactList
           items={[
-            { label: 'Role', value: role },
-            { label: 'Scope', value: activeMatch.recipient.scope },
-            { label: 'Stage', value: activeMatch.projection.lifecycleState }
+            { label: 'Role', value: formatRoleLabel(role) },
+            {
+              label: 'Stage',
+              value: formatStageLabel(activeMatch.projection.lifecycleState, activeMatch.projection.seekPhaseSubstate)
+            },
+            {
+              label: 'Visible Map',
+              value: activeMatch.projection.visibleMap?.displayName ?? 'Not selected yet'
+            }
           ]}
         />
       </Panel>
-      {role === 'host' ? <HostDashboardPlaceholder /> : null}
-      {role === 'hider' ? <HiderDashboardPlaceholder /> : null}
-      {role === 'seeker' ? <SeekerDashboardPlaceholder /> : null}
-      {role === 'spectator' ? <SpectatorDashboardPlaceholder /> : null}
-      <Panel
-        title="Available Tools"
-        subtitle="Map, questions, cards, chat, movement, and referee tools are all connected to the same runtime and projection model."
-      >
-        <Text>Live uploads, richer role-specific guidance, and deeper automation are still in progress, but the current screens already use the real transport and engine contracts.</Text>
+
+      <Panel title={roleCopy.title} subtitle="Keep the next actions simple and role-based.">
+        <Text>{roleCopy.detail}</Text>
+        <AppButton
+          label={roleCopy.primaryAction.label}
+          onPress={() => router.push(roleCopy.primaryAction.href)}
+        />
+        {roleCopy.secondaryActions.map((action) => (
+          <AppButton
+            key={action.href}
+            label={action.label}
+            onPress={() => router.push(action.href)}
+            tone="secondary"
+          />
+        ))}
       </Panel>
     </ScreenContainer>
   );

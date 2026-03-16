@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
+import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
+import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
 import { MapCanvas } from '../features/map/MapCanvas';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
@@ -131,6 +133,59 @@ function hasOnlineIdentityMismatch(
     activeMatch.recipient.actorId !== (profile.authUserId ?? profile.playerId);
 }
 
+function formatRoleLabel(role: string | undefined) {
+  switch (role) {
+    case 'host':
+      return 'Host';
+    case 'hider':
+      return 'Hider';
+    case 'seeker':
+      return 'Seeker';
+    default:
+      return 'Spectator';
+  }
+}
+
+function formatPlayerViewLabel(scope: string | undefined) {
+  switch (scope) {
+    case 'player_private':
+      return 'Personal view';
+    case 'team_private':
+      return 'Team view';
+    case 'host_admin':
+      return 'Host view';
+    case 'public_match':
+      return 'Public match view';
+    default:
+      return 'Public match view';
+  }
+}
+
+function buildLiveMapActions(args: {
+  role: string | undefined;
+  canUseCards: boolean;
+}): Array<{ label: string; href: '/questions' | '/cards' | '/chat' | '/dice' | '/lobby' }> {
+  const actions: Array<{ label: string; href: '/questions' | '/cards' | '/chat' | '/dice' | '/lobby' }> = [
+    { label: 'Chat', href: '/chat' }
+  ];
+
+  if (args.role === 'host' || args.role === 'seeker' || args.role === 'hider') {
+    actions.unshift({ label: 'Questions', href: '/questions' });
+  }
+
+  if (args.canUseCards) {
+    actions.push({ label: 'Deck', href: '/cards' });
+  }
+
+  actions.push({ label: 'Dice', href: '/dice' });
+
+  if (args.role === 'spectator') {
+    actions.unshift({ label: 'Match Room', href: '/lobby' });
+  }
+
+  return actions.slice(0, 4);
+}
+
 export function MapScreen() {
   const dimensions = useWindowDimensions();
   const { state, submitCommands, refreshActiveMatch, saveMapSetupDraft, clearMapSetupDraft } = useAppShell();
@@ -200,6 +255,8 @@ export function MapScreen() {
     [previewRegion, projection?.visibleMap, projection?.visibleMovementTracks]
   );
   const isHostView = activeMatch?.recipient.scope === 'host_admin' || activeMatch?.playerRole === 'host';
+  const viewerRole = activeMatch?.playerRole ?? activeMatch?.recipient.role ?? 'spectator';
+  const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
   const canPrepareMapSetup =
     isHostView &&
     projection &&
@@ -214,10 +271,16 @@ export function MapScreen() {
     projection?.visibleMap &&
     compositePreviewRegion.regionId !== projection.visibleMap.regionId
   );
-  const mapHeight = Math.max(190, Math.min(Math.round(dimensions.height * 0.24), 250));
+  const mapHeight = liveGameplayState
+    ? Math.max(280, Math.min(Math.round(dimensions.height * 0.38), 420))
+    : Math.max(190, Math.min(Math.round(dimensions.height * 0.24), 250));
   const regionSummary = projection?.visibleMap?.displayName ?? compositePreviewRegion?.displayName ?? previewRegion?.displayName ?? 'No region selected';
   const candidateSummary = projection?.visibleMap?.remainingArea
-    ? `${projection.visibleMap.remainingArea.precision} / clipped=${String(projection.visibleMap.remainingArea.clippedToRegion)}`
+    ? projection.visibleMap.remainingArea.precision === 'exact'
+      ? 'Exact bounded search area'
+      : projection.visibleMap.remainingArea.precision === 'approximate'
+        ? 'Approximate bounded search area'
+        : 'Evidence-only result'
     : compositePreviewRegion
       ? `${selectedRegions.length} selected ${selectedRegions.length === 1 ? 'region' : 'regions'}`
       : 'Pending region application';
@@ -231,7 +294,6 @@ export function MapScreen() {
     regionSearch.selectedRegion &&
     selectedRegions.some((region) => region.regionId === regionSearch.selectedRegion?.regionId)
   );
-  const activeSelectionFeatureRefs = compositePreviewRegion?.featureDatasetRefs ?? previewRegion?.featureDatasetRefs ?? [];
   const activeSelectionCoverage = compositePreviewRegion?.countryLabel ?? previewRegion?.countryLabel;
   const activeSelectionParentLabel = compositePreviewRegion?.parentRegionLabel ?? previewRegion?.parentRegionLabel;
   const compositeDissolveNotice = compositePreviewRegion?.compositeMetadata?.dissolveNotice;
@@ -245,6 +307,14 @@ export function MapScreen() {
     activeMatchExists: Boolean(activeMatch)
   });
   const onlineIdentityMismatch = hasOnlineIdentityMismatch(state.sessionProfile, activeMatch);
+  const liveMapActions = buildLiveMapActions({
+    role: viewerRole,
+    canUseCards: viewerRole === 'host' || viewerRole === 'hider'
+  });
+  const screenTitle = liveGameplayState ? 'Live Map' : 'Map Setup';
+  const screenSubtitle = liveGameplayState
+    ? 'Stay on the main search map, follow the latest clue impact, and move quickly to the next action.'
+    : 'Choose the playable region before the chase begins, then apply it to the match.';
 
   useEffect(() => {
     const persistedSelection = mapSetupDraft?.selectedRegions ?? [];
@@ -279,9 +349,10 @@ export function MapScreen() {
 
   return (
     <ScreenContainer
-      title="Map Setup"
-      subtitle="Search for playable regions, build the match boundary, and apply it to the active game map."
-      topSlot={<ProductNavBar current="map" />}
+      title={screenTitle}
+      subtitle={screenSubtitle}
+      topSlot={liveGameplayState ? undefined : <ProductNavBar current="map" />}
+      bottomSlot={liveGameplayState ? <GameplayTabBar current="map" /> : undefined}
     >
         {!activeMatch ? (
           <StateBanner
@@ -291,7 +362,7 @@ export function MapScreen() {
           />
         ) : null}
 
-        {activeMatch && !isHostView ? (
+        {activeMatch && !isHostView && !liveGameplayState ? (
           <StateBanner
             tone="warning"
             title="Host access required"
@@ -335,14 +406,18 @@ export function MapScreen() {
 
         {activeMatch ? (
           <Panel
-            title="Match Timing"
-            subtitle="Hide phase, cooldowns, and pause state stay visible while you work on the playable region."
+            title={liveGameplayState ? 'Match Timing' : 'Match Timing'}
+            subtitle={
+              liveGameplayState
+                ? 'Hide phase, cooldowns, and pause state stay visible while everyone plays from the shared map.'
+                : 'Hide phase, cooldowns, and pause state stay visible while you work on the playable region.'
+            }
           >
             <MatchTimingPanel model={timingModel} />
           </Panel>
         ) : null}
 
-        {activeMatch ? (
+        {activeMatch && !liveGameplayState ? (
           <Panel
             title="Setup Status"
             subtitle="Keep track of what is already applied, what is still in draft, and which scale best fits the current boundary."
@@ -400,13 +475,75 @@ export function MapScreen() {
           </Panel>
         ) : null}
 
+        {activeMatch && liveGameplayState ? (
+          <Panel
+            title="Main Search Map"
+            subtitle="This is the center of play once setup is done."
+          >
+            <FactList
+              items={[
+                { label: 'Role', value: formatRoleLabel(viewerRole) },
+                { label: 'View', value: formatPlayerViewLabel(activeMatch.recipient.scope) },
+                { label: 'Playable Region', value: projection?.visibleMap?.displayName ?? 'Not selected yet' },
+                { label: 'Current Search Area', value: candidateSummary }
+              ]}
+            />
+            <MapCanvas
+              height={mapHeight}
+              maxWidth={dimensions.width - 32}
+              visibleMap={projection?.visibleMap}
+              visibleMovementTracks={projection?.visibleMovementTracks}
+              previewRegion={previewRegion}
+            />
+            <View style={styles.previewHeader}>
+              <Text style={styles.copy}>
+                The live map shows the current playable region, the visible search area, and any movement or clue overlays allowed in this role.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setShowLegend((value) => !value)}
+                style={({ pressed }) => [
+                  styles.legendToggle,
+                  pressed ? styles.legendTogglePressed : null
+                ]}
+              >
+                <Text style={styles.legendToggleLabel}>{showLegend ? 'Hide Legend' : 'Show Legend'}</Text>
+              </Pressable>
+            </View>
+            {showLegend ? (
+              <View style={styles.legendCard}>
+                <MapLegend overlayModel={overlayModel} compact />
+              </View>
+            ) : null}
+            <Text style={styles.previewMeta}>
+              Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)}
+            </Text>
+            <View style={styles.actionGrid}>
+              {liveMapActions.map((action) => (
+                <AppButton
+                  key={action.href}
+                  label={action.label}
+                  onPress={() => {
+                    router.push(action.href);
+                  }}
+                  tone={action.href === '/questions' ? 'primary' : 'secondary'}
+                />
+              ))}
+            </View>
+          </Panel>
+        ) : null}
+
         {projection?.visibleMap ? (
           <Panel
-            title="Latest Question Update"
-            subtitle="The most recent resolved question, including whether it changed the search area or only recorded evidence."
+            title={liveGameplayState ? 'Latest Search Update' : 'Latest Question Update'}
+            subtitle={
+              liveGameplayState
+                ? 'The latest resolved clue, including whether it changed the search area or only recorded evidence.'
+                : 'The most recent resolved question, including whether it changed the search area or only recorded evidence.'
+            }
           >
             <QuestionResolutionPanel
-              title="Question-To-Map Summary"
+              title={liveGameplayState ? 'Latest Clue Result' : 'Question-To-Map Summary'}
               question={latestResolvedQuestion}
               template={latestResolvedTemplate}
               category={latestResolvedCategory}
@@ -427,9 +564,10 @@ export function MapScreen() {
           </Panel>
         ) : null}
 
+        {!liveGameplayState ? (
         <Panel
-          title="Find Regions"
-          subtitle="Search by city or administrative region, review the returned boundary, and add it to the current playable map."
+          title="Choose Play Area"
+          subtitle="Search by city or administrative region, review the returned boundary, and add it to the match map."
         >
           <SearchableRegionPicker
             query={regionSearch.query}
@@ -460,10 +598,12 @@ export function MapScreen() {
             previewRegionAlreadyAdded={previewRegionAlreadyAdded}
           />
         </Panel>
+        ) : null}
 
+        {!liveGameplayState ? (
         <Panel
-          title="Playable Region"
-          subtitle="Build a draft playable boundary, then apply it through the real match setup flow."
+          title="Match Boundary"
+          subtitle="Build a draft playable boundary, then apply it to the match."
         >
           {compositePreviewRegion ? (
             <View style={styles.selectedSection}>
@@ -532,7 +672,6 @@ export function MapScreen() {
                     : ''}
                 </Text>
               ) : null}
-              <Text style={styles.copy}>Feature datasets: {activeSelectionFeatureRefs.join(', ')}</Text>
             </View>
           ) : regionSearch.selectedRegion ? (
             <StateBanner
@@ -604,9 +743,11 @@ export function MapScreen() {
             />
           </View>
         </Panel>
+        ) : null}
 
+        {!liveGameplayState ? (
         <Panel
-          title="Map Preview"
+          title="Preview The Match Map"
           subtitle="Use the preview to confirm the current playable boundary and candidate area before or after applying changes."
         >
           <View style={styles.previewHeader}>
@@ -642,6 +783,7 @@ export function MapScreen() {
             Constraint layers: {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas: {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)} · Selected regions: {String(selectedRegions.length)}
           </Text>
         </Panel>
+        ) : null}
     </ScreenContainer>
   );
 }

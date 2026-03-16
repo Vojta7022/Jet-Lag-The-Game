@@ -16,11 +16,12 @@ export function JoinMatchScreen() {
   const [joinCode, setJoinCode] = useState('');
   const [joinToken, setJoinToken] = useState('');
   const [requestedScope, setRequestedScope] = useState<'public_match' | 'player_private' | 'team_private'>('player_private');
+  const effectiveScope = runtimeKind === 'online_foundation' ? 'player_private' : requestedScope;
 
   return (
     <ScreenContainer
-      title="Join Match"
-      subtitle="Connect to an existing match with the saved player profile and continue in the lobby."
+      title={runtimeKind === 'online_foundation' ? 'Join Online Match' : 'Join Match'}
+      subtitle="Connect with the saved player profile, then continue in the match room and live map."
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Join match failed" detail={state.errorMessage} />
@@ -28,22 +29,22 @@ export function JoinMatchScreen() {
 
       <Panel
         title="Join Details"
-        subtitle="Enter the match information needed for this connection mode."
+        subtitle="Enter the match details for this connection mode."
       >
         <Field
-          label="Match Id"
+          label={runtimeKind === 'nearby_host_authority' ? 'Match Code Or ID' : 'Match Code'}
           value={matchId}
           onChangeText={setMatchId}
           placeholder={runtimeKind === 'nearby_host_authority' ? 'Optional when join code is known' : 'match-1'}
         />
-        <Field
-          label="Requested Scope"
-          value={requestedScope}
-          onChangeText={(value) => setRequestedScope(value as typeof requestedScope)}
-          placeholder="player_private"
-        />
         {runtimeKind === 'nearby_host_authority' ? (
           <>
+            <Field
+              label="Connection View"
+              value={requestedScope}
+              onChangeText={(value) => setRequestedScope(value as typeof requestedScope)}
+              placeholder="player_private"
+            />
             <Field label="Join Code" value={joinCode} onChangeText={setJoinCode} placeholder="ABC123" />
             <Field label="QR Join Token" value={joinToken} onChangeText={setJoinToken} placeholder="Optional join token" />
           </>
@@ -52,7 +53,7 @@ export function JoinMatchScreen() {
           <StateBanner
             tone="info"
             title="Online player identity"
-            detail="Online join uses the saved player profile from Home. If you recently changed profiles, reconnect the match after saving the updated player identity."
+            detail="Online join uses the saved player profile from Home and reconnects with your personal player view on this device."
           />
         ) : null}
         <AppButton
@@ -63,7 +64,7 @@ export function JoinMatchScreen() {
               matchId: matchId.trim() || undefined,
               joinCode: joinCode.trim() || undefined,
               joinToken: joinToken.trim() || undefined,
-              requestedScope
+              requestedScope: effectiveScope
             }).then((accepted) => {
               if (accepted) {
                 router.replace('/lobby');

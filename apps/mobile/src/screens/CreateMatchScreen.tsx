@@ -16,26 +16,30 @@ export function CreateMatchScreen() {
   const { runtimeKind } = useRuntimeMode();
   const [matchId, setMatchId] = useState(`${mobileAppEnvironment.defaultMatchPrefix}-${Date.now().toString(36)}`);
   const [initialScale, setInitialScale] = useState<'small' | 'medium' | 'large'>('small');
-  const [matchMode, setMatchMode] = useState<'online' | 'local_nearby' | 'single_device_referee'>('single_device_referee');
+  const matchMode = runtimeKind === 'online_foundation'
+    ? 'online'
+    : runtimeKind === 'nearby_host_authority'
+      ? 'local_nearby'
+      : 'single_device_referee';
 
   const runtimeHint = useMemo(() => {
     switch (runtimeKind) {
       case 'online_foundation':
-        return 'This creates the match in online cloud mode. The saved player profile becomes the host identity for the active online session.';
+        return 'This creates a shared online match. The saved player profile becomes the host for the current cloud session on this device.';
       case 'nearby_host_authority':
-        return 'This creates the match on a nearby host-authoritative session running on this device.';
+        return 'This creates a nearby host session on this device for local testing or in-person play.';
       case 'single_device_referee':
-        return 'This creates the match for single-device referee play on this device.';
+        return 'This creates a single-device referee session on this device.';
       case 'in_memory':
       default:
-        return 'This local test mode is useful for quick setup without network or device-to-device transport.';
+        return 'This local in-memory mode is mainly for quick testing without network or nearby transport.';
     }
   }, [runtimeKind]);
 
   return (
     <ScreenContainer
-      title="Create Match"
-      subtitle="Start a new match with the saved player profile, then continue in the lobby."
+      title={runtimeKind === 'online_foundation' ? 'Create Online Match' : 'Create Match'}
+      subtitle="Start a match with the saved player profile, then continue into the match room and live map."
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Create match failed" detail={state.errorMessage} />
@@ -43,16 +47,28 @@ export function CreateMatchScreen() {
 
       <Panel
         title="Match Setup"
-        subtitle="Choose an ID, scale, and mode before creating the match."
+        subtitle="Choose a match code and game size, then create the session."
       >
-        <Field label="Match Id" value={matchId} onChangeText={setMatchId} placeholder="match-prague-1" />
-        <Field label="Initial Scale" value={initialScale} onChangeText={(value) => setInitialScale(value as typeof initialScale)} placeholder="small" />
+        <Field label="Match Code" value={matchId} onChangeText={setMatchId} placeholder="prague-night-run" />
         <Field
-          label="Match Mode"
-          value={matchMode}
-          onChangeText={(value) => setMatchMode(value as typeof matchMode)}
-          placeholder="single_device_referee"
+          label="Game Size"
+          value={initialScale}
+          onChangeText={(value) => setInitialScale(value as typeof initialScale)}
+          placeholder="small"
         />
+        {runtimeKind === 'online_foundation' ? (
+          <StateBanner
+            tone="info"
+            title="Online shared match"
+            detail="Each player can join from their own device. This is the main player-facing way to play."
+          />
+        ) : (
+          <StateBanner
+            tone="warning"
+            title="Local or referee mode"
+            detail="This mode is available, but the main player flow is designed around online cloud play."
+          />
+        )}
         <Text>{runtimeHint}</Text>
         <AppButton
           label={state.loadState === 'loading' ? 'Creating...' : 'Create Match'}

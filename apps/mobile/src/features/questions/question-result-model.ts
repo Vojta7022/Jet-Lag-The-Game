@@ -31,6 +31,22 @@ export interface QuestionMapEffectModel {
   geometryEffect: 'pending' | 'map_updated' | 'overlay_only' | 'metadata_only';
 }
 
+function formatCandidatePrecisionLabel(precision: string | undefined): string {
+  if (precision === 'exact') {
+    return 'Exact visible boundary';
+  }
+
+  if (precision === 'approximate') {
+    return 'Approximate visible boundary';
+  }
+
+  if (precision === 'metadata_only') {
+    return 'Evidence only';
+  }
+
+  return 'Not visible yet';
+}
+
 interface BuildQuestionMapEffectModelArgs {
   question?: VisibleQuestionProjection;
   template?: QuestionTemplateDefinition;
@@ -170,8 +186,8 @@ export function buildQuestionMapEffectModel(
   const clippedArtifactCount = constraint?.artifacts.filter((artifact) => artifact.clippedToRegion).length ?? 0;
 
   return {
-    questionLabel: args.template?.name ?? args.question.templateId,
-    categoryLabel: args.category?.name ?? args.question.categoryId,
+    questionLabel: args.template?.name ?? 'Selected question',
+    categoryLabel: args.category?.name ?? 'Question category',
     answerSummary: summarizeAnswer(args.question.answer),
     resolutionModeLabel: formatResolutionMode(constraint?.resolutionMode),
     resolutionTone: buildResolutionTone(constraint?.resolutionMode),
@@ -181,13 +197,13 @@ export function buildQuestionMapEffectModel(
     mapEffectTitle: mapEffect.mapEffectTitle,
     mapEffectDetail: mapEffect.mapEffectDetail,
     confidenceLabel: constraint ? `${Math.round(constraint.confidenceScore * 100)}%` : 'Pending',
-    candidatePrecisionLabel: args.visibleMap?.remainingArea?.precision ?? 'none',
+    candidatePrecisionLabel: formatCandidatePrecisionLabel(args.visibleMap?.remainingArea?.precision),
     boundedLabel: constraint
-      ? `${clippedArtifactCount}/${constraint.artifacts.length} artifacts clipped to the playable region`
-      : 'Waiting for bounded result',
+      ? `${clippedArtifactCount} of ${constraint.artifacts.length} visible map layer${constraint.artifacts.length === 1 ? '' : 's'} stayed inside the playable region`
+      : 'Waiting for the bounded map result',
     artifactCountLabel: constraint
-      ? `${constraint.artifacts.length} visible artifact${constraint.artifacts.length === 1 ? '' : 's'}`
-      : 'No artifacts yet',
+      ? `${constraint.artifacts.length} visible map layer${constraint.artifacts.length === 1 ? '' : 's'}`
+      : 'No visible map layers yet',
     historySummary: mapEffect.historySummary,
     contradictionSummary: constraint?.contradiction?.reason,
     reasoningSteps: constraint?.explanation.reasoningSteps ?? [],

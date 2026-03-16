@@ -66,6 +66,7 @@ export interface ConnectionSnapshotSummary {
   recipient: ProjectionRecipient;
   lifecycleState: MatchProjection['lifecycleState'];
   seekPhaseSubstate?: MatchProjection['seekPhaseSubstate'];
+  selectedScale?: MatchProjection['selectedScale'];
   playerRole?: MatchRole;
   snapshotVersion: number;
   lastEventSequence: number;
