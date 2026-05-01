@@ -1,2 +1,25 @@
-node_modules
+# Environment
+.env
+.env.*
+**/__pycache__/
+.venv/
+
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build output
+dist/
+build/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
