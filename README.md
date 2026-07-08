@@ -1,143 +1,63 @@
-# Transit Hide and Seek Mobile
+# Jet Lag The Game
 
-A cross-platform mobile app for running a configurable transit-based hide-and-seek game on iOS and Android.
+## Overview
 
-## Goal
+Cross-platform mobile app and rules engine for running a configurable transit-based hide-and-seek game on iOS and Android.
 
-This project aims to build a complete multiplayer game runner so players can run the full game using only the app, including:
+## What it does
 
-- room/lobby creation
-- role assignment
-- map setup and search boundaries
-- question categories and answer-driven constraints
-- card decks, hands, and effects
-- timers and cooldowns
-- dice rolls
-- live seeker location sharing
-- hidden hider location handling
-- chat and image sharing
-- online multiplayer
-- local nearby multiplayer
-- single-device referee fallback
+- Model game domain rules, transport, geo, and content schemas.
+- Run an Expo mobile client.
+- Import Jet Lag-style content.
+- Provide engine, geo, transport, shared types, and test-kit packages.
 
-## Product direction
+## User workflows
 
-This app is intentionally generic and configurable.
+- Import game content, run the mobile app, configure a game, and validate engine/geo behavior with tests.
+- Use package-level READMEs for deeper module notes.
 
-It is **not** a hardcoded clone of any one season or branded implementation.
-Game content such as cards, question categories, and rulesets should be import-driven.
+## Stack
 
-## Source of truth
+- pnpm/npm monorepo with TypeScript packages.
+- Expo React Native mobile app.
+- Domain/engine/geo/transport packages.
+- Test-kit package and smoke tests.
 
-Main project specification:
-- `docs/product-spec.md`
+## Project structure
 
-Project rules and engineering instructions:
-- `AGENTS.md`
+- `apps/mobile/` - mobile app.
+- `packages/domain/` - domain model.
+- `packages/engine/` - game engine.
+- `packages/geo/` - geographic helpers.
+- `packages/transport/` - transport abstractions.
+- `packages/content-*` - content schema/import.
 
-## Content input
+## Setup
 
-The first real content pack now comes from the cleaned workbook seed:
-- `Jet Lag The Game - cleaned for import.xlsx`
+- Run `npm install` or the package manager already used by the lockfile.
+- Run mobile start command from the root.
 
-This workbook should be imported into canonical JSON content definitions rather than hardcoded directly into the app.
+## Common commands
 
-## Planned architecture
+- `npm run import:jetlag` - import content.
+- `npm run mobile:start` - start Expo.
+- `npm run mobile:ios` / `npm run mobile:android` / `npm run mobile:web` - platform runs.
+- `npm run test` - all tests.
+- `npm run test:engine`, `test:geo`, `test:transport`, `test:mobile` - focused tests.
 
-Planned major areas:
-- mobile app: Expo + React Native + TypeScript
-- online backend: Supabase
-- local mode: host-authoritative nearby multiplayer
-- core engine: config-driven rules, cards, questions, constraints, and match state machine
-- geospatial layer: bounded regional search, geometry clipping, and feature-based constraint engine
+## Configuration and secrets
 
-## Initial implementation priorities
+- Mobile runtime flags live in app env files. Public Expo variables are not secret, but still document names only.
 
-1. architecture and schema
-2. workbook import pipeline
-3. core game engine and state machine
-4. map and constraint engine
-5. card engine
-6. online and local multiplayer
-7. UI polish, testing, and production hardening
+## Data, storage, and integrations
 
-## Repository status
+- Content packages define/import game content. Runtime online mode may use configured backend/public project variables.
 
-Current stage:
-- schema/types foundation
-- workbook importer
-- core domain engine and state machine foundation
-- bounded geometry and constraint-engine foundation
+## Troubleshooting
 
-Expected early deliverables:
-- `docs/architecture.md`
-- `docs/state-machine.md`
-- `docs/import-schema.md`
-- `docs/risks.md`
+- If mobile fails, check Expo env flags and package install.
+- If rules behave oddly, run focused engine/domain tests before editing app UI.
 
-## Importer
+## Documentation maintenance
 
-The initial shared schema/types foundation and workbook importer are now in place.
-
-Run the workbook importer:
-
-```bash
-npm run import:jetlag
-```
-
-This reads `Jet Lag The Game - cleaned for import.xlsx` and writes:
-
-- `samples/generated/jet-lag-the-game.content-pack.json`
-- `samples/generated/jet-lag-the-game.import-report.json`
-
-Run the importer test suite:
-
-```bash
-npm test
-```
-
-Run only the geo and constraint tests:
-
-```bash
-npm run test:geo
-```
-
-The current importer outputs a draft content pack with provenance metadata, normalization warnings, and row-level import reporting. Rulesets and map presets are intentionally still draft-time follow-up work.
-
-## Mobile Shell
-
-The Expo mobile shell lives in [apps/mobile/README.md](/Users/vojtechponrt/Documents/Jet%20Lag%20The%20Game/apps/mobile/README.md).
-
-For the first local run from the repository root, use the npm workspace commands:
-
-```bash
-npm install
-npm run mobile:test:smoke
-npm run mobile:start
-```
-
-Additional helpers:
-
-```bash
-npm run mobile:typecheck
-npm run mobile:ios
-npm run mobile:android
-npm run mobile:web
-```
-
-To enable the real Supabase-backed online path instead of the in-memory fallback, copy [apps/mobile/.env.example](/Users/vojtechponrt/Documents/Jet%20Lag%20The%20Game/apps/mobile/.env.example) and set:
-
-- `EXPO_PUBLIC_ONLINE_PROJECT_URL`
-- `EXPO_PUBLIC_ONLINE_ANON_KEY`
-- `EXPO_PUBLIC_ONLINE_ATTACHMENT_BUCKET`
-
-Without those env vars, the app keeps using the honest mocked online fallback.
-
-The current workspace metadata also includes `pnpm-workspace.yaml`, but the checked-in scripts and README steps are currently written around npm workspaces for the first runnable mobile pass.
-
-## Notes
-
-- All code, comments, docs, and UI text should be in English.
-- Hidden information must be handled securely.
-- Core game logic should be authoritative and testable.
-- Content should be versioned and importable.
+Update this README whenever functionality, setup, commands, environment variables, storage, integrations, or user workflows change. Follow the CoS project documentation standard in `../../../docs/project-documentation-standard.md` or `../../docs/project-documentation-standard.md` depending on the project depth. Never include real secret values.
