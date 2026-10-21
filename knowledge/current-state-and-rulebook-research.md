@@ -33,7 +33,7 @@ Warnings include incomplete power-up descriptions, manual/ambiguous templates, n
 The two local scans in Downloads were identified by metadata and read with on-device OCR:
 
 - `2026-10-04 10-19.pdf`: 34 scanned sheets containing the base rulebook (including setup, seeking, hiding, deck rules, and experimental variants).
-- `2026-10-04 10-56.pdf`: 5 scanned pages of the Investigation Booklet, including all six categories, question options, card draw costs, and scale availability.
+- `2026-10-04-10-56.pdf`: 5 scanned pages of the Investigation Booklet, including all six categories, question options, card draw costs, and scale availability.
 
 The base rulebook sets small/medium hiding zones to a 500 m radius and large zones to 1 km. A prior personal playthrough note mentioned 400 m; use the scanned rulebook for the official home-game value. Other rules that need explicit modeling include scale-based hide periods (30/60/180 minutes), question response windows (5 minutes; photo windows 10 minutes for small/medium and 20 for large), the one-open-question rule, repeated-question costs, card hand limits, pause behavior, endgame entry and stationary hiding, and the 2 m plus visual-confirmation found condition. Some decisions, such as whether a location answer can change while the hider moves, require a precise event-time policy rather than a map polygon alone.
 
@@ -72,7 +72,7 @@ Suggested sequence:
 
 ## Sources
 
-- Local scans read for this research: `~/Downloads/2026-10-04 10-19.pdf` and `~/Downloads/2026-10-04 10-56.pdf` (scanned 2026-10-04; checked 2026-10-21).
+- Local scans read for this research: `~/Downloads/2026-10-04 10-19.pdf` and `~/Downloads/2026-10-04-10-56.pdf` (scanned 2026-10-04; checked 2026-10-21).
 - App source: `projects/personal/PERS_Jet-Lag-The-Game` at local `master` commit `5a93af4` (2026-10-21).
 - Map reference source: [taibeled/JetLagHideAndSeek](https://github.com/taibeled/JetLagHideAndSeek), local inspected revision `179eb0f` (2026-08-28), MIT license.
 - Official [Hide + Seek Expansion Pack Vol. 1 additional reference rules](https://rules.jetlagthegame.com/expansion/) (checked 2026-10-21).
