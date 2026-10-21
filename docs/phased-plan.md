@@ -1,5 +1,7 @@
 # Phased Plan
 
+> **Status:** This is the original architecture-first plan, not a current implementation checklist. It predates the Expo shell, engine, importer, and transport foundations now in the repository. Use [the current-state and rulebook research](../knowledge/current-state-and-rulebook-research.md) to choose the next implementation target.
+
 ## Purpose
 
 This document defines a realistic implementation sequence for the generic transit hide-and-seek platform. It deliberately prioritizes engine and data foundations before UI-heavy work.
