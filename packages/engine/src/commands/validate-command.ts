@@ -7,7 +7,7 @@ import type {
   DeckDefinition,
   MatchAggregate
 } from '../../../shared-types/src/index.ts';
-import { circleWithinGeometry, isPolygonBoundaryGeometry } from '../../../geo/src/index.ts';
+import { circleWithinGeometry, distanceMeters, isPolygonBoundaryGeometry } from '../../../geo/src/index.ts';
 
 import {
   buildCardResolutionPlan,
@@ -481,6 +481,16 @@ export function validateCommandEnvelope(
       if (actorRole !== 'hider' && envelope.actor.role !== 'host') {
         return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider or host can lock the hider location.')];
       }
+      if (!Number.isFinite(envelope.command.payload.latitude) || !Number.isFinite(envelope.command.payload.longitude)) {
+        return [error(envelope.command.type, 'INVALID_LOCATION', 'Locking the hider location requires valid coordinates.')];
+      }
+      const zone = aggregate.hiddenState.hidingZone;
+      if (zone && distanceMeters(
+        [envelope.command.payload.longitude, envelope.command.payload.latitude],
+        [zone.longitude, zone.latitude]
+      ) > 100) {
+        return [error(envelope.command.type, 'NOT_AT_ZONE_STATION', 'The hider must confirm arrival at the selected hiding-zone station.')];
+      }
       return [];
     }
     case 'set_hiding_zone': {
@@ -496,6 +506,56 @@ export function validateCommandEnvelope(
       if (!geometry || !circleWithinGeometry([longitude, latitude], radiusMeters, geometry)) {
         return [error(envelope.command.type, 'STATION_OUTSIDE_MAP', 'The selected station and its full hiding zone must fit inside the playable map.')];
       }
+      const lockedLocation = aggregate.hiddenState.hiderLocation;
+      if (lockedLocation && distanceMeters(
+        [longitude, latitude],
+        [lockedLocation.longitude, lockedLocation.latitude]
+      ) > 100) {
+        return [error(envelope.command.type, 'ZONE_STATION_MISMATCH', 'The locked hider location must be at the selected zone station.')];
+      }
+      return [];
+    }
+    case 'end_hide_phase': {
+      const ruleset = getRuleset(contentPack, aggregate.selectedRulesetId);
+      if (ruleset?.locationPolicies?.requireStationCenteredZone === true && !aggregate.hiddenState.hidingZone) {
+        return [error(envelope.command.type, 'HIDING_ZONE_REQUIRED', 'Select a valid station-centered hiding zone before ending the hide phase.')];
+      }
+      return [];
+    }
+    case 'set_final_hiding_spot': {
+      const { latitude, longitude, publiclyAccessible, within3mOfMarkedPath } = envelope.command.payload;
+      const zone = aggregate.hiddenState.hidingZone;
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return [error(envelope.command.type, 'INVALID_LOCATION', 'Choose a valid point on the map for the final hiding spot.')];
+      }
+      if (!publiclyAccessible || !within3mOfMarkedPath) {
+        return [error(envelope.command.type, 'FINAL_SPOT_RULES', 'The final spot must be confirmed publicly accessible and within 3 meters of a marked path.')];
+      }
+      if (!zone || distanceMeters([longitude, latitude], [zone.longitude, zone.latitude]) > zone.radiusMeters) {
+        return [error(envelope.command.type, 'OUTSIDE_HIDING_ZONE', 'The final hiding spot must be inside the selected hiding zone.')];
+      }
+      return [];
+    }
+    case 'confirm_hider_found': {
+      if (getPlayerRole(aggregate, envelope.actor.playerId) !== 'seeker' && envelope.actor.role !== 'host') {
+        return [error(envelope.command.type, 'SEEKER_REQUIRED', 'Only a seeker or referee can confirm that the hider was found.')];
+      }
+      const { latitude, longitude, visuallyIdentified } = envelope.command.payload;
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return [error(envelope.command.type, 'INVALID_LOCATION', 'Finding the hider requires valid seeker coordinates.')];
+      }
+      if (!visuallyIdentified) {
+        return [error(envelope.command.type, 'VISUAL_IDENTIFICATION_REQUIRED', 'Visual identification is required before the seekers can confirm the hider was found.')];
+      }
+      const finalSpot = aggregate.hiddenState.endgame?.finalHidingSpot;
+      if (!finalSpot) {
+        return [error(envelope.command.type, 'FINAL_SPOT_REQUIRED', 'The hider final spot is not available for this endgame.')];
+      }
+      const ruleset = getRuleset(contentPack, aggregate.selectedRulesetId);
+      const foundDistanceMeters = Number(ruleset?.locationPolicies?.foundDistanceMeters ?? 2);
+      if (distanceMeters([longitude, latitude], [finalSpot.longitude, finalSpot.latitude]) > foundDistanceMeters) {
+        return [error(envelope.command.type, 'SEEKER_TOO_FAR', `The seekers must be within ${foundDistanceMeters} meters of the hider.`)];
+      }
       return [];
     }
     case 'update_location': {
@@ -508,6 +568,34 @@ export function validateCommandEnvelope(
         !Number.isFinite(envelope.command.payload.longitude)
       ) {
         return [error(envelope.command.type, 'INVALID_LOCATION', 'Location updates require numeric latitude and longitude values.')];
+      }
+
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId);
+      const ruleset = getRuleset(contentPack, aggregate.selectedRulesetId);
+      if (actorRole === 'seeker' && aggregate.lifecycleState === 'seek_phase' &&
+        ruleset?.locationPolicies?.endgameRequiresOffTransit === true &&
+        envelope.command.payload.onTransit === false && aggregate.hiddenState.hidingZone &&
+        distanceMeters(
+          [envelope.command.payload.longitude, envelope.command.payload.latitude],
+          [aggregate.hiddenState.hidingZone.longitude, aggregate.hiddenState.hidingZone.latitude]
+        ) <= aggregate.hiddenState.hidingZone.radiusMeters && !aggregate.hiddenState.finalHidingSpot) {
+        return [error(envelope.command.type, 'FINAL_SPOT_REQUIRED', 'The hider must choose a rule-compliant final spot before a seeker enters the zone off transit.')];
+      }
+      if (actorRole === 'hider' && aggregate.lifecycleState === 'endgame') {
+        return [error(envelope.command.type, 'HIDER_LOCATION_FROZEN', 'The hider must stay at the final hiding spot during endgame.')];
+      }
+      if (actorRole === 'hider' && aggregate.lifecycleState === 'seek_phase' &&
+        ruleset?.locationPolicies?.requireStationCenteredZone === true) {
+        const zone = aggregate.hiddenState.hidingZone;
+        if (!zone) {
+          return [error(envelope.command.type, 'HIDING_ZONE_REQUIRED', 'The hider must select a station-centered hiding zone before moving during seek phase.')];
+        }
+        if (distanceMeters(
+          [envelope.command.payload.longitude, envelope.command.payload.latitude],
+          [zone.longitude, zone.latitude]
+        ) > zone.radiusMeters) {
+          return [error(envelope.command.type, 'OUTSIDE_HIDING_ZONE', 'The hider cannot move outside the selected hiding zone.')];
+        }
       }
 
       return [];

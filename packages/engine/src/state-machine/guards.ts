@@ -75,6 +75,14 @@ export function validateStateForCommand(
       return isLifecycleState(aggregate, 'hide_phase')
         ? []
         : [error(command.type, 'INVALID_STATE', 'The hiding zone can only be selected during the hide phase.')];
+    case 'set_final_hiding_spot':
+      return isSeekPhaseState(aggregate)
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'The final hiding spot can only be chosen during the seek phase.')];
+    case 'confirm_hider_found':
+      return isLifecycleState(aggregate, 'endgame')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'The hider can only be found during endgame.')];
     case 'update_location':
       return aggregate.lifecycleState === 'hide_phase' ||
         isSeekPhaseState(aggregate, 'ready') ||

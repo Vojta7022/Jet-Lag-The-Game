@@ -19,6 +19,7 @@ interface LocationSharingContextValue {
   refreshPermissionState: () => Promise<void>;
   requestForegroundPermission: () => Promise<void>;
   selectFrequencyMode: (mode: LocationUpdateFrequencyMode) => void;
+  captureCurrentPosition: () => Promise<DeviceLocationSample | undefined>;
   sendSingleUpdate: () => Promise<void>;
   startSharing: () => Promise<void>;
   stopSharing: () => Promise<void>;
@@ -89,6 +90,21 @@ export function LocationSharingProvider(props: {
     }
   }, [appShellState.activeMatch?.playerRole, appShellState.activeMatch?.recipient.scope, state, submitSample]);
 
+  const captureCurrentPosition = useCallback(async (): Promise<DeviceLocationSample | undefined> => {
+    try {
+      if (state.permissionState !== 'granted' || state.availabilityState === 'unavailable') {
+        return undefined;
+      }
+      return await sourceRef.current.getCurrentPosition(state.frequencyMode);
+    } catch (error) {
+      dispatch({
+        type: 'location_error',
+        errorMessage: error instanceof Error ? error.message : 'Unable to capture a device location sample.'
+      });
+      return undefined;
+    }
+  }, [state.availabilityState, state.frequencyMode, state.permissionState]);
+
   const startSharing = useCallback(async () => {
     const role = resolveLocationViewerRole(
       appShellState.activeMatch?.playerRole,
@@ -142,12 +158,14 @@ export function LocationSharingProvider(props: {
     refreshPermissionState,
     requestForegroundPermission,
     selectFrequencyMode,
+    captureCurrentPosition,
     sendSingleUpdate,
     startSharing,
     stopSharing,
     clearError
   }), [
     clearError,
+    captureCurrentPosition,
     refreshPermissionState,
     requestForegroundPermission,
     selectFrequencyMode,

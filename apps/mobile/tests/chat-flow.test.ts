@@ -112,7 +112,7 @@ test('mobile chat helpers wire public and team chat plus photo evidence placehol
       playerId: hostProfile.playerId,
       role: 'host'
     },
-    buildQuestionFlowBootstrapCommands(afterTeamChat.projectionDelivery.projection)
+    buildQuestionFlowBootstrapCommands(afterTeamChat.projectionDelivery.projection, { mode: 'demo' })
   );
 
   const askedPhotoQuestion = await orchestrator.submitCommands(

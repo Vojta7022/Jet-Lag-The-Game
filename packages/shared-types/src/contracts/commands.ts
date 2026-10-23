@@ -38,6 +38,8 @@ export type DomainCommand =
   | StartMatchCommand
   | LockHiderLocationCommand
   | SetHidingZoneCommand
+  | SetFinalHidingSpotCommand
+  | ConfirmHiderFoundCommand
   | UpdateLocationCommand
   | EndHidePhaseCommand
   | BeginQuestionPromptCommand
@@ -150,6 +152,25 @@ export interface SetHidingZoneCommand {
   };
 }
 
+export interface SetFinalHidingSpotCommand {
+  type: 'set_final_hiding_spot';
+  payload: {
+    latitude: number;
+    longitude: number;
+    publiclyAccessible: boolean;
+    within3mOfMarkedPath: boolean;
+  };
+}
+
+export interface ConfirmHiderFoundCommand {
+  type: 'confirm_hider_found';
+  payload: {
+    latitude: number;
+    longitude: number;
+    visuallyIdentified: boolean;
+  };
+}
+
 export interface UpdateLocationCommand {
   type: 'update_location';
   payload: {
@@ -157,6 +178,7 @@ export interface UpdateLocationCommand {
     longitude: number;
     accuracyMeters?: number;
     source?: 'device' | 'manual' | 'system';
+    onTransit?: boolean;
   };
 }
 

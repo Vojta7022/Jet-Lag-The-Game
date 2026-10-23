@@ -45,7 +45,9 @@
 - [x] Add pure tests for filtering station points to the playable region and constructing 500 m / 1 km geodesic circles around a selected station.
 - [x] Render eligible station markers and a selected hiding-zone circle on both `MapCanvas.web.tsx` and `.native.tsx`; provide a local selection workbench.
 - [x] Persist the hider's selected zone in authoritative match state, keep it private from seekers, and validate the whole configured-radius circle against the playable polygon.
-- Enforce hider movement within the zone; begin endgame only when seekers are inside and off transit; capture the final hiding spot and found confirmation.
+- [x] Require station selection and hider arrival confirmation before automatically ending hide phase when the timer expires.
+- [x] Enforce hider location updates within the selected zone during seeking and freeze movement once endgame starts.
+- [x] Start endgame on an in-zone off-transit seeker report; capture the private final spot, require sighting plus 2 m to confirm found, and record the survival-time result.
 - Keep station overlays separate from the search-area constraint history and provide honest loading, empty, provider-error, and attribution states.
 
 ### 5. Port essential map workbench workflow and complete a round
@@ -60,3 +62,10 @@
 - The app can establish and display a playable station-centered hiding zone on both web and native map surfaces.
 - A local referee round reaches the found/result state with clocks and map state surviving a refresh/restart.
 - `npm run mobile:typecheck` and `env PATH="$PWD/.venv/bin:$PATH" npm test` pass.
+
+## Continuation update — 2026-10-24
+
+- Completed the endgame command/event path and live-map field controls. A hider marks one final coordinate and attests public access/path proximity; an in-zone off-transit seeker report starts endgame; a seeker/referee must confirm visual identification and a location fix within 2 m to record a scored result.
+- Final coordinates stay private to the hider/referee, including in the public endgame event. The UI captures GPS only after an explicit action tap.
+- Verified with the engine rule tests, the complete 179-test suite, mobile typecheck, and whitespace checks.
+- Still open: endgame question availability and photo impossibility handling; time-bonus-card awards at capture; next-hider rotation and deck reset; scenario import/export; full live UI round walkthrough.

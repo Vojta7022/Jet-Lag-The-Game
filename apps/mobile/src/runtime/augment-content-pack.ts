@@ -41,6 +41,8 @@ function buildMobileShellRuleset(packId: string): RulesetDefinition {
       maximumHandSize: 6
     },
     locationPolicies: {
+      requireStationCenteredZone: true,
+      hiderMustConfirmArrivalAtZoneStation: true,
       hidingZoneRadiusMetersByScale: {
         small: 500,
         medium: 500,

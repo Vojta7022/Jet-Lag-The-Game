@@ -6,7 +6,8 @@ import type {
 import { buildQuestionFlowBootstrapCommands } from '../questions/question-flow-bootstrap.ts';
 
 export function buildCardFlowBootstrapCommands(
-  projection: MatchProjection
+  projection: MatchProjection,
+  options?: { preferredRegionId?: string; mode?: 'standard' | 'demo' }
 ): DomainCommand[] {
-  return buildQuestionFlowBootstrapCommands(projection);
+  return buildQuestionFlowBootstrapCommands(projection, options);
 }

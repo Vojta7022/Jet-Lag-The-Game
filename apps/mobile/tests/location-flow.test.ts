@@ -67,7 +67,7 @@ test('movement flow preserves visible seeker breadcrumbs and map overlays throug
       playerId: hostProfile.playerId,
       role: 'host'
     },
-    buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection)
+    buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection, { mode: 'demo' })
   );
 
   const afterMovement = await orchestrator.submitCommands(

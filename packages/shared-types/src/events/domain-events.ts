@@ -38,6 +38,7 @@ import type {
   PauseOverlayState,
   PlayerModel,
   QuestionInstanceModel,
+  RoundResultModel,
   RoleAssignmentModel,
   SeekPhaseSubstate,
   TeamModel,
@@ -69,7 +70,10 @@ export type DomainEvent =
   | MatchStartedEvent
   | HiderLocationLockedEvent
   | HidingZoneSetEvent
+  | FinalHidingSpotSetEvent
   | LocationUpdatedEvent
+  | EndgameStartedEvent
+  | HiderFoundEvent
   | HidePhaseEndedEvent
   | QuestionPromptOpenedEvent
   | QuestionAskedEvent
@@ -192,6 +196,29 @@ export interface LocationUpdatedEvent {
     playerId: string;
     role: MatchAggregate['roleAssignments'][string]['role'];
     teamId?: string;
+  };
+}
+
+export interface FinalHidingSpotSetEvent {
+  type: 'final_hiding_spot_set';
+  payload: {
+    latitude: number;
+    longitude: number;
+    selectedByPlayerId: string;
+  };
+}
+
+export interface EndgameStartedEvent {
+  type: 'endgame_started';
+  payload: {
+    triggeredByPlayerId: string;
+  };
+}
+
+export interface HiderFoundEvent {
+  type: 'hider_found';
+  payload: {
+    roundResult: RoundResultModel;
   };
 }
 

@@ -9,6 +9,7 @@ import type {
   PauseOverlayState,
   PlayableRegionKind,
   QuestionInstanceStatus,
+  RoundResultModel,
   SeekPhaseSubstate,
   TeamSide
 } from '../domain/match.ts';
@@ -214,7 +215,9 @@ export interface MatchProjection {
     timeBonusMinutes?: number;
   };
   visibleEventLog: EventLogEntry[];
+  visibleRoundResults?: RoundResultModel[];
   hiddenState?: {
+    hiderLocationLocked?: boolean;
     hidingZone?: {
       stationId: string;
       stationName: string;
@@ -230,6 +233,17 @@ export interface MatchProjection {
       accuracyMeters?: number;
       lockedAt: string;
       lockedByPlayerId: string;
+    };
+    finalHidingSpot?: {
+      latitude: number;
+      longitude: number;
+      publiclyAccessible: true;
+      within3mOfMarkedPath: true;
+      selectedAt: string;
+      selectedByPlayerId: string;
+    };
+    endgame?: {
+      startedAt: string;
     };
   };
 }

@@ -16,6 +16,7 @@ Included:
 - Supabase-backed online foundation path for persisted matches, snapshots, projections, and durable attachment uploads when online env is configured
 - first-pass movement screen with foreground location permission state, `update_location` wiring, and seeker breadcrumb overlays
 - responsive game-first visual system for Home, lobby, live map, questions, cards, and team radio
+- live endgame field actions: mark a private final hider spot, report seeker position as on/off transit, confirm visual identification within 2 m, and view the scored survival time
 - lobby, dashboard placeholder, and status screens
 - developer runtime switcher for:
   - in-memory runtime
@@ -127,6 +128,10 @@ The first seed regions are:
 - Prague
 - Central Bohemia
 - Vienna
+
+## Hide + Seek Field Actions
+
+During seek play, the hider can save a final spot with an explicit confirmation that it is publicly accessible and within 3 m of a marked path. The pin is visible to the hider and referee, then frozen when a seeker reports being inside the hiding zone and off transit. Seekers can confirm the hider was found only after visual identification and a location fix within 2 m. Each GPS fix is captured after a player taps an action; the hider's location is not continuously shared. The first scored result records elapsed unpaused survival time. Multi-round role rotation and time-bonus awards at capture remain in progress.
 
 What is still placeholder in this phase:
 

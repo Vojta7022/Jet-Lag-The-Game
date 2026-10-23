@@ -7,7 +7,7 @@ import type {
   DomainEventEnvelope,
   MatchAggregate
 } from '../../shared-types/src/index.ts';
-import { executeCommand } from '../../engine/src/index.ts';
+import { executeCommand, getRuleset } from '../../engine/src/index.ts';
 import { getTimerByKind, hasLockedHiderLocation } from '../../domain/src/index.ts';
 
 export interface RuntimeReconciliationResult {
@@ -46,7 +46,7 @@ function buildSystemEnvelope(
   };
 }
 
-function nextAutomaticCommand(aggregate: MatchAggregate, nowIso: string): DomainCommand | undefined {
+function nextAutomaticCommand(aggregate: MatchAggregate, contentPack: ContentPack, nowIso: string): DomainCommand | undefined {
   if (aggregate.paused) {
     return undefined;
   }
@@ -57,6 +57,8 @@ function nextAutomaticCommand(aggregate: MatchAggregate, nowIso: string): Domain
     hideTimer &&
     hideTimer.status === 'running' &&
     hasLockedHiderLocation(aggregate) &&
+    (getRuleset(contentPack, aggregate.selectedRulesetId)?.locationPolicies?.requireStationCenteredZone !== true ||
+      Boolean(aggregate.hiddenState.hidingZone)) &&
     timerExpired(hideTimer.startedAt, hideTimer.durationSeconds, nowIso)
   ) {
     return {
@@ -91,7 +93,7 @@ export function reconcileRuntimeState(args: {
   const events: DomainEventEnvelope[] = [];
 
   for (let step = 0; step < 4; step += 1) {
-    const nextCommand = nextAutomaticCommand(currentAggregate, args.occurredAt);
+    const nextCommand = nextAutomaticCommand(currentAggregate, args.contentPack, args.occurredAt);
     if (!nextCommand) {
       break;
     }

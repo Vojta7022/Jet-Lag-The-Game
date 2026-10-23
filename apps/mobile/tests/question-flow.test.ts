@@ -48,6 +48,29 @@ test('default referee rules match printed scale timers, radius, answer windows, 
   assert.equal(getQuestionCooldownSeconds(contentPack, ruleset!.rulesetId, 'photos-tree'), 0);
 });
 
+test('standard question prep starts hide phase without inventing a station or skipping the rules', async () => {
+  const orchestrator = new MobileRuntimeOrchestrator({
+    contentPack: loadContentPack(),
+    environment: mobileAppEnvironment
+  });
+  const created = await orchestrator.createMatch(
+    { displayName: 'Host', playerId: 'standard-prep-host' },
+    {
+      runtimeKind: 'in_memory',
+      matchId: 'standard-prep-match',
+      initialScale: 'small',
+      matchMode: 'single_device_referee'
+    }
+  );
+  const commands = buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection);
+
+  assert.equal(commands.some((command) => command.type === 'start_match'), true);
+  assert.equal(commands.some((command) => command.type === 'set_hiding_zone'), false);
+  assert.equal(commands.some((command) => command.type === 'lock_hider_location'), false);
+  assert.equal(commands.some((command) => command.type === 'end_hide_phase'), false);
+  await orchestrator.disconnect(created.connection);
+});
+
 test('question flow bootstrap reaches seek phase ready with a bounded playable region', async () => {
   const contentPack = loadContentPack();
   const orchestrator = new MobileRuntimeOrchestrator({
@@ -67,7 +90,7 @@ test('question flow bootstrap reaches seek phase ready with a bounded playable r
     matchMode: 'single_device_referee'
   });
 
-  const commands = buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection);
+  const commands = buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection, { mode: 'demo' });
   assert.equal(commands.some((command) => command.type === 'create_map_region'), true);
   assert.equal(commands.some((command) => command.type === 'start_match'), true);
   assert.equal(commands.some((command) => command.type === 'end_hide_phase'), true);
@@ -115,7 +138,7 @@ test('question flow ask, answer, and resolve path updates the authoritative boun
       playerId: hostProfile.playerId,
       role: 'host'
     },
-    buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection)
+    buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection, { mode: 'demo' })
   );
 
   const moved = await orchestrator.submitCommands(

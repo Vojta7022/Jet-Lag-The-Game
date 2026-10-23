@@ -220,7 +220,30 @@ export interface LocationSampleModel {
   longitude: number;
   accuracyMeters?: number;
   source: LocationSourceKind;
+  onTransit?: boolean;
   recordedAt: string;
+}
+
+export interface FinalHidingSpotModel {
+  latitude: number;
+  longitude: number;
+  publiclyAccessible: true;
+  within3mOfMarkedPath: true;
+  selectedAt: string;
+  selectedByPlayerId: string;
+}
+
+export interface EndgameStateModel {
+  startedAt: string;
+  finalHidingSpot: FinalHidingSpotModel;
+  triggeredByPlayerId: string;
+}
+
+export interface RoundResultModel {
+  hiderTeamId: string;
+  foundByPlayerId: string;
+  foundAt: string;
+  survivalSeconds: number;
 }
 
 export interface HiddenStateModel {
@@ -240,6 +263,8 @@ export interface HiddenStateModel {
     lockedAt: string;
     lockedByPlayerId: string;
   };
+  finalHidingSpot?: FinalHidingSpotModel;
+  endgame?: EndgameStateModel;
 }
 
 export interface PlayableRegionModel {
@@ -321,6 +346,7 @@ export interface MatchAggregate {
   mapRegion?: PlayableRegionModel;
   searchArea?: SearchAreaModel;
   paused?: PauseOverlayState;
+  roundResults?: RoundResultModel[];
 }
 
 export interface EventLogEntry {

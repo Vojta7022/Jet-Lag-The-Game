@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
@@ -11,6 +11,7 @@ import {
   resolveCurrentRole
 } from '../features/cards/index.ts';
 import { MapCanvas } from '../features/map/MapCanvas';
+import { LiveEndgameControls } from '../features/map/LiveEndgameControls.tsx';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 
@@ -147,6 +148,7 @@ export function MapScreen() {
   const [selectedStationId, setSelectedStationId] = useState<string>();
   const [stationSearchLoading, setStationSearchLoading] = useState(false);
   const [stationSearchError, setStationSearchError] = useState<string>();
+  const autoHideRefreshRequestedForMatch = useRef<string | undefined>(undefined);
   const regionSearch = useRegionSearch({
     source: mobileRegionDataSource,
     initialQuery: mapSetupDraft?.query,
@@ -213,6 +215,33 @@ export function MapScreen() {
     latitude: savedHidingZone.latitude,
     longitude: savedHidingZone.longitude
   } : undefined;
+  const activeZoneStation = selectedStation ?? savedZoneStation;
+  const hiderLocationLocked = Boolean(
+    projection?.hiddenState?.hiderLocationLocked ||
+    (isHostView && projection?.hiddenState?.hiderLocation)
+  );
+  const hideTimerRemaining = timingModel?.timers.find((timer) => timer.kind === 'hide')?.remainingSeconds;
+
+  useEffect(() => {
+    const matchId = activeMatch?.matchId;
+    const canAdvanceHidePhase =
+      matchId &&
+      projection?.lifecycleState === 'hide_phase' &&
+      hideTimerRemaining !== undefined &&
+      hideTimerRemaining <= 0 &&
+      Boolean(savedHidingZone) &&
+      hiderLocationLocked;
+    if (!canAdvanceHidePhase || autoHideRefreshRequestedForMatch.current === matchId) return;
+    autoHideRefreshRequestedForMatch.current = matchId;
+    void refreshActiveMatch();
+  }, [
+    activeMatch?.matchId,
+    hideTimerRemaining,
+    hiderLocationLocked,
+    projection?.lifecycleState,
+    refreshActiveMatch,
+    savedHidingZone
+  ]);
   const mapSelectedStation = canUseStationWorkbench
     ? selectedStation ?? savedZoneStation
     : undefined;
@@ -603,26 +632,54 @@ export function MapScreen() {
           Round zone: {savedHidingZone.stationName} · {savedHidingZone.radiusMeters} m
         </Text>
       ) : null}
-      {liveGameplayState && projection?.lifecycleState === 'hide_phase' && (viewerRole === 'hider' || isHostView) && selectedStation ? (
+      {liveGameplayState && projection?.lifecycleState === 'hide_phase' && (viewerRole === 'hider' || isHostView) && activeZoneStation ? (
         <Pressable
           accessibilityRole="button"
-          disabled={state.loadState === 'loading'}
-          onPress={() => void submitCommand({
-            type: 'set_hiding_zone',
-            payload: {
-              stationId: selectedStation.stationId,
-              stationName: selectedStation.name,
-              latitude: selectedStation.latitude,
-              longitude: selectedStation.longitude
-            }
-          })}
+          disabled={state.loadState === 'loading' || savedHidingZone?.stationId === activeZoneStation.stationId}
+          onPress={() => {
+            if (savedHidingZone?.stationId === activeZoneStation.stationId) return;
+            void submitCommand({
+              type: 'set_hiding_zone',
+              payload: {
+                stationId: activeZoneStation.stationId,
+                stationName: activeZoneStation.name,
+                latitude: activeZoneStation.latitude,
+                longitude: activeZoneStation.longitude
+              }
+            });
+          }}
           style={styles.stationSetZoneButton}
         >
           <Text style={styles.stationSetZoneLabel}>
-            {savedHidingZone?.stationId === selectedStation.stationId ? 'Zone selected' : 'Set as round zone'}
+            {savedHidingZone?.stationId === activeZoneStation.stationId ? 'Round zone selected' : 'Set as round zone'}
           </Text>
         </Pressable>
       ) : null}
+      {liveGameplayState && projection?.lifecycleState === 'hide_phase' &&
+        (viewerRole === 'hider' || isHostView) && savedHidingZone &&
+        savedHidingZone.stationId === activeZoneStation?.stationId ? (
+          hiderLocationLocked ? (
+            <Text style={styles.stationArrivalConfirmed}>
+              Station arrival confirmed. Hide phase will end when the clock expires.
+            </Text>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              disabled={state.loadState === 'loading'}
+              onPress={() => void submitCommand({
+                type: 'lock_hider_location',
+                payload: {
+                  latitude: activeZoneStation.latitude,
+                  longitude: activeZoneStation.longitude,
+                  accuracyMeters: 10
+                }
+              })}
+              style={styles.stationArrivalButton}
+            >
+              <Text style={styles.stationArrivalLabel}>I've arrived at {savedHidingZone.stationName}</Text>
+            </Pressable>
+          )
+        ) : null}
       {!stationSearchLoading && !stationSearchError && transitStations.length === 0 ? (
         <Text style={styles.helperCopy}>Station candidates are loaded on demand from OpenStreetMap.</Text>
       ) : null}
@@ -1021,6 +1078,8 @@ export function MapScreen() {
                 {stationWorkbenchForViewer}
               </View>
 
+              <LiveEndgameControls />
+
               {showLegend ? (
                 <View style={styles.liveLegendSheet}>
                   <MapLegend overlayModel={overlayModel} compact />
@@ -1379,6 +1438,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14
   },
   stationSetZoneLabel: { color: colors.inkInverse, fontSize: 13, fontWeight: '800' },
+  stationArrivalButton: {
+    alignItems: 'center',
+    backgroundColor: colors.accentWarmMuted,
+    borderColor: colors.accentWarm,
+    borderRadius: 11,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 14
+  },
+  stationArrivalLabel: { color: colors.accentWarm, fontSize: 13, fontWeight: '800' },
+  stationArrivalConfirmed: { color: colors.success, fontSize: 13, fontWeight: '800' },
   stationError: { color: colors.danger, fontSize: 13 },
   stationList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   stationChoice: {

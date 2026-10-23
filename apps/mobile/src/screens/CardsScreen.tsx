@@ -447,7 +447,7 @@ export function CardsScreen() {
                   label={
                     state.loadState === 'loading'
                       ? 'Working...'
-                      : 'Prepare Card Play'
+                      : 'Start Hide Phase'
                   }
                   onPress={() => {
                     if (!projection) {

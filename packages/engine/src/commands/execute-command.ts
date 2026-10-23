@@ -16,7 +16,8 @@ import type {
 } from '../../../shared-types/src/index.ts';
 import {
   materializeConstraintRecord,
-  resolveQuestionConstraint
+  resolveQuestionConstraint,
+  distanceMeters
 } from '../../../geo/src/index.ts';
 
 import { buildCardResolutionPlan, getPlayerRole, getPlayerTeam } from '../../../domain/src/index.ts';
@@ -29,7 +30,8 @@ import {
   getQuestionCategory,
   getQuestionCooldownSeconds,
   getQuestionTimerSeconds,
-  getQuestionTemplate
+  getQuestionTemplate,
+  getRuleset
 } from '../helpers/content-pack.ts';
 import { reduceMatchAggregate } from '../reducer.ts';
 import { validateCommandEnvelope } from './validate-command.ts';
@@ -245,8 +247,30 @@ function buildLocationSample(
     longitude: envelope.command.payload.longitude,
     accuracyMeters: envelope.command.payload.accuracyMeters,
     source: envelope.command.payload.source ?? 'device',
+    onTransit: envelope.command.payload.onTransit,
     recordedAt: envelope.occurredAt
   };
+}
+
+function elapsedUnpausedSeconds(aggregate: MatchAggregate, startedAt: string, endedAt: string): number {
+  const startMs = Date.parse(startedAt);
+  const endMs = Date.parse(endedAt);
+  let activeFromMs = startMs;
+  let pausedAtMs: number | undefined;
+  let elapsedMs = 0;
+  for (const entry of [...aggregate.eventLog].sort((left, right) => left.sequence - right.sequence)) {
+    const occurredAtMs = Date.parse(entry.occurredAt);
+    if (!Number.isFinite(occurredAtMs) || occurredAtMs <= startMs || occurredAtMs >= endMs) continue;
+    if (entry.type === 'match_paused' && pausedAtMs === undefined) {
+      elapsedMs += Math.max(0, occurredAtMs - activeFromMs);
+      pausedAtMs = occurredAtMs;
+    } else if (entry.type === 'match_resumed' && pausedAtMs !== undefined) {
+      activeFromMs = occurredAtMs;
+      pausedAtMs = undefined;
+    }
+  }
+  if (pausedAtMs === undefined) elapsedMs += Math.max(0, endMs - activeFromMs);
+  return Math.floor(elapsedMs / 1000);
 }
 
 function buildChatMessage(
@@ -484,12 +508,23 @@ function eventsForCommand(
           }
         })
       ];
+    case 'set_final_hiding_spot':
+      return [
+        makeEventEnvelope(aggregate, envelope, 0, 'authority', {
+          type: 'final_hiding_spot_set',
+          payload: {
+            latitude: envelope.command.payload.latitude,
+            longitude: envelope.command.payload.longitude,
+            selectedByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId
+          }
+        })
+      ];
     case 'update_location': {
       const locationSample = buildLocationSample(aggregate!, envelope as typeof envelope & {
         command: { type: 'update_location'; payload: { latitude: number; longitude: number; accuracyMeters?: number; source?: 'device' | 'manual' | 'system'; } };
       });
 
-      return [
+      const events = [
         makeEventEnvelope(aggregate, envelope, 0, 'authority', {
           type: 'location_updated',
           payload: {
@@ -500,6 +535,29 @@ function eventsForCommand(
           }
         })
       ];
+      const ruleset = getRuleset(contentPack, aggregate?.selectedRulesetId);
+      const zone = aggregate?.hiddenState.hidingZone;
+      const isSeeker = locationSample.role === 'seeker' || envelope.actor.role === 'host';
+      const isInsideZone = Boolean(zone && distanceMeters(
+        [locationSample.longitude, locationSample.latitude],
+        [zone.longitude, zone.latitude]
+      ) <= zone.radiusMeters);
+      if (
+        aggregate?.lifecycleState === 'seek_phase' &&
+        isSeeker &&
+        envelope.command.payload.onTransit === false &&
+        ruleset?.locationPolicies?.endgameRequiresOffTransit === true &&
+        isInsideZone &&
+        aggregate.hiddenState.finalHidingSpot
+      ) {
+        events.push(makeEventEnvelope(aggregate, envelope, 1, 'public_match', {
+          type: 'endgame_started',
+          payload: {
+            triggeredByPlayerId: locationSample.playerId
+          }
+        }));
+      }
+      return events;
     }
     case 'end_hide_phase':
       return [
@@ -511,6 +569,29 @@ function eventsForCommand(
           }
         })
       ];
+    case 'confirm_hider_found': {
+      const hiderTeam = Object.values(aggregate!.teams).find((team) => team.side === 'hider');
+      const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide');
+      const matchStartedAt = aggregate!.eventLog.find((entry) => entry.type === 'match_started')?.occurredAt;
+      const survivalSeconds = elapsedUnpausedSeconds(
+        aggregate!,
+        matchStartedAt ?? hideTimer?.startedAt ?? envelope.occurredAt,
+        envelope.occurredAt
+      );
+      return [
+        makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+          type: 'hider_found',
+          payload: {
+            roundResult: {
+              hiderTeamId: hiderTeam?.teamId ?? 'team-hider',
+              foundByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId,
+              foundAt: envelope.occurredAt,
+              survivalSeconds
+            }
+          }
+        })
+      ];
+    }
     case 'begin_question_prompt':
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {

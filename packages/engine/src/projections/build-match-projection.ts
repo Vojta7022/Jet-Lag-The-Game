@@ -415,11 +415,23 @@ export function buildMatchProjection(
     (viewer.scope === 'team_private' || viewer.scope === 'player_private') &&
     viewer.viewerRole === 'hider' &&
     Boolean(aggregate.hiddenState.hidingZone);
+  const viewerRole = viewer.viewerPlayerId
+    ? getPlayerRole(aggregate, viewer.viewerPlayerId) ?? viewer.viewerRole
+    : viewer.viewerRole;
   const hiddenState = canViewAuthorityHiddenState
     ? aggregate.hiddenState
     : canViewHidingZone
-      ? { hidingZone: aggregate.hiddenState.hidingZone }
-      : undefined;
+      ? {
+          hidingZone: aggregate.hiddenState.hidingZone,
+          hiderLocationLocked: Boolean(aggregate.hiddenState.hiderLocation),
+          finalHidingSpot: aggregate.hiddenState.finalHidingSpot,
+          endgame: aggregate.hiddenState.endgame
+            ? { startedAt: aggregate.hiddenState.endgame.startedAt }
+            : undefined
+        }
+      : viewerRole === 'seeker' && aggregate.hiddenState.endgame
+        ? { endgame: { startedAt: aggregate.hiddenState.endgame.startedAt } }
+        : undefined;
 
   const activeCardResolution =
     viewer.scope === 'public_match' || viewer.scope === 'event_feed_public'
@@ -456,6 +468,7 @@ export function buildMatchProjection(
     visibleTimers,
     activeCardResolution,
     visibleEventLog,
+    visibleRoundResults: aggregate.roundResults ?? [],
     hiddenState
   };
 }

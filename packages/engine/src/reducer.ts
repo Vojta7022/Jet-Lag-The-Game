@@ -168,7 +168,8 @@ export function reduceMatchAggregate(
         attachments: {},
         locationSamples: [],
         eventLog: [eventLogEntry],
-        hiddenState: {}
+        hiddenState: {},
+        roundResults: []
       };
     }
     default:
@@ -289,6 +290,21 @@ export function reduceMatchAggregate(
           }
         }
       };
+    case 'final_hiding_spot_set':
+      return {
+        ...base,
+        hiddenState: {
+          ...base.hiddenState,
+          finalHidingSpot: {
+            latitude: eventEnvelope.event.payload.latitude,
+            longitude: eventEnvelope.event.payload.longitude,
+            publiclyAccessible: true,
+            within3mOfMarkedPath: true,
+            selectedAt: eventEnvelope.occurredAt,
+            selectedByPlayerId: eventEnvelope.event.payload.selectedByPlayerId
+          }
+        }
+      };
     case 'location_updated':
       return {
         ...base,
@@ -303,9 +319,33 @@ export function reduceMatchAggregate(
             longitude: eventEnvelope.event.payload.longitude,
             accuracyMeters: eventEnvelope.event.payload.accuracyMeters,
             source: eventEnvelope.event.payload.source ?? 'device',
+            onTransit: eventEnvelope.event.payload.onTransit,
             recordedAt: eventEnvelope.occurredAt
           }
         ]
+      };
+    case 'endgame_started':
+      return {
+        ...base,
+        lifecycleState: 'endgame',
+        seekPhaseSubstate: undefined,
+        hiddenState: {
+          ...base.hiddenState,
+          endgame: base.hiddenState.finalHidingSpot
+            ? {
+                startedAt: eventEnvelope.occurredAt,
+                finalHidingSpot: base.hiddenState.finalHidingSpot,
+                triggeredByPlayerId: eventEnvelope.event.payload.triggeredByPlayerId
+              }
+            : undefined
+        }
+      };
+    case 'hider_found':
+      return {
+        ...base,
+        lifecycleState: 'game_complete',
+        seekPhaseSubstate: undefined,
+        roundResults: [...(base.roundResults ?? []), eventEnvelope.event.payload.roundResult]
       };
     case 'hide_phase_ended': {
       const updatedTimers = mapTimers(base.timers, (timer) =>

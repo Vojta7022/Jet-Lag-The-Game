@@ -48,7 +48,7 @@ test('cards flow can bootstrap gameplay, draw, play, and discard through the rea
       playerId: hostProfile.playerId,
       role: 'host'
     },
-    buildCardFlowBootstrapCommands(created.initialSync.projectionDelivery.projection)
+    buildCardFlowBootstrapCommands(created.initialSync.projectionDelivery.projection, { mode: 'demo' })
   );
 
   assert.equal(prepared.projectionDelivery.projection.lifecycleState, 'seek_phase');

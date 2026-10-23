@@ -716,13 +716,13 @@ export function QuestionCenterScreen() {
       {showQuestionPrepPanel ? (
         <Panel
           title="Match Controls"
-          subtitle="Use this only while the match is still being prepared for the live clue loop."
+          subtitle="Starting a round begins the hide timer. The hider must choose a station and confirm arrival before seeking starts."
         >
           <AppButton
             label={
               state.loadState === 'loading'
                 ? 'Working...'
-                : 'Prepare Match For Questions'
+                : 'Start Hide Phase'
             }
             onPress={handlePrepareFlow}
             disabled={!canPrepareFlow || state.loadState === 'loading'}

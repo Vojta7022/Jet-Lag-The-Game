@@ -136,7 +136,7 @@ test('question photo evidence can be recorded through the runtime and referenced
       playerId: hostProfile.playerId,
       role: 'host'
     },
-    buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection)
+    buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection, { mode: 'demo' })
   );
 
   const asked = await orchestrator.submitCommands(

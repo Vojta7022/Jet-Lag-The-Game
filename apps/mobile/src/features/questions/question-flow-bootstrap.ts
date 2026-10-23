@@ -7,16 +7,17 @@ import type {
 import { getGeometryBounds } from '../map/map-geometry.ts';
 import { buildMapSetupBootstrapCommands } from '../map/map-setup-flow.ts';
 import { getSeedPlayableRegion, seedPlayableRegions } from '../map/seed-regions.ts';
+import { representativePointFromGeometry } from '../../../../../packages/geo/src/index.ts';
 
 function getAnchorPoint(geometry: GeoJsonGeometryModel | undefined): { latitude: number; longitude: number } | undefined {
-  const bounds = getGeometryBounds(geometry);
-  if (!bounds) {
+  const point = representativePointFromGeometry(geometry);
+  if (!point) {
     return undefined;
   }
 
   return {
-    latitude: (bounds.minLatitude + bounds.maxLatitude) / 2,
-    longitude: (bounds.minLongitude + bounds.maxLongitude) / 2
+    latitude: point[1],
+    longitude: point[0]
   };
 }
 
@@ -44,7 +45,7 @@ function buildMovementPoints(geometry: GeoJsonGeometryModel | undefined) {
 
 export function buildQuestionFlowBootstrapCommands(
   projection: MatchProjection,
-  preferredRegionId = seedPlayableRegions[0]?.regionId
+  options: { preferredRegionId?: string; mode?: 'standard' | 'demo' } = {}
 ): DomainCommand[] {
   if (
     projection.lifecycleState === 'seek_phase' ||
@@ -56,6 +57,8 @@ export function buildQuestionFlowBootstrapCommands(
   }
 
   const commands: DomainCommand[] = [...buildMapSetupBootstrapCommands(projection)];
+  const preferredRegionId = options.preferredRegionId ?? seedPlayableRegions[0]?.regionId;
+  const demoMode = options.mode === 'demo';
   const selectedRegion = getSeedPlayableRegion(projection.visibleMap?.regionId ?? preferredRegionId ?? '');
   const selectedGeometry = projection.visibleMap?.playableBoundary.geometry ?? selectedRegion?.geometry;
   const anchorPoint = getAnchorPoint(selectedGeometry);
@@ -85,7 +88,23 @@ export function buildQuestionFlowBootstrapCommands(
     });
   }
 
-  if (
+  if (demoMode &&
+    ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup', 'hide_phase'].includes(projection.lifecycleState) &&
+    !projection.hiddenState?.hidingZone &&
+    anchorPoint
+  ) {
+    commands.push({
+      type: 'set_hiding_zone',
+      payload: {
+        stationId: `demo-station:${projection.visibleMap?.regionId ?? selectedRegion?.regionId ?? 'seed'}`,
+        stationName: 'Example station (demo)',
+        latitude: anchorPoint.latitude,
+        longitude: anchorPoint.longitude
+      }
+    });
+  }
+
+  if (demoMode &&
     ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup', 'hide_phase'].includes(projection.lifecycleState) &&
     !projection.hiddenState?.hiderLocation &&
     anchorPoint
@@ -100,7 +119,7 @@ export function buildQuestionFlowBootstrapCommands(
     });
   }
 
-  if (
+  if (demoMode &&
     ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup', 'hide_phase'].includes(projection.lifecycleState)
   ) {
     commands.push({
