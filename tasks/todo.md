@@ -14,6 +14,16 @@
 - [ ] Connect protected reveal handoffs to the mobile UI and persist their state across restart.
 - [ ] Complete a full round walkthrough and close remaining rules/content gaps.
 
+## UI: make the player experience feel like a game
+
+- [x] Audit the current shared layout, reusable controls, navigation, and player-facing screens.
+- [x] Research game UI references and document a product-specific visual direction.
+- [ ] Owner approves or adjusts the proposed Transit Field Kit direction.
+- [ ] Write and review the visual redesign spec and phased implementation plan.
+- [ ] Redesign Home, lobby, and live-map navigation/action hierarchy while preserving game behavior.
+- [ ] Extend the approved visual system to question, card, chat, and supporting screens.
+- [ ] Review the result at phone and desktop widths, including focus, disabled, loading, and error states.
+
 ## Review
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
@@ -25,3 +35,4 @@
 - Home now starts referee setup directly; online create/join remain available as secondary paths.
 - Referee event logs and latest snapshots now use persistent AsyncStorage, and the app stores a resume pointer/profile and reconnects to the recovered host session at startup. Home then offers the existing Continue action.
 - Protected reveal handoffs are still not connected to app UI; that manager remains process-local. A full round walkthrough and rules/content reconciliation remain open.
+- The current UI's repeated admin-style header/panel/banner hierarchy and the proposed game-first direction are documented in `knowledge/game-ui-redesign-research.md`.
