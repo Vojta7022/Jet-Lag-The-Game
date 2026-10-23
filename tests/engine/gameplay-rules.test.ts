@@ -68,6 +68,47 @@ test('ask_question accepts any in-scale investigation-book template and starts a
   assert.equal(questionTimer?.remainingSeconds, 300);
 });
 
+test('reassigning a player between sides removes them from their previous team', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = executeCommand(undefined, makeEnvelope(
+    'role-rotation-match',
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    {
+      type: 'create_match',
+      payload: {
+        mode: 'single_device_referee',
+        contentPackId: contentPack.packId,
+        hostPlayerId: 'host-1',
+        hostDisplayName: 'Host',
+        initialScale: 'small'
+      }
+    },
+    1
+  ), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'player-a', playerId: 'player-a', role: 'seeker' },
+    { type: 'join_match', payload: { playerId: 'player-a', displayName: 'Alpha' } },
+    2
+  ), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    { type: 'assign_role', payload: { targetPlayerId: 'player-a', role: 'hider', teamId: 'team-hider' } },
+    3
+  ), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    { type: 'assign_role', payload: { targetPlayerId: 'player-a', role: 'seeker', teamId: 'team-seeker' } },
+    4
+  ), contentPack).aggregate;
+
+  assert.equal(aggregate.roleAssignments['player-a']?.teamId, 'team-seeker');
+  assert.equal(aggregate.teams['team-hider']?.memberPlayerIds.includes('player-a'), false);
+  assert.equal(aggregate.teams['team-seeker']?.memberPlayerIds.includes('player-a'), true);
+});
+
 test('a resolved investigation question can be repeated after the next question window opens', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);

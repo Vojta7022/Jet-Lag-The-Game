@@ -207,11 +207,21 @@ export function reduceMatchAggregate(
         lifecycleState: eventEnvelope.event.payload.lifecycleState
       };
     case 'role_assigned': {
-      const currentTeam = base.teams[eventEnvelope.event.payload.team.teamId];
+      const targetPlayerId = eventEnvelope.event.payload.targetPlayerId;
+      const teamsWithoutPlayer = Object.fromEntries(
+        Object.entries(base.teams).map(([teamId, team]) => [
+          teamId,
+          {
+            ...team,
+            memberPlayerIds: team.memberPlayerIds.filter((playerId) => playerId !== targetPlayerId)
+          }
+        ])
+      );
+      const currentTeam = teamsWithoutPlayer[eventEnvelope.event.payload.team.teamId];
       const existingMembers = currentTeam?.memberPlayerIds ?? [];
-      const memberPlayerIds = existingMembers.includes(eventEnvelope.event.payload.targetPlayerId)
+      const memberPlayerIds = existingMembers.includes(targetPlayerId)
         ? existingMembers
-        : [...existingMembers, eventEnvelope.event.payload.targetPlayerId];
+        : [...existingMembers, targetPlayerId];
 
       return {
         ...base,
@@ -221,7 +231,7 @@ export function reduceMatchAggregate(
           [eventEnvelope.event.payload.targetPlayerId]: eventEnvelope.event.payload.roleAssignment
         },
         teams: {
-          ...base.teams,
+          ...teamsWithoutPlayer,
           [eventEnvelope.event.payload.team.teamId]: {
             ...eventEnvelope.event.payload.team,
             memberPlayerIds
