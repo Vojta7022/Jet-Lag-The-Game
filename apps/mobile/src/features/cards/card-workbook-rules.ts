@@ -82,7 +82,7 @@ export function buildScaleAwareTimeBonusDescription(
     return undefined;
   }
 
-  return `This ${selectedScale} match would gain ${minutes} minute${minutes === 1 ? '' : 's'} if this bonus resolves.`;
+  return `Adds ${minutes} minute${minutes === 1 ? '' : 's'} to your final hiding time if you still hold it when found. You can discard it, but you cannot play it.`;
 }
 
 export function buildCurseEffectTags(cardDefinition: CardDefinition): string[] {
@@ -183,9 +183,9 @@ export function buildCardWorkbookPlayability(args: {
   if (args.card.kind === 'time_bonus') {
     const scaleDescription = buildScaleAwareTimeBonusDescription(args.card, args.selectedScale);
     return {
-      label: 'Playable now',
-      tone: 'success',
-      detail: scaleDescription ?? 'This time bonus uses the current game size when it resolves.'
+      label: 'Keep for scoring',
+      tone: 'info',
+      detail: scaleDescription ?? 'This bonus adds to your final hiding time if it is still in your hand when found.'
     };
   }
 
@@ -266,7 +266,7 @@ export function buildQuestionResponseCardReason(
 
   if (cardDefinition.kind === 'time_bonus') {
     const scaleDescription = buildScaleAwareTimeBonusDescription(cardDefinition, selectedScale);
-    return scaleDescription ?? 'Buys extra hide time if the team decides this is the right moment to cash it in.';
+    return scaleDescription ?? 'Adds to final hiding time if retained in hand until the hider is found.';
   }
 
   if (cardDefinition.kind === 'curse') {

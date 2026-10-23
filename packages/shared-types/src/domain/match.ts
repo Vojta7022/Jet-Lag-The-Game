@@ -243,7 +243,12 @@ export interface RoundResultModel {
   hiderTeamId: string;
   foundByPlayerId: string;
   foundAt: string;
+  /** Real elapsed hiding time, with pauses removed and before held time bonuses. */
   survivalSeconds: number;
+  /** Scale-adjusted value of time bonus cards still in the hider's hand at capture. */
+  timeBonusSeconds?: number;
+  /** Survival time plus the time bonus cards retained at capture. */
+  finalHidingTimeSeconds?: number;
 }
 
 export interface HiddenStateModel {

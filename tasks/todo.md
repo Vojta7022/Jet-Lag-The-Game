@@ -53,7 +53,8 @@
 - [x] Require the hider to select a zone and confirm arrival at its station; advance into seek phase after the hide timer expires and both are confirmed.
 - [x] Enforce hider location updates within the selected zone during seek phase and freeze movement in endgame.
 - [x] Start endgame when seekers report an in-zone, off-transit position; record the fixed hiding spot, visual-plus-2m found confirmation, and survival time.
-- [ ] Complete score fidelity and multi-round rotation: award held time-bonus cards at capture, select the next hider, reshuffle/deal the deck, and start the next round from the previous spot.
+- [x] Add rule-faithful capture scoring: held time-bonus cards add their scale value to final hiding time; discarded cards do not count and time bonuses cannot be played.
+- [ ] Complete multi-round rotation: select the next hider, reshuffle/deal the deck, allow up to 10 minutes of preparation, and start the next round from the previous spot.
 - [x] Allow Investigation Book questions during endgame, preserve the endgame lifecycle through resolution, and support impossible photo challenges from the fixed spot.
 - [ ] Port the map workbench's useful save/load/share and overlay workflows into the existing match/map architecture.
 - [ ] Walk and test a full local referee round through endgame, found, and round scoring; reconcile any remaining scan discrepancies.
@@ -67,7 +68,7 @@
 - Station search uses bounded Overpass requests, filters returned candidates back against the selected polygon (including polygon holes), and renders selectable station markers with a geodesic 500 m/1 km preview. The chosen station is persisted in authoritative round state.
 - The hider can set the round's station-centered zone during hide phase. The engine derives its 500 m/1 km radius from the selected ruleset, checks sampled interior/circumference points so the full circle fits in the map, persists it in match events, and projects it only to the hider and referee. Engine station identity still comes from the client-selected OSM result.
 - The hider now marks a final pin during seek phase and explicitly attests that it is publicly accessible and within 3 m of a marked path. An off-transit seeker location report inside the zone starts endgame and freezes that pin. The pin is not sent in the public endgame event or seeker projection. Found requires a seeker/referee confirmation, visual identification, and coordinates within 2 m; the match records a survival-time result and displays it on the live map. Mobile actions capture a one-time GPS fix only after the player taps; continuous sharing is not used for the hider.
-- Endgame currently completes a single scored round. Awarding held time bonuses at capture, next-hider rotation, and deck reset remain open; the OSM-selected station itself is not independently verified by the engine.
+- Endgame currently completes a scored round. Captured-round score now includes real survival time plus scale-adjusted time bonuses still held; next-hider rotation, deck reset, and the 10-minute preparation flow remain open. The OSM-selected station itself is not independently verified by the engine.
 - Running timers now carry original start/duration anchors into visible projections; injected mobile commands use the real wall clock; pause records current remaining time and resume shifts the anchor to preserve it. Timer and rules flows have focused passing coverage.
 - Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" pnpm test` (183 tests), `pnpm mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
 
@@ -77,4 +78,5 @@
 - Seeker projection privacy was checked after endgame starts; final coordinates remain hidden, while the hider and referee retain the pin.
 - Endgame clue prompts, hider answers, map resolution, and card draws remain in endgame. The “impossible photo” answer only bypasses evidence requirements for photo challenges during endgame.
 - Engine and mobile map-flow coverage verifies that endgame questions resolve without returning to seeking and the hider can draw the printed reward after an impossible photo answer.
-- Remaining round-rotation and endgame-question rules are tracked separately above; no full UI round walkthrough has been performed yet.
+- Time bonuses now match the base rulebook: they cannot be played, and only cards still in the hider's hand at capture add their scale-specific value to final hiding time. The scorecard shows this final total while preserving actual survival time and bonus time as separate result fields.
+- Multi-round rotation remains open; no full UI round walkthrough has been performed yet.

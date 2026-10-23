@@ -217,19 +217,6 @@ function resolveDeckHolderForDefinition(
   }
 }
 
-function buildAdjustedTimer(timer: TimerModel, _occurredAt: string, deltaSeconds: number): TimerModel {
-  const nextDurationSeconds = Math.max(0, timer.durationSeconds + deltaSeconds);
-  const nextRemainingSeconds = Math.max(0, timer.remainingSeconds + deltaSeconds);
-
-  return {
-    ...timer,
-    durationSeconds: nextDurationSeconds,
-    remainingSeconds: nextRemainingSeconds,
-    startedAt: timer.startedAt,
-    pausedAt: timer.pausedAt ?? undefined
-  };
-}
-
 function buildLocationSample(
   aggregate: MatchAggregate,
   envelope: CommandEnvelope<Extract<CommandEnvelope['command'], { type: 'update_location' }>>
@@ -578,15 +565,35 @@ function eventsForCommand(
         matchStartedAt ?? hideTimer?.startedAt ?? envelope.occurredAt,
         envelope.occurredAt
       );
+      const hiderTeamId = hiderTeam?.teamId ?? 'team-hider';
+      const timeBonusSeconds = Object.values(aggregate!.cardInstances).reduce((total, card) => {
+        if (
+          card.zone !== 'hand' ||
+          card.holderType !== 'team' ||
+          card.holderId !== hiderTeamId
+        ) {
+          return total;
+        }
+
+        const definition = getCardDefinition(contentPack, card.cardDefinitionId);
+        if (!definition || definition.kind !== 'time_bonus') {
+          return total;
+        }
+
+        const bonusMinutes = buildCardResolutionPlan(definition, aggregate!.selectedScale).timeBonusMinutes ?? 0;
+        return total + bonusMinutes * 60;
+      }, 0);
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
           type: 'hider_found',
           payload: {
             roundResult: {
-              hiderTeamId: hiderTeam?.teamId ?? 'team-hider',
+              hiderTeamId,
               foundByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId,
               foundAt: envelope.occurredAt,
-              survivalSeconds
+              survivalSeconds,
+              timeBonusSeconds,
+              finalHidingTimeSeconds: survivalSeconds + timeBonusSeconds
             }
           }
         })
@@ -777,23 +784,7 @@ function eventsForCommand(
         })
       ];
 
-      if (resolutionPlan.kind === 'time_bonus') {
-        const hideTimer = Object.values(aggregate!.timers).find(
-          (timer) => timer.kind === 'hide' && timer.status !== 'completed'
-        );
-
-        if (hideTimer && resolutionPlan.timeBonusMinutes) {
-          events.push(
-            makeEventEnvelope(aggregate, envelope, 1, 'public_match', {
-              type: 'timer_adjusted',
-              payload: {
-                timer: buildAdjustedTimer(hideTimer, envelope.occurredAt, resolutionPlan.timeBonusMinutes * 60),
-                sourceCardInstanceId: currentCard.cardInstanceId
-              }
-            })
-          );
-        }
-      } else if (opensResolutionWindow) {
+      if (opensResolutionWindow) {
         const openingHandCardInstanceIds = Object.values(aggregate!.cardInstances)
           .filter(
             (candidate) =>

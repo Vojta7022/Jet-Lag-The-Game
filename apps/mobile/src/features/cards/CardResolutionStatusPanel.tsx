@@ -35,7 +35,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const followThroughDetail = props.resolution?.drawCountOnResolve
     ? `Closing this window draws ${props.resolution.drawCountOnResolve} replacement card${props.resolution.drawCountOnResolve === 1 ? '' : 's'}.`
     : props.resolution?.timeBonusMinutes
-      ? `This effect adds ${props.resolution.timeBonusMinutes} minute${props.resolution.timeBonusMinutes === 1 ? '' : 's'} to the hide timer.`
+      ? `This bonus adds ${props.resolution.timeBonusMinutes} minute${props.resolution.timeBonusMinutes === 1 ? '' : 's'} to final hiding time only if held when found.`
       : undefined;
 
   if (!props.activeCard) {

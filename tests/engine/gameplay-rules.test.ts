@@ -338,7 +338,7 @@ test('discard-then-draw power-ups require discard payment and then draw replacem
   assert.equal(hiderHandCount, 2);
 });
 
-test('time bonus cards now apply their scale-based bonus directly to the hide timer', () => {
+test('time bonus cards cannot be played to extend the hide timer', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToHidePhase(contentPack);
   const timeBonusCardId = moveCardToTeamHand(aggregate, 'time-bonus-red', 'team-hider');
@@ -346,27 +346,25 @@ test('time bonus cards now apply their scale-based bonus directly to the hide ti
 
   assert.ok(hideTimerBefore);
 
-  aggregate = executeCommand(
-    aggregate,
-    makeEnvelope(
-      aggregate.matchId,
-      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
-      {
-        type: 'play_card',
-        payload: {
-          cardInstanceId: timeBonusCardId
-        }
-      },
-      60
+  assert.throws(
+    () => executeCommand(
+      aggregate,
+      makeEnvelope(
+        aggregate.matchId,
+        { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+        { type: 'play_card', payload: { cardInstanceId: timeBonusCardId } },
+        60
+      ),
+      contentPack
     ),
-    contentPack
-  ).aggregate;
+    /Time bonus cards cannot be played/
+  );
 
   const hideTimerAfter = Object.values(aggregate.timers).find((timer) => timer.kind === 'hide');
 
-  assert.equal(aggregate.cardInstances[timeBonusCardId]?.zone, 'discard_pile');
-  assert.equal(hideTimerAfter?.durationSeconds, hideTimerBefore!.durationSeconds + 120);
-  assert.equal(hideTimerAfter?.remainingSeconds, hideTimerBefore!.remainingSeconds + 120);
+  assert.equal(aggregate.cardInstances[timeBonusCardId]?.zone, 'hand');
+  assert.equal(hideTimerAfter?.durationSeconds, hideTimerBefore!.durationSeconds);
+  assert.equal(hideTimerAfter?.remainingSeconds, hideTimerBefore!.remainingSeconds);
 });
 
 test('curses with discard-a-power-up casting costs are blocked until that payment is available', () => {

@@ -116,8 +116,8 @@ export function LiveEndgameControls() {
     return (
       <Panel title="Round secured" subtitle="The hider was found. This run is now on the match scorecard." tone="accent">
         <View style={styles.resultStamp}>
-          <Text style={styles.resultTime}>{formatSurvivalTime(result?.survivalSeconds ?? 0)}</Text>
-          <Text style={styles.resultCaption}>HIDER SURVIVAL</Text>
+          <Text style={styles.resultTime}>{formatSurvivalTime(result?.finalHidingTimeSeconds ?? result?.survivalSeconds ?? 0)}</Text>
+          <Text style={styles.resultCaption}>FINAL HIDING TIME</Text>
         </View>
       </Panel>
     );

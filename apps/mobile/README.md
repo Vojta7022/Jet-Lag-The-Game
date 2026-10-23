@@ -16,7 +16,7 @@ Included:
 - Supabase-backed online foundation path for persisted matches, snapshots, projections, and durable attachment uploads when online env is configured
 - first-pass movement screen with foreground location permission state, `update_location` wiring, and seeker breadcrumb overlays
 - responsive game-first visual system for Home, lobby, live map, questions, cards, and team radio
-- live endgame field actions: mark a private final hider spot, report seeker position as on/off transit, confirm visual identification within 2 m, and view the scored survival time
+- live endgame field actions: mark a private final hider spot, report seeker position as on/off transit, confirm visual identification within 2 m, and view final hiding time with retained time-bonus cards scored at capture
 - lobby, dashboard placeholder, and status screens
 - developer runtime switcher for:
   - in-memory runtime

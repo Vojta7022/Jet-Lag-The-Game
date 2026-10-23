@@ -80,8 +80,17 @@ test('card workbook helpers expose scale-aware time bonuses and named power-up f
   assert.match(buildKnownPowerUpDescription(createCard()) ?? '', /Redraw the current clue set/i);
   assert.equal(
     buildScaleAwareTimeBonusDescription(timeBonus, 'medium'),
-    'This medium match would gain 3 minutes if this bonus resolves.'
+    'Adds 3 minutes to your final hiding time if you still hold it when found. You can discard it, but you cannot play it.'
   );
+  const playability = buildCardWorkbookPlayability({
+    card: timeBonus,
+    projection: undefined,
+    selectedScale: 'medium',
+    handCardCount: 1,
+    handCardKindCounts: { time_bonus: 1 }
+  });
+  assert.equal(playability.label, 'Keep for scoring');
+  assert.match(playability.detail, /cannot play it/i);
 });
 
 test('card workbook helpers stay honest about manual checks and blocked curse cases', () => {

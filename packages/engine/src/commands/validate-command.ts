@@ -932,6 +932,10 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'CARD_DEFINITION_NOT_FOUND', 'The card definition is missing from the content pack.')];
       }
 
+      if (cardDefinition.kind === 'time_bonus') {
+        return [error(envelope.command.type, 'TIME_BONUS_NOT_PLAYABLE', 'Time bonus cards cannot be played. Keep them in hand to add their value to your final hiding time when found, or discard them.')];
+      }
+
       if (
         aggregate.lifecycleState === 'endgame' &&
         cardDefinition.kind === 'curse' &&

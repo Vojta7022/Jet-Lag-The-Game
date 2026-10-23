@@ -5,7 +5,7 @@ import { buildMatchProjection } from '../../packages/engine/src/index.ts';
 import { representativePointFromGeometry } from '../../packages/geo/src/index.ts';
 import { executeCommand } from '../../packages/engine/src/index.ts';
 import { reconcileRuntimeState } from '../../packages/transport/src/reconcile-runtime-state.ts';
-import { loadEngineTestContentPack, makeEnvelope, setupMatchToHidePhase } from './helpers.ts';
+import { loadEngineTestContentPack, makeEnvelope, moveCardToTeamHand, setupMatchToHidePhase } from './helpers.ts';
 
 test('hider can set a hidden station-centered zone using the selected scale radius', () => {
   const contentPack = loadEngineTestContentPack();
@@ -246,6 +246,12 @@ test('finding requires a visual confirmation and seeker coordinates within two m
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
     actorId: 'host-1', playerId: 'host-1', role: 'host'
   }, { type: 'resume_match', payload: {} }, 107), contentPack).aggregate;
+  const heldTimeBonusCardId = moveCardToTeamHand(aggregate, 'time-bonus-red', 'team-hider');
+  const discardedTimeBonusCardId = moveCardToTeamHand(aggregate, 'time-bonus-blue', 'team-hider');
+  aggregate.cardInstances[discardedTimeBonusCardId] = {
+    ...aggregate.cardInstances[discardedTimeBonusCardId]!,
+    zone: 'discard_pile'
+  };
   const foundAt = makeEnvelope(aggregate.matchId, {
     actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
   }, {
@@ -259,6 +265,10 @@ test('finding requires a visual confirmation and seeker coordinates within two m
   assert.ok(startedAt);
   const expectedSurvival = Math.floor((Date.parse(foundAt.occurredAt) - Date.parse(startedAt!) - 10_000) / 1000);
   assert.equal(found.roundResults?.at(-1)?.survivalSeconds, expectedSurvival);
+  const heldTimeBonus = contentPack.cards.find((card) => card.cardDefinitionId === aggregate.cardInstances[heldTimeBonusCardId]!.cardDefinitionId);
+  const expectedBonusSeconds = Number((heldTimeBonus?.effects[0]?.payload as { minutesByScale?: Record<string, number> } | undefined)?.minutesByScale?.[aggregate.selectedScale ?? 'small'] ?? 0) * 60;
+  assert.equal(found.roundResults?.at(-1)?.timeBonusSeconds, expectedBonusSeconds);
+  assert.equal(found.roundResults?.at(-1)?.finalHidingTimeSeconds, expectedSurvival + expectedBonusSeconds);
 });
 
 test('hiding-zone command rejects stations outside the map and rejects seeker access', () => {

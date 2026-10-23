@@ -259,6 +259,7 @@ export function CardsScreen() {
     activeMatch &&
       selectedCard &&
       selectedCard.card.zone === 'hand' &&
+      selectedCard.definition.kind !== 'time_bonus' &&
       canPlayCards(projection) &&
       !lockReason &&
       viewerRole !== 'spectator'
