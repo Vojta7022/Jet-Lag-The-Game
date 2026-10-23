@@ -14,7 +14,8 @@ import type {
   SubscriptionRequest,
   SyncEnvelope,
   SyncListener,
-  TransportSubscription
+  TransportSubscription,
+  LocalRuntimePersistence
 } from '../../../shared-types/src/index.ts';
 
 import { InMemoryAuthorityRuntime } from '../in-memory-authority-runtime.ts';
@@ -36,7 +37,7 @@ function viewerToRecipient(request: SingleDeviceRevealRequest): ProjectionRecipi
 
 export interface SingleDeviceRefereeRuntimeOptions {
   contentPacks: ContentPack[];
-  persistence?: InMemoryRuntimePersistence;
+  persistence?: LocalRuntimePersistence;
   now?: () => Date;
 }
 

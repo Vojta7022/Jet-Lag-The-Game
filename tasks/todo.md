@@ -10,7 +10,8 @@
 - [x] Choose the first target play mode: single-device referee.
 - [ ] Decide the content-pack distribution approach.
 - [x] Make referee mode a first-class Home-screen start path and clarify its setup instructions.
-- [ ] Add durable save-and-resume for referee sessions; current authority, reveal state, and app shell are in-memory.
+- [x] Add durable event/snapshot storage and automatic referee-session reattachment after app restart.
+- [ ] Connect protected reveal handoffs to the mobile UI and persist their state across restart.
 - [ ] Complete a full round walkthrough and close remaining rules/content gaps.
 
 ## Review
@@ -19,7 +20,8 @@
 - The first material gap is a tested, reliable end-to-end play path. Nearby mode has no LAN transport; online mode has no trusted server-side command gateway.
 - The generated workbook pack has 81 question templates and 125 card instances, but remains draft output with 21 warnings, no ruleset, and no map preset.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
-- App/test execution was intentionally not part of this research task.
-- Implementation direction: single-device referee is the first playable target because its authority, map, and gameplay flows already exist in-process; durable recovery is the next foundational gap.
+- The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
+- Implementation direction: single-device referee is the first playable target because its authority, map, and gameplay flows already exist in-process.
 - Home now starts referee setup directly; online create/join remain available as secondary paths.
-- Session persistence is not implemented by this slice. A reload still loses a referee match because its runtime authority and reveal manager are process-local.
+- Referee event logs and latest snapshots now use persistent AsyncStorage, and the app stores a resume pointer/profile and reconnects to the recovered host session at startup. Home then offers the existing Continue action.
+- Protected reveal handoffs are still not connected to app UI; that manager remains process-local. A full round walkthrough and rules/content reconciliation remain open.

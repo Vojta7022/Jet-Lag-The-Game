@@ -68,7 +68,9 @@ Suggested sequence:
 
 The first target is now **single-device referee**. Home has a direct “Start Referee Game” action that selects this runtime and opens match setup; online create/join remain available as secondary paths. A fresh Expo web bundle succeeds with this entry path.
 
-The mode is not yet reload-safe. The authority, reveal manager, and app-shell connection live in process memory, so closing or reloading the app loses the active session. Add durable save/resume, then walk a complete round from setup through found/round result. The content-pack distribution/licensing decision remains open; do not add the scans or a full-text transcription to the public repository until that is settled.
+The referee's event log and latest snapshot now persist with AsyncStorage, along with a resume pointer and the host profile. Startup rebuilds the authority, reconnects the host session, and returns to Home with the existing Continue action. The separate protected-reveal manager is not wired into the app UI and remains process-local. AsyncStorage supports Android, iOS, and web; it is unencrypted key-value storage, not a secrets store. [AsyncStorage platform support](https://github.com/react-native-async-storage/async-storage), checked 2026-10-23.
+
+Next, connect and persist protected reveal handoffs, then walk a complete round from setup through found/round result. The content-pack distribution/licensing decision remains open; do not add the scans or a full-text transcription to the public repository until that is settled.
 
 Remaining product decision: whether the project should stay a generic reusable rules engine or prioritize a personal Jet Lag Home Game ruleset.
 

@@ -68,6 +68,7 @@ export function HomeScreen() {
       >
         <AppButton
           label="Start Referee Game"
+          disabled={state.loadState === 'loading'}
           onPress={() => {
             selectRuntimeKind('single_device_referee');
             router.push('/create-match');
@@ -75,6 +76,7 @@ export function HomeScreen() {
         />
         <AppButton
           label="Create Online Match"
+          disabled={state.loadState === 'loading'}
           onPress={() => {
             selectRuntimeKind('online_foundation');
             router.push('/create-match');
@@ -83,6 +85,7 @@ export function HomeScreen() {
         />
         <AppButton
           label="Join Online Match"
+          disabled={state.loadState === 'loading'}
           onPress={() => {
             selectRuntimeKind('online_foundation');
             router.push('/join-match');

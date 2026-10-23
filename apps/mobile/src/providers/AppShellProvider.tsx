@@ -24,6 +24,11 @@ import type {
 } from '../runtime/types.ts';
 import type { LocalMediaAttachmentDraft } from '../features/evidence/evidence-model.ts';
 import type { RemoteAttachmentMediaSource } from '../runtime/supabase-attachment-storage.ts';
+import {
+  clearActiveSingleDeviceSession,
+  loadActiveSingleDeviceSession,
+  saveActiveSingleDeviceSession
+} from '../runtime/local-session-storage.ts';
 
 interface AppShellContextValue {
   state: AppShellState;
@@ -84,12 +89,30 @@ function toPlayerFacingShellError(
   return message;
 }
 
+async function updateSavedSession(
+  runtimeKind: CreateMatchInput['runtimeKind'],
+  matchId: string,
+  profile: SessionProfileDraft
+) {
+  if (runtimeKind === 'single_device_referee') {
+    await saveActiveSingleDeviceSession({
+      version: 1,
+      runtimeKind,
+      matchId,
+      profile
+    });
+  } else {
+    await clearActiveSingleDeviceSession();
+  }
+}
+
 export function AppShellProvider(props: { children: React.ReactNode }) {
   const { runtimeKind, selectRuntimeKind } = useRuntimeMode();
   const runtimeClient = useRuntimeClient();
   const [state, dispatch] = useReducer(appShellReducer, createInitialShellState(runtimeKind));
   const connectionRef = useRef<RuntimeConnection | undefined>(undefined);
   const subscriptionRef = useRef<TransportSubscription | undefined>(undefined);
+  const resumeStartedRef = useRef(false);
 
   useEffect(() => {
     if (state.runtimeKind !== runtimeKind) {
@@ -138,17 +161,51 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     await subscribeToConnection(connection, initialSync);
   }, [bindConnectedMatch, runtimeClient, subscribeToConnection]);
 
-  const saveSessionProfile = useCallback((profile: SessionProfileDraft) => {
-    dispatch({
-      type: 'session_saved',
-      sessionProfile: profile
-    });
-  }, []);
-
   const handleFailure = useCallback((error: unknown) => {
     dispatch({
       type: 'operation_failed',
       errorMessage: toPlayerFacingShellError(error, connectionRef.current)
+    });
+  }, []);
+
+  useEffect(() => {
+    if (resumeStartedRef.current) {
+      return;
+    }
+    resumeStartedRef.current = true;
+    dispatch({ type: 'operation_started' });
+
+    void (async () => {
+      try {
+        const savedSession = await loadActiveSingleDeviceSession();
+        if (!savedSession) {
+          dispatch({ type: 'clear_error' });
+          return;
+        }
+
+        dispatch({ type: 'session_saved', sessionProfile: savedSession.profile });
+        selectRuntimeKind('single_device_referee');
+
+        const restored = await runtimeClient.resumeSingleDeviceMatch(
+          savedSession.matchId,
+          savedSession.profile
+        );
+        if (!restored) {
+          await clearActiveSingleDeviceSession();
+          throw new Error('The saved referee match has no recoverable game state. Start a new game.');
+        }
+
+        await replaceConnection(restored.connection, restored.initialSync);
+      } catch (error) {
+        handleFailure(error);
+      }
+    })();
+  }, [handleFailure, replaceConnection, runtimeClient, selectRuntimeKind]);
+
+  const saveSessionProfile = useCallback((profile: SessionProfileDraft) => {
+    dispatch({
+      type: 'session_saved',
+      sessionProfile: profile
     });
   }, []);
 
@@ -166,6 +223,18 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
         });
       }
       await replaceConnection(result.connection, result.initialSync);
+      try {
+        await updateSavedSession(
+          runtimeKind,
+          result.connection.matchId,
+          result.resolvedSessionProfile ?? state.sessionProfile
+        );
+      } catch (error) {
+        dispatch({
+          type: 'operation_failed',
+          errorMessage: `Match started, but this device could not save its resume point: ${error instanceof Error ? error.message : 'storage unavailable'}`
+        });
+      }
       return true;
     } catch (error) {
       handleFailure(error);
@@ -187,6 +256,18 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
         });
       }
       await replaceConnection(result.connection, result.initialSync);
+      try {
+        await updateSavedSession(
+          runtimeKind,
+          result.connection.matchId,
+          result.resolvedSessionProfile ?? state.sessionProfile
+        );
+      } catch (error) {
+        dispatch({
+          type: 'operation_failed',
+          errorMessage: `Match started, but this device could not save its resume point: ${error instanceof Error ? error.message : 'storage unavailable'}`
+        });
+      }
       return true;
     } catch (error) {
       handleFailure(error);
@@ -320,12 +401,20 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
   }, []);
 
   const disconnectActiveMatch = useCallback(async () => {
+    const disconnectedRuntimeKind = connectionRef.current?.runtimeKind;
     await subscriptionRef.current?.unsubscribe();
     subscriptionRef.current = undefined;
     await runtimeClient.disconnect(connectionRef.current);
     connectionRef.current = undefined;
     dispatch({ type: 'match_disconnected' });
-  }, [runtimeClient]);
+    if (disconnectedRuntimeKind === 'single_device_referee') {
+      try {
+        await clearActiveSingleDeviceSession();
+      } catch (error) {
+        handleFailure(error);
+      }
+    }
+  }, [handleFailure, runtimeClient]);
 
   const clearError = useCallback(() => {
     dispatch({ type: 'clear_error' });

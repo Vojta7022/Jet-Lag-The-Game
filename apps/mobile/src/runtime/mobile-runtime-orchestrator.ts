@@ -51,6 +51,7 @@ import {
   type RemoteAttachmentMediaSource
 } from './supabase-attachment-storage.ts';
 import { SupabaseMobileSessionManager } from './supabase-mobile-session.ts';
+import { AsyncStorageRuntimePersistence } from './local-session-storage.ts';
 import type {
   ConnectionSnapshotSummary,
   ConnectedMatchResult,
@@ -147,6 +148,7 @@ function getPlayerRoleFromProjection(
 export class MobileRuntimeOrchestrator {
   private readonly contentPack: ContentPack;
   private readonly environment: MobileAppEnvironment;
+  private readonly singleDevicePersistence = new AsyncStorageRuntimePersistence();
   private readonly commandSequences = new Map<string, number>();
   private readonly inMemoryRuntimes = new Map<string, InMemoryAuthorityRuntime>();
   private readonly nearbyRuntimes = new Map<string, NearbyAuthorityRuntime>();
@@ -191,6 +193,38 @@ export class MobileRuntimeOrchestrator {
       default:
         return this.joinInMemoryMatch(profile, input);
     }
+  }
+
+  async resumeSingleDeviceMatch(
+    matchId: string,
+    profile: SessionProfileDraft
+  ): Promise<ConnectedMatchResult | undefined> {
+    const runtime = this.getOrCreateSingleDeviceRuntime(matchId);
+    const recovered = await runtime.recoverMatch(matchId);
+    if (!recovered) {
+      return undefined;
+    }
+
+    const recipient = buildHostRecipient(profile);
+    const transport = new SingleDeviceRefereeTransportAdapter(runtime);
+    await transport.connect({
+      sessionId: `single-device-host:${profile.playerId}`,
+      recipient
+    });
+    const initialSync = await transport.requestSnapshot({ matchId });
+
+    return {
+      connection: {
+        runtimeKind: 'single_device_referee',
+        runtimeMode: runtime.mode,
+        matchId,
+        matchMode: 'single_device_referee',
+        transport,
+        transportFlavor: 'single_device',
+        recipient
+      },
+      initialSync
+    };
   }
 
   async refresh(connection: RuntimeConnection): Promise<SyncEnvelope> {
@@ -714,7 +748,8 @@ export class MobileRuntimeOrchestrator {
     }
 
     const runtime = new SingleDeviceRefereeRuntime({
-      contentPacks: [this.contentPack]
+      contentPacks: [this.contentPack],
+      persistence: this.singleDevicePersistence
     });
     this.singleDeviceRuntimes.set(matchId, runtime);
     return runtime;

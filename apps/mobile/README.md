@@ -141,6 +141,14 @@ Provider deployment guidance:
 - production should point `EXPO_PUBLIC_REGION_PROVIDER_BASE_URL` at a backend or proxy that applies attribution, caching, and rate limiting server-side
 - the current mobile provider abstraction is designed so this swap does not require a new search UI or a new bounded-region apply flow
 
+## Single-Device Referee Runtime And Recovery
+
+Home offers **Start Referee Game** as the primary local play path. The referee session stores its event log and latest snapshot with AsyncStorage and saves the active match ID plus host profile. At app startup, the runtime restores the match authority and Home offers the existing Continue action.
+
+- AsyncStorage supports iOS, Android, and web; it stores local data without encryption.
+- Disconnecting a referee match clears its automatic resume pointer. The event log and snapshot remain on the device; there is not yet a match archive or delete screen.
+- Protected reveal handoffs are not yet connected to the mobile UI and are not restored after a process restart.
+
 ## Online Runtime And Storage
 
 The mobile shell now supports two online paths:
