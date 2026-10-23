@@ -476,6 +476,38 @@ export function validateCommandEnvelope(
       }
       return [];
     }
+    case 'start_next_round': {
+      const nextHider = aggregate.players[envelope.command.payload.nextHiderPlayerId];
+      if (!nextHider || getPlayerRole(aggregate, nextHider.playerId) !== 'seeker') {
+        return [error(envelope.command.type, 'NEXT_HIDER_MUST_BE_SEEKER', 'Choose a current seeker to hide in the next round.')];
+      }
+      const rotationOrder = aggregate.hiderRotationOrder ?? [
+        ...Object.values(aggregate.roleAssignments)
+          .filter((assignment) => assignment.role === 'hider')
+          .map((assignment) => assignment.playerId),
+        ...Object.values(aggregate.roleAssignments)
+          .filter((assignment) => assignment.role === 'seeker')
+          .map((assignment) => assignment.playerId)
+          .sort((left, right) => left.localeCompare(right))
+      ];
+      const expectedHiderPlayerId = rotationOrder[aggregate.roundResults?.length ?? 0];
+      if (!expectedHiderPlayerId) {
+        return [error(envelope.command.type, 'ROTATION_COMPLETE', 'Every player in the hider rotation has completed their round.')];
+      }
+      if (envelope.command.payload.nextHiderPlayerId !== expectedHiderPlayerId) {
+        return [error(envelope.command.type, 'ROTATION_ORDER', 'The hider order was randomized before play. Start the next round with the next player in that order.')];
+      }
+      const result = aggregate.roundResults?.at(-1);
+      if (!result?.finalHidingSpot) {
+        return [error(envelope.command.type, 'PREVIOUS_HIDING_SPOT_REQUIRED', 'The next round needs the previous hider’s found location as its starting point.')];
+      }
+      const foundAt = Date.parse(result.foundAt);
+      const startAt = Date.parse(envelope.occurredAt);
+      if (Number.isNaN(foundAt) || Number.isNaN(startAt) || startAt < foundAt || startAt - foundAt > 10 * 60 * 1000) {
+        return [error(envelope.command.type, 'PREPARATION_WINDOW_EXPIRED', 'Start the next round within 10 minutes of finding the previous hider.')];
+      }
+      return [];
+    }
     case 'lock_hider_location': {
       const actorRole = getPlayerRole(aggregate, envelope.actor.playerId);
       if (actorRole !== 'hider' && envelope.actor.role !== 'host') {

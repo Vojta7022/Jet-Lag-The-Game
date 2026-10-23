@@ -469,6 +469,8 @@ export function buildMatchProjection(
     activeCardResolution,
     visibleEventLog,
     visibleRoundResults: aggregate.roundResults ?? [],
+    roundStartLocation: aggregate.roundStartLocation,
+    hiderRotationOrder: aggregate.hiderRotationOrder,
     hiddenState
   };
 }

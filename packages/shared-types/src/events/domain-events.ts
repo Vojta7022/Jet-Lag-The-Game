@@ -27,6 +27,7 @@ import type {
   ResumeMatchCommand,
   SetRulesetCommand,
   StartMatchCommand,
+  StartNextRoundCommand,
   AnswerQuestionCommand,
   UploadAttachmentCommand
 } from '../contracts/commands.ts';
@@ -68,6 +69,7 @@ export type DomainEvent =
   | RulesConfirmedEvent
   | MapRegionCreatedEvent
   | MatchStartedEvent
+  | RoundStartedEvent
   | HiderLocationLockedEvent
   | HidingZoneSetEvent
   | FinalHidingSpotSetEvent
@@ -172,6 +174,23 @@ export interface MatchStartedEvent {
   payload: StartMatchCommand['payload'] & {
     lifecycleState: MatchLifecycleState;
     timer: TimerModel;
+    roleAssignments: RoleAssignmentModel[];
+    teams: TeamModel[];
+    hiderRotationOrder: string[];
+    cardInstances: CardInstanceModel[];
+  };
+}
+
+export interface RoundStartedEvent {
+  type: 'round_started';
+  payload: StartNextRoundCommand['payload'] & {
+    lifecycleState: 'hide_phase';
+    timer: TimerModel;
+    cardInstances: CardInstanceModel[];
+    roleAssignments: RoleAssignmentModel[];
+    teams: TeamModel[];
+    hiderRotationOrder: string[];
+    roundStartLocation: { latitude: number; longitude: number };
   };
 }
 

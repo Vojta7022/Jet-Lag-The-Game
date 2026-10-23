@@ -30,6 +30,7 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'confirm_rules',
   'create_map_region',
   'start_match',
+  'start_next_round',
   'pause_match',
   'resume_match',
   'end_match',

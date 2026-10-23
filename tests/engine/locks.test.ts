@@ -76,7 +76,7 @@ test('question flow and card resolution windows lock correctly', () => {
   );
 
   aggregate = setupMatchToSeekReady(contentPack);
-  const firstCardId = moveCardToTeamHand(aggregate, 'curse-', 'team-hider');
+  const firstCardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-mediocre-travel-agent', 'team-hider');
   const secondCardId = moveCardToTeamHand(aggregate, 'power-up-', 'team-hider');
 
   aggregate = executeCommand(

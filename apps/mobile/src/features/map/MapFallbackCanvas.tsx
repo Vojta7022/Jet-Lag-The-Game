@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 
 import type {
+  RoundStartLocationModel,
   VisibleMapProjection,
   VisibleMovementTrackProjection
 } from '../../../../../packages/shared-types/src/index.ts';
@@ -23,6 +24,7 @@ import type { PlayableRegionCatalogEntry } from './region-types.ts';
 interface MapFallbackCanvasProps {
   visibleMap?: VisibleMapProjection;
   visibleMovementTracks?: VisibleMovementTrackProjection[];
+  roundStartLocation?: RoundStartLocationModel;
   previewRegion?: PlayableRegionCatalogEntry;
   height?: number;
   maxWidth?: number;
@@ -41,12 +43,13 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
     () => buildMapOverlayModel({
       visibleMap: props.visibleMap,
       visibleMovementTracks: props.visibleMovementTracks,
+      roundStartLocation: props.roundStartLocation,
       previewRegion: props.previewRegion,
       transitStations: props.transitStations,
       selectedStation: props.selectedStation,
       hidingRadiusMeters: props.hidingRadiusMeters
     }),
-    [props.hidingRadiusMeters, props.previewRegion, props.selectedStation, props.transitStations, props.visibleMap, props.visibleMovementTracks]
+    [props.hidingRadiusMeters, props.previewRegion, props.roundStartLocation, props.selectedStation, props.transitStations, props.visibleMap, props.visibleMovementTracks]
   );
   const referenceGeometry = getPreferredMapGeometry({
     visibleMap: props.visibleMap,

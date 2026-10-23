@@ -270,11 +270,52 @@ export function reduceMatchAggregate(
         ...base,
         lifecycleState: eventEnvelope.event.payload.lifecycleState,
         seekPhaseSubstate: undefined,
+        roleAssignments: Object.fromEntries(
+          eventEnvelope.event.payload.roleAssignments.map((assignment) => [assignment.playerId, assignment])
+        ),
+        teams: Object.fromEntries(eventEnvelope.event.payload.teams.map((team) => [team.teamId, team])),
+        hiderRotationOrder: eventEnvelope.event.payload.hiderRotationOrder,
+        cardInstances: Object.fromEntries(
+          eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
+        ),
         timers: {
           ...base.timers,
           [eventEnvelope.event.payload.timer.timerId]: eventEnvelope.event.payload.timer
         }
       };
+    case 'round_started': {
+      const roleAssignments = Object.fromEntries(
+        eventEnvelope.event.payload.roleAssignments.map((assignment) => [assignment.playerId, assignment])
+      );
+      const teams = Object.fromEntries(
+        eventEnvelope.event.payload.teams.map((team) => [team.teamId, team])
+      );
+
+      return {
+        ...base,
+        lifecycleState: eventEnvelope.event.payload.lifecycleState,
+        seekPhaseSubstate: undefined,
+        roleAssignments,
+        teams,
+        cardInstances: Object.fromEntries(
+          eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
+        ),
+        timers: { [eventEnvelope.event.payload.timer.timerId]: eventEnvelope.event.payload.timer },
+        statusEffects: {},
+        questionInstances: {},
+        activeQuestionInstanceId: undefined,
+        activeCardResolution: undefined,
+        constraints: {},
+        locationSamples: [],
+        hiddenState: {},
+        roundStartLocation: eventEnvelope.event.payload.roundStartLocation,
+        hiderRotationOrder: eventEnvelope.event.payload.hiderRotationOrder,
+        searchArea: base.mapRegion
+          ? initializeSearchAreaFromRegion(base.mapRegion, eventEnvelope.occurredAt)
+          : undefined,
+        paused: undefined
+      };
+    }
     case 'hider_location_locked':
       return {
         ...base,

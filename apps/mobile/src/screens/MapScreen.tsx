@@ -286,12 +286,13 @@ export function MapScreen() {
     () => buildMapOverlayModel({
       visibleMap: displayedVisibleMap,
       visibleMovementTracks: projection?.visibleMovementTracks,
+      roundStartLocation: projection?.roundStartLocation,
       previewRegion: canvasPreviewRegion,
       transitStations,
       selectedStation: mapSelectedStation,
       hidingRadiusMeters: mapHidingRadius
     }),
-    [canvasPreviewRegion, displayedVisibleMap, mapHidingRadius, mapSelectedStation, projection?.visibleMovementTracks, transitStations]
+    [canvasPreviewRegion, displayedVisibleMap, mapHidingRadius, mapSelectedStation, projection?.roundStartLocation, projection?.visibleMovementTracks, transitStations]
   );
   const canPrepareMapSetup =
     isHostView &&
@@ -976,6 +977,7 @@ export function MapScreen() {
                     maxWidth={dimensions.width - 32}
                     visibleMap={projection?.visibleMap}
                     visibleMovementTracks={projection?.visibleMovementTracks}
+                    roundStartLocation={projection?.roundStartLocation}
                     previewRegion={canvasPreviewRegion}
                     transitStations={transitStations}
                     selectedStation={mapSelectedStation}
@@ -1013,6 +1015,7 @@ export function MapScreen() {
                   maxWidth={dimensions.width - 32}
                   visibleMap={projection?.visibleMap}
                   visibleMovementTracks={projection?.visibleMovementTracks}
+                  roundStartLocation={projection?.roundStartLocation}
                   previewRegion={undefined}
                 />
               </Panel>
@@ -1070,6 +1073,7 @@ export function MapScreen() {
                   maxWidth={dimensions.width - 32}
                   visibleMap={displayedVisibleMap}
                   visibleMovementTracks={projection?.visibleMovementTracks}
+                  roundStartLocation={projection?.roundStartLocation}
                   previewRegion={canvasPreviewRegion}
                   transitStations={transitStations}
                   selectedStation={mapSelectedStation}

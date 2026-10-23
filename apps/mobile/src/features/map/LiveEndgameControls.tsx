@@ -113,12 +113,55 @@ export function LiveEndgameControls() {
 
   if (projection.lifecycleState === 'game_complete') {
     const result = projection.visibleRoundResults?.at(-1);
+    const eligibleNextHiders = projection.players.filter((player) => player.role === 'seeker');
+    const completedRoundCount = projection.visibleRoundResults?.length ?? 0;
+    const nextHiderPlayerId = projection.hiderRotationOrder
+      ? projection.hiderRotationOrder[completedRoundCount]
+      : eligibleNextHiders[0]?.playerId;
+    const nextHider = eligibleNextHiders.find((player) => player.playerId === nextHiderPlayerId);
+    const rotationPlayers = (projection.hiderRotationOrder ?? [])
+      .map((playerId) => projection.players.find((player) => player.playerId === playerId))
+      .filter((player) => Boolean(player));
     return (
-      <Panel title="Round secured" subtitle="The hider was found. This run is now on the match scorecard." tone="accent">
+      <Panel title="Round secured" subtitle="The hider was found. The next round can begin here, within 10 minutes." tone="accent">
         <View style={styles.resultStamp}>
           <Text style={styles.resultTime}>{formatSurvivalTime(result?.finalHidingTimeSeconds ?? result?.survivalSeconds ?? 0)}</Text>
           <Text style={styles.resultCaption}>FINAL HIDING TIME</Text>
         </View>
+        {result?.timeBonusSeconds ? (
+          <Text style={styles.helper}>Includes {formatSurvivalTime(result.timeBonusSeconds)} from time bonuses held at capture.</Text>
+        ) : null}
+        {isHost ? (
+          <View style={styles.actionGroup}>
+            <Text style={styles.actionTitle}>{nextHider ? `Next up: ${nextHider.displayName}` : 'All hiding rounds complete'}</Text>
+            <Text style={styles.helper}>The remaining hiding order was randomized when the match started. Each round begins where the previous hider was found; you have up to 10 minutes to prepare.</Text>
+            {rotationPlayers.length > 0 ? (
+              <View style={styles.rotationList}>
+                {rotationPlayers.map((player, index) => (
+                  <Text key={player!.playerId} style={index === completedRoundCount ? styles.rotationNext : styles.rotationPlayer}>
+                    {String(index + 1).padStart(2, '0')}  {player!.displayName}{index === completedRoundCount ? '  · NEXT' : ''}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
+            {nextHider ? (
+              <AppButton
+                label={`Start next round · ${nextHider.displayName} hides`}
+                onPress={() => {
+                void submitCommand({
+                  type: 'start_next_round',
+                  payload: { nextHiderPlayerId: nextHider.playerId }
+                }).then((saved) => setStatusMessage(saved
+                  ? `${nextHider.displayName} is the hider. The new hide timer is running.`
+                  : 'The next round could not start. Check that the 10-minute planning window is still open.'));
+              }}
+              />
+            ) : null}
+          </View>
+        ) : (
+          <Text style={styles.helper}>The referee is choosing the next hider. The next round starts from this found spot.</Text>
+        )}
+        {statusMessage ? <Text style={styles.status}>{statusMessage}</Text> : null}
       </Panel>
     );
   }
@@ -213,6 +256,9 @@ const styles = StyleSheet.create({
   resultStamp: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: colors.signal, borderRadius: 16, paddingHorizontal: 18, paddingVertical: 12 },
   resultTime: { color: colors.ink, fontSize: 28, fontVariant: ['tabular-nums'], fontWeight: '900' },
   resultCaption: { color: colors.ink, fontSize: 10, fontWeight: '900', letterSpacing: 1.3 },
+  rotationList: { backgroundColor: colors.surface, borderRadius: 14, gap: 8, padding: 12 },
+  rotationPlayer: { color: colors.textMuted, fontSize: 14, fontWeight: '700' },
+  rotationNext: { color: colors.ink, fontSize: 14, fontWeight: '900' },
   status: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },
   error: { color: colors.danger, fontSize: 13, fontWeight: '700' }
 });

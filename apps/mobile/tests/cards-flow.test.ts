@@ -4,6 +4,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import type { ContentPack } from '../../../packages/shared-types/src/index.ts';
+import { getCardDiscardRequirement } from '../../../packages/domain/src/index.ts';
 
 import { mobileAppEnvironment } from '../src/config/env.ts';
 import { ensureMobileShellContentPack } from '../src/runtime/augment-content-pack.ts';
@@ -20,6 +21,14 @@ const generatedPackPath = fileURLToPath(
 
 function loadContentPack(): ContentPack {
   return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
+}
+
+function findPlayableSmokeCard(contentPack: ContentPack, projection: { visibleCards: Array<{ cardDefinitionId: string; zone: string }> }) {
+  return projection.visibleCards.find((card) => {
+    if (card.zone !== 'hand') return false;
+    const definition = contentPack.cards.find((candidate) => candidate.cardDefinitionId === card.cardDefinitionId);
+    return Boolean(definition && definition.kind !== 'time_bonus' && Object.keys(getCardDiscardRequirement(definition)).length === 0);
+  });
 }
 
 test('cards flow can bootstrap gameplay, draw, play, and discard through the real mobile runtime', async () => {
@@ -53,7 +62,7 @@ test('cards flow can bootstrap gameplay, draw, play, and discard through the rea
 
   assert.equal(prepared.projectionDelivery.projection.lifecycleState, 'seek_phase');
 
-  const drawn = await orchestrator.submitCommands(
+  let drawn = await orchestrator.submitCommands(
     created.connection,
     {
       actorId: hostProfile.playerId,
@@ -70,15 +79,23 @@ test('cards flow can bootstrap gameplay, draw, play, and discard through the rea
     ]
   );
 
-  const deckViewModelsAfterDraw = buildDeckViewModels(
-    contentPack,
-    drawn.projectionDelivery.projection,
-    'host'
-  );
-  const hiderDeck = deckViewModelsAfterDraw.find((deck) => deck.deck.deckId === 'hider-main');
-  const firstHandCard = hiderDeck?.visibleByZone.hand[0];
+  let firstHandCard = findPlayableSmokeCard(contentPack, drawn.projectionDelivery.projection);
+  while (
+    !firstHandCard &&
+    drawn.projectionDelivery.projection.visibleCards.filter((card) => card.zone === 'hand').length < 6
+  ) {
+    drawn = await orchestrator.submitCommands(
+      created.connection,
+      { actorId: hostProfile.playerId, playerId: hostProfile.playerId, role: 'host' },
+      [{ type: 'draw_card', payload: { deckId: 'hider-main' } }]
+    );
+    firstHandCard = findPlayableSmokeCard(contentPack, drawn.projectionDelivery.projection);
+  }
 
-  assert.ok(firstHandCard);
+  assert.ok(firstHandCard, 'a shuffled six-card hand should include a playable no-cost card');
+  const deckViewModelsAfterDraw = buildDeckViewModels(contentPack, drawn.projectionDelivery.projection, 'host');
+  const hiderDeck = deckViewModelsAfterDraw.find((deck) => deck.deck.deckId === 'hider-main');
+  assert.ok(hiderDeck?.visibleByZone.hand.some((card) => card.card.cardInstanceId === firstHandCard!.cardInstanceId));
   assert.equal((hiderDeck?.visibleByZone.draw_pile.length ?? 0) > 0, true);
 
   const afterPlay = await orchestrator.submitCommands(
@@ -92,7 +109,7 @@ test('cards flow can bootstrap gameplay, draw, play, and discard through the rea
       {
         type: 'play_card',
         payload: {
-          cardInstanceId: firstHandCard!.card.cardInstanceId
+          cardInstanceId: firstHandCard!.cardInstanceId
         }
       }
     ]
@@ -110,7 +127,7 @@ test('cards flow can bootstrap gameplay, draw, play, and discard through the rea
           {
             type: 'resolve_card_window',
             payload: {
-              sourceCardInstanceId: firstHandCard!.card.cardInstanceId
+              sourceCardInstanceId: firstHandCard!.cardInstanceId
             }
           }
         ]
@@ -120,7 +137,7 @@ test('cards flow can bootstrap gameplay, draw, play, and discard through the rea
   assert.equal(afterResolution.projectionDelivery.projection.activeCardResolution, undefined);
   assert.equal(
     afterResolution.projectionDelivery.projection.visibleCards.some(
-      (card) => card.cardInstanceId === firstHandCard!.card.cardInstanceId && card.zone === 'discard_pile'
+      (card) => card.cardInstanceId === firstHandCard!.cardInstanceId && card.zone === 'discard_pile'
     ),
     true
   );

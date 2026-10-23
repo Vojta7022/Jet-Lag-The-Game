@@ -91,6 +91,39 @@ function buildDefaultTeams(): TeamModel[] {
   ];
 }
 
+function shuffleValues<T>(values: T[]): T[] {
+  for (let index = values.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [values[index], values[swapIndex]] = [values[swapIndex]!, values[index]!];
+  }
+  return values;
+}
+
+function buildRoundRoles(aggregate: MatchAggregate, hiderPlayerId: string) {
+  const roleAssignments = Object.values(aggregate.roleAssignments).map((assignment) => {
+    if (assignment.role !== 'hider' && assignment.role !== 'seeker') {
+      return assignment;
+    }
+    const isHider = assignment.playerId === hiderPlayerId;
+    return {
+      ...assignment,
+      role: isHider ? 'hider' as const : 'seeker' as const,
+      teamId: isHider ? 'team-hider' : 'team-seeker'
+    };
+  });
+  const teamDefinitions = {
+    ...aggregate.teams,
+    ...Object.fromEntries(buildDefaultTeams().map((team) => [team.teamId, team]))
+  };
+  const teams = Object.values(teamDefinitions).map((team) => ({
+    ...team,
+    memberPlayerIds: roleAssignments
+      .filter((assignment) => assignment.teamId === team.teamId)
+      .map((assignment) => assignment.playerId)
+  }));
+  return { roleAssignments, teams };
+}
+
 function buildRoleAssignment(playerId: string, role: RoleAssignmentModel['role'], teamId?: string): RoleAssignmentModel {
   return {
     playerId,
@@ -133,7 +166,33 @@ function buildInitialCardInstances(
 function findTopCardInDeck(aggregate: MatchAggregate, deckId: string): CardInstanceModel | undefined {
   return Object.values(aggregate.cardInstances)
     .filter((card) => card.holderType === 'deck' && card.holderId === deckId && card.zone === 'draw_pile')
-    .sort((left, right) => left.cardInstanceId.localeCompare(right.cardInstanceId))[0];
+    .sort((left, right) =>
+      (left.drawOrder ?? Number.MAX_SAFE_INTEGER) - (right.drawOrder ?? Number.MAX_SAFE_INTEGER) ||
+      left.cardInstanceId.localeCompare(right.cardInstanceId)
+    )[0];
+}
+
+function shuffleAndResetCards(
+  aggregate: MatchAggregate,
+  contentPack: ContentPack,
+  occurredAt: string
+): CardInstanceModel[] {
+  const definitionsById = new Map(contentPack.cards.map((card) => [card.cardDefinitionId, card]));
+  return contentPack.decks.flatMap((deck) => {
+    const cards = Object.values(aggregate.cardInstances)
+      .filter((instance) => definitionsById.get(instance.cardDefinitionId)?.deckId === deck.deckId)
+      .map((instance) => ({
+        ...instance,
+        holderType: 'deck' as const,
+        holderId: deck.deckId,
+        zone: 'draw_pile' as const,
+        updatedAt: occurredAt
+      }));
+
+    shuffleValues(cards);
+
+    return cards.map((card, drawOrder) => ({ ...card, drawOrder }));
+  });
 }
 
 function buildCooldownTimer(aggregate: MatchAggregate, contentPack: ContentPack, templateId: string, occurredAt: string): TimerModel {
@@ -460,7 +519,18 @@ function eventsForCommand(
         })
       ];
     case 'start_match':
-      return [
+      {
+        const initialHiderPlayerId = Object.values(aggregate!.roleAssignments)
+          .find((assignment) => assignment.role === 'hider')?.playerId;
+        const seekerPlayerIds = Object.values(aggregate!.roleAssignments)
+          .filter((assignment) => assignment.role === 'seeker')
+          .map((assignment) => assignment.playerId)
+          .sort((left, right) => left.localeCompare(right));
+        const hiderRotationOrder = initialHiderPlayerId
+          ? [initialHiderPlayerId, ...shuffleValues(seekerPlayerIds)]
+          : shuffleValues(seekerPlayerIds);
+        const initialRoles = buildRoundRoles(aggregate!, hiderRotationOrder[0]!);
+        return [
         makeEventEnvelope(aggregate, envelope, 0, 'authority', {
           type: 'match_started',
           payload: {
@@ -470,10 +540,48 @@ function eventsForCommand(
               aggregate?.selectedRulesetId,
               aggregate?.selectedScale,
               envelope.occurredAt
-            )
+            ),
+            roleAssignments: initialRoles.roleAssignments,
+            teams: initialRoles.teams,
+            hiderRotationOrder,
+            cardInstances: shuffleAndResetCards(aggregate!, contentPack, envelope.occurredAt)
           }
         })
       ];
+      }
+    case 'start_next_round': {
+      const nextHiderPlayerId = envelope.command.payload.nextHiderPlayerId;
+      const hiderRotationOrder = aggregate!.hiderRotationOrder ?? [
+        ...Object.values(aggregate!.roleAssignments)
+          .filter((assignment) => assignment.role === 'hider')
+          .map((assignment) => assignment.playerId),
+        ...Object.values(aggregate!.roleAssignments)
+          .filter((assignment) => assignment.role === 'seeker')
+          .map((assignment) => assignment.playerId)
+          .sort((left, right) => left.localeCompare(right))
+      ];
+      const { roleAssignments, teams } = buildRoundRoles(aggregate!, nextHiderPlayerId);
+      const roundStartLocation = aggregate!.roundResults?.at(-1)?.finalHidingSpot;
+
+      return [
+        makeEventEnvelope(aggregate, envelope, 0, 'authority', {
+          type: 'round_started',
+          payload: {
+            nextHiderPlayerId,
+            lifecycleState: 'hide_phase',
+            timer: {
+              ...buildHideTimer(contentPack, aggregate!.selectedRulesetId, aggregate!.selectedScale, envelope.occurredAt),
+              timerId: `hide-phase:round:${(aggregate!.roundResults?.length ?? 0) + 1}`
+            },
+            cardInstances: shuffleAndResetCards(aggregate!, contentPack, envelope.occurredAt),
+            roleAssignments,
+            teams,
+            hiderRotationOrder,
+            roundStartLocation: roundStartLocation!
+          }
+        })
+      ];
+    }
     case 'lock_hider_location':
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'authority', {
@@ -589,11 +697,18 @@ function eventsForCommand(
           payload: {
             roundResult: {
               hiderTeamId,
+              hiderPlayerId: hiderTeam?.memberPlayerIds[0],
               foundByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId,
               foundAt: envelope.occurredAt,
               survivalSeconds,
               timeBonusSeconds,
-              finalHidingTimeSeconds: survivalSeconds + timeBonusSeconds
+              finalHidingTimeSeconds: survivalSeconds + timeBonusSeconds,
+              finalHidingSpot: aggregate!.hiddenState.finalHidingSpot
+                ? {
+                    latitude: aggregate!.hiddenState.finalHidingSpot.latitude,
+                    longitude: aggregate!.hiddenState.finalHidingSpot.longitude
+                  }
+                : undefined
             }
           }
         })

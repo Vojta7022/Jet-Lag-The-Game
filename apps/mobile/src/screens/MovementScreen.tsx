@@ -169,6 +169,7 @@ export function MovementScreen() {
           height={300}
           visibleMap={projection?.visibleMap}
           visibleMovementTracks={projection?.visibleMovementTracks}
+          roundStartLocation={projection?.roundStartLocation}
           previewRegion={fallbackPreviewRegion}
         />
         <Text style={styles.copy}>

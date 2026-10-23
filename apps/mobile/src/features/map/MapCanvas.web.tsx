@@ -14,6 +14,7 @@ export function MapCanvas(props: MapCanvasProps) {
         <MapFallbackCanvas
           visibleMap={props.visibleMap}
           visibleMovementTracks={props.visibleMovementTracks}
+          roundStartLocation={props.roundStartLocation}
           previewRegion={props.previewRegion}
           transitStations={props.transitStations}
           selectedStation={props.selectedStation}

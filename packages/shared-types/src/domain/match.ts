@@ -138,6 +138,7 @@ export interface CardInstanceModel {
   holderType: CardHolderType;
   holderId: string;
   zone: CardZone;
+  drawOrder?: number;
   visibilityPolicy: VisibilityPolicyRef;
   createdAt: string;
   updatedAt: string;
@@ -241,6 +242,7 @@ export interface EndgameStateModel {
 
 export interface RoundResultModel {
   hiderTeamId: string;
+  hiderPlayerId?: string;
   foundByPlayerId: string;
   foundAt: string;
   /** Real elapsed hiding time, with pauses removed and before held time bonuses. */
@@ -249,6 +251,16 @@ export interface RoundResultModel {
   timeBonusSeconds?: number;
   /** Survival time plus the time bonus cards retained at capture. */
   finalHidingTimeSeconds?: number;
+  /** Publicly revealed at capture; it becomes the next round's starting point. */
+  finalHidingSpot?: {
+    latitude: number;
+    longitude: number;
+  };
+}
+
+export interface RoundStartLocationModel {
+  latitude: number;
+  longitude: number;
 }
 
 export interface HiddenStateModel {
@@ -352,6 +364,8 @@ export interface MatchAggregate {
   searchArea?: SearchAreaModel;
   paused?: PauseOverlayState;
   roundResults?: RoundResultModel[];
+  roundStartLocation?: RoundStartLocationModel;
+  hiderRotationOrder?: string[];
 }
 
 export interface EventLogEntry {

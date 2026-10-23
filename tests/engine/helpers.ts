@@ -114,8 +114,10 @@ export function setupMatchToHidePhase(
   initialScale: 'small' | 'medium' | 'large' = 'small'
 ): MatchAggregate {
   const matchId = 'match-1';
-
-  return dispatchSequence(contentPack, [
+  const originalRandom = Math.random;
+  Math.random = () => 0.999999;
+  try {
+    return dispatchSequence(contentPack, [
     makeEnvelope(
       matchId,
       { actorId: 'host-1', playerId: 'host-1', role: 'host' },
@@ -234,7 +236,10 @@ export function setupMatchToHidePhase(
       },
       10
     )
-  ]);
+    ]);
+  } finally {
+    Math.random = originalRandom;
+  }
 }
 
 export function setupMatchToSeekReady(

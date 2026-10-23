@@ -67,6 +67,10 @@ export function validateStateForCommand(
       return isLifecycleState(aggregate, 'map_setup')
         ? []
         : [error(command.type, 'INVALID_STATE', 'The match can only start from map setup.')];
+    case 'start_next_round':
+      return isLifecycleState(aggregate, 'game_complete')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'A new round can only start after the previous hider is found.')];
     case 'lock_hider_location':
       return isLifecycleState(aggregate, 'hide_phase')
         ? []

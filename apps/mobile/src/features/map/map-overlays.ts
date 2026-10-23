@@ -1,5 +1,6 @@
 import type {
   GeoJsonGeometryModel,
+  RoundStartLocationModel,
   VisibleMapProjection,
   VisibleMovementTrackProjection
 } from '../../../../../packages/shared-types/src/index.ts';
@@ -30,6 +31,7 @@ export interface MapOverlayModel {
 export function buildMapOverlayModel(args: {
   visibleMap?: VisibleMapProjection;
   visibleMovementTracks?: VisibleMovementTrackProjection[];
+  roundStartLocation?: RoundStartLocationModel;
   previewRegion?: PlayableRegionCatalogEntry;
   transitStations?: TransitStationCandidate[];
   selectedStation?: TransitStationCandidate;
@@ -166,6 +168,23 @@ export function buildMapOverlayModel(args: {
     }
   }
 
+  if (args.roundStartLocation) {
+    overlays.push({
+      overlayId: 'round-start-location',
+      label: 'Last Round Start',
+      geometry: {
+        type: 'Point',
+        coordinates: [args.roundStartLocation.longitude, args.roundStartLocation.latitude]
+      },
+      renderMode: 'point',
+      fill: '#ef702f',
+      stroke: '#ffffff',
+      strokeWidth: 2,
+      opacity: 1,
+      pointRadius: 7
+    });
+  }
+
   if (args.transitStations?.length) {
     overlays.push({
       overlayId: 'transit-stations',
@@ -220,6 +239,7 @@ export function buildMapOverlayModel(args: {
       { label: 'Constraint Layer', color: '#996300' },
       { label: 'Movement Breadcrumb', color: '#7a4b00' },
       { label: 'Visible Position', color: '#7a4b00' },
+      { label: 'Last Round Start', color: '#ef702f' },
       { label: 'Transit Stations', color: '#f2bd43' },
       { label: 'Selected Hiding Zone', color: '#e29a22' }
     ]

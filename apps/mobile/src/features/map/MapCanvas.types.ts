@@ -1,4 +1,5 @@
 import type {
+  RoundStartLocationModel,
   VisibleMapProjection,
   VisibleMovementTrackProjection
 } from '../../../../../packages/shared-types/src/index.ts';
@@ -9,6 +10,7 @@ import type { TransitStationCandidate } from './station-layer.ts';
 export interface MapCanvasProps {
   visibleMap?: VisibleMapProjection;
   visibleMovementTracks?: VisibleMovementTrackProjection[];
+  roundStartLocation?: RoundStartLocationModel;
   previewRegion?: PlayableRegionCatalogEntry;
   height?: number;
   maxWidth?: number;

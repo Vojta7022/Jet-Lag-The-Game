@@ -36,6 +36,7 @@ export type DomainCommand =
   | ConfirmRulesCommand
   | CreateMapRegionCommand
   | StartMatchCommand
+  | StartNextRoundCommand
   | LockHiderLocationCommand
   | SetHidingZoneCommand
   | SetFinalHidingSpotCommand
@@ -131,6 +132,13 @@ export interface CreateMapRegionCommand {
 export interface StartMatchCommand {
   type: 'start_match';
   payload: {};
+}
+
+export interface StartNextRoundCommand {
+  type: 'start_next_round';
+  payload: {
+    nextHiderPlayerId: string;
+  };
 }
 
 export interface LockHiderLocationCommand {

@@ -70,6 +70,8 @@ The first target is now **single-device referee**. Home has a direct “Start Re
 
 The referee's event log and latest snapshot now persist with AsyncStorage, along with a resume pointer and the host profile. Startup rebuilds the authority, reconnects the host session, and returns to Home with the existing Continue action. The separate protected-reveal manager is not wired into the app UI and remains process-local. AsyncStorage supports Android, iOS, and web; it is unencrypted key-value storage, not a secrets store. [AsyncStorage platform support](https://github.com/react-native-async-storage/async-storage), checked 2026-10-23.
 
+Round completion now adds scale-adjusted values from time bonus cards still in the hider's hand to final hiding time; time bonuses cannot be played, and discarded bonuses do not score. The referee can start the next round within 10 minutes, with the next hider taken from a persisted randomized order of the remaining seekers. Each transition reshuffles and resets the deck, clears prior-round clue/map state, and carries the last found coordinates into the next round's map start marker. The first hider is still chosen in role setup, so full randomization of the order and match standings remain open. [Rulebook scans, pp. 3–6; `tests/engine/round-rotation.test.ts`; checked 2026-10-24.]
+
 Next, connect and persist protected reveal handoffs, then walk a complete round from setup through found/round result. The content-pack distribution/licensing decision remains open; do not add the scans or a full-text transcription to the public repository until that is settled.
 
 Remaining product decision: whether the project should stay a generic reusable rules engine or prioritize a personal Jet Lag Home Game ruleset.

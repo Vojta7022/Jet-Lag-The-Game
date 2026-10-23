@@ -168,6 +168,20 @@ test('map overlay helpers produce preview layers and bounded svg paths from the 
   assert.equal(path.startsWith('M '), true);
 });
 
+test('map overlay displays the previous found spot as the next round starting point', () => {
+  const overlayModel = buildMapOverlayModel({
+    roundStartLocation: { latitude: 50.087, longitude: 14.421 }
+  });
+  const startOverlay = overlayModel.overlays.find((overlay) => overlay.overlayId === 'round-start-location');
+
+  assert.equal(startOverlay?.label, 'Last Round Start');
+  assert.deepEqual(startOverlay?.geometry, {
+    type: 'Point',
+    coordinates: [14.421, 50.087]
+  });
+  assert.equal(overlayModel.legend.some((entry) => entry.label === 'Last Round Start'), true);
+});
+
 test('seed region data source supports searchable region lookup and fallback metadata', async () => {
   const dataSource = createSeedRegionDataSource(seedPlayableRegions);
 

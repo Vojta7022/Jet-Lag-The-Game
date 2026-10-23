@@ -10,6 +10,7 @@ import type {
   PlayableRegionKind,
   QuestionInstanceStatus,
   RoundResultModel,
+  RoundStartLocationModel,
   SeekPhaseSubstate,
   TeamSide
 } from '../domain/match.ts';
@@ -216,6 +217,8 @@ export interface MatchProjection {
   };
   visibleEventLog: EventLogEntry[];
   visibleRoundResults?: RoundResultModel[];
+  roundStartLocation?: RoundStartLocationModel;
+  hiderRotationOrder?: string[];
   hiddenState?: {
     hiderLocationLocked?: boolean;
     hidingZone?: {
