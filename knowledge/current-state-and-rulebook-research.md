@@ -1,6 +1,6 @@
 # Jet Lag Hide + Seek App: Current State and Rulebook Research
 
-Research date: 2026-10-21
+Research date: 2026-10-21; implementation update: 2026-10-23
 
 ## Project state
 
@@ -64,15 +64,18 @@ Suggested sequence:
 4. Port the useful reference-map interactions into the existing map: custom/add/subtract regions, import/export/share of a scenario, hiding station zones, question overlays, and clear exact/approximate/manual result labels.
 5. Run the focused test suite and device/simulator validation after feature work, then evaluate online security, background location/battery, crash recovery, and release packaging for the chosen mode.
 
-## Decisions for the owner
+## Decisions and next steps
 
-1. Which first target: persisted single-device referee, online play on separate phones, or map workbench first?
-2. Should this stay a generic reusable rules engine, or is a personal Jet Lag Home Game ruleset the main goal?
-3. Since the GitHub repository is public, should the exact book wording be supplied locally as an untracked/private content pack, or is there permission/licensing to redistribute it in the repository? Do not add the scans or a full-text transcription to the public repository until that is settled.
+The first target is now **single-device referee**. Home has a direct “Start Referee Game” action that selects this runtime and opens match setup; online create/join remain available as secondary paths. A fresh Expo web bundle succeeds with this entry path.
+
+The mode is not yet reload-safe. The authority, reveal manager, and app-shell connection live in process memory, so closing or reloading the app loses the active session. Add durable save/resume, then walk a complete round from setup through found/round result. The content-pack distribution/licensing decision remains open; do not add the scans or a full-text transcription to the public repository until that is settled.
+
+Remaining product decision: whether the project should stay a generic reusable rules engine or prioritize a personal Jet Lag Home Game ruleset.
 
 ## Sources
 
 - Local scans read for this research: `~/Downloads/2026-10-04 10-19.pdf` and `~/Downloads/2026-10-04-10-56.pdf` (scanned 2026-10-04; checked 2026-10-21).
 - App source: `projects/personal/PERS_Jet-Lag-The-Game` at local `master` commit `5a93af4` (2026-10-21).
+- Implementation update: `projects/personal/PERS_Jet-Lag-The-Game` commit `a0a8cda` (2026-10-23).
 - Map reference source: [taibeled/JetLagHideAndSeek](https://github.com/taibeled/JetLagHideAndSeek), local inspected revision `179eb0f` (2026-08-28), MIT license.
 - Official [Hide + Seek Expansion Pack Vol. 1 additional reference rules](https://rules.jetlagthegame.com/expansion/) (checked 2026-10-21).
