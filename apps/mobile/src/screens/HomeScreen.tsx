@@ -53,8 +53,8 @@ export function HomeScreen() {
   return (
     <ScreenContainer
       title="Transit Hide and Seek"
-      eyebrow="Online Play"
-      subtitle="Create or join an online match, then stay with your team on one shared live game flow."
+      eyebrow="Game Night"
+      subtitle="Run a complete hide-and-seek game with one device as the referee, or connect players online."
       topSlot={<ProductNavBar current="home" />}
     >
       {state.errorMessage ? (
@@ -62,23 +62,24 @@ export function HomeScreen() {
       ) : null}
 
       <Panel
-        title="Play Online"
-        subtitle="Online cloud play is the main player path. Create or join a match, then move straight into the live map, questions, cards, and chat."
+        title="Start a Game"
+        subtitle="The referee keeps this device and manages the shared map, questions, cards, and game flow."
         tone="accent"
       >
-        {state.runtimeKind !== 'online_foundation' ? (
-          <StateBanner
-            tone="info"
-            title="Local mode is selected"
-            detail="The main player flow uses online cloud sessions. The buttons below switch this device back to online mode for normal play."
-          />
-        ) : null}
+        <AppButton
+          label="Start Referee Game"
+          onPress={() => {
+            selectRuntimeKind('single_device_referee');
+            router.push('/create-match');
+          }}
+        />
         <AppButton
           label="Create Online Match"
           onPress={() => {
             selectRuntimeKind('online_foundation');
             router.push('/create-match');
           }}
+          tone="secondary"
         />
         <AppButton
           label="Join Online Match"
@@ -98,7 +99,7 @@ export function HomeScreen() {
           />
         ) : null}
         <Text style={styles.helper}>
-          Every normal player should use online mode on their own device. Local and referee sessions stay available for testing and demos only.
+          Referee mode is designed for everyone to gather around one device. To play remotely, each person joins the online match from their own device.
         </Text>
       </Panel>
 
@@ -155,7 +156,7 @@ export function HomeScreen() {
       {mobileAppEnvironment.enableDeveloperTools ? (
         <Panel
           title="Other Ways To Play"
-          subtitle="These modes stay available for development, referee play, and local testing. They are not the main consumer player path."
+          subtitle="Local runtime options for development and testing."
           tone="soft"
         >
           <RuntimeModeSwitcher />

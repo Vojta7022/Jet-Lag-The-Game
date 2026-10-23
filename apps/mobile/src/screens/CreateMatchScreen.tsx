@@ -45,9 +45,15 @@ export function CreateMatchScreen() {
 
   return (
     <ScreenContainer
-      title={runtimeKind === 'online_foundation' ? 'Create Online Match' : 'Create Match'}
+      title={runtimeKind === 'online_foundation'
+        ? 'Create Online Match'
+        : runtimeKind === 'single_device_referee'
+          ? 'Start Referee Game'
+          : 'Create Match'}
       eyebrow="Pregame"
-      subtitle="Create the room, share the join code, then move into teams and map setup."
+      subtitle={runtimeKind === 'single_device_referee'
+        ? 'Set the game size, then continue to teams and map setup on this device.'
+        : 'Create the room, share the join code, then move into teams and map setup.'}
     >
       {state.errorMessage ? (
         <StateBanner tone="error" title="Create match failed" detail={state.errorMessage} />
@@ -92,8 +98,10 @@ export function CreateMatchScreen() {
         ) : (
           <StateBanner
             tone="warning"
-            title="Local or referee mode"
-            detail="This mode is available, but the main player flow is designed around online cloud play."
+            title={runtimeKind === 'single_device_referee' ? 'One device is the referee' : 'Local session'}
+            detail={runtimeKind === 'single_device_referee'
+              ? 'Keep this device with the referee. Players can take turns viewing it for setup, questions, and reveals.'
+              : 'This local session is intended for development and testing.'}
           />
         )}
         <Text>{runtimeHint}</Text>

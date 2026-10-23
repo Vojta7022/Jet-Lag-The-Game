@@ -7,8 +7,11 @@
 - [x] Inspect the supplied map site and its MIT-licensed source repository.
 - [x] Compare imported content with the booklet and base rules.
 - [x] Record current-state findings and staged completion plan.
-- [ ] Owner chooses the first target play mode and content-pack distribution approach.
-- [ ] After that decision, update the implementation roadmap and begin the selected playable slice.
+- [x] Choose the first target play mode: single-device referee.
+- [ ] Decide the content-pack distribution approach.
+- [x] Make referee mode a first-class Home-screen start path and clarify its setup instructions.
+- [ ] Add durable save-and-resume for referee sessions; current authority, reveal state, and app shell are in-memory.
+- [ ] Complete a full round walkthrough and close remaining rules/content gaps.
 
 ## Review
 
@@ -17,3 +20,6 @@
 - The generated workbook pack has 81 question templates and 125 card instances, but remains draft output with 21 warnings, no ruleset, and no map preset.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - App/test execution was intentionally not part of this research task.
+- Implementation direction: single-device referee is the first playable target because its authority, map, and gameplay flows already exist in-process; durable recovery is the next foundational gap.
+- Home now starts referee setup directly; online create/join remain available as secondary paths.
+- Session persistence is not implemented by this slice. A reload still loses a referee match because its runtime authority and reveal manager are process-local.
