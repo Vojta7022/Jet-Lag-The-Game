@@ -17,6 +17,7 @@ export function Field(props: FieldProps) {
     <View style={styles.field}>
       <Text style={styles.label}>{props.label}</Text>
       <TextInput
+        accessibilityLabel={props.label}
         autoCapitalize={props.autoCapitalize ?? 'none'}
         multiline={props.multiline}
         onChangeText={props.onChangeText}
@@ -42,9 +43,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   input: {
-    backgroundColor: colors.surfaceRaised,
+    backgroundColor: colors.surfaceMuted,
     borderColor: colors.borderStrong,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     color: colors.text,
     minHeight: 50,

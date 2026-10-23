@@ -18,11 +18,11 @@
 
 - [x] Audit the current shared layout, reusable controls, navigation, and player-facing screens.
 - [x] Research game UI references and document a product-specific visual direction.
-- [ ] Owner approves or adjusts the proposed Transit Field Kit direction.
-- [ ] Write and review the visual redesign spec and phased implementation plan.
-- [ ] Redesign Home, lobby, and live-map navigation/action hierarchy while preserving game behavior.
-- [ ] Extend the approved visual system to question, card, chat, and supporting screens.
-- [ ] Review the result at phone and desktop widths, including focus, disabled, loading, and error states.
+- [x] Owner approves the Transit Field Kit direction and implementation.
+- [x] Record the visual system and concise implementation plan.
+- [x] Redesign Home, lobby, and live-map navigation/action hierarchy while preserving game behavior.
+- [x] Extend the visual system to question, card, chat, and supporting screens.
+- [x] Review the result at phone and desktop widths and exercise the key single-device referee path.
 
 ## Review
 
@@ -36,3 +36,8 @@
 - Referee event logs and latest snapshots now use persistent AsyncStorage, and the app stores a resume pointer/profile and reconnects to the recovered host session at startup. Home then offers the existing Continue action.
 - Protected reveal handoffs are still not connected to app UI; that manager remains process-local. A full round walkthrough and rules/content reconciliation remain open.
 - The current UI's repeated admin-style header/panel/banner hierarchy and the proposed game-first direction are documented in `knowledge/game-ui-redesign-research.md`.
+- The Transit Field Kit is now implemented: warm timetable paper, route-ink navy, signal yellow and orange, compact station navigation, illustrated Home, named team spaces, larger bounded map, and redesigned clue/card/chat surfaces. Browser screenshots are in `deliverables/ui-preview/`.
+- Browser review at 1440px desktop and 390px/320px phone widths found no horizontal overflow. A local referee game was resumed, a crew member added, the Prague boundary selected, the match started, and a six-card hand drawn. The roster and city returned after a browser reconnect.
+- Web `accessible={false}` SVG props caused the reported React warning; decorative game SVGs now use `aria-hidden={true}`. Measured map width also prevents the map surface from extending beyond its card.
+- Existing full suite passes 159/159 after decoupling the orchestrator's default in-memory persistence from native AsyncStorage and explicitly injecting AsyncStorage in the app provider. TypeScript typecheck passes.
+- Remaining playability gaps: hide/search countdowns can reset when commands or projections refresh because synthetic command timestamps are used; the imported draft content pack is not reconciled to the scanned booklets; protected reveal handoffs remain unconnected; web map uses a bounded SVG preview rather than street tiles. These remain separate work items.

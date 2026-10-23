@@ -1,15 +1,25 @@
+import { useState } from 'react';
+import { View } from 'react-native';
 import type { MapCanvasProps } from './MapCanvas.types.ts';
 import { MapFallbackCanvas } from './MapFallbackCanvas.tsx';
 
 export function MapCanvas(props: MapCanvasProps) {
+  const [frameWidth, setFrameWidth] = useState<number>();
   return (
-    <MapFallbackCanvas
-      visibleMap={props.visibleMap}
-      visibleMovementTracks={props.visibleMovementTracks}
-      previewRegion={props.previewRegion}
-      height={props.height}
-      maxWidth={props.maxWidth}
-      notice="Native map tiles are used on iOS and Android. Web keeps the bounded fallback preview in this phase."
-    />
+    <View
+      style={{ width: '100%', minHeight: props.height }}
+      onLayout={(event) => setFrameWidth(event.nativeEvent.layout.width)}
+    >
+      {frameWidth ? (
+        <MapFallbackCanvas
+          visibleMap={props.visibleMap}
+          visibleMovementTracks={props.visibleMovementTracks}
+          previewRegion={props.previewRegion}
+          height={props.height}
+          maxWidth={Math.min(props.maxWidth ?? frameWidth, frameWidth)}
+          notice="Boundary preview · Street tiles are available in the mobile app."
+        />
+      ) : null}
+    </View>
   );
 }

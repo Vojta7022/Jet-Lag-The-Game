@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
 
@@ -6,21 +6,45 @@ import { colors } from '../../ui/theme.ts';
 
 import { MapOverlayRenderer } from './MapOverlayRenderer';
 import type { MapCanvasProps } from './MapCanvas.types.ts';
-import { buildMapCameraRegion, collectGeometryCoordinates, getPreferredMapGeometry } from './map-geometry.ts';
+import {
+  buildMapCameraRegion,
+  collectGeometryCoordinates,
+  getPreferredMapGeometry
+} from './map-geometry.ts';
 import { buildMapOverlayModel } from './map-overlays.ts';
 
 export function MapCanvas(props: MapCanvasProps) {
+  const [frameWidth, setFrameWidth] = useState<number>();
+  return (
+    <View
+      style={{ width: '100%', minHeight: props.height }}
+      onLayout={(event) => setFrameWidth(event.nativeEvent.layout.width)}
+    >
+      {frameWidth ? (
+        <NativeMapSurface
+          {...props}
+          maxWidth={Math.min(props.maxWidth ?? frameWidth, frameWidth)}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function NativeMapSurface(props: MapCanvasProps) {
   const dimensions = useWindowDimensions();
   const availableWidth = Math.max(260, dimensions.width - 32);
-  const width = props.maxWidth ? Math.min(availableWidth, props.maxWidth) : availableWidth;
+  const width = props.maxWidth
+    ? Math.min(availableWidth, props.maxWidth)
+    : availableWidth;
   const height = props.height ?? Math.round(width * 0.78);
   const mapRef = useRef<MapView | null>(null);
   const overlayModel = useMemo(
-    () => buildMapOverlayModel({
-      visibleMap: props.visibleMap,
-      visibleMovementTracks: props.visibleMovementTracks,
-      previewRegion: props.previewRegion
-    }),
+    () =>
+      buildMapOverlayModel({
+        visibleMap: props.visibleMap,
+        visibleMovementTracks: props.visibleMovementTracks,
+        previewRegion: props.previewRegion
+      }),
     [props.previewRegion, props.visibleMap, props.visibleMovementTracks]
   );
   const referenceGeometry = getPreferredMapGeometry({
@@ -28,14 +52,17 @@ export function MapCanvas(props: MapCanvasProps) {
     previewRegion: props.previewRegion
   });
   const initialRegion = useMemo(
-    () => buildMapCameraRegion({
-      visibleMap: props.visibleMap,
-      previewRegion: props.previewRegion
-    }),
+    () =>
+      buildMapCameraRegion({
+        visibleMap: props.visibleMap,
+        previewRegion: props.previewRegion
+      }),
     [props.previewRegion, props.visibleMap]
   );
   const fitCoordinates = useMemo(() => {
-    const coordinates = overlayModel.overlays.flatMap((overlay) => collectGeometryCoordinates(overlay.geometry));
+    const coordinates = overlayModel.overlays.flatMap((overlay) =>
+      collectGeometryCoordinates(overlay.geometry)
+    );
 
     if (coordinates.length > 0) {
       return coordinates;
@@ -69,7 +96,8 @@ export function MapCanvas(props: MapCanvasProps) {
       <View style={[styles.frame, styles.emptyFrame, { width, height }]}>
         <Text style={styles.emptyTitle}>Map preview unavailable</Text>
         <Text style={styles.emptyCopy}>
-          Search for a region or apply a selected boundary to the current match to render the bounded search surface.
+          Search for a region or apply a selected boundary to the current match
+          to render the bounded search surface.
         </Text>
       </View>
     );

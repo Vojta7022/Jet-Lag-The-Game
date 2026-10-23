@@ -6,6 +6,7 @@ import type {
   MatchMode,
   MatchProjection,
   MatchRuntimeSnapshot,
+  LocalRuntimePersistence,
   OnlineAuthSession,
   ProjectionRecipient,
   ProjectionScope,
@@ -51,7 +52,6 @@ import {
   type RemoteAttachmentMediaSource
 } from './supabase-attachment-storage.ts';
 import { SupabaseMobileSessionManager } from './supabase-mobile-session.ts';
-import { AsyncStorageRuntimePersistence } from './local-session-storage.ts';
 import type {
   ConnectionSnapshotSummary,
   ConnectedMatchResult,
@@ -148,7 +148,7 @@ function getPlayerRoleFromProjection(
 export class MobileRuntimeOrchestrator {
   private readonly contentPack: ContentPack;
   private readonly environment: MobileAppEnvironment;
-  private readonly singleDevicePersistence = new AsyncStorageRuntimePersistence();
+  private readonly singleDevicePersistence: LocalRuntimePersistence;
   private readonly commandSequences = new Map<string, number>();
   private readonly inMemoryRuntimes = new Map<string, InMemoryAuthorityRuntime>();
   private readonly nearbyRuntimes = new Map<string, NearbyAuthorityRuntime>();
@@ -156,9 +156,10 @@ export class MobileRuntimeOrchestrator {
   private readonly nearbyJoinCodeIndex = new Map<string, string>();
   private onlineFoundation?: OnlineFoundationServices;
 
-  constructor(options: { contentPack: ContentPack; environment: MobileAppEnvironment }) {
+  constructor(options: { contentPack: ContentPack; environment: MobileAppEnvironment; singleDevicePersistence?: LocalRuntimePersistence }) {
     this.contentPack = options.contentPack;
     this.environment = options.environment;
+    this.singleDevicePersistence = options.singleDevicePersistence ?? new InMemoryPersistence();
   }
 
   async createMatch(

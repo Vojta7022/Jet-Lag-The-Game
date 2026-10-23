@@ -10,6 +10,7 @@ Cross-platform mobile app and rules engine for running a configurable transit-ba
 - Run an Expo mobile client.
 - Import Jet Lag-style content.
 - Provide engine, geo, transport, shared types, and test-kit packages.
+- Play locally as a referee through a game-first UI for Home, lobby, map, clues, cards, and team radio.
 
 ## User workflows
 
@@ -44,6 +45,9 @@ Cross-platform mobile app and rules engine for running a configurable transit-ba
 - `npm run mobile:ios` / `npm run mobile:android` / `npm run mobile:web` - platform runs.
 - `npm run test` - all tests.
 - `npm run test:engine`, `test:geo`, `test:transport`, `test:mobile` - focused tests.
+- `npm run mobile:typecheck` - mobile TypeScript check.
+
+The full test suite also uses Python `openpyxl` for workbook importer tests. Create a local environment once with `python3 -m venv .venv`, then install `requirements-dev.txt` into it and run tests with `.venv/bin` at the front of `PATH`.
 
 ## Configuration and secrets
 

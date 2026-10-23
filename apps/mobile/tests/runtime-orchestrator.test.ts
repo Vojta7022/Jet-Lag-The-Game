@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { InMemoryRuntimePersistence } from '../../../packages/transport/src/in-memory-persistence.ts';
 import type { ContentPack } from '../../../packages/shared-types/src/index.ts';
 
 import { mobileAppEnvironment } from '../src/config/env.ts';
@@ -151,4 +152,22 @@ test('runtime orchestrator lets online players join by short join code even when
 
   await orchestrator.disconnect(host.connection);
   await orchestrator.disconnect(guest.connection);
+});
+
+
+test('a fresh referee orchestrator restores the saved roster through injected persistence', async () => {
+  const persistence = new InMemoryRuntimePersistence();
+  const options = { contentPack: loadContentPack(), environment: mobileAppEnvironment, singleDevicePersistence: persistence };
+  const profile = { playerId: 'resume-host', displayName: 'Referee' };
+  const first = new MobileRuntimeOrchestrator(options);
+  const created = await first.createMatch(profile, { runtimeKind: 'single_device_referee', matchId: 'resume-game', initialScale: 'small' });
+  await first.submitCommands(created.connection, { actorId: profile.playerId, playerId: profile.playerId, role: 'host' }, [{ type: 'join_match', payload: { playerId: 'local-scout', displayName: 'Scout' } }]);
+  await first.disconnect(created.connection);
+  const restarted = new MobileRuntimeOrchestrator(options);
+  const restored = await restarted.resumeSingleDeviceMatch('resume-game', profile);
+  assert.ok(restored);
+  assert.equal(restored.connection.recipient.scope, 'host_admin');
+  assert.equal(restored.connection.recipient.playerId, profile.playerId);
+  assert.ok(restored.initialSync.projectionDelivery.projection.players.some(player => player.displayName === 'Scout'));
+  assert.equal(await restarted.resumeSingleDeviceMatch('missing-game', profile), undefined);
 });

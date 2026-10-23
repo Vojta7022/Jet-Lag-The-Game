@@ -11,6 +11,7 @@ import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
+import { GameArtwork } from '../ui/GameArtwork.tsx';
 
 const SCALE_OPTIONS = [
   { value: 'small', label: 'Small' },
@@ -21,13 +22,18 @@ const SCALE_OPTIONS = [
 export function CreateMatchScreen() {
   const { state, createMatch } = useAppShell();
   const { runtimeKind } = useRuntimeMode();
-  const [matchId, setMatchId] = useState(`${mobileAppEnvironment.defaultMatchPrefix}-${Date.now().toString(36)}`);
-  const [initialScale, setInitialScale] = useState<'small' | 'medium' | 'large'>('small');
-  const matchMode = runtimeKind === 'online_foundation'
-    ? 'online'
-    : runtimeKind === 'nearby_host_authority'
-      ? 'local_nearby'
-      : 'single_device_referee';
+  const [matchId, setMatchId] = useState(
+    `${mobileAppEnvironment.defaultMatchPrefix}-${Date.now().toString(36)}`
+  );
+  const [initialScale, setInitialScale] = useState<
+    'small' | 'medium' | 'large'
+  >('small');
+  const matchMode =
+    runtimeKind === 'online_foundation'
+      ? 'online'
+      : runtimeKind === 'nearby_host_authority'
+        ? 'local_nearby'
+        : 'single_device_referee';
 
   const runtimeHint = useMemo(() => {
     switch (runtimeKind) {
@@ -45,29 +51,51 @@ export function CreateMatchScreen() {
 
   return (
     <ScreenContainer
-      title={runtimeKind === 'online_foundation'
-        ? 'Create Online Match'
-        : runtimeKind === 'single_device_referee'
-          ? 'Start Referee Game'
-          : 'Create Match'}
-      eyebrow="Pregame"
-      subtitle={runtimeKind === 'single_device_referee'
-        ? 'Set the game size, then continue to teams and map setup on this device.'
-        : 'Create the room, share the join code, then move into teams and map setup.'}
+      title={
+        runtimeKind === 'online_foundation'
+          ? 'Create Online Match'
+          : runtimeKind === 'single_device_referee'
+            ? 'Plan your escape'
+            : 'Create Match'
+      }
+      eyebrow="FIRST STOP · YOUR ADVENTURE"
+      subtitle={
+        runtimeKind === 'single_device_referee'
+          ? 'Choose the scale of your adventure. Your crew and playing field come next.'
+          : 'Create the room, share the join code, then move into teams and map setup.'
+      }
     >
       {state.errorMessage ? (
-        <StateBanner tone="error" title="Create match failed" detail={state.errorMessage} />
+        <StateBanner
+          tone="error"
+          title="Create match failed"
+          detail={state.errorMessage}
+        />
       ) : null}
 
+      <View style={styles.routeArtwork}>
+        <GameArtwork />
+      </View>
+
       <Panel
-        title="Match Setup"
-        subtitle={runtimeKind === 'online_foundation'
-          ? 'Choose the room size, then create the room. A short join code appears right after creation.'
-          : 'Choose a match code and game size, then create the session.'}
+        title="How far will you go?"
+        subtitle={
+          runtimeKind === 'online_foundation'
+            ? 'Choose the room size, then create the room. A short join code appears right after creation.'
+            : runtimeKind === 'single_device_referee'
+              ? 'Pick a scale, then bring your crew together.'
+              : 'Choose a match code and game size, then create the session.'
+        }
         tone="accent"
       >
-        {runtimeKind === 'online_foundation' ? null : (
-          <Field label="Match Code" value={matchId} onChangeText={setMatchId} placeholder="prague-night-run" />
+        {runtimeKind === 'online_foundation' ||
+        runtimeKind === 'single_device_referee' ? null : (
+          <Field
+            label="Match Code"
+            value={matchId}
+            onChangeText={setMatchId}
+            placeholder="prague-night-run"
+          />
         )}
         <View style={styles.choiceGroup}>
           <Text style={styles.choiceLabel}>Game Size</Text>
@@ -78,11 +106,32 @@ export function CreateMatchScreen() {
                 <Pressable
                   key={option.value}
                   accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   onPress={() => setInitialScale(option.value)}
-                  style={[styles.choiceChip, selected ? styles.choiceChipSelected : null]}
+                  style={[
+                    styles.choiceChip,
+                    selected ? styles.choiceChipSelected : null
+                  ]}
                 >
-                  <Text style={[styles.choiceChipLabel, selected ? styles.choiceChipLabelSelected : null]}>
+                  <Text
+                    style={[
+                      styles.choiceChipLabel,
+                      selected ? styles.choiceChipLabelSelected : null
+                    ]}
+                  >
                     {option.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.choiceDetail,
+                      selected && styles.choiceDetailSelected
+                    ]}
+                  >
+                    {option.value === 'small'
+                      ? 'City sprint'
+                      : option.value === 'medium'
+                        ? 'Regional chase'
+                        : 'Grand escape'}
                   </Text>
                 </Pressable>
               );
@@ -97,16 +146,28 @@ export function CreateMatchScreen() {
           />
         ) : (
           <StateBanner
-            tone="warning"
-            title={runtimeKind === 'single_device_referee' ? 'One device is the referee' : 'Local session'}
-            detail={runtimeKind === 'single_device_referee'
-              ? 'Keep this device with the referee. Players can take turns viewing it for setup, questions, and reveals.'
-              : 'This local session is intended for development and testing.'}
+            tone="info"
+            title={
+              runtimeKind === 'single_device_referee'
+                ? 'One device is the referee'
+                : 'Local session'
+            }
+            detail={
+              runtimeKind === 'single_device_referee'
+                ? 'Keep this device with the referee to manage clues, cards, and the game clock.'
+                : 'This local session is intended for development and testing.'
+            }
           />
         )}
-        <Text>{runtimeHint}</Text>
+        {runtimeKind !== 'single_device_referee' ? (
+          <Text>{runtimeHint}</Text>
+        ) : null}
         <AppButton
-          label={state.loadState === 'loading' ? 'Creating Match...' : 'Create Match Room'}
+          label={
+            state.loadState === 'loading'
+              ? 'Getting ready…'
+              : 'Gather the crew  →'
+          }
           disabled={state.loadState === 'loading'}
           onPress={() => {
             void createMatch({
@@ -126,6 +187,14 @@ export function CreateMatchScreen() {
 }
 
 const styles = StyleSheet.create({
+  routeArtwork: { height: 140, overflow: 'hidden', borderRadius: 12 },
+  choiceDetail: {
+    color: colors.textMuted,
+    fontSize: 10,
+    marginTop: 6,
+    textAlign: 'center'
+  },
+  choiceDetailSelected: { color: colors.ink },
   choiceGroup: {
     gap: 10
   },
@@ -143,7 +212,7 @@ const styles = StyleSheet.create({
   choiceChip: {
     flex: 1,
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     backgroundColor: colors.surfaceRaised,
@@ -151,8 +220,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12
   },
   choiceChipSelected: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    backgroundColor: colors.signal,
+    borderColor: colors.ink
   },
   choiceChipLabel: {
     color: colors.text,
@@ -160,6 +229,6 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   choiceChipLabelSelected: {
-    color: colors.inkInverse
+    color: colors.ink
   }
 });

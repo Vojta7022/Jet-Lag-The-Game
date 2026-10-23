@@ -2,7 +2,7 @@
 
 This Expo workspace now contains the first mobile shell for the project.
 
-Included in this phase:
+Included:
 
 - Expo + React Native + TypeScript scaffold
 - Expo Router screen structure
@@ -15,6 +15,7 @@ Included in this phase:
 - first-pass chat screen with public/team channel switching, scoped message lists, and honest media/evidence flows with durable online upload when configured
 - Supabase-backed online foundation path for persisted matches, snapshots, projections, and durable attachment uploads when online env is configured
 - first-pass movement screen with foreground location permission state, `update_location` wiring, and seeker breadcrumb overlays
+- responsive game-first visual system for Home, lobby, live map, questions, cards, and team radio
 - lobby, dashboard placeholder, and status screens
 - developer runtime switcher for:
   - in-memory runtime
@@ -25,7 +26,6 @@ Included in this phase:
 
 Still intentionally deferred:
 
-- visual polish
 - real LAN discovery and device transport
 - production-tuned background location behavior
 - a server-side authoritative online gateway and full Supabase production hardening
@@ -61,6 +61,14 @@ npm run test:mobile
 ```
 
 The mobile shell README and root workspace scripts assume npm workspaces for now. `pnpm-workspace.yaml` is present for future tooling, but this first runnable pass is documented against npm.
+
+For the full repository test suite, install the Python workbook-import dependency in a project-local virtual environment, then expose that environment on `PATH`:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+PATH="$PWD/.venv/bin:$PATH" npm test
+```
 
 ## Environment Variables
 
@@ -124,8 +132,8 @@ What is still placeholder in this phase:
 
 - direct mobile use of the public OSM/Nominatim endpoint is suitable for local or low-volume development only
 - a production deployment should move the region provider behind a backend or proxy that can enforce attribution, caching, and rate limiting cleanly
-- web keeps the bounded fallback preview instead of the native tile surface
-- map styling is intentionally functional rather than polished
+- web keeps the bounded fallback preview instead of the native tile surface; street tiles are available on iOS and Android
+- the visible countdown can re-anchor after new command projections; replace synthetic timestamps and anchor timer state across sync/restart before relying on it for a timed game
 
 Current provider behavior:
 

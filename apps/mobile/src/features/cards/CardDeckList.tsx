@@ -10,7 +10,7 @@ import {
   summarizeVisibleDeckCounts
 } from './card-guidance.ts';
 
-import { colors } from '../../ui/theme.ts';
+import { colors, fonts } from '../../ui/theme.ts';
 
 interface CardDeckListProps {
   decks: DeckViewModel[];
@@ -28,6 +28,7 @@ export function CardDeckList(props: CardDeckListProps) {
           <Pressable
             key={deckViewModel.deck.deckId}
             accessibilityRole="button"
+            accessibilityState={{ selected }}
             onPress={() => props.onSelect(deckViewModel.deck.deckId)}
             style={[styles.item, selected ? styles.itemSelected : null]}
           >
@@ -61,14 +62,14 @@ const styles = StyleSheet.create({
   item: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.borderStrong,
-    borderRadius: 24,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 10,
     padding: 16,
     shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
-    shadowRadius: 16,
+    shadowRadius: 8,
     elevation: 2
   },
   itemSelected: {
@@ -87,7 +88,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 18,
+    fontFamily: fonts.display,
+    fontSize: 27,
     fontWeight: '800'
   },
   meta: {

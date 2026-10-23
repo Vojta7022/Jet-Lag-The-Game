@@ -1,23 +1,34 @@
+import { Platform } from 'react-native';
+
 export const colors = {
-  background: '#f5f1e8',
-  surface: '#fffdf8',
-  surfaceMuted: '#f0e8d9',
-  surfaceRaised: '#ffffff',
-  border: '#d8ccb4',
-  borderStrong: '#c8ba9f',
-  text: '#18272d',
-  textMuted: '#5b6864',
-  textSubtle: '#7a857f',
-  accent: '#0f6c74',
-  accentStrong: '#0b5359',
-  accentMuted: '#d8eef0',
-  accentWarm: '#d16b36',
-  accentWarmMuted: '#f8e2d5',
-  danger: '#b4544d',
-  dangerMuted: '#f8e4e1',
-  success: '#2d7a52',
-  successMuted: '#e2f1e8',
-  warning: '#9c6a1b',
-  warningMuted: '#fff1d9',
-  inkInverse: '#fffaf2'
+  background: '#F5F0E3',
+  surface: '#FFFCF3',
+  surfaceMuted: '#EAE5D7',
+  surfaceRaised: '#FFFEF8',
+  border: '#D9D4C5',
+  borderStrong: '#9DA9A7',
+  text: '#102E43',
+  textMuted: '#53676C',
+  textSubtle: '#6D7C7C',
+  accent: '#007C80',
+  accentStrong: '#005F65',
+  accentMuted: '#DCEEE7',
+  accentWarm: '#D94819',
+  accentWarmMuted: '#FBE4D5',
+  danger: '#AB342C',
+  dangerMuted: '#FAE3DC',
+  success: '#246746',
+  successMuted: '#E0EFE2',
+  warning: '#845500',
+  warningMuted: '#FFF0B5',
+  inkInverse: '#FFFCF1',
+  signal: '#FFD447',
+  ink: '#102E43',
+  hider: '#007C80',
+  seeker: '#D94819'
+};
+
+export const fonts = {
+  display: Platform.select({ ios: 'Georgia', android: 'serif', web: 'Georgia, serif' }),
+  mono: Platform.select({ ios: 'Menlo', android: 'monospace', web: 'monospace' })
 };

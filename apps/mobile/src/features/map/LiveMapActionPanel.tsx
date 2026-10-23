@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '../../ui/AppButton.tsx';
-import { colors } from '../../ui/theme.ts';
+import { colors, fonts } from '../../ui/theme.ts';
 
 import type { LiveGameplayGuideModel } from './live-gameplay-model.ts';
 import { LiveMapInfoChips } from './LiveMapInfoChips.tsx';
@@ -55,7 +55,7 @@ export function LiveMapActionPanel(props: LiveMapActionPanelProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 14,
     padding: 16
@@ -95,7 +95,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 22,
+    fontFamily: fonts.display,
+    fontSize: 26,
     fontWeight: '800'
   },
   copy: {
@@ -109,7 +110,7 @@ const styles = StyleSheet.create({
     gap: 10
   },
   actionCell: {
-    flexBasis: '48%',
+    flexBasis: 220,
     flexGrow: 1
   },
   helper: {

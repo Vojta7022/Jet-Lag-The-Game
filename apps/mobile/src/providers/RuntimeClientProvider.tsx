@@ -2,6 +2,7 @@ import { createContext, useContext, useRef } from 'react';
 
 import { mobileAppEnvironment } from '../config/env.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
+import { AsyncStorageRuntimePersistence } from '../runtime/local-session-storage.ts';
 import { MobileRuntimeOrchestrator } from '../runtime/mobile-runtime-orchestrator.ts';
 
 const RuntimeClientContext = createContext<MobileRuntimeOrchestrator | undefined>(undefined);
@@ -12,7 +13,8 @@ export function RuntimeClientProvider(props: { children: React.ReactNode }) {
   if (!orchestratorRef.current) {
     orchestratorRef.current = new MobileRuntimeOrchestrator({
       contentPack: defaultContentPack,
-      environment: mobileAppEnvironment
+      environment: mobileAppEnvironment,
+      singleDevicePersistence: new AsyncStorageRuntimePersistence()
     });
   }
 

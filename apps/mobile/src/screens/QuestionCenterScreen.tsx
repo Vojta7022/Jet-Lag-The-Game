@@ -60,7 +60,10 @@ import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 
-function resolveCurrentRole(role: string | undefined, scope: string | undefined) {
+function resolveCurrentRole(
+  role: string | undefined,
+  scope: string | undefined
+) {
   if (role === 'host' || scope === 'host_admin') {
     return 'host' as const;
   }
@@ -77,20 +80,29 @@ function resolveCurrentRole(role: string | undefined, scope: string | undefined)
 }
 
 function formatRoleLabel(role: string) {
-  return role.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  return role
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function formatPhaseLabel(lifecycleState: string | undefined, seekPhaseSubstate: string | undefined) {
+function formatPhaseLabel(
+  lifecycleState: string | undefined,
+  seekPhaseSubstate: string | undefined
+) {
   if (!lifecycleState) {
     return 'Unavailable';
   }
 
-  const lifecycleLabel = lifecycleState.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  const lifecycleLabel = lifecycleState
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
   if (!seekPhaseSubstate) {
     return lifecycleLabel;
   }
 
-  const substateLabel = seekPhaseSubstate.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  const substateLabel = seekPhaseSubstate
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
   return `${lifecycleLabel} · ${substateLabel}`;
 }
 
@@ -137,12 +149,22 @@ function describeQuestionFlowStep(
 }
 
 export function QuestionCenterScreen() {
-  const { state, submitCommand, submitCommands, refreshActiveMatch, prepareAttachmentUploadCommands } = useAppShell();
+  const [showGameContext, setShowGameContext] = useState(false);
+  const {
+    state,
+    submitCommand,
+    submitCommands,
+    refreshActiveMatch,
+    prepareAttachmentUploadCommands
+  } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);
-  const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
+  const viewerRole = resolveCurrentRole(
+    activeMatch?.playerRole,
+    activeMatch?.recipient.scope
+  );
   const canOpenMatchControls = canAccessHostControls(
     activeMatch?.playerRole ?? activeMatch?.recipient.role,
     activeMatch?.recipient.scope
@@ -154,24 +176,44 @@ export function QuestionCenterScreen() {
     () => buildQuestionCategoryViewModels(defaultContentPack),
     []
   );
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(
-    categoryViewModels[0]?.category.categoryId
-  );
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(
-    categoryViewModels[0]?.templates[0]?.templateId
-  );
+  const [selectedCategoryId, setSelectedCategoryId] = useState<
+    string | undefined
+  >(categoryViewModels[0]?.category.categoryId);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<
+    string | undefined
+  >(categoryViewModels[0]?.templates[0]?.templateId);
   const activeQuestion = findActiveQuestion(projection);
   const resolvedQuestion = findLatestResolvedQuestion(projection);
-  const activeQuestionTemplate = findQuestionTemplate(defaultContentPack, activeQuestion?.templateId);
-  const activeQuestionCategory = findQuestionCategory(defaultContentPack, activeQuestion?.categoryId);
-  const resolvedQuestionTemplate = findQuestionTemplate(defaultContentPack, resolvedQuestion?.templateId);
-  const resolvedQuestionCategory = findQuestionCategory(defaultContentPack, resolvedQuestion?.categoryId);
-  const selectedCategory = findQuestionCategory(defaultContentPack, selectedCategoryId);
+  const activeQuestionTemplate = findQuestionTemplate(
+    defaultContentPack,
+    activeQuestion?.templateId
+  );
+  const activeQuestionCategory = findQuestionCategory(
+    defaultContentPack,
+    activeQuestion?.categoryId
+  );
+  const resolvedQuestionTemplate = findQuestionTemplate(
+    defaultContentPack,
+    resolvedQuestion?.templateId
+  );
+  const resolvedQuestionCategory = findQuestionCategory(
+    defaultContentPack,
+    resolvedQuestion?.categoryId
+  );
+  const selectedCategory = findQuestionCategory(
+    defaultContentPack,
+    selectedCategoryId
+  );
   const availableTemplates = filterTemplatesForScale(
-    categoryViewModels.find((entry) => entry.category.categoryId === selectedCategoryId)?.templates ?? [],
+    categoryViewModels.find(
+      (entry) => entry.category.categoryId === selectedCategoryId
+    )?.templates ?? [],
     selectedScale
   );
-  const selectedTemplate = findQuestionTemplate(defaultContentPack, selectedTemplateId);
+  const selectedTemplate = findQuestionTemplate(
+    defaultContentPack,
+    selectedTemplateId
+  );
   const [answerDraft, setAnswerDraft] = useState<QuestionAnswerDraft>(() =>
     createInitialAnswerDraft(selectedTemplate)
   );
@@ -182,11 +224,13 @@ export function QuestionCenterScreen() {
             contentPack: defaultContentPack,
             category: selectedCategory,
             selectedScale,
-            askedQuestions: (projection?.visibleQuestions ?? []).map((question) => ({
-              templateId: question.templateId,
-              categoryId: question.categoryId,
-              askedAt: question.askedAt
-            }))
+            askedQuestions: (projection?.visibleQuestions ?? []).map(
+              (question) => ({
+                templateId: question.templateId,
+                categoryId: question.categoryId,
+                askedAt: question.askedAt
+              })
+            )
           })
         : undefined,
     [projection?.visibleQuestions, selectedCategory, selectedScale]
@@ -197,12 +241,19 @@ export function QuestionCenterScreen() {
   const readyTemplates = availableTemplates.filter((template) =>
     activeSelectionRound?.availableTemplateIds.includes(template.templateId)
   );
-  const readyTemplate = readyTemplates.find((template) => template.templateId === selectedTemplateId)
-    ?? readyTemplates[0]
-    ?? drawnTemplates.find((template) => template.templateId === selectedTemplateId)
-    ?? drawnTemplates[0];
+  const readyTemplate =
+    readyTemplates.find(
+      (template) => template.templateId === selectedTemplateId
+    ) ??
+    readyTemplates[0] ??
+    drawnTemplates.find(
+      (template) => template.templateId === selectedTemplateId
+    ) ??
+    drawnTemplates[0];
   const previewTemplate = readyTemplate ?? selectedTemplate;
-  const ruleLabel = selectedCategory ? formatQuestionDrawRule(selectedCategory) : undefined;
+  const ruleLabel = selectedCategory
+    ? formatQuestionDrawRule(selectedCategory)
+    : undefined;
   const timerLabel = selectedCategory
     ? formatTimerPolicyLabel(selectedCategory.defaultTimerPolicy, selectedScale)
     : undefined;
@@ -214,52 +265,78 @@ export function QuestionCenterScreen() {
   }, [categoryViewModels, selectedCategoryId]);
 
   useEffect(() => {
-    const selectableTemplateIds = activeSelectionRound?.availableTemplateIds ?? [];
+    const selectableTemplateIds =
+      activeSelectionRound?.availableTemplateIds ?? [];
     if (
       !selectedTemplateId ||
-      (selectableTemplateIds.length > 0 && !selectableTemplateIds.includes(selectedTemplateId)) ||
-      (selectableTemplateIds.length === 0 && !availableTemplates.some((template) => template.templateId === selectedTemplateId))
+      (selectableTemplateIds.length > 0 &&
+        !selectableTemplateIds.includes(selectedTemplateId)) ||
+      (selectableTemplateIds.length === 0 &&
+        !availableTemplates.some(
+          (template) => template.templateId === selectedTemplateId
+        ))
     ) {
       setSelectedTemplateId(
         activeSelectionRound?.availableTemplateIds[0] ??
-        activeSelectionRound?.drawnTemplateIds[0] ??
-        availableTemplates[0]?.templateId
+          activeSelectionRound?.drawnTemplateIds[0] ??
+          availableTemplates[0]?.templateId
       );
     }
   }, [activeSelectionRound, availableTemplates, selectedTemplateId]);
 
   useEffect(() => {
-    const composerTemplate = activeQuestion?.status === 'awaiting_answer'
-      ? activeQuestionTemplate
-      : readyTemplate;
+    const composerTemplate =
+      activeQuestion?.status === 'awaiting_answer'
+        ? activeQuestionTemplate
+        : readyTemplate;
     setAnswerDraft(createInitialAnswerDraft(composerTemplate));
-  }, [activeQuestion?.questionInstanceId, activeQuestion?.status, activeQuestionTemplate, readyTemplate]);
+  }, [
+    activeQuestion?.questionInstanceId,
+    activeQuestion?.status,
+    activeQuestionTemplate,
+    readyTemplate
+  ]);
 
   const visibleMap = projection?.visibleMap;
   const selectedRegionId = visibleMap?.regionId;
-  const selectedQuestionImpact = previewTemplate && selectedCategory
-    ? describeQuestionImpactExpectation({
-        template: previewTemplate,
-        category: selectedCategory,
-        regionId: selectedRegionId
-      })
-    : undefined;
+  const selectedQuestionImpact =
+    previewTemplate && selectedCategory
+      ? describeQuestionImpactExpectation({
+          template: previewTemplate,
+          category: selectedCategory,
+          regionId: selectedRegionId
+        })
+      : undefined;
   const previewFeatureData = getSeedRegionFeatureData(
     selectedRegionId,
-    (previewTemplate?.featureClassRefs ?? []).map((feature) => feature.featureClassId)
+    (previewTemplate?.featureClassRefs ?? []).map(
+      (feature) => feature.featureClassId
+    )
   );
   const answerFeatureData = getSeedRegionFeatureData(
     selectedRegionId,
-    (activeQuestionTemplate?.featureClassRefs ?? []).map((feature) => feature.featureClassId)
+    (activeQuestionTemplate?.featureClassRefs ?? []).map(
+      (feature) => feature.featureClassId
+    )
   );
-  const activeQuestionConstraint = findConstraintForQuestion(projection, activeQuestion?.questionInstanceId);
-  const resolvedQuestionConstraint = findConstraintForQuestion(projection, resolvedQuestion?.questionInstanceId);
+  const activeQuestionConstraint = findConstraintForQuestion(
+    projection,
+    activeQuestion?.questionInstanceId
+  );
+  const resolvedQuestionConstraint = findConstraintForQuestion(
+    projection,
+    resolvedQuestion?.questionInstanceId
+  );
   const evidenceContexts = useMemo(
     () => buildEvidenceContexts(defaultContentPack, projection, viewerRole),
     [projection, viewerRole]
   );
-  const activeQuestionEvidenceContext = evidenceContexts.find((context) => context.kind === 'question');
-  const questionAttachmentContext = useMemo<LocalEvidenceContextDescriptor | undefined>(
+  const activeQuestionEvidenceContext = evidenceContexts.find(
+    (context) => context.kind === 'question'
+  );
+  const questionAttachmentContext = useMemo<
+    LocalEvidenceContextDescriptor | undefined
+  >(
     () =>
       activeQuestionEvidenceContext
         ? {
@@ -267,7 +344,8 @@ export function QuestionCenterScreen() {
             kind: 'question',
             title: activeQuestionEvidenceContext.title,
             detail: activeQuestionEvidenceContext.detail,
-            visibilityScope: activeQuestionEvidenceContext.suggestedVisibilityScope,
+            visibilityScope:
+              activeQuestionEvidenceContext.suggestedVisibilityScope,
             attachmentKind: 'photo_evidence',
             questionInstanceId: activeQuestionEvidenceContext.questionInstanceId
           }
@@ -295,23 +373,33 @@ export function QuestionCenterScreen() {
     ]
   );
   const latestConstraintApplied = Boolean(
-    state.lastSync?.eventStream.events.some((eventFrame) => eventFrame.type === 'constraint_applied') &&
-      latestResolvedEffect
+    state.lastSync?.eventStream.events.some(
+      (eventFrame) => eventFrame.type === 'constraint_applied'
+    ) && latestResolvedEffect
   );
-  const isQuestionReadyState = projection?.lifecycleState === 'seek_phase' && projection.seekPhaseSubstate === 'ready';
+  const isQuestionReadyState =
+    projection?.lifecycleState === 'seek_phase' &&
+    projection.seekPhaseSubstate === 'ready';
   const isQuestionSelectionState =
-    projection?.lifecycleState === 'seek_phase' && projection.seekPhaseSubstate === 'awaiting_question_selection';
+    projection?.lifecycleState === 'seek_phase' &&
+    projection.seekPhaseSubstate === 'awaiting_question_selection';
   const isAwaitingAnswer =
-    projection?.lifecycleState === 'seek_phase' && projection.seekPhaseSubstate === 'awaiting_question_answer';
+    projection?.lifecycleState === 'seek_phase' &&
+    projection.seekPhaseSubstate === 'awaiting_question_answer';
   const isApplyingConstraints =
-    projection?.lifecycleState === 'seek_phase' && projection.seekPhaseSubstate === 'applying_constraints';
+    projection?.lifecycleState === 'seek_phase' &&
+    projection.seekPhaseSubstate === 'applying_constraints';
   const canPrepareFlow = Boolean(
     activeMatch &&
       capabilities.canPrepareFlow &&
       projection &&
-      ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup'].includes(
-        projection.lifecycleState
-      )
+      [
+        'draft',
+        'lobby',
+        'role_assignment',
+        'rules_confirmation',
+        'map_setup'
+      ].includes(projection.lifecycleState)
   );
   const canAskQuestion = Boolean(
     activeMatch &&
@@ -334,18 +422,21 @@ export function QuestionCenterScreen() {
       activeQuestionCategory &&
       isApplyingConstraints
   );
-  const questionEvidenceHint = activeMatch?.onlineStatus?.attachmentStorageMode === 'durable_supabase_storage'
-    ? 'Recording evidence here uploads the image to Supabase Storage and records durable attachment metadata in the match.'
-    : activeMatch?.runtimeKind === 'online_foundation'
-      ? 'Recording evidence here creates real attachment records through the runtime, but this online session is still falling back to metadata-only storage.'
-      : 'Recording evidence here creates real attachment records through the runtime. The file preview stays local to this device session until fuller storage support is added.';
+  const questionEvidenceHint =
+    activeMatch?.onlineStatus?.attachmentStorageMode ===
+    'durable_supabase_storage'
+      ? 'Recording evidence here uploads the image to Supabase Storage and records durable attachment metadata in the match.'
+      : activeMatch?.runtimeKind === 'online_foundation'
+        ? 'Recording evidence here creates real attachment records through the runtime, but this online session is still falling back to metadata-only storage.'
+        : 'Recording evidence here creates real attachment records through the runtime. The file preview stays local to this device session until fuller storage support is added.';
   const showQuestionPrepPanel = !liveGameplayState && canPrepareFlow;
   const activeQuestionTimerSeconds = timingModel?.timers.find(
     (timer) => timer.kind === 'question' && timer.status !== 'completed'
   )?.remainingSeconds;
-  const keptSelectionLabel = selectedCategory && activeSelectionRound
-    ? `${activeSelectionRound.availableTemplateIds.length} ready from ${activeSelectionRound.drawnTemplateIds.length} drawn`
-    : undefined;
+  const keptSelectionLabel =
+    selectedCategory && activeSelectionRound
+      ? `${activeSelectionRound.availableTemplateIds.length} ready from ${activeSelectionRound.drawnTemplateIds.length} drawn`
+      : undefined;
 
   const handlePrepareFlow = () => {
     if (!projection) {
@@ -379,7 +470,9 @@ export function QuestionCenterScreen() {
       payload: {
         questionInstanceId: `question:${createUuid()}`,
         templateId: readyTemplate.templateId,
-        targetTeamId: projection.teams.find((team) => team.side === 'hider')?.teamId ?? 'team-hider'
+        targetTeamId:
+          projection.teams.find((team) => team.side === 'hider')?.teamId ??
+          'team-hider'
       }
     });
 
@@ -405,8 +498,12 @@ export function QuestionCenterScreen() {
       return;
     }
 
-    const attachmentIds = questionEvidenceDrafts.map((draft) => draft.attachmentId);
-    const commands = await prepareAttachmentUploadCommands(questionEvidenceDrafts);
+    const attachmentIds = questionEvidenceDrafts.map(
+      (draft) => draft.attachmentId
+    );
+    const commands = await prepareAttachmentUploadCommands(
+      questionEvidenceDrafts
+    );
     if (!commands || commands.length === 0) {
       return;
     }
@@ -417,7 +514,8 @@ export function QuestionCenterScreen() {
       localMedia.markSubmitted(attachmentIds);
       setAnswerDraft((current) =>
         attachmentIds.reduce(
-          (draft, attachmentId) => appendAttachmentIdToDraft(draft, attachmentId),
+          (draft, attachmentId) =>
+            appendAttachmentIdToDraft(draft, attachmentId),
           current
         )
       );
@@ -458,15 +556,21 @@ export function QuestionCenterScreen() {
 
   return (
     <ScreenContainer
-      title={liveGameplayState ? 'Clue Review' : 'Questions'}
-      eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
+      title="Follow the clues"
+      eyebrow={
+        liveGameplayState ? 'THE INVESTIGATION' : 'YOUR INVESTIGATION KIT'
+      }
       subtitle={
         liveGameplayState
-          ? 'Use this as the full clue review screen when you need more detail than the live map flow.'
+          ? 'Ask clever questions. Follow every answer. Close in on the hiding spot.'
           : 'Prepare the next clue, answer it honestly, and see clearly whether the map changed or the result stayed as evidence only.'
       }
-      topSlot={liveGameplayState ? undefined : <ProductNavBar current="questions" />}
-      bottomSlot={liveGameplayState ? <GameplayTabBar current="questions" /> : undefined}
+      topSlot={
+        liveGameplayState ? undefined : <ProductNavBar current="questions" />
+      }
+      bottomSlot={
+        liveGameplayState ? <GameplayTabBar current="questions" /> : undefined
+      }
     >
       {!activeMatch ? (
         <StateBanner
@@ -477,48 +581,73 @@ export function QuestionCenterScreen() {
       ) : null}
 
       {activeMatch ? (
-      <Panel
-        title={liveGameplayState ? 'Clue Review' : 'Question Context'}
-        subtitle={
-          liveGameplayState
-            ? 'The map now handles the fastest live clue actions. Use this screen for deeper review, more room, or a full clue walkthrough.'
-            : 'See who can act right now, which workbook scale is active, and what the next question should accomplish.'
-        }
-      >
-        <FactList
-          items={[
-            { label: 'Your Role', value: formatRoleLabel(viewerRole) },
-            {
-              label: 'Next Step',
-              value: describeQuestionFlowStep(projection?.lifecycleState, projection?.seekPhaseSubstate)
-            },
-            { label: 'Game Map', value: visibleMap?.displayName ?? 'Not selected yet' },
-            { label: 'Game Size', value: selectedScale ? formatQuestionScaleSet([selectedScale]) : 'Waiting for setup' },
-            { label: 'Live Update', value: timingModel?.freshnessLabel ?? 'Waiting for live state' }
-          ]}
+        <AppButton
+          label={
+            showGameContext ? 'Hide game briefing' : 'Game briefing & timing'
+          }
+          tone="ghost"
+          onPress={() => setShowGameContext(!showGameContext)}
         />
-        <Text style={styles.copy}>
-          Seekers ask from the current workbook draw, hiders answer honestly, and the host applies the bounded result so everyone can trust the map.
-        </Text>
-        {liveGameplayState ? (
-          <AppButton
-            label="Back To Live Map"
-            tone="secondary"
-            onPress={() => {
-              router.push('/map');
-            }}
+      ) : null}
+      {activeMatch && showGameContext ? (
+        <Panel
+          title={liveGameplayState ? 'Clue Review' : 'Question Context'}
+          subtitle={
+            liveGameplayState
+              ? 'The map now handles the fastest live clue actions. Use this screen for deeper review, more room, or a full clue walkthrough.'
+              : 'See who can act right now, which workbook scale is active, and what the next question should accomplish.'
+          }
+        >
+          <FactList
+            items={[
+              { label: 'Your Role', value: formatRoleLabel(viewerRole) },
+              {
+                label: 'Next Step',
+                value: describeQuestionFlowStep(
+                  projection?.lifecycleState,
+                  projection?.seekPhaseSubstate
+                )
+              },
+              {
+                label: 'Game Map',
+                value: visibleMap?.displayName ?? 'Not selected yet'
+              },
+              {
+                label: 'Game Size',
+                value: selectedScale
+                  ? formatQuestionScaleSet([selectedScale])
+                  : 'Waiting for setup'
+              },
+              {
+                label: 'Live Update',
+                value: timingModel?.freshnessLabel ?? 'Waiting for live state'
+              }
+            ]}
           />
-        ) : null}
-        {liveGameplayState && canOpenMatchControls ? (
-          <AppButton
-            label="Open Match Controls"
-            tone="ghost"
-            onPress={() => {
-              router.push('/status');
-            }}
-          />
-        ) : null}
-      </Panel>
+          <Text style={styles.copy}>
+            Seekers ask from the current workbook draw, hiders answer honestly,
+            and the host applies the bounded result so everyone can trust the
+            map.
+          </Text>
+          {liveGameplayState ? (
+            <AppButton
+              label="Back To Live Map"
+              tone="secondary"
+              onPress={() => {
+                router.push('/map');
+              }}
+            />
+          ) : null}
+          {liveGameplayState && canOpenMatchControls ? (
+            <AppButton
+              label="Open Match Controls"
+              tone="ghost"
+              onPress={() => {
+                router.push('/status');
+              }}
+            />
+          ) : null}
+        </Panel>
       ) : null}
 
       {activeMatch && !visibleMap ? (
@@ -547,7 +676,7 @@ export function QuestionCenterScreen() {
         />
       ) : null}
 
-      {activeMatch ? (
+      {activeMatch && showGameContext ? (
         <Panel
           title="Match Timing"
           subtitle="Question flow follows the current hide timer, cooldown timer, pause state, and card lock."
@@ -556,31 +685,35 @@ export function QuestionCenterScreen() {
         </Panel>
       ) : null}
 
-      <Panel
-        title="Latest Result"
-        subtitle="Review the most recent clue in plain language before you ask the next one or head back to the map."
-        tone="soft"
-      >
-        <QuestionResolutionPanel
-          title="Latest Question Outcome"
-          question={resolvedQuestion}
-          template={resolvedQuestionTemplate}
-          category={resolvedQuestionCategory}
-          constraint={resolvedQuestionConstraint}
-          visibleMap={visibleMap}
-          actionSlot={
-            resolvedQuestion ? (
-              <AppButton
-                label="Open Map View"
-                tone="secondary"
-                onPress={() => {
-                  router.push('/map');
-                }}
-              />
-            ) : undefined
-          }
-        />
-      </Panel>
+      {resolvedQuestion ? (
+        <>
+          <Panel
+            title="Latest Result"
+            subtitle="Review the most recent clue in plain language before you ask the next one or head back to the map."
+            tone="soft"
+          >
+            <QuestionResolutionPanel
+              title="Latest Question Outcome"
+              question={resolvedQuestion}
+              template={resolvedQuestionTemplate}
+              category={resolvedQuestionCategory}
+              constraint={resolvedQuestionConstraint}
+              visibleMap={visibleMap}
+              actionSlot={
+                resolvedQuestion ? (
+                  <AppButton
+                    label="Open Map View"
+                    tone="secondary"
+                    onPress={() => {
+                      router.push('/map');
+                    }}
+                  />
+                ) : undefined
+              }
+            />
+          </Panel>
+        </>
+      ) : null}
 
       {showQuestionPrepPanel ? (
         <Panel
@@ -588,7 +721,11 @@ export function QuestionCenterScreen() {
           subtitle="Use this only while the match is still being prepared for the live clue loop."
         >
           <AppButton
-            label={state.loadState === 'loading' ? 'Working...' : 'Prepare Match For Questions'}
+            label={
+              state.loadState === 'loading'
+                ? 'Working...'
+                : 'Prepare Match For Questions'
+            }
             onPress={handlePrepareFlow}
             disabled={!canPrepareFlow || state.loadState === 'loading'}
           />
@@ -623,23 +760,35 @@ export function QuestionCenterScreen() {
         {selectedCategory ? (
           <>
             <Text style={styles.title}>{selectedCategory.name}</Text>
-            <Text style={styles.copy}>{describeQuestionCategoryForPlayers(selectedCategory)}</Text>
+            <Text style={styles.copy}>
+              {describeQuestionCategoryForPlayers(selectedCategory)}
+            </Text>
             <FactList
               items={[
                 { label: 'Prompt', value: selectedCategory.promptTemplate },
-                { label: 'Draw / Keep', value: ruleLabel ?? 'Manual draw rule' },
-                { label: 'Response limit', value: timerLabel ?? 'Manual timer' },
+                {
+                  label: 'Draw / Keep',
+                  value: ruleLabel ?? 'Manual draw rule'
+                },
+                {
+                  label: 'Response limit',
+                  value: timerLabel ?? 'Manual timer'
+                },
                 { label: 'Templates in play', value: availableTemplates.length }
               ]}
             />
             {selectedCategory.drawRule.pickCount > 1 ? (
               <Text style={styles.helper}>
-                This category can use multiple clue cards from the same workbook draw. Ask up to {selectedCategory.drawRule.pickCount} before the next draw rotates in.
+                This category can use multiple clue cards from the same workbook
+                draw. Ask up to {selectedCategory.drawRule.pickCount} before the
+                next draw rotates in.
               </Text>
             ) : null}
           </>
         ) : (
-          <Text style={styles.copy}>Choose a category to load its workbook rule.</Text>
+          <Text style={styles.copy}>
+            Choose a category to load its workbook rule.
+          </Text>
         )}
       </Panel>
 
@@ -651,16 +800,29 @@ export function QuestionCenterScreen() {
           <Text style={styles.copy}>Choose a category first.</Text>
         ) : availableTemplates.length === 0 ? (
           <Text style={styles.copy}>
-            This category has no imported templates for the current game size yet. Choose another clue type or change the match scale during setup.
+            This category has no imported templates for the current game size
+            yet. Choose another clue type or change the match scale during
+            setup.
           </Text>
         ) : (
           <>
             <FactList
               items={[
-                { label: 'Workbook rule', value: ruleLabel ?? 'Manual draw rule' },
+                {
+                  label: 'Workbook rule',
+                  value: ruleLabel ?? 'Manual draw rule'
+                },
                 { label: 'Timer', value: timerLabel ?? 'Manual timer' },
-                { label: 'Current draw', value: activeSelectionRound ? `Round ${activeSelectionRound.round}` : 'Not available yet' },
-                { label: 'Ready now', value: keptSelectionLabel ?? 'No ready cards yet' }
+                {
+                  label: 'Current draw',
+                  value: activeSelectionRound
+                    ? `Round ${activeSelectionRound.round}`
+                    : 'Not available yet'
+                },
+                {
+                  label: 'Ready now',
+                  value: keptSelectionLabel ?? 'No ready cards yet'
+                }
               ]}
             />
             {readyTemplates.length > 0 ? (
@@ -682,7 +844,9 @@ export function QuestionCenterScreen() {
               />
             ) : (
               <Text style={styles.copy}>
-                No question cards are currently ready from this workbook draw. Finish the current clue window or wait for the next authoritative draw to open.
+                No question cards are currently ready from this workbook draw.
+                Finish the current clue window or wait for the next
+                authoritative draw to open.
               </Text>
             )}
           </>
@@ -698,7 +862,11 @@ export function QuestionCenterScreen() {
           <>
             <Text style={styles.title}>{previewTemplate.name}</Text>
             <Text style={styles.copy}>
-              You will ask: {describeQuestionTemplateForPlayers(previewTemplate, selectedCategory)}
+              You will ask:{' '}
+              {describeQuestionTemplateForPlayers(
+                previewTemplate,
+                selectedCategory
+              )}
             </Text>
             {selectedQuestionImpact ? (
               <StateBanner
@@ -709,8 +877,16 @@ export function QuestionCenterScreen() {
             ) : null}
             <FactList
               items={[
-                { label: 'How to answer', value: describeExpectedAnswerGuidance(previewTemplate) },
-                { label: 'Best for', value: formatQuestionScaleSet(previewTemplate.scaleSet.appliesTo) },
+                {
+                  label: 'How to answer',
+                  value: describeExpectedAnswerGuidance(previewTemplate)
+                },
+                {
+                  label: 'Best for',
+                  value: formatQuestionScaleSet(
+                    previewTemplate.scaleSet.appliesTo
+                  )
+                },
                 {
                   label: 'How it behaves today',
                   value: describeTemplateSupport({
@@ -723,7 +899,8 @@ export function QuestionCenterScreen() {
             />
             {previewFeatureData.length > 0 ? (
               <Text style={styles.copy}>
-                This playable region already has place data for this clue, so the result can do more than just record evidence.
+                This playable region already has place data for this clue, so
+                the result can do more than just record evidence.
               </Text>
             ) : null}
             <AppButton
@@ -733,12 +910,16 @@ export function QuestionCenterScreen() {
             />
             {!canAskQuestion ? (
               <Text style={styles.helper}>
-                This category is using the current authoritative workbook draw. When no clue is ready here, the match state still needs the next draw to open or the current clue step to finish.
+                This category is using the current authoritative workbook draw.
+                When no clue is ready here, the match state still needs the next
+                draw to open or the current clue step to finish.
               </Text>
             ) : null}
           </>
         ) : (
-          <Text style={styles.copy}>Choose a category with a ready workbook draw first.</Text>
+          <Text style={styles.copy}>
+            Choose a category with a ready workbook draw first.
+          </Text>
         )}
       </Panel>
 
@@ -751,18 +932,26 @@ export function QuestionCenterScreen() {
             <FactList
               items={[
                 { label: 'Asked clue', value: activeQuestionTemplate.name },
-                { label: 'Workbook timer', value: formatTimerPolicyLabel(activeQuestionCategory.defaultTimerPolicy, selectedScale) },
+                {
+                  label: 'Workbook timer',
+                  value: formatTimerPolicyLabel(
+                    activeQuestionCategory.defaultTimerPolicy,
+                    selectedScale
+                  )
+                },
                 {
                   label: 'Time left',
-                  value: activeQuestionTimerSeconds !== undefined
-                    ? formatCountdown(activeQuestionTimerSeconds)
-                    : 'Waiting for question timer'
+                  value:
+                    activeQuestionTimerSeconds !== undefined
+                      ? formatCountdown(activeQuestionTimerSeconds)
+                      : 'Waiting for question timer'
                 }
               ]}
             />
             {activeQuestionTimerSeconds !== undefined ? (
               <Text style={styles.helper}>
-                This countdown comes from the live match timer for the active workbook question.
+                This countdown comes from the live match timer for the active
+                workbook question.
               </Text>
             ) : null}
             <QuestionAnswerComposer
@@ -777,11 +966,23 @@ export function QuestionCenterScreen() {
               <EvidenceCapturePanel
                 context={questionAttachmentContext}
                 drafts={questionEvidenceDrafts}
-                visibleAttachments={activeQuestionEvidenceContext?.attachments ?? []}
-                disabled={!activeMatch || state.loadState === 'loading' || !canAnswerQuestion}
-                busy={localMedia.isContextBusy(questionAttachmentContext.contextId)}
-                feedback={localMedia.getContextFeedback(questionAttachmentContext.contextId)}
-                localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
+                visibleAttachments={
+                  activeQuestionEvidenceContext?.attachments ?? []
+                }
+                disabled={
+                  !activeMatch ||
+                  state.loadState === 'loading' ||
+                  !canAnswerQuestion
+                }
+                busy={localMedia.isContextBusy(
+                  questionAttachmentContext.contextId
+                )}
+                feedback={localMedia.getContextFeedback(
+                  questionAttachmentContext.contextId
+                )}
+                localPreviewByAttachmentId={
+                  localMedia.localPreviewByAttachmentId
+                }
                 submitLabel="Record Evidence In Match"
                 submitDisabled={questionEvidenceDrafts.length === 0}
                 submitHint={questionEvidenceHint}
@@ -807,7 +1008,8 @@ export function QuestionCenterScreen() {
           </>
         ) : (
           <Text style={styles.copy}>
-            When a question is awaiting an answer, the hider or host-admin view can answer it here with the expected response format.
+            When a question is awaiting an answer, the hider or host-admin view
+            can answer it here with the expected response format.
           </Text>
         )}
       </Panel>
@@ -818,8 +1020,10 @@ export function QuestionCenterScreen() {
       >
         {activeQuestion && activeQuestionTemplate && activeQuestionCategory ? (
           <>
-          <Text style={styles.copy}>
-              The host applies the answer here. If the result supports geometry, the bounded search area updates inside the active playable region. If not, the match records the clue honestly as evidence only.
+            <Text style={styles.copy}>
+              The host applies the answer here. If the result supports geometry,
+              the bounded search area updates inside the active playable region.
+              If not, the match records the clue honestly as evidence only.
             </Text>
             <AppButton
               label="Apply Result"
@@ -839,7 +1043,8 @@ export function QuestionCenterScreen() {
           </>
         ) : (
           <Text style={styles.copy}>
-            Resolution becomes available after an answer is submitted and the match enters the constraint-application step.
+            Resolution becomes available after an answer is submitted and the
+            match enters the constraint-application step.
           </Text>
         )}
       </Panel>

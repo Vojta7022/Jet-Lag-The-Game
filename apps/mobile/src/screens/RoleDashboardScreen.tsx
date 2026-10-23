@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
 import { Text } from 'react-native';
 
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
@@ -90,11 +90,13 @@ export function RoleDashboardScreen() {
   const { state } = useAppShell();
   const activeMatch = state.activeMatch;
 
-  useEffect(() => {
-    if (shouldRedirectSetupScreen(activeMatch?.projection.lifecycleState)) {
-      router.replace('/map');
-    }
-  }, [activeMatch?.projection.lifecycleState]);
+  useFocusEffect(
+    useCallback(() => {
+      if (shouldRedirectSetupScreen(activeMatch?.projection.lifecycleState)) {
+        router.replace('/map');
+      }
+    }, [activeMatch?.projection.lifecycleState])
+  );
 
   if (!activeMatch) {
     return (
@@ -104,12 +106,17 @@ export function RoleDashboardScreen() {
         subtitle="Your side appears here once a match is connected."
         topSlot={<ProductNavBar current="dashboard" />}
       >
-        <StateBanner tone="warning" title="No active match" detail="Join or create a match first." />
+        <StateBanner
+          tone="warning"
+          title="No active match"
+          detail="Join or create a match first."
+        />
       </ScreenContainer>
     );
   }
 
-  const role = activeMatch.playerRole ?? activeMatch.recipient.role ?? 'spectator';
+  const role =
+    activeMatch.playerRole ?? activeMatch.recipient.role ?? 'spectator';
   const roleCopy = buildRoleCopy(role);
 
   return (
@@ -128,11 +135,16 @@ export function RoleDashboardScreen() {
             { label: 'Side', value: formatRoleLabel(role) },
             {
               label: 'Current Step',
-              value: formatStageLabel(activeMatch.projection.lifecycleState, activeMatch.projection.seekPhaseSubstate)
+              value: formatStageLabel(
+                activeMatch.projection.lifecycleState,
+                activeMatch.projection.seekPhaseSubstate
+              )
             },
             {
               label: 'Playable Area',
-              value: activeMatch.projection.visibleMap?.displayName ?? 'Not selected yet'
+              value:
+                activeMatch.projection.visibleMap?.displayName ??
+                'Not selected yet'
             }
           ]}
         />
@@ -145,7 +157,11 @@ export function RoleDashboardScreen() {
           onPress={() => router.push('/lobby')}
         />
         {role === 'host' ? (
-          <AppButton label="Open Map Setup" onPress={() => router.push('/map')} tone="secondary" />
+          <AppButton
+            label="Open Map Setup"
+            onPress={() => router.push('/map')}
+            tone="secondary"
+          />
         ) : null}
       </Panel>
     </ScreenContainer>

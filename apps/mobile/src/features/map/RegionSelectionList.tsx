@@ -19,6 +19,7 @@ export function RegionSelectionList(props: RegionSelectionListProps) {
           <Pressable
             key={region.regionId}
             accessibilityRole="button"
+            accessibilityState={{ selected }}
             onPress={() => props.onSelect(region.regionId)}
             style={({ pressed }) => [
               styles.card,
@@ -29,7 +30,7 @@ export function RegionSelectionList(props: RegionSelectionListProps) {
             <View style={styles.header}>
               <View style={styles.titleBlock}>
                 <Text style={styles.title}>{region.displayName}</Text>
-                <Text style={styles.kind}>{region.regionKind}</Text>
+                <Text style={styles.kind}>{region.regionKind.replace(/_/g, ' ')}</Text>
               </View>
               <View style={[styles.badge, selected ? styles.selectedBadge : null]}>
                 <Text style={[styles.badgeLabel, selected ? styles.selectedBadgeLabel : null]}>
@@ -43,14 +44,6 @@ export function RegionSelectionList(props: RegionSelectionListProps) {
                 {region.regionKind === 'city' ? 'Country' : 'Coverage'}: {region.countryLabel}
                 {region.parentRegionLabel && region.parentRegionLabel !== region.displayName
                   ? ` · ${region.parentRegionLabel}`
-                  : ''}
-              </Text>
-            ) : null}
-            {region.providerMetadata ? (
-              <Text style={styles.meta}>
-                Candidate: {region.providerMetadata.resultClass ?? 'place'} / {region.providerMetadata.resultType ?? 'boundary'}
-                {region.providerMetadata.osmType && region.providerMetadata.osmId
-                  ? ` · ${region.providerMetadata.osmType} ${region.providerMetadata.osmId}`
                   : ''}
               </Text>
             ) : null}

@@ -44,7 +44,7 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         autoCapitalize="words"
       />
       <Text style={styles.helper}>
-        Search by city or larger administrative region name. The app tries live OpenStreetMap-compatible boundaries first, then falls back to bundled regions only when the live lookup is unavailable.
+        Find your city, or combine a few neighbouring regions for a bigger adventure.
       </Text>
 
       {props.selectedRegionCount > 0 ? (
@@ -59,7 +59,7 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
             {props.usingFallback ? 'Fallback source' : 'Boundary source'}
           </Text>
           <Text style={styles.attributionTitle}>{props.attribution.label}</Text>
-          <Text style={styles.attributionCopy}>{props.attribution.notice}</Text>
+          <Text style={styles.attributionCopy}>{props.attribution.label.includes('OpenStreetMap') ? 'Map data © OpenStreetMap contributors. ' : ''}Review the boundary before you start.</Text>
           {props.attribution.url ? (
             <Text style={styles.attributionLink}>{props.attribution.url}</Text>
           ) : null}

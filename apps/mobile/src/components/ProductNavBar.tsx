@@ -1,129 +1,126 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-
 import { useAppShell } from '../providers/AppShellProvider.tsx';
-import { colors } from '../ui/theme.ts';
-import { buildProductNavItems } from './product-nav-model.ts';
+import { colors, fonts } from '../ui/theme.ts';
+import {
+  buildProductNavItems,
+  type ProductNavKey
+} from './product-nav-model.ts';
 
-import type { ProductNavKey } from './product-nav-model.ts';
-
-interface ProductNavBarProps {
-  current: ProductNavKey;
-}
-
-export function ProductNavBar(props: ProductNavBarProps) {
+export function ProductNavBar({ current }: { current: ProductNavKey }) {
   const { state } = useAppShell();
-  const activeMatch = state.activeMatch;
-  const role = activeMatch?.playerRole ?? activeMatch?.recipient.role ?? 'spectator';
-  const navItems = buildProductNavItems({
-    hasActiveMatch: Boolean(activeMatch),
+  const match = state.activeMatch;
+  const role = match?.playerRole ?? match?.recipient.role ?? 'spectator';
+  const items = buildProductNavItems({
+    hasActiveMatch: Boolean(match),
     role,
-    scope: activeMatch?.recipient.scope,
-    lifecycleState: activeMatch?.projection.lifecycleState,
-    visibleCardCount: activeMatch?.projection.visibleCards.length ?? 0,
-    visibleMovementTrackCount: activeMatch?.projection.visibleMovementTracks.length ?? 0,
-    canAccessAdmin: role === 'host' || activeMatch?.recipient.scope === 'host_admin'
+    scope: match?.recipient.scope,
+    lifecycleState: match?.projection.lifecycleState,
+    visibleCardCount: match?.projection.visibleCards.length ?? 0,
+    visibleMovementTrackCount:
+      match?.projection.visibleMovementTracks.length ?? 0,
+    canAccessAdmin: role === 'host' || match?.recipient.scope === 'host_admin'
   });
-  const primaryItems = navItems.filter((item) => item.group === 'primary');
-  const secondaryItems = navItems.filter((item) => item.group === 'secondary');
-
-  const renderItem = (item: (typeof navItems)[number]) => {
-    const isActive = item.key === props.current;
-    return (
-      <Pressable
-        key={item.key}
-        accessibilityRole="button"
-        onPress={() => {
-          if (!isActive) {
-            router.push(item.href as Parameters<typeof router.push>[0]);
-          }
-        }}
-        style={({ pressed }) => [
-          styles.item,
-          isActive ? styles.itemActive : null,
-          pressed && !isActive ? styles.itemPressed : null
-        ]}
-      >
-        <Text style={[styles.itemLabel, isActive ? styles.itemLabelActive : null]}>
-          {item.label}
-        </Text>
-      </Pressable>
-    );
-  };
-
+  const primary = items.filter((i) => i.group === 'primary');
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>
-        {activeMatch?.projection.lifecycleState &&
-        activeMatch.projection.lifecycleState !== 'hide_phase' &&
-        activeMatch.projection.lifecycleState !== 'seek_phase' &&
-        activeMatch.projection.lifecycleState !== 'endgame' &&
-        activeMatch.projection.lifecycleState !== 'game_complete'
-          ? 'Pregame'
-          : 'Live'}
-      </Text>
-      <View style={styles.list}>
-        {primaryItems.map(renderItem)}
+      <View style={styles.route}>
+        {primary.map((item, index) => (
+          <Pressable
+            key={item.key}
+            accessibilityRole="button"
+            accessibilityState={{ selected: current === item.key }}
+            onPress={() => {
+              if (current !== item.key)
+                router.push(item.href as Parameters<typeof router.push>[0]);
+            }}
+            style={styles.item}
+          >
+            <View
+              style={[
+                styles.station,
+                current === item.key && styles.stationActive
+              ]}
+            >
+              <Text
+                style={[
+                  styles.number,
+                  current === item.key && styles.numberActive
+                ]}
+              >
+                {String(index + 1).padStart(2, '0')}
+              </Text>
+            </View>
+            <Text
+              style={[styles.label, current === item.key && styles.labelActive]}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
-      {secondaryItems.length > 0 ? (
-        <View style={styles.secondaryGroup}>
-          <Text style={styles.secondaryLabel}>Host Only</Text>
-          <View style={styles.list}>
-            {secondaryItems.map(renderItem)}
-          </View>
-        </View>
-      ) : null}
+      {items
+        .filter((i) => i.group === 'secondary')
+        .map((item) => (
+          <Pressable
+            key={item.key}
+            accessibilityRole="button"
+            onPress={() =>
+              router.push(item.href as Parameters<typeof router.push>[0])
+            }
+            style={styles.hostButton}
+          >
+            <Text style={styles.hostLabel}>{item.label} ↗</Text>
+          </Pressable>
+        ))}
     </View>
   );
 }
-
 const styles = StyleSheet.create({
-  container: {
-    gap: 10
-  },
-  label: {
-    color: colors.textSubtle,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase'
-  },
-  list: {
+  container: { gap: 12 },
+  route: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  secondaryGroup: {
-    gap: 8
-  },
-  secondaryLabel: {
-    color: colors.textSubtle,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase'
+    gap: 4,
+    borderTopWidth: 2,
+    borderTopColor: colors.border,
+    paddingTop: 8
   },
   item: {
-    backgroundColor: colors.surfaceRaised,
+    flex: 1,
+    gap: 8,
+    alignItems: 'center',
+    minHeight: 64,
+    justifyContent: 'center'
+  },
+  station: {
+    width: 29,
+    height: 29,
+    borderRadius: 15,
+    backgroundColor: colors.background,
+    borderWidth: 2,
     borderColor: colors.borderStrong,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  itemActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+  stationActive: { backgroundColor: colors.signal, borderColor: colors.ink },
+  number: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    color: colors.textMuted,
+    fontWeight: '800'
   },
-  itemPressed: {
-    opacity: 0.85
+  numberActive: { color: colors.ink },
+  label: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '700',
+    textAlign: 'center'
   },
-  itemLabel: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '700'
+  labelActive: { color: colors.accentStrong },
+  hostButton: {
+    alignSelf: 'flex-end',
+    minHeight: 44,
+    justifyContent: 'center'
   },
-  itemLabelActive: {
-    color: colors.inkInverse
-  }
+  hostLabel: { color: colors.textMuted, fontSize: 11 }
 });

@@ -9,7 +9,7 @@ import {
   buildCardListSubtitle,
   formatCardKindLabel
 } from './card-guidance.ts';
-import { colors } from '../../ui/theme.ts';
+import { colors, fonts } from '../../ui/theme.ts';
 
 interface CardZoneSectionProps {
   title: string;
@@ -38,6 +38,7 @@ export function CardZoneSection(props: CardZoneSectionProps) {
               <Pressable
                 key={card.card.cardInstanceId}
                 accessibilityRole="button"
+                accessibilityState={{ selected }}
                 onPress={() => props.onSelect(card.card.cardInstanceId)}
                 style={[styles.item, selected ? styles.itemSelected : null]}
               >
@@ -103,16 +104,16 @@ const styles = StyleSheet.create({
   item: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.borderStrong,
-    borderRadius: 22,
+    borderRadius: 12,
     borderWidth: 1,
-    flexBasis: '48%',
+    flexBasis: 230,
     flexGrow: 1,
     overflow: 'hidden',
     padding: 0,
     shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
-    shadowRadius: 16,
+    shadowRadius: 8,
     elevation: 2
   },
   itemSelected: {
@@ -120,7 +121,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent
   },
   topStripe: {
-    height: 8
+    height: 10
   },
   topStripeTime: {
     backgroundColor: colors.accentWarm
@@ -136,14 +137,14 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     gap: 10,
-    minHeight: 168,
+    minHeight: 200,
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 14
   },
   cardHeader: {
     alignItems: 'flex-start',
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 10,
     justifyContent: 'space-between'
   },
@@ -159,7 +160,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase'
   },
   badgeGroup: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 6
   },
   selectedChip: {
@@ -178,7 +181,8 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.text,
-    fontSize: 16,
+    fontFamily: fonts.display,
+    fontSize: 25,
     fontWeight: '800'
   },
   meta: {

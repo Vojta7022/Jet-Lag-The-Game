@@ -121,7 +121,7 @@ export function ChatScreen() {
 
   return (
     <ScreenContainer
-      title="Chat"
+      title="Team radio"
       eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
       subtitle={liveGameplayState ? 'Conversation and media.' : 'Conversation, channels, and shared media.'}
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="chat" />}

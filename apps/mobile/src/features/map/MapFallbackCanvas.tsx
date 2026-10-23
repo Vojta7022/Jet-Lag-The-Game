@@ -65,7 +65,7 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
   return (
     <View style={[styles.frame, { width, height }]}>
       <Svg width={width} height={height}>
-        <Rect x={0} y={0} width={width} height={height} fill="#f8fafc" />
+        <Rect x={0} y={0} width={width} height={height} fill={colors.surface} />
         {overlayModel.overlays.map((overlay) => {
           if (overlay.renderMode === 'point') {
             const points = projectGeometryPoints(overlay.geometry, bounds, {

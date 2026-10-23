@@ -18,6 +18,8 @@ test('pregame helper distinguishes setup states from live gameplay', () => {
 test('host control access stays restricted to host-admin views', () => {
   assert.equal(canAccessHostControls('host', 'host_admin'), true);
   assert.equal(canAccessHostControls('host', 'player_private'), true);
+  assert.equal(canAccessHostControls('seeker', 'host_admin'), true);
+  assert.equal(canAccessHostControls('hider', 'host_admin'), true);
   assert.equal(canAccessHostControls('seeker', 'player_private'), false);
   assert.equal(canAccessHostControls('spectator', 'public_match'), false);
 });

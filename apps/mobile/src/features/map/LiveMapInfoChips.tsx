@@ -54,10 +54,12 @@ const styles = StyleSheet.create({
   chip: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 18,
+    borderRadius: 8,
     borderWidth: 1,
     gap: 4,
     minWidth: 104,
+    flexGrow: 1,
+    flexBasis: 120,
     paddingHorizontal: 12,
     paddingVertical: 10
   },

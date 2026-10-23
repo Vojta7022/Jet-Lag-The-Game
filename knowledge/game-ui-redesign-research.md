@@ -26,4 +26,10 @@ The signature motif is a transit route that doubles as game progress: stations c
 3. Live map stays the focal surface. Replace generic page chrome with a compact role/phase/clock strip, a route-style bottom navigation, and one role-appropriate action dock.
 4. Keep the existing command, role-gating, map, question, and timer behavior intact while changing presentation. Apply the visual system to secondary screens after the first slice is approved and reviewed.
 
-Direction still needs owner approval before code changes. See the project `tasks/todo.md` for the design gate and implementation sequence.
+## Implementation review
+
+The owner approved the direction on 2026-10-23, and the UI has been implemented across Home, lobby, map, clue, card, and chat screens. Desktop and phone screenshots are in `deliverables/ui-preview/`.
+
+The implementation uses a restrained paper/ink/signal palette, serif game headlines, monospace clock labels, route-stop navigation, and original SVG map artwork. On web, decorative React Native SVGs must use `aria-hidden={true}`; passing `accessible={false}` through to an SVG DOM node produces a React console warning. The responsive web map measures its parent card width instead of assuming viewport width, which prevents clipping inside the page gutters.
+
+Validation on 2026-10-23: TypeScript typecheck passed; full suite passed 159/159; browser review covered 1440px desktop and 390px/320px phone widths. A local referee game was resumed, a local crew member added, Prague selected, a match started, and six cards drawn. A real countdown-reset issue remains: synthetic command timestamps can re-anchor the visible countdown after new projections/commands. See `tasks/todo.md` for remaining game-content and runtime gaps.

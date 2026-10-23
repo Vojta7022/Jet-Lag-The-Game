@@ -62,7 +62,7 @@ import { AppButton } from '../ui/AppButton.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
-import { colors } from '../ui/theme.ts';
+import { colors, fonts } from '../ui/theme.ts';
 
 function createMapRegionCommand(selectedRegion: PlayableRegionCatalogEntry): DomainCommand {
   return {
@@ -254,7 +254,7 @@ export function MapScreen() {
     compositePreviewRegion.regionId !== projection.visibleMap.regionId
   );
   const mapHeight = liveGameplayState
-    ? Math.max(280, Math.min(Math.round(dimensions.height * 0.38), 420))
+    ? Math.max(330, Math.min(Math.round(dimensions.height * 0.50), 620))
     : Math.max(190, Math.min(Math.round(dimensions.height * 0.24), 250));
   const regionSummary = projection?.visibleMap?.displayName ?? compositePreviewRegion?.displayName ?? previewRegion?.displayName ?? 'No region selected';
   const candidateSummary = projection?.visibleMap?.remainingArea
@@ -345,17 +345,8 @@ export function MapScreen() {
       liveGameplayState
         ? [
             {
-              label: 'Role',
-              value: formatRoleLabel(viewerRole),
-              tone: 'accent' as const
-            },
-            {
               label: 'Clue status',
               value: describeLiveClueStep(projection, activeQuestionTemplate?.name)
-            },
-            {
-              label: primaryLiveTimer?.label ?? 'Timer',
-              value: projection?.paused ? 'Frozen' : primaryLiveTimer?.remainingLabel ?? 'Waiting'
             },
             {
               label: 'Search',
@@ -524,6 +515,7 @@ export function MapScreen() {
   return (
     <ScreenContainer
       title={screenTitle}
+      hideHeader={liveGameplayState}
       eyebrow={liveGameplayState ? 'Live' : 'Pregame'}
       subtitle={screenSubtitle}
       topSlot={liveGameplayState ? undefined : <ProductNavBar current="map" />}
@@ -854,13 +846,14 @@ export function MapScreen() {
             <View style={styles.liveHero}>
               <View style={styles.liveHeroHeader}>
                 <View style={styles.liveHeroTextBlock}>
-                  <Text style={styles.liveHeroEyebrow}>Live search area</Text>
+                  <Text style={styles.liveHeroEyebrow}>{formatRoleLabel(viewerRole)} · {projection?.lifecycleState === 'hide_phase' ? 'THE GREAT ESCAPE' : 'THE HUNT IS ON'}</Text>
                   <Text style={styles.liveHeroTitle}>
                     {displayedVisibleMap?.displayName ?? 'Live map'}
                   </Text>
                   <Text style={styles.liveHeroSubtitle}>{candidateSummary}</Text>
                 </View>
                 <View style={styles.liveHeroControls}>
+                  <Text style={styles.gameClock}>{projection?.paused ? 'PAUSED' : primaryLiveTimer?.remainingLabel ?? 'LIVE'}</Text>
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => setShowLegend((value) => !value)}
@@ -884,7 +877,7 @@ export function MapScreen() {
                         pressed ? styles.legendTogglePressed : null
                       ]}
                     >
-                      <Text style={styles.liveControlLabel}>Match Controls</Text>
+                      <Text style={styles.liveControlLabel}>Referee</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -912,7 +905,7 @@ export function MapScreen() {
                 Constraint layers {String(projection?.visibleMap?.constraintArtifacts.length ?? 0)} · Eliminated areas {String(projection?.visibleMap?.eliminatedAreas.length ?? 0)}
               </Text>
 
-              {liveGuideModelForDisplay ? <LiveMapActionPanel model={liveGuideModelForDisplay} /> : null}
+              {liveGuideModelForDisplay ? <LiveMapActionPanel model={{ ...liveGuideModelForDisplay, facts: [] }} /> : null}
             </View>
 
             <LiveMapInlineActionPanel />
@@ -959,7 +952,7 @@ const styles = StyleSheet.create({
   setupHero: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 24,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 12,
     padding: 18,
@@ -1011,7 +1004,7 @@ const styles = StyleSheet.create({
   selectedBadge: {
     alignSelf: 'flex-start',
     backgroundColor: colors.accentMuted,
-    borderRadius: 999,
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6
   },
@@ -1042,7 +1035,7 @@ const styles = StyleSheet.create({
   scaleChip: {
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8
@@ -1099,7 +1092,7 @@ const styles = StyleSheet.create({
   liveHero: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 30,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 16,
     padding: 14,
@@ -1125,9 +1118,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     textTransform: 'uppercase'
   },
+  gameClock: { width: '100%', textAlign: 'right', fontFamily: fonts.mono, color: colors.accentStrong, fontSize: 25, fontWeight: '800', fontVariant: ['tabular-nums'] },
   liveHeroTitle: {
     color: colors.text,
-    fontSize: 26,
+    fontFamily: fonts.display,
+    fontSize: 30,
     fontWeight: '800'
   },
   liveHeroSubtitle: {
@@ -1136,25 +1131,32 @@ const styles = StyleSheet.create({
     lineHeight: 18
   },
   liveHeroControls: {
-    alignItems: 'flex-end',
+    width: 145,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: 8
   },
   liveControlButton: {
+    minHeight: 44,
+    justifyContent: 'center',
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 8
   },
   liveControlLabel: {
+    textAlign: 'center',
     color: colors.text,
     fontSize: 12,
     fontWeight: '700'
   },
   liveMapFrame: {
     backgroundColor: colors.surfaceMuted,
-    borderRadius: 24,
+    borderRadius: 12,
     overflow: 'hidden',
     padding: 4
   },
@@ -1173,7 +1175,7 @@ const styles = StyleSheet.create({
   liveSupportCard: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 24,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 12,
     padding: 16
@@ -1191,7 +1193,7 @@ const styles = StyleSheet.create({
   legendToggle: {
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 999,
+    borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8

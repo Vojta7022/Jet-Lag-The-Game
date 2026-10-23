@@ -5,7 +5,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
-import { canAccessHostControls } from '../navigation/player-flow.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
@@ -54,13 +53,12 @@ import { AppButton } from '../ui/AppButton.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
-import { colors } from '../ui/theme.ts';
+import { colors, fonts } from '../ui/theme.ts';
 
-function formatRoleLabel(role: string) {
-  return role.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function describeDeckFlowStep(lifecycleState: string | undefined, seekPhaseSubstate: string | undefined) {
+function describeDeckFlowStep(
+  lifecycleState: string | undefined,
+  seekPhaseSubstate: string | undefined
+) {
   if (!lifecycleState) {
     return 'Waiting for the live match';
   }
@@ -78,7 +76,9 @@ function describeDeckFlowStep(lifecycleState: string | undefined, seekPhaseSubst
   }
 
   if (lifecycleState !== 'seek_phase') {
-    return lifecycleState.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+    return lifecycleState
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (character) => character.toUpperCase());
   }
 
   switch (seekPhaseSubstate) {
@@ -98,36 +98,57 @@ function describeDeckFlowStep(lifecycleState: string | undefined, seekPhaseSubst
 }
 
 export function CardsScreen() {
-  const { state, submitCommand, submitCommands, refreshActiveMatch, prepareAttachmentUploadCommands } = useAppShell();
+  const {
+    state,
+    submitCommand,
+    submitCommands,
+    refreshActiveMatch,
+    prepareAttachmentUploadCommands
+  } = useAppShell();
+  const [showPiles, setShowPiles] = useState(false);
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);
-  const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
+  const viewerRole = resolveCurrentRole(
+    activeMatch?.playerRole,
+    activeMatch?.recipient.scope
+  );
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
   const deckViewModels = useMemo(
     () => buildDeckViewModels(defaultContentPack, projection, viewerRole),
     [projection, viewerRole]
   );
-  const [selectedDeckId, setSelectedDeckId] = useState<string | undefined>(deckViewModels[0]?.deck.deckId);
-  const selectedDeck = deckViewModels.find((deck) => deck.deck.deckId === selectedDeckId) ?? deckViewModels[0];
-  const [selectedCardInstanceId, setSelectedCardInstanceId] = useState<string | undefined>(
-    pickDefaultCardInstanceId(selectedDeck)
+  const [selectedDeckId, setSelectedDeckId] = useState<string | undefined>(
+    deckViewModels[0]?.deck.deckId
   );
-  const [selectedResponseCardIds, setSelectedResponseCardIds] = useState<string[]>([]);
+  const selectedDeck =
+    deckViewModels.find((deck) => deck.deck.deckId === selectedDeckId) ??
+    deckViewModels[0];
+  const [selectedCardInstanceId, setSelectedCardInstanceId] = useState<
+    string | undefined
+  >(pickDefaultCardInstanceId(selectedDeck));
+  const [selectedResponseCardIds, setSelectedResponseCardIds] = useState<
+    string[]
+  >([]);
   const [drawTrayCardIds, setDrawTrayCardIds] = useState<string[]>([]);
   const previousHandIdsRef = useRef<string[]>([]);
-  const selectedCard = findResolvedVisibleCard(deckViewModels, selectedCardInstanceId);
-  const activeCard = findResolvedVisibleCard(deckViewModels, projection?.activeCardResolution?.sourceCardInstanceId);
-  const activeQuestion = findActiveQuestion(projection);
-  const activeQuestionCategory = findQuestionCategory(defaultContentPack, activeQuestion?.categoryId);
-  const responseSelectionLimit = activeQuestionCategory?.categoryId === 'tentacles' ? 2 : 1;
-  const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
-  const canOpenMatchControls = canAccessHostControls(
-    activeMatch?.playerRole ?? activeMatch?.recipient.role,
-    activeMatch?.recipient.scope
+  const selectedCard = findResolvedVisibleCard(
+    deckViewModels,
+    selectedCardInstanceId
   );
-
+  const activeCard = findResolvedVisibleCard(
+    deckViewModels,
+    projection?.activeCardResolution?.sourceCardInstanceId
+  );
+  const activeQuestion = findActiveQuestion(projection);
+  const activeQuestionCategory = findQuestionCategory(
+    defaultContentPack,
+    activeQuestion?.categoryId
+  );
+  const responseSelectionLimit =
+    activeQuestionCategory?.categoryId === 'tentacles' ? 2 : 1;
+  const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
   useEffect(() => {
     if (!selectedDeckId && deckViewModels[0]) {
       setSelectedDeckId(deckViewModels[0].deck.deckId);
@@ -141,21 +162,31 @@ export function CardsScreen() {
   }, [selectedDeck, selectedDeckId]);
 
   useEffect(() => {
-    const availableCardIds = new Set(selectedDeck?.visibleCards.map((card) => card.card.cardInstanceId) ?? []);
-    if (!selectedCardInstanceId || !availableCardIds.has(selectedCardInstanceId)) {
+    const availableCardIds = new Set(
+      selectedDeck?.visibleCards.map((card) => card.card.cardInstanceId) ?? []
+    );
+    if (
+      !selectedCardInstanceId ||
+      !availableCardIds.has(selectedCardInstanceId)
+    ) {
       setSelectedCardInstanceId(pickDefaultCardInstanceId(selectedDeck));
     }
   }, [selectedCardInstanceId, selectedDeck]);
 
   const handCardIds = useMemo(
-    () => selectedDeck?.visibleByZone.hand.map((card) => card.card.cardInstanceId) ?? [],
+    () =>
+      selectedDeck?.visibleByZone.hand.map(
+        (card) => card.card.cardInstanceId
+      ) ?? [],
     [selectedDeck]
   );
   const handCardDefinitions = useMemo(
     () => selectedDeck?.visibleByZone.hand.map((card) => card.definition) ?? [],
     [selectedDeck]
   );
-  const handCardKindCounts = handCardDefinitions.reduce<Partial<Record<(typeof handCardDefinitions)[number]['kind'], number>>>(
+  const handCardKindCounts = handCardDefinitions.reduce<
+    Partial<Record<(typeof handCardDefinitions)[number]['kind'], number>>
+  >(
     (counts, definition) => ({
       ...counts,
       [definition.kind]: (counts[definition.kind] ?? 0) + 1
@@ -179,9 +210,17 @@ export function CardsScreen() {
   }, [drawTrayCardIds, handCardIds, handSignature]);
 
   useEffect(() => {
-    const nextSelectedResponseCardIds = filterCardIdsByVisibleHand(selectedResponseCardIds, handCardIds);
+    const nextSelectedResponseCardIds = filterCardIdsByVisibleHand(
+      selectedResponseCardIds,
+      handCardIds
+    );
 
-    if (!haveSameCardIdSequence(selectedResponseCardIds, nextSelectedResponseCardIds)) {
+    if (
+      !haveSameCardIdSequence(
+        selectedResponseCardIds,
+        nextSelectedResponseCardIds
+      )
+    ) {
       setSelectedResponseCardIds(nextSelectedResponseCardIds);
     }
   }, [handCardIds, handSignature, selectedResponseCardIds]);
@@ -190,14 +229,19 @@ export function CardsScreen() {
     activeMatch &&
       viewerRole === 'host' &&
       projection &&
-      ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup'].includes(
-        projection.lifecycleState
-      )
+      [
+        'draft',
+        'lobby',
+        'role_assignment',
+        'rules_confirmation',
+        'map_setup'
+      ].includes(projection.lifecycleState)
   );
   const lockReason =
     projection?.activeCardResolution?.sourceCardInstanceId &&
     selectedCard &&
-    projection.activeCardResolution.sourceCardInstanceId !== selectedCard.card.cardInstanceId
+    projection.activeCardResolution.sourceCardInstanceId !==
+      selectedCard.card.cardInstanceId
       ? 'Another card window is already active. Only the pending-resolution card can be closed right now.'
       : undefined;
   const canDraw = Boolean(
@@ -206,7 +250,10 @@ export function CardsScreen() {
       canDrawCards(projection) &&
       viewerRole !== 'spectator'
   );
-  const cardsNeededToReachTarget = Math.max(0, HIDER_HAND_TARGET - handCardIds.length);
+  const cardsNeededToReachTarget = Math.max(
+    0,
+    HIDER_HAND_TARGET - handCardIds.length
+  );
   const canDrawToTarget = canDraw && cardsNeededToReachTarget > 0;
   const canPlay = Boolean(
     activeMatch &&
@@ -224,18 +271,19 @@ export function CardsScreen() {
       viewerRole !== 'spectator'
   );
   const canResolve = Boolean(
-    activeMatch &&
-      canResolveCardWindow(viewerRole, projection)
+    activeMatch && canResolveCardWindow(viewerRole, projection)
   );
   const selectedDeckVisibility = selectedDeck
     ? describeDeckVisibility(selectedDeck.deck, viewerRole)
     : 'Select a deck to review its visible hand and piles.';
-  const drawTrayCards = selectedDeck?.visibleByZone.hand.filter((card) =>
-    drawTrayCardIds.includes(card.card.cardInstanceId)
-  ) ?? [];
-  const selectedResponseCards = selectedDeck?.visibleByZone.hand.filter((card) =>
-    selectedResponseCardIds.includes(card.card.cardInstanceId)
-  ) ?? [];
+  const drawTrayCards =
+    selectedDeck?.visibleByZone.hand.filter((card) =>
+      drawTrayCardIds.includes(card.card.cardInstanceId)
+    ) ?? [];
+  const selectedResponseCards =
+    selectedDeck?.visibleByZone.hand.filter((card) =>
+      selectedResponseCardIds.includes(card.card.cardInstanceId)
+    ) ?? [];
   const selectedCardActionState = buildCardActionState({
     card: selectedCard,
     viewerRole,
@@ -243,7 +291,9 @@ export function CardsScreen() {
     canDiscard,
     lockReason
   });
-  const activeCardBehavior = activeCard ? buildCardBehaviorModel(activeCard.definition) : undefined;
+  const activeCardBehavior = activeCard
+    ? buildCardBehaviorModel(activeCard.definition)
+    : undefined;
   const selectedCardWorkbookPlayability = selectedCard
     ? buildCardWorkbookPlayability({
         card: selectedCard.definition,
@@ -254,14 +304,22 @@ export function CardsScreen() {
       })
     : undefined;
   const selectedCardResponseReason = selectedCard
-    ? buildQuestionResponseCardReason(selectedCard.definition, activeQuestionCategory?.categoryId, selectedScale)
+    ? buildQuestionResponseCardReason(
+        selectedCard.definition,
+        activeQuestionCategory?.categoryId,
+        selectedScale
+      )
     : undefined;
   const evidenceContexts = useMemo(
     () => buildEvidenceContexts(defaultContentPack, projection, viewerRole),
     [projection, viewerRole]
   );
-  const activeCardEvidenceContext = evidenceContexts.find((context) => context.kind === 'card');
-  const cardAttachmentContext = useMemo<LocalEvidenceContextDescriptor | undefined>(
+  const activeCardEvidenceContext = evidenceContexts.find(
+    (context) => context.kind === 'card'
+  );
+  const cardAttachmentContext = useMemo<
+    LocalEvidenceContextDescriptor | undefined
+  >(
     () =>
       activeCardEvidenceContext
         ? {
@@ -279,14 +337,17 @@ export function CardsScreen() {
   const cardEvidenceDrafts = cardAttachmentContext
     ? localMedia.getContextDrafts(cardAttachmentContext.contextId)
     : [];
-  const resolveDisabledReason = activeCard && !canResolve
-    ? 'A host-admin view must close the active card window after the effect is handled.'
-    : undefined;
-  const cardEvidenceHint = activeMatch?.onlineStatus?.attachmentStorageMode === 'durable_supabase_storage'
-    ? 'Recording evidence here uploads the image to Supabase Storage and records durable attachment metadata in the match.'
-    : activeMatch?.runtimeKind === 'online_foundation'
-      ? 'Recording evidence here still creates real attachment records, but this online session is not yet writing shared media binaries.'
-      : 'Recording media here creates attachment metadata in the match. Binary storage and later review workflows are still partial, so this screen stays explicit about what is and is not persisted.';
+  const resolveDisabledReason =
+    activeCard && !canResolve
+      ? 'A host-admin view must close the active card window after the effect is handled.'
+      : undefined;
+  const cardEvidenceHint =
+    activeMatch?.onlineStatus?.attachmentStorageMode ===
+    'durable_supabase_storage'
+      ? 'Recording evidence here uploads the image to Supabase Storage and records durable attachment metadata in the match.'
+      : activeMatch?.runtimeKind === 'online_foundation'
+        ? 'Recording evidence here still creates real attachment records, but this online session is not yet writing shared media binaries.'
+        : 'Recording media here creates attachment metadata in the match. Binary storage and later review workflows are still partial, so this screen stays explicit about what is and is not persisted.';
   const canManageHiderDeck = Boolean(
     selectedDeck &&
       (viewerRole === 'host' || viewerRole === 'hider') &&
@@ -316,15 +377,19 @@ export function CardsScreen() {
 
   return (
     <ScreenContainer
-      title={liveGameplayState ? 'Hand & Effects' : 'Deck'}
-      eyebrow={liveGameplayState ? 'Live Game' : 'Support'}
+      title="Your bag of tricks"
+      eyebrow={liveGameplayState ? 'PLAY YOUR NEXT MOVE' : 'THE CARD KIT'}
       subtitle={
         liveGameplayState
-          ? 'Private hand review, response picks, and card windows.'
+          ? 'Collect useful cards. Pick your moment. Change the chase.'
           : 'Review visible hands, piles, and live effects.'
       }
-      topSlot={liveGameplayState ? undefined : <ProductNavBar current="cards" />}
-      bottomSlot={liveGameplayState ? <GameplayTabBar current="deck" /> : undefined}
+      topSlot={
+        liveGameplayState ? undefined : <ProductNavBar current="cards" />
+      }
+      bottomSlot={
+        liveGameplayState ? <GameplayTabBar current="deck" /> : undefined
+      }
     >
       {!activeMatch ? (
         <StateBanner
@@ -355,66 +420,35 @@ export function CardsScreen() {
         <View style={styles.heroCard}>
           <View style={styles.heroHeader}>
             <View style={styles.heroText}>
-              <Text style={styles.heroEyebrow}>Deck control</Text>
+              <Text style={styles.heroEyebrow}>YOUR NEXT MOVE</Text>
               <Text style={styles.heroTitle}>
                 {selectedDeck?.deck.name ?? 'Choose a deck'}
               </Text>
               <Text style={styles.heroCopy}>
-                {describeDeckFlowStep(projection?.lifecycleState, projection?.seekPhaseSubstate)}
+                {describeDeckFlowStep(
+                  projection?.lifecycleState,
+                  projection?.seekPhaseSubstate
+                )}
               </Text>
             </View>
-            <View style={styles.heroMeta}>
-              <Text style={styles.heroMetaValue}>{formatRoleLabel(viewerRole)}</Text>
-              <Text style={styles.heroMetaLabel}>Role</Text>
-            </View>
           </View>
-
-          <View style={styles.chipRow}>
-            <View style={styles.infoChip}>
-              <Text style={styles.infoValue}>{deckViewModels.length}</Text>
-              <Text style={styles.infoLabel}>Visible decks</Text>
-            </View>
-            <View style={styles.infoChip}>
-              <Text style={styles.infoValue}>{handCardIds.length} / {HIDER_HAND_TARGET}</Text>
-              <Text style={styles.infoLabel}>Hand</Text>
-            </View>
-            <View style={styles.infoChip}>
-              <Text style={styles.infoValue}>{selectedResponseCards.length} / {responseSelectionLimit}</Text>
-              <Text style={styles.infoLabel}>Response picks</Text>
-            </View>
-            <View style={styles.infoChip}>
-              <Text style={styles.infoValue}>{timingModel?.freshnessLabel ?? 'Waiting'}</Text>
-              <Text style={styles.infoLabel}>State</Text>
-            </View>
-          </View>
+          <Text style={styles.handCounter}>
+            {handCardIds.length}
+            <Text style={styles.handCounterLabel}>
+              {' '}
+              / {HIDER_HAND_TARGET} cards in hand
+            </Text>
+          </Text>
 
           <View style={styles.heroActions}>
-            {liveGameplayState ? (
-              <View style={styles.actionCell}>
-                <AppButton
-                  label="Back To Live Map"
-                  tone="secondary"
-                  onPress={() => {
-                    router.push('/map');
-                  }}
-                />
-              </View>
-            ) : null}
-            {liveGameplayState && canOpenMatchControls ? (
-              <View style={styles.actionCell}>
-                <AppButton
-                  label="Match Controls"
-                  tone="ghost"
-                  onPress={() => {
-                    router.push('/status');
-                  }}
-                />
-              </View>
-            ) : null}
             {canPrepareFlow ? (
               <View style={styles.actionCell}>
                 <AppButton
-                  label={state.loadState === 'loading' ? 'Working...' : 'Prepare Card Play'}
+                  label={
+                    state.loadState === 'loading'
+                      ? 'Working...'
+                      : 'Prepare Card Play'
+                  }
                   onPress={() => {
                     if (!projection) {
                       return;
@@ -436,8 +470,8 @@ export function CardsScreen() {
               <AppButton
                 label={
                   canDrawToTarget
-                    ? `Draw ${cardsNeededToReachTarget} To Reach ${HIDER_HAND_TARGET}`
-                    : `Hand Target ${HIDER_HAND_TARGET} Ready`
+                    ? `Draw ${cardsNeededToReachTarget} cards`
+                    : 'Your hand is ready'
                 }
                 onPress={() => {
                   if (!selectedDeck || cardsNeededToReachTarget === 0) {
@@ -458,7 +492,8 @@ export function CardsScreen() {
             </View>
             <View style={styles.actionCell}>
               <AppButton
-                label={selectedDeck ? `Draw From ${selectedDeck.deck.name}` : 'Draw A Card'}
+                label="Draw one card"
+                tone="secondary"
                 onPress={() => {
                   if (!selectedDeck) {
                     return;
@@ -476,7 +511,7 @@ export function CardsScreen() {
             </View>
             <View style={styles.actionCell}>
               <AppButton
-                label="Refresh Card State"
+                label="Refresh hand"
                 onPress={() => {
                   void refreshActiveMatch();
                 }}
@@ -498,25 +533,32 @@ export function CardsScreen() {
 
       {selectedDeck ? (
         <>
-          <Panel
-            title="Decks"
-            subtitle="Choose the hand you want to inspect."
-            tone="accent"
-          >
-            <CardDeckList
-              decks={deckViewModels}
-              selectedDeckId={selectedDeck?.deck.deckId}
-              viewerRole={viewerRole}
-              onSelect={setSelectedDeckId}
-            />
-            <View style={styles.deckSummary}>
-              <Text style={styles.deckSummaryTitle}>{selectedDeck.deck.name}</Text>
-              <Text style={styles.deckSummaryMeta}>
-                {formatDeckOwnerScope(selectedDeck.deck.ownerScope)} · {selectedScale ?? 'Waiting for setup'}
-              </Text>
-              <Text style={styles.copy}>{selectedDeckVisibility}</Text>
-            </View>
-          </Panel>
+          {deckViewModels.length > 1 ? (
+            <>
+              <Panel
+                title="Decks"
+                subtitle="Choose the hand you want to inspect."
+                tone="accent"
+              >
+                <CardDeckList
+                  decks={deckViewModels}
+                  selectedDeckId={selectedDeck?.deck.deckId}
+                  viewerRole={viewerRole}
+                  onSelect={setSelectedDeckId}
+                />
+                <View style={styles.deckSummary}>
+                  <Text style={styles.deckSummaryTitle}>
+                    {selectedDeck.deck.name}
+                  </Text>
+                  <Text style={styles.deckSummaryMeta}>
+                    {formatDeckOwnerScope(selectedDeck.deck.ownerScope)} ·{' '}
+                    {selectedScale ?? 'Waiting for setup'}
+                  </Text>
+                  <Text style={styles.copy}>{selectedDeckVisibility}</Text>
+                </View>
+              </Panel>
+            </>
+          ) : null}
 
           <Panel
             title="Live Hand"
@@ -526,21 +568,29 @@ export function CardsScreen() {
               <View style={styles.handSummary}>
                 <View style={styles.chipRow}>
                   <View style={styles.infoChip}>
-                    <Text style={styles.infoValue}>{handCardIds.length} / {HIDER_HAND_TARGET}</Text>
+                    <Text style={styles.infoValue}>
+                      {handCardIds.length} / {HIDER_HAND_TARGET}
+                    </Text>
                     <Text style={styles.infoLabel}>Hand target</Text>
                   </View>
                   <View style={styles.infoChip}>
                     <Text style={styles.infoValue}>
-                      {cardsNeededToReachTarget > 0 ? `${cardsNeededToReachTarget} more` : 'Ready'}
+                      {cardsNeededToReachTarget > 0
+                        ? `${cardsNeededToReachTarget} more`
+                        : 'Ready'}
                     </Text>
                     <Text style={styles.infoLabel}>Need to draw</Text>
                   </View>
                   <View style={styles.infoChip}>
-                    <Text style={styles.infoValue}>{activeQuestionCategory?.name ?? 'No live clue'}</Text>
+                    <Text style={styles.infoValue}>
+                      {activeQuestionCategory?.name ?? 'No live clue'}
+                    </Text>
                     <Text style={styles.infoLabel}>Active clue</Text>
                   </View>
                   <View style={styles.infoChip}>
-                    <Text style={styles.infoValue}>{selectedResponseCards.length} / {responseSelectionLimit}</Text>
+                    <Text style={styles.infoValue}>
+                      {selectedResponseCards.length} / {responseSelectionLimit}
+                    </Text>
                     <Text style={styles.infoLabel}>Response picks</Text>
                   </View>
                 </View>
@@ -552,7 +602,9 @@ export function CardsScreen() {
                     <View style={styles.actionCell}>
                       <AppButton
                         label={
-                          selectedResponseCardIds.includes(selectedCard.card.cardInstanceId)
+                          selectedResponseCardIds.includes(
+                            selectedCard.card.cardInstanceId
+                          )
                             ? 'Remove From Picks'
                             : `Add To Picks (${responseSelectionLimit} max)`
                         }
@@ -560,10 +612,14 @@ export function CardsScreen() {
                           setSelectedResponseCardIds((current) => {
                             const cardId = selectedCard.card.cardInstanceId;
                             if (current.includes(cardId)) {
-                              return current.filter((candidate) => candidate !== cardId);
+                              return current.filter(
+                                (candidate) => candidate !== cardId
+                              );
                             }
 
-                            return [...current, cardId].slice(-responseSelectionLimit);
+                            return [...current, cardId].slice(
+                              -responseSelectionLimit
+                            );
                           });
                         }}
                         tone="secondary"
@@ -571,13 +627,17 @@ export function CardsScreen() {
                       />
                     </View>
                   ) : null}
-                  {selectedCard?.card.zone === 'hand' && drawTrayCardIds.includes(selectedCard.card.cardInstanceId) ? (
+                  {selectedCard?.card.zone === 'hand' &&
+                  drawTrayCardIds.includes(selectedCard.card.cardInstanceId) ? (
                     <View style={styles.actionCell}>
                       <AppButton
                         label="Mark As Keep"
                         onPress={() => {
                           setDrawTrayCardIds((current) =>
-                            current.filter((candidate) => candidate !== selectedCard.card.cardInstanceId)
+                            current.filter(
+                              (candidate) =>
+                                candidate !== selectedCard.card.cardInstanceId
+                            )
                           );
                         }}
                         tone="secondary"
@@ -596,130 +656,158 @@ export function CardsScreen() {
               selectedCardInstanceId={selectedCard?.card.cardInstanceId}
               onSelect={setSelectedCardInstanceId}
             />
-            <CardZoneSection
-              title="Temporary Draw Tray"
-              cards={drawTrayCards}
-              emptyText="No freshly drawn hand cards are waiting for review."
-              selectedCardInstanceId={selectedCard?.card.cardInstanceId}
-              onSelect={setSelectedCardInstanceId}
-            />
-            <CardZoneSection
-              title="Selected Response Cards"
-              cards={selectedResponseCards}
-              emptyText="No response cards are marked yet."
-              selectedCardInstanceId={selectedCard?.card.cardInstanceId}
-              onSelect={setSelectedCardInstanceId}
-            />
-            <CardZoneSection
-              title="Cards Awaiting Resolution"
-              cards={selectedDeck.visibleByZone.pending_resolution}
-              emptyText="No pending-resolution cards are visible in this deck right now."
-              selectedCardInstanceId={selectedCard?.card.cardInstanceId}
-              onSelect={setSelectedCardInstanceId}
-            />
+            {drawTrayCards.length > 0 ? (
+              <CardZoneSection
+                title="Temporary Draw Tray"
+                cards={drawTrayCards}
+                emptyText="No freshly drawn hand cards are waiting for review."
+                selectedCardInstanceId={selectedCard?.card.cardInstanceId}
+                onSelect={setSelectedCardInstanceId}
+              />
+            ) : null}
+            {selectedResponseCards.length > 0 ? (
+              <CardZoneSection
+                title="Selected Response Cards"
+                cards={selectedResponseCards}
+                emptyText="No response cards are marked yet."
+                selectedCardInstanceId={selectedCard?.card.cardInstanceId}
+                onSelect={setSelectedCardInstanceId}
+              />
+            ) : null}
+            {selectedDeck.visibleByZone.pending_resolution.length > 0 ? (
+              <CardZoneSection
+                title="Cards Awaiting Resolution"
+                cards={selectedDeck.visibleByZone.pending_resolution}
+                emptyText="No pending-resolution cards are visible in this deck right now."
+                selectedCardInstanceId={selectedCard?.card.cardInstanceId}
+                onSelect={setSelectedCardInstanceId}
+              />
+            ) : null}
           </Panel>
 
+          <AppButton
+            label={
+              showPiles
+                ? 'Hide piles & discards'
+                : 'Inspect draw pile & discards'
+            }
+            tone="ghost"
+            onPress={() => setShowPiles(!showPiles)}
+          />
+          {showPiles ? (
+            <>
+              <Panel
+                title="Piles"
+                subtitle="Draw pile, discards, and removed cards."
+              >
+                <CardZoneSection
+                  title="Visible Draw Pile"
+                  cards={selectedDeck.visibleByZone.draw_pile}
+                  emptyText={
+                    viewerRole === 'host'
+                      ? 'The visible draw pile is empty.'
+                      : 'Draw-pile contents are hidden in this scope unless the projection explicitly allows them.'
+                  }
+                  selectedCardInstanceId={selectedCard?.card.cardInstanceId}
+                  onSelect={setSelectedCardInstanceId}
+                />
+                <CardZoneSection
+                  title="Visible Discards"
+                  cards={selectedDeck.visibleByZone.discard_pile}
+                  emptyText="No visible discarded cards for this deck yet."
+                  selectedCardInstanceId={selectedCard?.card.cardInstanceId}
+                  onSelect={setSelectedCardInstanceId}
+                />
+                <CardZoneSection
+                  title="Visible Exiled Cards"
+                  cards={selectedDeck.visibleByZone.exile}
+                  emptyText="No visible exiled cards for this deck."
+                  selectedCardInstanceId={selectedCard?.card.cardInstanceId}
+                  onSelect={setSelectedCardInstanceId}
+                />
+              </Panel>
+            </>
+          ) : null}
+        </>
+      ) : null}
+
+      {selectedCard && (selectedCard.card.zone !== 'draw_pile' || showPiles) ? (
+        <>
           <Panel
-            title="Piles"
-            subtitle="Draw pile, discards, and removed cards."
+            title="Selected Card"
+            subtitle="Workbook detail and current actions."
+            tone="soft"
           >
-            <CardZoneSection
-              title="Visible Draw Pile"
-              cards={selectedDeck.visibleByZone.draw_pile}
-              emptyText={
-                viewerRole === 'host'
-                  ? 'The visible draw pile is empty.'
-                  : 'Draw-pile contents are hidden in this scope unless the projection explicitly allows them.'
-              }
-              selectedCardInstanceId={selectedCard?.card.cardInstanceId}
-              onSelect={setSelectedCardInstanceId}
-            />
-            <CardZoneSection
-              title="Visible Discards"
-              cards={selectedDeck.visibleByZone.discard_pile}
-              emptyText="No visible discarded cards for this deck yet."
-              selectedCardInstanceId={selectedCard?.card.cardInstanceId}
-              onSelect={setSelectedCardInstanceId}
-            />
-            <CardZoneSection
-              title="Visible Exiled Cards"
-              cards={selectedDeck.visibleByZone.exile}
-              emptyText="No visible exiled cards for this deck."
-              selectedCardInstanceId={selectedCard?.card.cardInstanceId}
-              onSelect={setSelectedCardInstanceId}
+            <CardDetailPanel
+              card={selectedCard}
+              viewerRole={viewerRole}
+              selectedScale={selectedScale}
+              workbookPlayability={selectedCardWorkbookPlayability}
+              responseReason={selectedCardResponseReason}
+              disabled={state.loadState === 'loading'}
+              lockReason={lockReason}
+              canPlay={canPlay}
+              canDiscard={canDiscard}
+              playDisabledReason={selectedCardActionState.playReason}
+              discardDisabledReason={selectedCardActionState.discardReason}
+              onPlay={() => {
+                if (!selectedCard) {
+                  return;
+                }
+
+                void submitCommand({
+                  type: 'play_card',
+                  payload: {
+                    cardInstanceId: selectedCard.card.cardInstanceId
+                  }
+                });
+              }}
+              onDiscard={() => {
+                if (!selectedCard) {
+                  return;
+                }
+
+                void submitCommand({
+                  type: 'discard_card',
+                  payload: {
+                    cardInstanceId: selectedCard.card.cardInstanceId
+                  }
+                });
+              }}
             />
           </Panel>
         </>
       ) : null}
 
-      <Panel
-        title="Selected Card"
-        subtitle="Workbook detail and current actions."
-        tone="soft"
-      >
-        <CardDetailPanel
-          card={selectedCard}
-          viewerRole={viewerRole}
-          selectedScale={selectedScale}
-          workbookPlayability={selectedCardWorkbookPlayability}
-          responseReason={selectedCardResponseReason}
-          disabled={state.loadState === 'loading'}
-          lockReason={lockReason}
-          canPlay={canPlay}
-          canDiscard={canDiscard}
-          playDisabledReason={selectedCardActionState.playReason}
-          discardDisabledReason={selectedCardActionState.discardReason}
-          onPlay={() => {
-            if (!selectedCard) {
-              return;
-            }
+      {projection?.activeCardResolution ? (
+        <>
+          <Panel
+            title="Card Window"
+            subtitle="Resolve the current effect when the state allows it."
+          >
+            <CardResolutionStatusPanel
+              activeCard={activeCard}
+              resolution={projection?.activeCardResolution}
+              canResolve={canResolve}
+              resolveDisabledReason={resolveDisabledReason}
+              disabled={state.loadState === 'loading'}
+              onResolve={() => {
+                if (!projection?.activeCardResolution?.sourceCardInstanceId) {
+                  return;
+                }
 
-            void submitCommand({
-              type: 'play_card',
-              payload: {
-                cardInstanceId: selectedCard.card.cardInstanceId
-              }
-            });
-          }}
-          onDiscard={() => {
-            if (!selectedCard) {
-              return;
-            }
-
-            void submitCommand({
-              type: 'discard_card',
-              payload: {
-                cardInstanceId: selectedCard.card.cardInstanceId
-              }
-            });
-          }}
-        />
-      </Panel>
-
-      <Panel
-        title="Card Window"
-        subtitle="Resolve the current effect when the state allows it."
-      >
-        <CardResolutionStatusPanel
-          activeCard={activeCard}
-          resolution={projection?.activeCardResolution}
-          canResolve={canResolve}
-          resolveDisabledReason={resolveDisabledReason}
-          disabled={state.loadState === 'loading'}
-          onResolve={() => {
-            if (!projection?.activeCardResolution?.sourceCardInstanceId) {
-              return;
-            }
-
-            void submitCommand({
-              type: 'resolve_card_window',
-              payload: {
-                sourceCardInstanceId: projection.activeCardResolution.sourceCardInstanceId
-              }
-            });
-          }}
-        />
-      </Panel>
+                void submitCommand({
+                  type: 'resolve_card_window',
+                  payload: {
+                    sourceCardInstanceId:
+                      projection.activeCardResolution.sourceCardInstanceId
+                  }
+                });
+              }}
+            />
+          </Panel>
+        </>
+      ) : null}
 
       {cardAttachmentContext ? (
         <Panel
@@ -730,9 +818,15 @@ export function CardsScreen() {
             context={cardAttachmentContext}
             drafts={cardEvidenceDrafts}
             visibleAttachments={activeCardEvidenceContext?.attachments ?? []}
-            disabled={!activeMatch || state.loadState === 'loading' || viewerRole === 'spectator'}
+            disabled={
+              !activeMatch ||
+              state.loadState === 'loading' ||
+              viewerRole === 'spectator'
+            }
             busy={localMedia.isContextBusy(cardAttachmentContext.contextId)}
-            feedback={localMedia.getContextFeedback(cardAttachmentContext.contextId)}
+            feedback={localMedia.getContextFeedback(
+              cardAttachmentContext.contextId
+            )}
             localPreviewByAttachmentId={localMedia.localPreviewByAttachmentId}
             submitLabel="Record Card Evidence"
             submitDisabled={cardEvidenceDrafts.length === 0}
@@ -757,10 +851,21 @@ export function CardsScreen() {
 }
 
 const styles = StyleSheet.create({
+  handCounter: {
+    fontFamily: fonts.mono,
+    fontSize: 40,
+    color: colors.accentStrong,
+    fontWeight: '800'
+  },
+  handCounterLabel: {
+    fontSize: 13,
+    color: colors.textMuted,
+    fontFamily: fonts.mono
+  },
   heroCard: {
     backgroundColor: colors.surfaceRaised,
     borderColor: colors.border,
-    borderRadius: 28,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 14,
     padding: 16,
@@ -789,7 +894,8 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     color: colors.text,
-    fontSize: 24,
+    fontFamily: fonts.display,
+    fontSize: 28,
     fontWeight: '800'
   },
   heroCopy: {
@@ -853,7 +959,7 @@ const styles = StyleSheet.create({
     gap: 10
   },
   actionCell: {
-    flexBasis: '48%',
+    flexBasis: 220,
     flexGrow: 1
   },
   deckSummary: {

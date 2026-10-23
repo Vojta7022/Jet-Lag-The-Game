@@ -19,19 +19,19 @@ export default function RootLayout() {
           },
           headerShadowVisible: false,
           headerStyle: {
-            backgroundColor: '#f4f6f8'
+            backgroundColor: '#F5F0E3'
           }
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'Home' }} />
+        <Stack.Screen name="index" options={{ title: 'Home', headerShown: false }} />
         <Stack.Screen name="auth" options={{ title: 'Player Profile' }} />
-        <Stack.Screen name="create-match" options={{ title: 'Create Match' }} />
+        <Stack.Screen name="create-match" options={{ title: 'Your Adventure' }} />
         <Stack.Screen name="join-match" options={{ title: 'Join Match' }} />
-        <Stack.Screen name="lobby" options={{ title: 'Match Room' }} />
-        <Stack.Screen name="map" options={{ title: 'Live Map' }} />
+        <Stack.Screen name="lobby" options={{ title: 'The Briefing' }} />
+        <Stack.Screen name="map" options={{ title: 'The Playing Field' }} />
         <Stack.Screen name="movement" options={{ title: 'Movement Review' }} />
-        <Stack.Screen name="questions" options={{ title: 'Clue Review' }} />
-        <Stack.Screen name="cards" options={{ title: 'Hand & Effects' }} />
+        <Stack.Screen name="questions" options={{ title: 'The Investigation' }} />
+        <Stack.Screen name="cards" options={{ title: 'Your Cards' }} />
         <Stack.Screen name="chat" options={{ title: 'Team Chat' }} />
         <Stack.Screen name="dice" options={{ title: 'Dice' }} />
         <Stack.Screen name="admin" options={{ title: 'Referee Panel' }} />

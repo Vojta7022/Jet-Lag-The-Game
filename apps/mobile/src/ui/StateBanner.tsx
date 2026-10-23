@@ -41,8 +41,9 @@ function toneDotStyle(tone: StateBannerProps['tone']) {
 
 const styles = StyleSheet.create({
   banner: {
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 10,
+    borderWidth: 0,
+    borderLeftWidth: 3,
     gap: 8,
     padding: 14
   },

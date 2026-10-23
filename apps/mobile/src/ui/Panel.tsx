@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors } from './theme.ts';
+import { colors, fonts } from './theme.ts';
 
 interface PanelProps {
   title?: string;
@@ -31,14 +31,14 @@ export function Panel(props: PanelProps) {
 
 const styles = StyleSheet.create({
   panel: {
-    borderRadius: 22,
+    borderRadius: 12,
     borderWidth: 1,
     gap: 14,
     padding: 18,
     shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
-    shadowRadius: 20,
+    shadowRadius: 6,
     elevation: 2
   },
   panelDefault: {
@@ -58,7 +58,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 17,
+    fontFamily: fonts.display,
+    fontSize: 23,
     fontWeight: '800'
   },
   subtitle: {

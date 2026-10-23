@@ -17,7 +17,7 @@ export function AppButton(props: AppButtonProps) {
         ? styles.danger
         : props.tone === 'ghost'
           ? styles.ghost
-        : styles.primary;
+          : styles.primary;
   const labelStyle =
     props.tone === 'secondary'
       ? styles.secondaryLabel
@@ -37,27 +37,37 @@ export function AppButton(props: AppButtonProps) {
         pressed && !props.disabled ? styles.pressed : null
       ]}
     >
-      <Text style={labelStyle}>{props.label}</Text>
+      <Text
+        style={[
+          labelStyle,
+          !props.tone || props.tone === 'primary' ? styles.primaryLabel : null
+        ]}
+      >
+        {props.label}
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
-    minHeight: 48,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18
+    paddingHorizontal: 18,
+    paddingVertical: 12
   },
   primary: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent
+    backgroundColor: colors.signal,
+    borderColor: colors.ink,
+    borderBottomWidth: 4
   },
   secondary: {
     backgroundColor: colors.surfaceRaised,
-    borderColor: colors.border
+    borderColor: colors.borderStrong,
+    borderBottomWidth: 3
   },
   danger: {
     backgroundColor: colors.danger,
@@ -71,19 +81,26 @@ const styles = StyleSheet.create({
     opacity: 0.55
   },
   pressed: {
-    transform: [{ scale: 0.98 }]
+    transform: [{ scale: 0.98 }, { translateY: 1 }]
   },
   label: {
+    textAlign: 'center',
     color: colors.inkInverse,
     fontSize: 15,
     fontWeight: '700'
   },
+  primaryLabel: {
+    color: colors.ink,
+    fontWeight: '800'
+  },
   secondaryLabel: {
+    textAlign: 'center',
     color: colors.text,
     fontSize: 15,
     fontWeight: '700'
   },
   ghostLabel: {
+    textAlign: 'center',
     color: colors.accentStrong,
     fontSize: 14,
     fontWeight: '700'

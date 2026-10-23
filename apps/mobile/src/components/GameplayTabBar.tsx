@@ -1,92 +1,90 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-
 import { useAppShell } from '../providers/AppShellProvider.tsx';
+import { GameIcon } from '../ui/GameIcon.tsx';
 import { colors } from '../ui/theme.ts';
-import { buildGameplayTabItems } from './gameplay-nav-model.ts';
+import {
+  buildGameplayTabItems,
+  type GameplayTabKey
+} from './gameplay-nav-model.ts';
 
-import type { GameplayTabKey } from './gameplay-nav-model.ts';
-
-interface GameplayTabBarProps {
-  current: GameplayTabKey;
-}
-
-export function GameplayTabBar(props: GameplayTabBarProps) {
+export function GameplayTabBar({ current }: { current: GameplayTabKey }) {
   const { state } = useAppShell();
-  const activeMatch = state.activeMatch;
-  const role = activeMatch?.playerRole ?? activeMatch?.recipient.role ?? 'spectator';
-  const items = buildGameplayTabItems({
-    role,
-    visibleCardCount: activeMatch?.projection.visibleCards.length ?? 0
-  }, props.current);
-
+  const match = state.activeMatch;
+  const items = buildGameplayTabItems(
+    {
+      role:
+        match?.recipient.scope === 'host_admin'
+          ? 'host'
+          : (match?.playerRole ?? match?.recipient.role ?? 'spectator'),
+      visibleCardCount: match?.projection.visibleCards.length ?? 0
+    },
+    current
+  );
   return (
-    <View style={styles.container}>
+    <View
+      accessibilityRole="tablist"
+      accessibilityLabel="Game tools"
+      style={styles.container}
+    >
       {items.map((item) => {
-        const isActive = item.key === props.current;
+        const active = item.key === current;
         return (
           <Pressable
             key={item.key}
-            accessibilityRole="button"
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={item.label}
             onPress={() => {
-              if (!isActive) {
+              if (!active)
                 router.push(item.href as Parameters<typeof router.push>[0]);
-              }
             }}
             style={({ pressed }) => [
               styles.item,
-              item.key === 'map' ? styles.itemMap : null,
-              isActive ? styles.itemActive : null,
-              pressed && !isActive ? styles.itemPressed : null
+              active && styles.active,
+              pressed && styles.pressed
             ]}
           >
-            <Text style={[styles.label, isActive ? styles.labelActive : null]}>
+            <GameIcon
+              name={item.key}
+              color={active ? colors.signal : '#C4D8D7'}
+              size={23}
+            />
+            <Text style={[styles.label, active && styles.labelActive]}>
               {item.label}
             </Text>
+            <View style={[styles.stop, active && styles.stopActive]} />
           </Pressable>
         );
       })}
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: 8,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 6
+    gap: 4,
+    width: '100%',
+    maxWidth: 1040,
+    alignSelf: 'center'
   },
   item: {
     flex: 1,
+    minHeight: 66,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'transparent',
-    backgroundColor: 'transparent',
-    minHeight: 50,
-    paddingHorizontal: 8
+    gap: 5,
+    borderRadius: 10
   },
-  itemMap: {
-    flex: 1.2
+  active: { backgroundColor: '#24465A' },
+  pressed: { opacity: 0.75 },
+  label: { color: '#C4D8D7', fontSize: 10, fontWeight: '700' },
+  labelActive: { color: colors.signal },
+  stop: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'transparent'
   },
-  itemActive: {
-    backgroundColor: colors.surfaceRaised,
-    borderColor: colors.borderStrong
-  },
-  itemPressed: {
-    opacity: 0.86
-  },
-  label: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '800'
-  },
-  labelActive: {
-    color: colors.accentStrong
-  }
+  stopActive: { backgroundColor: colors.signal }
 });

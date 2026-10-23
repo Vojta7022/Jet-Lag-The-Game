@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Share, StyleSheet, Text, View } from 'react-native';
 
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
@@ -9,28 +9,52 @@ import {
   hasRequiredRoleAssignments,
   isRoleAssignmentStage
 } from '../features/roles/role-assignment.ts';
-import { formatLifecycleLabel, shouldRedirectSetupScreen } from '../navigation/player-flow.ts';
+import {
+  canAccessHostControls,
+  shouldRedirectSetupScreen
+} from '../navigation/player-flow.ts';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import { AppButton } from '../ui/AppButton.tsx';
-import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
-import { colors } from '../ui/theme.ts';
+import { colors, fonts } from '../ui/theme.ts';
+import { GameIcon } from '../ui/GameIcon.tsx';
+import { Field } from '../ui/Field.tsx';
+import { createUuid } from '../runtime/create-uuid.ts';
 
 export function LobbyScreen() {
-  const { state, refreshActiveMatch, submitCommand, submitCommands } = useAppShell();
+  const { state, refreshActiveMatch, submitCommand, submitCommands } =
+    useAppShell();
+  const [crewName, setCrewName] = useState('');
   const projection = state.activeMatch?.projection;
-  const role = state.activeMatch?.playerRole ?? state.activeMatch?.recipient.role ?? 'spectator';
-  const roleLabel = role.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  const role = canAccessHostControls(
+    state.activeMatch?.playerRole ?? state.activeMatch?.recipient.role,
+    state.activeMatch?.recipient.scope
+  )
+    ? 'host'
+    : (state.activeMatch?.playerRole ??
+      state.activeMatch?.recipient.role ??
+      'spectator');
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
-  const canManageRoles = Boolean(role === 'host' && projection && isRoleAssignmentStage(projection.lifecycleState));
+  const canManageRoles = Boolean(
+    role === 'host' &&
+      projection &&
+      isRoleAssignmentStage(projection.lifecycleState)
+  );
   const assignablePlayers = getAssignablePlayers(projection);
   const rolesReady = hasRequiredRoleAssignments(projection);
   const currentPlayerId = state.activeMatch?.recipient.playerId;
-  const onlineJoinCode = state.activeMatch?.runtimeKind === 'online_foundation' ? state.activeMatch.joinCode : undefined;
-  const primaryNextRoute = liveGameplayState ? '/map' : rolesReady || projection?.visibleMap ? '/map' : '/dashboard';
+  const onlineJoinCode =
+    state.activeMatch?.runtimeKind === 'online_foundation'
+      ? state.activeMatch.joinCode
+      : undefined;
+  const primaryNextRoute = liveGameplayState
+    ? '/map'
+    : rolesReady || projection?.visibleMap
+      ? '/map'
+      : '/dashboard';
   const primaryNextLabel = liveGameplayState
     ? 'Go To Live Map'
     : rolesReady || projection?.visibleMap
@@ -59,19 +83,26 @@ export function LobbyScreen() {
           ? 'Teams are locked in and the playable area is applied. The host can finish setup from map setup.'
           : 'Teams are ready. The next step is choosing and applying the playable area.';
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (shouldRedirectSetupScreen(projection?.lifecycleState)) {
       router.replace('/map');
     }
-  }, [projection?.lifecycleState]);
+  }, [projection?.lifecycleState]));
 
   return (
     <ScreenContainer
-      title="Match Room"
-      eyebrow="Pregame"
-      subtitle="Share the join code, choose teams, and move into map setup."
+      title="Meet your crew"
+      eyebrow="NEXT STOP · THE BRIEFING"
+      subtitle="Every great escape needs a good team. Who’s hiding, and who’s hunting?"
       topSlot={<ProductNavBar current="lobby" />}
     >
+      {state.errorMessage ? (
+        <StateBanner
+          tone="error"
+          title="Couldn’t update your crew"
+          detail={state.errorMessage}
+        />
+      ) : null}
       {!state.activeMatch ? (
         <StateBanner
           tone="warning"
@@ -80,21 +111,64 @@ export function LobbyScreen() {
         />
       ) : null}
 
+      {projection ? (
+        <View style={styles.teamBoard}>
+          {(['hider', 'seeker'] as const).map((side) => {
+            const players = projection.players.filter(
+              (player) => player.role === side
+            );
+            const color = side === 'hider' ? colors.hider : colors.seeker;
+            return (
+              <View
+                key={side}
+                style={[styles.teamSpace, { borderTopColor: color }]}
+              >
+                <View style={styles.teamHeading}>
+                  <GameIcon name={side} color={color} size={28} />
+                  <Text style={[styles.teamCount, { color }]}>
+                    {String(players.length).padStart(2, '0')}
+                  </Text>
+                </View>
+                <Text style={styles.teamTitle}>
+                  {side === 'hider' ? 'The Hider' : 'The Seekers'}
+                </Text>
+                <Text style={styles.teamMotto}>
+                  {side === 'hider'
+                    ? 'Disappear into the city.'
+                    : 'Leave no clue behind.'}
+                </Text>
+                <View style={styles.teamRoster}>
+                  {players.length ? (
+                    players.map((player) => (
+                      <Text key={player.playerId} style={styles.teamPlayer}>
+                        {player.displayName}
+                      </Text>
+                    ))
+                  ) : (
+                    <Text style={styles.teamEmpty}>Waiting for your crew</Text>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+
       {state.activeMatch ? (
-        <Panel
-          title="Pregame Status"
-          subtitle={roomStatusDetail}
-        >
-          <FactList
-            items={[
-              { label: 'Current Step', value: roomStatusTitle },
-              { label: 'Your Role', value: roleLabel },
-              { label: 'Match Stage', value: formatLifecycleLabel(state.activeMatch.lifecycleState) },
-              { label: 'Game Size', value: formatScaleLabel(projection?.selectedScale) },
-              { label: 'Playable Area', value: projection?.visibleMap?.displayName ?? 'Not applied yet' }
-            ]}
+        <Panel title="Ready for the adventure?" subtitle={roomStatusDetail}>
+          <View style={styles.briefing}>
+            <Text style={styles.briefingLabel}>YOUR NEXT MOVE</Text>
+            <Text style={styles.briefingTitle}>{roomStatusTitle}</Text>
+            <Text style={styles.copy}>
+              {formatScaleLabel(projection?.selectedScale)} game ·{' '}
+              {projection?.visibleMap?.displayName ??
+                'Choose your playing field next'}
+            </Text>
+          </View>
+          <AppButton
+            label={primaryNextLabel}
+            onPress={() => router.push(primaryNextRoute)}
           />
-          <AppButton label={primaryNextLabel} onPress={() => router.push(primaryNextRoute)} />
           <AppButton
             label="Refresh Room"
             tone="ghost"
@@ -107,11 +181,13 @@ export function LobbyScreen() {
 
       {onlineJoinCode ? (
         <Panel
-          title="Join Code"
+          title="Your crew’s boarding pass"
           subtitle="Share this short code with other players so they can join from their own devices."
           tone="accent"
         >
-          <Text selectable style={styles.joinCodeValue}>{onlineJoinCode}</Text>
+          <Text selectable style={styles.joinCodeValue}>
+            {onlineJoinCode}
+          </Text>
           <AppButton
             label="Share Join Code"
             tone="secondary"
@@ -134,9 +210,36 @@ export function LobbyScreen() {
 
       {projection && canManageRoles ? (
         <Panel
-          title="Choose Teams"
+          title="Who’s playing which side?"
           subtitle="Assign one hider and at least one seeker before moving into map setup. The host can also join either side."
         >
+          {state.activeMatch?.runtimeKind === 'single_device_referee' ? (
+            <View style={styles.addCrew}>
+              <Field
+                label="Add someone to the crew"
+                placeholder="Player name"
+                autoCapitalize="words"
+                value={crewName}
+                onChangeText={setCrewName}
+              />
+              <AppButton
+                label="Add player  +"
+                tone="secondary"
+                disabled={!crewName.trim() || state.loadState === 'loading'}
+                onPress={() => {
+                  void submitCommand({
+                    type: 'join_match',
+                    payload: {
+                      playerId: `local-${createUuid()}`,
+                      displayName: crewName.trim()
+                    }
+                  }).then((accepted) => {
+                    if (accepted) setCrewName('');
+                  });
+                }}
+              />
+            </View>
+          ) : null}
           {assignablePlayers.length === 0 ? (
             <StateBanner
               tone="warning"
@@ -153,24 +256,46 @@ export function LobbyScreen() {
                       {player.playerId === currentPlayerId ? ' (You)' : ''}
                     </Text>
                     <Text style={styles.assignmentRole}>
-                      {player.role ? formatVisibleRole(player.role) : 'Unassigned'}
+                      {player.role
+                        ? formatVisibleRole(player.role)
+                        : 'Unassigned'}
                     </Text>
                   </View>
                   <View style={styles.assignmentActions}>
                     <AppButton
-                      label={player.role === 'hider' ? 'Hider Selected' : 'Make Hider'}
+                      label={
+                        player.role === 'hider'
+                          ? 'Hider Selected'
+                          : 'Make Hider'
+                      }
                       tone={player.role === 'hider' ? 'secondary' : 'primary'}
                       disabled={state.loadState === 'loading'}
                       onPress={() => {
-                        void submitCommands(buildRoleAssignmentCommands(projection, player.playerId, 'hider'));
+                        void submitCommands(
+                          buildRoleAssignmentCommands(
+                            projection,
+                            player.playerId,
+                            'hider'
+                          )
+                        );
                       }}
                     />
                     <AppButton
-                      label={player.role === 'seeker' ? 'Seeker Selected' : 'Make Seeker'}
+                      label={
+                        player.role === 'seeker'
+                          ? 'Seeker Selected'
+                          : 'Make Seeker'
+                      }
                       tone="secondary"
                       disabled={state.loadState === 'loading'}
                       onPress={() => {
-                        void submitCommands(buildRoleAssignmentCommands(projection, player.playerId, 'seeker'));
+                        void submitCommands(
+                          buildRoleAssignmentCommands(
+                            projection,
+                            player.playerId,
+                            'seeker'
+                          )
+                        );
                       }}
                     />
                   </View>
@@ -184,7 +309,11 @@ export function LobbyScreen() {
                 />
               ) : null}
               <AppButton
-                label={state.loadState === 'loading' ? 'Saving Teams...' : 'Confirm Teams'}
+                label={
+                  state.loadState === 'loading'
+                    ? 'Saving Teams...'
+                    : 'Confirm Teams'
+                }
                 disabled={!rolesReady || state.loadState === 'loading'}
                 onPress={() => {
                   void submitCommand({
@@ -198,7 +327,9 @@ export function LobbyScreen() {
         </Panel>
       ) : null}
 
-      {projection && isRoleAssignmentStage(projection.lifecycleState) && !canManageRoles ? (
+      {projection &&
+      isRoleAssignmentStage(projection.lifecycleState) &&
+      !canManageRoles ? (
         <StateBanner
           tone="info"
           title="Waiting for team assignment"
@@ -211,7 +342,9 @@ export function LobbyScreen() {
           title="Players In Room"
           subtitle="Everyone currently visible in this match room appears here."
         >
-          {projection.players.length === 0 ? <Text style={styles.copy}>No players are visible yet.</Text> : null}
+          {projection.players.length === 0 ? (
+            <Text style={styles.copy}>No players are visible yet.</Text>
+          ) : null}
           {projection.players.map((player) => (
             <View key={player.playerId} style={styles.row}>
               <Text style={styles.label}>
@@ -225,7 +358,11 @@ export function LobbyScreen() {
       ) : null}
 
       {projection && role === 'host' ? (
-        <AppButton label="Open Match Controls" onPress={() => router.push('/status')} tone="ghost" />
+        <AppButton
+          label="Open Match Controls"
+          onPress={() => router.push('/status')}
+          tone="ghost"
+        />
       ) : null}
     </ScreenContainer>
   );
@@ -245,10 +382,50 @@ function formatScaleLabel(scale: 'small' | 'medium' | 'large' | undefined) {
 }
 
 const styles = StyleSheet.create({
+  addCrew: {
+    gap: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border
+  },
+  teamBoard: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  teamSpace: {
+    flex: 1,
+    minWidth: 140,
+    borderTopWidth: 5,
+    backgroundColor: colors.surfaceRaised,
+    padding: 20,
+    borderRadius: 12,
+    gap: 10
+  },
+  teamHeading: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center'
+  },
+  teamCount: { fontFamily: fonts.mono, fontSize: 28, fontWeight: '800' },
+  teamTitle: {
+    fontFamily: fonts.display,
+    fontSize: 26,
+    color: colors.ink,
+    fontWeight: '700'
+  },
+  teamMotto: { color: colors.textMuted, fontSize: 12, lineHeight: 18 },
+  teamRoster: { gap: 8, marginTop: 8, minHeight: 32 },
+  teamPlayer: { color: colors.ink, fontSize: 14, fontWeight: '700' },
+  teamEmpty: { color: colors.textSubtle, fontSize: 12, fontStyle: 'italic' },
+  briefing: { gap: 8 },
+  briefingLabel: {
+    fontFamily: fonts.mono,
+    color: colors.accentStrong,
+    letterSpacing: 1.5,
+    fontSize: 10
+  },
+  briefingTitle: { color: colors.ink, fontSize: 20, fontWeight: '800' },
   assignmentCard: {
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.border,
-    borderRadius: 14,
+    borderRadius: 10,
     borderWidth: 1,
     gap: 10,
     padding: 12
@@ -270,7 +447,8 @@ const styles = StyleSheet.create({
   },
   joinCodeValue: {
     color: colors.text,
-    fontSize: 28,
+    fontFamily: fonts.mono,
+    fontSize: 38,
     fontWeight: '800',
     letterSpacing: 4,
     textAlign: 'center'
@@ -298,5 +476,7 @@ const styles = StyleSheet.create({
 });
 
 function formatVisibleRole(role: string) {
-  return role.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  return role
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }

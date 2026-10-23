@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-
-import { colors } from './theme.ts';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, fonts } from './theme.ts';
 
 interface ScreenContainerProps {
   title: string;
@@ -8,84 +8,97 @@ interface ScreenContainerProps {
   eyebrow?: string;
   topSlot?: React.ReactNode;
   bottomSlot?: React.ReactNode;
+  hideHeader?: boolean;
   children: React.ReactNode;
 }
 
 export function ScreenContainer(props: ScreenContainerProps) {
   return (
-    <View style={styles.shell}>
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          {props.eyebrow ? <Text style={styles.eyebrow}>{props.eyebrow}</Text> : null}
-          <Text style={styles.title}>{props.title}</Text>
-          {props.subtitle ? <Text style={styles.subtitle}>{props.subtitle}</Text> : null}
-        </View>
-        {props.topSlot ? <View style={styles.topSlot}>{props.topSlot}</View> : null}
+    <SafeAreaView
+      style={styles.shell}
+      edges={props.hideHeader ? ['top', 'bottom'] : ['bottom']}
+    >
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {!props.hideHeader ? (
+          <View style={styles.header}>
+            {props.eyebrow ? (
+              <View style={styles.eyebrowRow}>
+                <View style={styles.station} />
+                <Text style={styles.eyebrow}>{props.eyebrow}</Text>
+                <View style={styles.route} />
+              </View>
+            ) : null}
+            <Text accessibilityRole="header" style={styles.title}>
+              {props.title}
+            </Text>
+            {props.subtitle ? (
+              <Text style={styles.subtitle}>{props.subtitle}</Text>
+            ) : null}
+          </View>
+        ) : null}
+        {props.topSlot ? (
+          <View style={styles.topSlot}>{props.topSlot}</View>
+        ) : null}
         {props.children}
       </ScrollView>
-      {props.bottomSlot ? <View style={styles.bottomSlot}>{props.bottomSlot}</View> : null}
-    </View>
+      {props.bottomSlot ? (
+        <View style={styles.bottomSlot}>{props.bottomSlot}</View>
+      ) : null}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background
-  },
+  shell: { flex: 1, backgroundColor: colors.background },
+  screen: { flex: 1 },
   content: {
-    padding: 18,
-    gap: 18
+    padding: 20,
+    gap: 24,
+    width: '100%',
+    maxWidth: 1080,
+    alignSelf: 'center',
+    paddingBottom: 32
   },
-  header: {
-    backgroundColor: colors.surfaceRaised,
-    borderColor: colors.border,
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 24,
-    elevation: 2
+  header: { gap: 8, paddingVertical: 8 },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  station: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 3,
+    borderColor: colors.accent
   },
+  route: { height: 2, backgroundColor: colors.border, flex: 1 },
   eyebrow: {
     color: colors.accentStrong,
-    fontSize: 12,
+    fontFamily: fonts.mono,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 2,
     textTransform: 'uppercase'
   },
   title: {
-    fontSize: 31,
-    fontWeight: '800',
+    fontFamily: fonts.display,
+    fontSize: 36,
+    fontWeight: '700',
+    letterSpacing: -1,
     color: colors.text
   },
   subtitle: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.textMuted
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.textMuted,
+    maxWidth: 640
   },
-  topSlot: {
-    gap: 12
-  },
+  topSlot: { gap: 12 },
   bottomSlot: {
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    backgroundColor: colors.surfaceRaised,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 16,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.04,
-    shadowRadius: 18,
-    elevation: 3
+    backgroundColor: colors.ink,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8
   }
 });
