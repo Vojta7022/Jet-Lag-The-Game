@@ -44,7 +44,8 @@
 - [x] Inspect the reference Overpass station query and station filtering/zone construction; reuse the pattern through the existing map provider boundary.
 - [x] Add pure tests for filtering station points to the playable region and constructing 500 m / 1 km geodesic circles around a selected station.
 - [x] Render eligible station markers and a selected hiding-zone circle on both `MapCanvas.web.tsx` and `.native.tsx`; provide a local selection workbench.
-- Persist and lock the selected hiding zone through authoritative match commands/projections, and enforce its boundaries in the rules engine.
+- [x] Persist the hider's selected zone in authoritative match state, keep it private from seekers, and validate the whole configured-radius circle against the playable polygon.
+- Enforce hider movement within the zone; begin endgame only when seekers are inside and off transit; capture the final hiding spot and found confirmation.
 - Keep station overlays separate from the search-area constraint history and provide honest loading, empty, provider-error, and attribution states.
 
 ### 5. Port essential map workbench workflow and complete a round

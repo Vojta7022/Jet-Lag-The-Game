@@ -66,6 +66,22 @@ export function getHidePhaseDurationSeconds(
   return 300;
 }
 
+export function getHidingZoneRadiusMeters(
+  contentPack: ContentPack,
+  rulesetId: string | undefined,
+  selectedScale?: ScaleKey
+): number {
+  const defaultRadius: Record<ScaleKey, number> = { small: 500, medium: 500, large: 1000 };
+  const ruleset = getRuleset(contentPack, rulesetId);
+  const radii = ruleset?.locationPolicies?.hidingZoneRadiusMetersByScale;
+  const configuredRadius = selectedScale && typeof radii === 'object' && radii !== null
+    ? (radii as Partial<Record<ScaleKey, unknown>>)[selectedScale]
+    : undefined;
+  return typeof configuredRadius === 'number' && configuredRadius > 0
+    ? configuredRadius
+    : selectedScale ? defaultRadius[selectedScale] : 500;
+}
+
 export function getQuestionCooldownSeconds(
   contentPack: ContentPack,
   rulesetId: string | undefined,

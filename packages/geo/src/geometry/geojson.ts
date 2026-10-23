@@ -106,6 +106,36 @@ export function pointInGeometry(point: LonLat, geometry: GeoJsonGeometryModel | 
   return false;
 }
 
+export function circleWithinGeometry(center: LonLat, radiusMeters: number, geometry: GeoJsonGeometryModel | undefined): boolean {
+  if (!Number.isFinite(radiusMeters) || radiusMeters < 0 || !pointInGeometry(center, geometry)) {
+    return false;
+  }
+  if (radiusMeters === 0) return true;
+
+  const earthRadiusMeters = 6_371_008.8;
+  const latitude = center[1] * Math.PI / 180;
+  const longitude = center[0] * Math.PI / 180;
+  // Check concentric rings, not just the circumference, so map holes are rejected too.
+  for (let radialStep = 1; radialStep <= 10; radialStep += 1) {
+    const angularDistance = radiusMeters * radialStep / 10 / earthRadiusMeters;
+    for (let bearingDegrees = 0; bearingDegrees < 360; bearingDegrees += 5) {
+      const bearing = bearingDegrees * Math.PI / 180;
+      const pointLatitude = Math.asin(
+        Math.sin(latitude) * Math.cos(angularDistance) +
+        Math.cos(latitude) * Math.sin(angularDistance) * Math.cos(bearing)
+      );
+      const pointLongitude = longitude + Math.atan2(
+        Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(latitude),
+        Math.cos(angularDistance) - Math.sin(latitude) * Math.sin(pointLatitude)
+      );
+      if (!pointInGeometry([pointLongitude * 180 / Math.PI, pointLatitude * 180 / Math.PI], geometry)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 export function createPolygonGeometry(rings: LonLat[][]): GeoJsonGeometryModel | undefined {
   if (rings.length === 0 || rings[0].length < 4) {
     return undefined;

@@ -410,9 +410,15 @@ export function buildMatchProjection(
     .filter((entry) => canViewEventLogEntry(viewer, entry))
     .sort((left, right) => right.sequence - left.sequence);
 
-  const hiddenState =
-    viewer.scope === 'authority' || viewer.scope === 'host_admin'
-      ? aggregate.hiddenState
+  const canViewAuthorityHiddenState = viewer.scope === 'authority' || viewer.scope === 'host_admin';
+  const canViewHidingZone =
+    (viewer.scope === 'team_private' || viewer.scope === 'player_private') &&
+    viewer.viewerRole === 'hider' &&
+    Boolean(aggregate.hiddenState.hidingZone);
+  const hiddenState = canViewAuthorityHiddenState
+    ? aggregate.hiddenState
+    : canViewHidingZone
+      ? { hidingZone: aggregate.hiddenState.hidingZone }
       : undefined;
 
   const activeCardResolution =

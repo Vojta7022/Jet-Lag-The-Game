@@ -71,6 +71,10 @@ export function validateStateForCommand(
       return isLifecycleState(aggregate, 'hide_phase')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Hider location can only be locked during hide phase.')];
+    case 'set_hiding_zone':
+      return isLifecycleState(aggregate, 'hide_phase')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'The hiding zone can only be selected during the hide phase.')];
     case 'update_location':
       return aggregate.lifecycleState === 'hide_phase' ||
         isSeekPhaseState(aggregate, 'ready') ||

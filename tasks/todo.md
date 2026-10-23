@@ -49,7 +49,8 @@
 - [x] Make the default referee ruleset use official scale timers and location rules; remove the invented answer cooldown.
 - [x] Fix timer authority and pause/resume accounting so synced projections cannot reset a live clock.
 - [x] Add an OpenStreetMap transit-station layer and scale-correct hiding-zone analysis/selection to map setup and live play.
-- [ ] Persist the selected station-centered hiding zone in authoritative match state and enforce its boundaries.
+- [x] Persist the selected station-centered hiding zone in authoritative match state, keep it private from seekers, and validate the full zone inside the playable boundary.
+- [ ] Enforce hider movement within the selected zone; transition to endgame only when seekers are inside and off transit; record the fixed hiding spot and found confirmation.
 - [ ] Port the map workbench's useful save/load/share and overlay workflows into the existing match/map architecture.
 - [ ] Walk and test a full local referee round through endgame, found, and round scoring; reconcile any remaining scan discrepancies.
 
@@ -60,5 +61,6 @@
 - The scan sets hiding-zone radii to 500 m for small/medium and 1 km for large, endgame when seekers enter the zone and disembark transit, and found when they have both spotted the hider and come within 2 m.
 - The reference app can find/plot eligible stations, visualize each station's hiding-zone circle, customize station sources, and save/load/share a map scenario. The current app only searches/applies an administrative boundary.
 - Station search now uses bounded Overpass requests, filters returned candidates back against the selected polygon (including polygon holes), and renders selectable station markers with a geodesic 500 m/1 km preview. The chosen station is still a local map workbench selection, not yet persisted into authoritative round state.
+- The hider can now set the round's station-centered zone during hide phase. The engine derives its 500 m/1 km radius from the selected ruleset, checks sampled interior/circumference points so the full circle fits in the map, persists it in match events, and projects it only to the hider and referee. Engine station identity still comes from the client-selected OSM result; endgame boundaries and found/scoring transitions remain open.
 - Running timers now carry original start/duration anchors into visible projections; injected mobile commands use the real wall clock; pause records current remaining time and resume shifts the anchor to preserve it. Timer and rules flows have focused passing coverage.
-- Full `pnpm test` currently hits three importer failures because this shell's Python lacks `openpyxl`; run with the project `.venv` when available before treating the full suite as verified.
+- Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" pnpm test` (173 tests) and `pnpm mobile:typecheck`. The project virtual environment provides the importer dependency `openpyxl`.

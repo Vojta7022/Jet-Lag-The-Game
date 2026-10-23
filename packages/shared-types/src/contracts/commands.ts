@@ -37,6 +37,7 @@ export type DomainCommand =
   | CreateMapRegionCommand
   | StartMatchCommand
   | LockHiderLocationCommand
+  | SetHidingZoneCommand
   | UpdateLocationCommand
   | EndHidePhaseCommand
   | BeginQuestionPromptCommand
@@ -136,6 +137,16 @@ export interface LockHiderLocationCommand {
     latitude: number;
     longitude: number;
     accuracyMeters?: number;
+  };
+}
+
+export interface SetHidingZoneCommand {
+  type: 'set_hiding_zone';
+  payload: {
+    stationId: string;
+    stationName: string;
+    latitude: number;
+    longitude: number;
   };
 }
 

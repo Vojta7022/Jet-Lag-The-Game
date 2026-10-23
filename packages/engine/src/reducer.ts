@@ -278,6 +278,17 @@ export function reduceMatchAggregate(
           }
         }
       };
+    case 'hiding_zone_set':
+      return {
+        ...base,
+        hiddenState: {
+          ...base.hiddenState,
+          hidingZone: {
+            ...eventEnvelope.event.payload,
+            selectedAt: eventEnvelope.occurredAt
+          }
+        }
+      };
     case 'location_updated':
       return {
         ...base,

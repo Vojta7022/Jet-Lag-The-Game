@@ -25,6 +25,7 @@ import {
   getCardDefinition,
   getConstraintDefinition,
   getHidePhaseDurationSeconds,
+  getHidingZoneRadiusMeters,
   getQuestionCategory,
   getQuestionCooldownSeconds,
   getQuestionTimerSeconds,
@@ -469,6 +470,17 @@ function eventsForCommand(
           payload: {
             ...envelope.command.payload,
             lockedByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId
+          }
+        })
+      ];
+    case 'set_hiding_zone':
+      return [
+        makeEventEnvelope(aggregate, envelope, 0, 'authority', {
+          type: 'hiding_zone_set',
+          payload: {
+            ...envelope.command.payload,
+            radiusMeters: getHidingZoneRadiusMeters(contentPack, aggregate?.selectedRulesetId, aggregate?.selectedScale),
+            selectedByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId
           }
         })
       ];

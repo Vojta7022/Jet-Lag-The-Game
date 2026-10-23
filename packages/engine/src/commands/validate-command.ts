@@ -7,7 +7,7 @@ import type {
   DeckDefinition,
   MatchAggregate
 } from '../../../shared-types/src/index.ts';
-import { isPolygonBoundaryGeometry } from '../../../geo/src/index.ts';
+import { circleWithinGeometry, isPolygonBoundaryGeometry } from '../../../geo/src/index.ts';
 
 import {
   buildCardResolutionPlan,
@@ -30,7 +30,8 @@ import {
   getConstraintDefinition,
   getQuestionCategory,
   getQuestionTemplate,
-  getRuleset
+  getRuleset,
+  getHidingZoneRadiusMeters
 } from '../helpers/content-pack.ts';
 import { validateStateForCommand } from '../state-machine/guards.ts';
 
@@ -479,6 +480,21 @@ export function validateCommandEnvelope(
       const actorRole = getPlayerRole(aggregate, envelope.actor.playerId);
       if (actorRole !== 'hider' && envelope.actor.role !== 'host') {
         return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider or host can lock the hider location.')];
+      }
+      return [];
+    }
+    case 'set_hiding_zone': {
+      const { stationId, stationName, latitude, longitude } = envelope.command.payload;
+      if (!stationId.trim() || !stationName.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        return [error(envelope.command.type, 'INVALID_HIDING_ZONE', 'Choose a named transit station with valid coordinates.')];
+      }
+      const geometry = aggregate.mapRegion?.boundaryGeometry;
+      const radiusMeters = getHidingZoneRadiusMeters(contentPack, aggregate.selectedRulesetId, aggregate.selectedScale);
+      if (radiusMeters <= 0) {
+        return [error(envelope.command.type, 'INVALID_HIDING_RADIUS', 'The selected ruleset must define a positive hiding-zone radius.')];
+      }
+      if (!geometry || !circleWithinGeometry([longitude, latitude], radiusMeters, geometry)) {
+        return [error(envelope.command.type, 'STATION_OUTSIDE_MAP', 'The selected station and its full hiding zone must fit inside the playable map.')];
       }
       return [];
     }

@@ -43,6 +43,7 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
 const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'join_match',
   'lock_hider_location',
+  'set_hiding_zone',
   'update_location',
   'send_chat_message',
   'upload_attachment',

@@ -224,6 +224,15 @@ export interface LocationSampleModel {
 }
 
 export interface HiddenStateModel {
+  hidingZone?: {
+    stationId: string;
+    stationName: string;
+    latitude: number;
+    longitude: number;
+    radiusMeters: number;
+    selectedAt: string;
+    selectedByPlayerId: string;
+  };
   hiderLocation?: {
     latitude: number;
     longitude: number;

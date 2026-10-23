@@ -17,6 +17,7 @@ import type {
   ImportContentPackCommand,
   JoinMatchCommand,
   LockHiderLocationCommand,
+  SetHidingZoneCommand,
   SendChatMessageCommand,
   UpdateLocationCommand,
   PauseMatchCommand,
@@ -67,6 +68,7 @@ export type DomainEvent =
   | MapRegionCreatedEvent
   | MatchStartedEvent
   | HiderLocationLockedEvent
+  | HidingZoneSetEvent
   | LocationUpdatedEvent
   | HidePhaseEndedEvent
   | QuestionPromptOpenedEvent
@@ -173,6 +175,14 @@ export interface HiderLocationLockedEvent {
   type: 'hider_location_locked';
   payload: LockHiderLocationCommand['payload'] & {
     lockedByPlayerId: string;
+  };
+}
+
+export interface HidingZoneSetEvent {
+  type: 'hiding_zone_set';
+  payload: SetHidingZoneCommand['payload'] & {
+    radiusMeters: number;
+    selectedByPlayerId: string;
   };
 }
 

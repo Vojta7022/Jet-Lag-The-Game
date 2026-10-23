@@ -156,6 +156,7 @@ export function MapScreen() {
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
+  const isHostView = activeMatch?.recipient.scope === 'host_admin' || activeMatch?.playerRole === 'host';
   const appliedRegion = buildAppliedRegionDraft(projection?.visibleMap)[0];
   const selectedStation = transitStations.find((station) => station.stationId === selectedStationId);
   const scaleGuidance = buildMapScaleGuidanceModel({
@@ -201,9 +202,22 @@ export function MapScreen() {
   );
   const previewRegion = compositePreviewRegion ?? regionSearch.selectedRegion;
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
+  const canUseStationWorkbench = !liveGameplayState || isHostView || viewerRole === 'hider';
   const stationGeometry = liveGameplayState
     ? projection?.visibleMap?.playableBoundary.geometry
     : previewRegion?.geometry;
+  const savedHidingZone = projection?.hiddenState?.hidingZone;
+  const savedZoneStation: TransitStationCandidate | undefined = savedHidingZone ? {
+    stationId: savedHidingZone.stationId,
+    name: savedHidingZone.stationName,
+    latitude: savedHidingZone.latitude,
+    longitude: savedHidingZone.longitude
+  } : undefined;
+  const mapSelectedStation = canUseStationWorkbench
+    ? selectedStation ?? savedZoneStation
+    : undefined;
+  const mapHidingRadius = savedHidingZone?.radiusMeters ??
+    (selectedScale ? getHidingRadiusMeters(selectedScale) : undefined);
   const displayedVisibleMap = useMemo(
     () => liveGameplayState ? buildLiveMapDisplayProjection(projection?.visibleMap) : projection?.visibleMap,
     [liveGameplayState, projection?.visibleMap]
@@ -245,12 +259,11 @@ export function MapScreen() {
       visibleMovementTracks: projection?.visibleMovementTracks,
       previewRegion: canvasPreviewRegion,
       transitStations,
-      selectedStation,
-      hidingRadiusMeters: selectedScale ? getHidingRadiusMeters(selectedScale) : undefined
+      selectedStation: mapSelectedStation,
+      hidingRadiusMeters: mapHidingRadius
     }),
-    [canvasPreviewRegion, displayedVisibleMap, projection?.visibleMovementTracks, selectedScale, selectedStation, transitStations]
+    [canvasPreviewRegion, displayedVisibleMap, mapHidingRadius, mapSelectedStation, projection?.visibleMovementTracks, transitStations]
   );
-  const isHostView = activeMatch?.recipient.scope === 'host_admin' || activeMatch?.playerRole === 'host';
   const canPrepareMapSetup =
     isHostView &&
     projection &&
@@ -546,7 +559,7 @@ export function MapScreen() {
       <View style={styles.stationWorkbenchHeading}>
         <View style={styles.stationWorkbenchCopy}>
           <Text style={styles.stationWorkbenchTitle}>Transit station workbench</Text>
-          <Text style={styles.helperCopy}>Planning preview only · The zone is not locked for this round yet.</Text>
+          <Text style={styles.helperCopy}>Hiding zones follow the selected game scale.</Text>
           <Pressable
             accessibilityRole="link"
             accessibilityLabel="OpenStreetMap copyright and attribution"
@@ -585,11 +598,37 @@ export function MapScreen() {
           Zone preview: {selectedStation.name} · {selectedScale ? getHidingRadiusMeters(selectedScale) : '—'} m radius
         </Text>
       ) : null}
-              {!stationSearchLoading && !stationSearchError && transitStations.length === 0 ? (
+      {savedHidingZone ? (
+        <Text style={styles.stationSelectedSummary}>
+          Round zone: {savedHidingZone.stationName} · {savedHidingZone.radiusMeters} m
+        </Text>
+      ) : null}
+      {liveGameplayState && projection?.lifecycleState === 'hide_phase' && (viewerRole === 'hider' || isHostView) && selectedStation ? (
+        <Pressable
+          accessibilityRole="button"
+          disabled={state.loadState === 'loading'}
+          onPress={() => void submitCommand({
+            type: 'set_hiding_zone',
+            payload: {
+              stationId: selectedStation.stationId,
+              stationName: selectedStation.name,
+              latitude: selectedStation.latitude,
+              longitude: selectedStation.longitude
+            }
+          })}
+          style={styles.stationSetZoneButton}
+        >
+          <Text style={styles.stationSetZoneLabel}>
+            {savedHidingZone?.stationId === selectedStation.stationId ? 'Zone selected' : 'Set as round zone'}
+          </Text>
+        </Pressable>
+      ) : null}
+      {!stationSearchLoading && !stationSearchError && transitStations.length === 0 ? (
         <Text style={styles.helperCopy}>Station candidates are loaded on demand from OpenStreetMap.</Text>
       ) : null}
     </View>
   ) : null;
+  const stationWorkbenchForViewer = canUseStationWorkbench ? stationWorkbench : null;
 
   return (
     <ScreenContainer
@@ -882,10 +921,10 @@ export function MapScreen() {
                     visibleMovementTracks={projection?.visibleMovementTracks}
                     previewRegion={canvasPreviewRegion}
                     transitStations={transitStations}
-                    selectedStation={selectedStation}
-                    hidingRadiusMeters={selectedScale ? getHidingRadiusMeters(selectedScale) : undefined}
+                    selectedStation={mapSelectedStation}
+                    hidingRadiusMeters={mapHidingRadius}
                   />
-                  {stationWorkbench}
+                  {stationWorkbenchForViewer}
                   {showLegend ? (
                     <View style={styles.legendCard}>
                       <MapLegend overlayModel={overlayModel} compact />
@@ -976,10 +1015,10 @@ export function MapScreen() {
                   visibleMovementTracks={projection?.visibleMovementTracks}
                   previewRegion={canvasPreviewRegion}
                   transitStations={transitStations}
-                  selectedStation={selectedStation}
-                  hidingRadiusMeters={selectedScale ? getHidingRadiusMeters(selectedScale) : undefined}
+                  selectedStation={mapSelectedStation}
+                  hidingRadiusMeters={mapHidingRadius}
                 />
-                {stationWorkbench}
+                {stationWorkbenchForViewer}
               </View>
 
               {showLegend ? (
@@ -1331,6 +1370,15 @@ const styles = StyleSheet.create({
   },
   stationSearchLabel: { color: colors.accentStrong, fontSize: 12, fontWeight: '800' },
   stationAttribution: { color: colors.accentStrong, fontSize: 11, textDecorationLine: 'underline' },
+  stationSetZoneButton: {
+    alignItems: 'center',
+    backgroundColor: colors.accentStrong,
+    borderRadius: 11,
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingHorizontal: 14
+  },
+  stationSetZoneLabel: { color: colors.inkInverse, fontSize: 13, fontWeight: '800' },
   stationError: { color: colors.danger, fontSize: 13 },
   stationList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   stationChoice: {

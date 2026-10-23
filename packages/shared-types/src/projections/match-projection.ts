@@ -215,6 +215,15 @@ export interface MatchProjection {
   };
   visibleEventLog: EventLogEntry[];
   hiddenState?: {
+    hidingZone?: {
+      stationId: string;
+      stationName: string;
+      latitude: number;
+      longitude: number;
+      radiusMeters: number;
+      selectedAt: string;
+      selectedByPlayerId: string;
+    };
     hiderLocation?: {
       latitude: number;
       longitude: number;

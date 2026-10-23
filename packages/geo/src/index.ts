@@ -3,6 +3,7 @@ export * from './features/query.ts';
 export {
   createMultiPolygonGeometry,
   createPolygonGeometry,
+  circleWithinGeometry,
   geometryBoundingBox,
   geometryHasArea,
   pointInGeometry,
