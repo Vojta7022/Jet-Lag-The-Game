@@ -41,3 +41,24 @@
 - Web `accessible={false}` SVG props caused the reported React warning; decorative game SVGs now use `aria-hidden={true}`. Measured map width also prevents the map surface from extending beyond its card.
 - Existing full suite passes 159/159 after decoupling the orchestrator's default in-memory persistence from native AsyncStorage and explicitly injecting AsyncStorage in the app provider. TypeScript typecheck passes.
 - Remaining playability gaps: hide/search countdowns can reset when commands or projections refresh because synthetic command timestamps are used; the imported draft content pack is not reconciled to the scanned booklets; protected reveal handoffs remain unconnected; web map uses a bounded SVG preview rather than street tiles. These remain separate work items.
+
+## Active: rules-faithful game and reference-map workflows
+
+- [x] OCR the scanned base rulebook and Investigation Book locally; inspect the reference map implementation.
+- [x] Replace the incorrect randomized question draw with the printed investigation-book question list and repeat-cost rules.
+- [x] Make the default referee ruleset use official scale timers and location rules; remove the invented answer cooldown.
+- [x] Fix timer authority and pause/resume accounting so synced projections cannot reset a live clock.
+- [x] Add an OpenStreetMap transit-station layer and scale-correct hiding-zone analysis/selection to map setup and live play.
+- [ ] Persist the selected station-centered hiding zone in authoritative match state and enforce its boundaries.
+- [ ] Port the map workbench's useful save/load/share and overlay workflows into the existing match/map architecture.
+- [ ] Walk and test a full local referee round through endgame, found, and round scoring; reconcile any remaining scan discrepancies.
+
+### Findings for this pass
+
+- The Investigation Book's “Draw N, Pick M” is the hider's card reward after an answer. The app incorrectly uses the same numbers to deal a random subset of available questions. All scale-allowed printed questions should be selectable; repeat questions are allowed with their card reward paid again per repetition.
+- The app-injected ruleset uses a 120-second hide phase and 45-second post-answer cooldown. The scanned base rules specify 30/60/180-minute hide periods by scale and permit the next question once the prior question is answered/resolved; there is no extra answer cooldown.
+- The scan sets hiding-zone radii to 500 m for small/medium and 1 km for large, endgame when seekers enter the zone and disembark transit, and found when they have both spotted the hider and come within 2 m.
+- The reference app can find/plot eligible stations, visualize each station's hiding-zone circle, customize station sources, and save/load/share a map scenario. The current app only searches/applies an administrative boundary.
+- Station search now uses bounded Overpass requests, filters returned candidates back against the selected polygon (including polygon holes), and renders selectable station markers with a geodesic 500 m/1 km preview. The chosen station is still a local map workbench selection, not yet persisted into authoritative round state.
+- Running timers now carry original start/duration anchors into visible projections; injected mobile commands use the real wall clock; pause records current remaining time and resume shifts the anchor to preserve it. Timer and rules flows have focused passing coverage.
+- Full `pnpm test` currently hits three importer failures because this shell's Python lacks `openpyxl`; run with the project `.venv` when available before treating the full suite as verified.

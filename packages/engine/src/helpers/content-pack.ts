@@ -28,7 +28,7 @@ export function getQuestionCategory(
 
 export function getRuleset(contentPack: ContentPack, rulesetId: string | undefined): RulesetDefinition | undefined {
   if (!rulesetId) {
-    return undefined;
+    return contentPack.rulesets[0];
   }
 
   return contentPack.rulesets.find((ruleset) => ruleset.rulesetId === rulesetId);
@@ -41,8 +41,22 @@ export function getConstraintDefinition(
   return contentPack.constraints.find((constraint) => constraint.constraintId === constraintId);
 }
 
-export function getHidePhaseDurationSeconds(contentPack: ContentPack, rulesetId: string | undefined): number {
+export function getHidePhaseDurationSeconds(
+  contentPack: ContentPack,
+  rulesetId: string | undefined,
+  selectedScale?: ScaleKey
+): number {
   const ruleset = getRuleset(contentPack, rulesetId);
+  const durationsByScale = ruleset?.phasePolicies?.hidePhaseDurationSecondsByScale;
+  const scaleDuration =
+    selectedScale && typeof durationsByScale === 'object' && durationsByScale !== null
+      ? (durationsByScale as Partial<Record<ScaleKey, unknown>>)[selectedScale]
+      : undefined;
+
+  if (typeof scaleDuration === 'number' && scaleDuration > 0) {
+    return scaleDuration;
+  }
+
   const explicitDuration = ruleset?.phasePolicies?.hidePhaseDurationSeconds;
 
   if (typeof explicitDuration === 'number' && explicitDuration > 0) {
@@ -60,7 +74,7 @@ export function getQuestionCooldownSeconds(
   const ruleset = getRuleset(contentPack, rulesetId);
   const explicitDuration = ruleset?.questionPolicies?.cooldownSeconds;
 
-  if (typeof explicitDuration === 'number' && explicitDuration > 0) {
+  if (typeof explicitDuration === 'number' && explicitDuration >= 0) {
     return explicitDuration;
   }
 

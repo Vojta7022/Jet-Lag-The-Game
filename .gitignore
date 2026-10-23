@@ -3,6 +3,7 @@
 .env.*
 **/__pycache__/
 .venv/
+temp/
 
 # Dependencies
 node_modules/

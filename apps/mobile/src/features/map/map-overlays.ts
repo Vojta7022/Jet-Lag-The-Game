@@ -5,6 +5,7 @@ import type {
 } from '../../../../../packages/shared-types/src/index.ts';
 
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
+import { buildHidingZoneCircle, getHidingRadiusMeters, type TransitStationCandidate } from './station-layer.ts';
 
 export interface MapOverlayDescriptor {
   overlayId: string;
@@ -30,6 +31,9 @@ export function buildMapOverlayModel(args: {
   visibleMap?: VisibleMapProjection;
   visibleMovementTracks?: VisibleMovementTrackProjection[];
   previewRegion?: PlayableRegionCatalogEntry;
+  transitStations?: TransitStationCandidate[];
+  selectedStation?: TransitStationCandidate;
+  hidingRadiusMeters?: number;
 }): MapOverlayModel {
   const overlays: MapOverlayDescriptor[] = [];
 
@@ -162,6 +166,51 @@ export function buildMapOverlayModel(args: {
     }
   }
 
+  if (args.transitStations?.length) {
+    overlays.push({
+      overlayId: 'transit-stations',
+      label: 'Transit Stations',
+      geometry: {
+        type: 'MultiPoint',
+        coordinates: args.transitStations.map((station) => [station.longitude, station.latitude])
+      },
+      renderMode: 'point',
+      fill: '#f2bd43',
+      stroke: '#263b55',
+      strokeWidth: 1.5,
+      opacity: 1,
+      pointRadius: 5
+    });
+  }
+
+  if (args.selectedStation) {
+    const radius = args.hidingRadiusMeters ?? getHidingRadiusMeters('small');
+    overlays.push({
+      overlayId: 'selected-hiding-zone',
+      label: `Hiding Zone · ${radius} m`,
+      geometry: buildHidingZoneCircle(args.selectedStation, radius),
+      renderMode: 'fill',
+      fill: 'rgba(242, 189, 67, 0.42)',
+      stroke: '#e29a22',
+      strokeWidth: 3,
+      opacity: 1
+    });
+    overlays.push({
+      overlayId: 'selected-station',
+      label: args.selectedStation.name,
+      geometry: {
+        type: 'Point',
+        coordinates: [args.selectedStation.longitude, args.selectedStation.latitude]
+      },
+      renderMode: 'point',
+      fill: '#eb702e',
+      stroke: '#ffffff',
+      strokeWidth: 2,
+      opacity: 1,
+      pointRadius: 7
+    });
+  }
+
   return {
     overlays,
     legend: [
@@ -170,7 +219,9 @@ export function buildMapOverlayModel(args: {
       { label: 'Eliminated Area', color: '#b23a3a' },
       { label: 'Constraint Layer', color: '#996300' },
       { label: 'Movement Breadcrumb', color: '#7a4b00' },
-      { label: 'Visible Position', color: '#7a4b00' }
+      { label: 'Visible Position', color: '#7a4b00' },
+      { label: 'Transit Stations', color: '#f2bd43' },
+      { label: 'Selected Hiding Zone', color: '#e29a22' }
     ]
   };
 }

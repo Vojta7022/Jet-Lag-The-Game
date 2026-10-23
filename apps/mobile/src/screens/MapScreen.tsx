@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
@@ -58,6 +58,8 @@ import { useAppShell } from '../providers/AppShellProvider.tsx';
 import type { AppShellState } from '../state/app-shell-state.ts';
 import { isSameMapSetupDraft } from '../state/app-shell-state.ts';
 import { hasRequiredRoleAssignments } from '../features/roles/role-assignment.ts';
+import { findTransitStationsInGeometry, getHidingRadiusMeters } from '../features/map/station-layer.ts';
+import type { TransitStationCandidate } from '../features/map/station-layer.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
@@ -141,6 +143,10 @@ export function MapScreen() {
   const [selectedRegions, setSelectedRegions] = useState<PlayableRegionCatalogEntry[]>(
     () => mapSetupDraft?.selectedRegions ?? []
   );
+  const [transitStations, setTransitStations] = useState<TransitStationCandidate[]>([]);
+  const [selectedStationId, setSelectedStationId] = useState<string>();
+  const [stationSearchLoading, setStationSearchLoading] = useState(false);
+  const [stationSearchError, setStationSearchError] = useState<string>();
   const regionSearch = useRegionSearch({
     source: mobileRegionDataSource,
     initialQuery: mapSetupDraft?.query,
@@ -151,6 +157,7 @@ export function MapScreen() {
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
   const appliedRegion = buildAppliedRegionDraft(projection?.visibleMap)[0];
+  const selectedStation = transitStations.find((station) => station.stationId === selectedStationId);
   const scaleGuidance = buildMapScaleGuidanceModel({
     selectedRegions: selectedRegions.length > 0 ? selectedRegions : appliedRegion ? [appliedRegion] : [],
     appliedMap: projection?.visibleMap
@@ -194,6 +201,9 @@ export function MapScreen() {
   );
   const previewRegion = compositePreviewRegion ?? regionSearch.selectedRegion;
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
+  const stationGeometry = liveGameplayState
+    ? projection?.visibleMap?.playableBoundary.geometry
+    : previewRegion?.geometry;
   const displayedVisibleMap = useMemo(
     () => liveGameplayState ? buildLiveMapDisplayProjection(projection?.visibleMap) : projection?.visibleMap,
     [liveGameplayState, projection?.visibleMap]
@@ -233,9 +243,12 @@ export function MapScreen() {
     () => buildMapOverlayModel({
       visibleMap: displayedVisibleMap,
       visibleMovementTracks: projection?.visibleMovementTracks,
-      previewRegion: canvasPreviewRegion
+      previewRegion: canvasPreviewRegion,
+      transitStations,
+      selectedStation,
+      hidingRadiusMeters: selectedScale ? getHidingRadiusMeters(selectedScale) : undefined
     }),
-    [canvasPreviewRegion, displayedVisibleMap, projection?.visibleMovementTracks]
+    [canvasPreviewRegion, displayedVisibleMap, projection?.visibleMovementTracks, selectedScale, selectedStation, transitStations]
   );
   const isHostView = activeMatch?.recipient.scope === 'host_admin' || activeMatch?.playerRole === 'host';
   const canPrepareMapSetup =
@@ -511,6 +524,72 @@ export function MapScreen() {
       payload: {}
     });
   };
+
+  const handleFindStations = () => {
+    if (!stationGeometry || stationSearchLoading) return;
+    setStationSearchLoading(true);
+    setStationSearchError(undefined);
+    void findTransitStationsInGeometry(stationGeometry)
+      .then((stations) => {
+        setTransitStations(stations);
+        setSelectedStationId(undefined);
+      })
+      .catch((error: unknown) => {
+        setTransitStations([]);
+        setStationSearchError(error instanceof Error ? error.message : 'Station search failed. Try again later.');
+      })
+      .finally(() => setStationSearchLoading(false));
+  };
+
+  const stationWorkbench = stationGeometry ? (
+    <View style={styles.stationWorkbench}>
+      <View style={styles.stationWorkbenchHeading}>
+        <View style={styles.stationWorkbenchCopy}>
+          <Text style={styles.stationWorkbenchTitle}>Transit station workbench</Text>
+          <Text style={styles.helperCopy}>Planning preview only · The zone is not locked for this round yet.</Text>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="OpenStreetMap copyright and attribution"
+            onPress={() => void Linking.openURL('https://www.openstreetmap.org/copyright')}
+          >
+            <Text style={styles.stationAttribution}>© OpenStreetMap contributors</Text>
+          </Pressable>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          disabled={stationSearchLoading}
+          onPress={handleFindStations}
+          style={({ pressed }) => [styles.stationSearchButton, pressed ? styles.legendTogglePressed : null]}
+        >
+              <Text style={styles.stationSearchLabel}>{stationSearchLoading ? 'Searching…' : transitStations.length ? 'Refresh' : 'Find stations'}</Text>
+        </Pressable>
+      </View>
+      {stationSearchError ? <Text style={styles.stationError}>{stationSearchError}</Text> : null}
+      {transitStations.length ? (
+        <View style={styles.stationList}>
+          {transitStations.slice(0, 8).map((station) => (
+            <Pressable
+              key={station.stationId}
+              accessibilityRole="button"
+              onPress={() => setSelectedStationId(station.stationId)}
+              style={[styles.stationChoice, station.stationId === selectedStationId ? styles.stationChoiceSelected : null]}
+            >
+              <Text style={styles.stationChoiceName}>{station.name}</Text>
+              <Text style={styles.stationChoiceKind}>{station.kind ?? 'Transit station'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      {selectedStation ? (
+        <Text style={styles.stationSelectedSummary}>
+          Zone preview: {selectedStation.name} · {selectedScale ? getHidingRadiusMeters(selectedScale) : '—'} m radius
+        </Text>
+      ) : null}
+              {!stationSearchLoading && !stationSearchError && transitStations.length === 0 ? (
+        <Text style={styles.helperCopy}>Station candidates are loaded on demand from OpenStreetMap.</Text>
+      ) : null}
+    </View>
+  ) : null;
 
   return (
     <ScreenContainer
@@ -802,7 +881,11 @@ export function MapScreen() {
                     visibleMap={projection?.visibleMap}
                     visibleMovementTracks={projection?.visibleMovementTracks}
                     previewRegion={canvasPreviewRegion}
+                    transitStations={transitStations}
+                    selectedStation={selectedStation}
+                    hidingRadiusMeters={selectedScale ? getHidingRadiusMeters(selectedScale) : undefined}
                   />
+                  {stationWorkbench}
                   {showLegend ? (
                     <View style={styles.legendCard}>
                       <MapLegend overlayModel={overlayModel} compact />
@@ -892,7 +975,11 @@ export function MapScreen() {
                   visibleMap={displayedVisibleMap}
                   visibleMovementTracks={projection?.visibleMovementTracks}
                   previewRegion={canvasPreviewRegion}
+                  transitStations={transitStations}
+                  selectedStation={selectedStation}
+                  hidingRadiusMeters={selectedScale ? getHidingRadiusMeters(selectedScale) : undefined}
                 />
+                {stationWorkbench}
               </View>
 
               {showLegend ? (
@@ -1212,5 +1299,57 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     padding: 10
+  },
+  stationWorkbench: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 10,
+    padding: 12
+  },
+  stationWorkbenchHeading: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10
+  },
+  stationWorkbenchCopy: { flex: 1, gap: 4 },
+  stationWorkbenchTitle: {
+    color: colors.text,
+    fontFamily: fonts.display,
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  stationSearchButton: {
+    backgroundColor: colors.accentMuted,
+    borderColor: colors.accentStrong,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 14
+  },
+  stationSearchLabel: { color: colors.accentStrong, fontSize: 12, fontWeight: '800' },
+  stationAttribution: { color: colors.accentStrong, fontSize: 11, textDecorationLine: 'underline' },
+  stationError: { color: colors.danger, fontSize: 13 },
+  stationList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  stationChoice: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 3,
+    maxWidth: '48%',
+    minWidth: 130,
+    padding: 9
+  },
+  stationChoiceSelected: { backgroundColor: colors.accentMuted, borderColor: colors.accentStrong },
+  stationChoiceName: { color: colors.text, fontSize: 13, fontWeight: '800' },
+  stationChoiceKind: { color: colors.textMuted, fontSize: 11 },
+  stationSelectedSummary: {
+    color: colors.accentStrong,
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    fontWeight: '700'
   }
 });

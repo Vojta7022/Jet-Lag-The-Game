@@ -33,6 +33,7 @@ test('pause and resume preserve the interrupted state and pause timers', () => {
   assert.ok(aggregate.paused);
   assert.equal(aggregate.paused?.resumeLifecycleState, 'hide_phase');
   assert.equal(aggregate.timers['hide-phase']?.status, 'paused');
+  assert.equal(aggregate.timers['hide-phase']?.remainingSeconds, 100);
 
   aggregate = executeCommand(
     aggregate,
@@ -48,6 +49,8 @@ test('pause and resume preserve the interrupted state and pause timers', () => {
   assert.equal(aggregate.paused, undefined);
   assert.equal(aggregate.lifecycleState, 'hide_phase');
   assert.equal(aggregate.timers['hide-phase']?.status, 'running');
+  assert.equal(aggregate.timers['hide-phase']?.remainingSeconds, 100);
+  assert.equal(aggregate.timers['hide-phase']?.startedAt, '2026-01-01T00:00:11.000Z');
 
   aggregate = setupMatchToSeekReady(contentPack);
   const matchingTemplate = getCurrentQuestionTemplate(

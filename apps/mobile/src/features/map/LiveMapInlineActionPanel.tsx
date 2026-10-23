@@ -40,7 +40,7 @@ import {
   findConstraintForQuestion,
   findQuestionCategory,
   findQuestionTemplate,
-  formatQuestionDrawRule,
+  formatHiderCardReward,
   formatQuestionScaleSet,
   formatTimerPolicyLabel,
   getQuestionFlowCapabilities,
@@ -107,7 +107,7 @@ export function LiveMapInlineActionPanel() {
     [projection?.visibleQuestions, selectedCategory, selectedScale]
   );
   const readyTemplates = availableTemplates.filter((template) =>
-    activeSelectionRound?.availableTemplateIds.includes(template.templateId)
+        activeSelectionRound?.availableTemplateIds.includes(template.templateId)
   );
   const selectedTemplate = findQuestionTemplate(defaultContentPack, selectedTemplateId);
   const readyTemplate = readyTemplates.find((template) => template.templateId === selectedTemplateId)
@@ -128,9 +128,7 @@ export function LiveMapInlineActionPanel() {
       (selectableTemplateIds.length === 0 && !availableTemplates.some((template) => template.templateId === selectedTemplateId))
     ) {
       setSelectedTemplateId(
-        activeSelectionRound?.availableTemplateIds[0] ??
-          activeSelectionRound?.drawnTemplateIds[0] ??
-          availableTemplates[0]?.templateId
+        activeSelectionRound?.availableTemplateIds[0] ?? availableTemplates[0]?.templateId
       );
     }
   }, [activeSelectionRound, availableTemplates, selectedTemplateId]);
@@ -363,13 +361,13 @@ export function LiveMapInlineActionPanel() {
           </View>
           <Text style={styles.sheetTitle}>Ask the next clue</Text>
           <Text style={styles.sheetCopy}>
-            Choose the live workbook draw and send it without leaving the map.
+            Choose any question available at this scale and send it without leaving the map.
           </Text>
         </View>
         <LiveMapInfoChips
           items={[
             { label: 'Clue type', value: selectedCategory.name, tone: 'accent' },
-            { label: 'Workbook rule', value: formatQuestionDrawRule(selectedCategory) },
+            { label: 'Hider reward', value: formatHiderCardReward(selectedCategory) },
             {
               label: 'Timer',
               value: formatTimerPolicyLabel(selectedCategory.defaultTimerPolicy, selectedScale)
@@ -383,7 +381,7 @@ export function LiveMapInlineActionPanel() {
           onSelect={setSelectedCategoryId}
         />
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Current workbook draw</Text>
+          <Text style={styles.sectionTitle}>Investigation book questions</Text>
           <QuestionTemplateList
             templates={readyTemplates}
             category={selectedCategory}

@@ -52,6 +52,32 @@ function mapTimers(
   return updated;
 }
 
+function remainingAt(timer: MatchAggregate['timers'][string], timestamp: string): number {
+  const startedAtMs = Date.parse(timer.startedAt);
+  const nowMs = Date.parse(timestamp);
+  if (timer.status !== 'running' || Number.isNaN(startedAtMs) || Number.isNaN(nowMs)) {
+    return timer.remainingSeconds;
+  }
+
+  const elapsedSeconds = Math.max(0, Math.floor((nowMs - startedAtMs) / 1000));
+  return Math.max(0, timer.durationSeconds - elapsedSeconds);
+}
+
+function resumedTimer(timer: MatchAggregate['timers'][string], resumedAt: string) {
+  const elapsedSeconds = Math.max(0, timer.durationSeconds - timer.remainingSeconds);
+  const resumedAtMs = Date.parse(resumedAt);
+  const startedAt = Number.isNaN(resumedAtMs)
+    ? timer.startedAt
+    : new Date(resumedAtMs - elapsedSeconds * 1000).toISOString();
+
+  return {
+    ...timer,
+    status: 'running' as const,
+    startedAt,
+    pausedAt: undefined
+  };
+}
+
 function buildDefaultChatChannels(teams: TeamModel[], createdAt: string): MatchAggregate['chatChannels'] {
   const channels = [
     {
@@ -506,7 +532,8 @@ export function reduceMatchAggregate(
           ? {
               ...timer,
               status: 'paused',
-              pausedAt: eventEnvelope.occurredAt
+              pausedAt: eventEnvelope.occurredAt,
+              remainingSeconds: remainingAt(timer, eventEnvelope.occurredAt)
             }
           : timer
       );
@@ -520,11 +547,7 @@ export function reduceMatchAggregate(
     case 'match_resumed': {
       const updatedTimers = mapTimers(base.timers, (timer) =>
         timer.status === 'paused'
-          ? {
-              ...timer,
-              status: 'running',
-              pausedAt: undefined
-            }
+          ? resumedTimer(timer, eventEnvelope.occurredAt)
           : timer
       );
 

@@ -27,6 +27,9 @@ interface MapFallbackCanvasProps {
   height?: number;
   maxWidth?: number;
   notice?: string;
+  transitStations?: import('./station-layer.ts').TransitStationCandidate[];
+  selectedStation?: import('./station-layer.ts').TransitStationCandidate;
+  hidingRadiusMeters?: number;
 }
 
 export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
@@ -38,9 +41,12 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
     () => buildMapOverlayModel({
       visibleMap: props.visibleMap,
       visibleMovementTracks: props.visibleMovementTracks,
-      previewRegion: props.previewRegion
+      previewRegion: props.previewRegion,
+      transitStations: props.transitStations,
+      selectedStation: props.selectedStation,
+      hidingRadiusMeters: props.hidingRadiusMeters
     }),
-    [props.previewRegion, props.visibleMap, props.visibleMovementTracks]
+    [props.hidingRadiusMeters, props.previewRegion, props.selectedStation, props.transitStations, props.visibleMap, props.visibleMovementTracks]
   );
   const referenceGeometry = getPreferredMapGeometry({
     visibleMap: props.visibleMap,

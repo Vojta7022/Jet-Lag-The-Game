@@ -39,6 +39,9 @@ interface VisibleTimerLike {
   kind: string;
   status: string;
   remainingSeconds: number;
+  durationSeconds?: number;
+  startedAt?: string;
+  pausedAt?: string;
 }
 
 function parseTime(value: string | undefined): number | undefined {
@@ -102,6 +105,12 @@ export function getEffectiveRemainingSeconds(
   const baseRemaining = Math.max(0, timer.remainingSeconds);
   if (timer.status !== 'running') {
     return baseRemaining;
+  }
+
+  const startedAt = parseTime(timer.startedAt);
+  if (startedAt !== undefined && typeof timer.durationSeconds === 'number') {
+    const elapsedSeconds = Math.max(0, Math.floor((nowMs - startedAt) / 1000));
+    return Math.max(0, timer.durationSeconds - elapsedSeconds);
   }
 
   const syncTime = parseTime(freshnessAt);

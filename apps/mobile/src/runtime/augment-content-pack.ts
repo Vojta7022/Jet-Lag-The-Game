@@ -9,8 +9,8 @@ function buildMobileShellRuleset(packId: string): RulesetDefinition {
   return {
     rulesetId: mobileShellRulesetId,
     packId,
-    name: 'Mobile Shell Ruleset',
-    description: 'Minimal ruleset injected by the mobile shell so map setup and transport flows can run before full authored rulesets exist.',
+    name: 'Home Game — Base Rules',
+    description: 'Base Hide + Seek rules encoded from the printed rulebook and Investigation Book.',
     supportedModes: ['online', 'local_nearby', 'single_device_referee'],
     scaleDefinitions: [
       { scale: 'small', label: 'Small' },
@@ -18,15 +18,39 @@ function buildMobileShellRuleset(packId: string): RulesetDefinition {
       { scale: 'large', label: 'Large' }
     ],
     phasePolicies: {
-      hidePhaseDurationSeconds: 120
+      hidePhaseDurationSecondsByScale: {
+        small: 30 * 60,
+        medium: 60 * 60,
+        large: 180 * 60
+      },
+      nextHiderPreparationSeconds: 10 * 60
     },
     questionPolicies: {
-      cooldownSeconds: 45
+      cooldownSeconds: 0,
+      answerWindowSeconds: 5 * 60,
+      photoAnswerWindowSecondsByScale: {
+        small: 10 * 60,
+        medium: 10 * 60,
+        large: 20 * 60
+      },
+      allowQuestionRepeats: true,
+      repeatRewardGroupsAreSeparate: true
     },
     cardPolicies: {
-      stackManualResolutionWindows: false
+      stackManualResolutionWindows: false,
+      maximumHandSize: 6
     },
-    locationPolicies: {},
+    locationPolicies: {
+      hidingZoneRadiusMetersByScale: {
+        small: 500,
+        medium: 500,
+        large: 1000
+      },
+      finalHidingSpotPathProximityMeters: 3,
+      foundDistanceMeters: 2,
+      foundRequiresVisualConfirmation: true,
+      endgameRequiresOffTransit: true
+    },
     chatPolicies: {},
     visibilityPolicies: {},
     winConditions: [],
@@ -38,7 +62,7 @@ function buildMobileShellRuleset(packId: string): RulesetDefinition {
       {
         sourceType: 'generated',
         sourceFileName: 'apps/mobile/src/runtime/augment-content-pack.ts',
-        notes: 'Injected fallback ruleset for app-shell flows.'
+        notes: 'Fallback base ruleset used when the imported pack has no authored ruleset.'
       }
     ]
   };

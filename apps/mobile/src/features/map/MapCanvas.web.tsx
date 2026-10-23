@@ -15,6 +15,9 @@ export function MapCanvas(props: MapCanvasProps) {
           visibleMap={props.visibleMap}
           visibleMovementTracks={props.visibleMovementTracks}
           previewRegion={props.previewRegion}
+          transitStations={props.transitStations}
+          selectedStation={props.selectedStation}
+          hidingRadiusMeters={props.hidingRadiusMeters}
           height={props.height}
           maxWidth={Math.min(props.maxWidth ?? frameWidth, frameWidth)}
           notice="Boundary preview · Street tiles are available in the mobile app."

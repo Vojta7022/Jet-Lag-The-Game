@@ -58,6 +58,30 @@ test('hide phase timer counts down from the latest synced projection', () => {
   assert.equal(model?.banner?.title, 'Hide phase: 2:30 remaining');
 });
 
+test('timer countdown does not restart when a fresh projection arrives', () => {
+  const timer = {
+    timerId: 'hide-phase',
+    kind: 'hide',
+    status: 'running',
+    durationSeconds: 180,
+    remainingSeconds: 180,
+    startedAt: '2026-03-15T10:00:00.000Z'
+  };
+  const firstSync = buildMatchTimingDisplayModel({
+    projection: createProjection({ lifecycleState: 'hide_phase', visibleTimers: [timer] }),
+    freshnessAt: '2026-03-15T10:00:30.000Z',
+    nowMs: Date.parse('2026-03-15T10:00:30.000Z')
+  });
+  const refreshedSync = buildMatchTimingDisplayModel({
+    projection: createProjection({ lifecycleState: 'hide_phase', visibleTimers: [timer] }),
+    freshnessAt: '2026-03-15T10:01:00.000Z',
+    nowMs: Date.parse('2026-03-15T10:01:00.000Z')
+  });
+
+  assert.equal(firstSync?.timers[0]?.remainingSeconds, 150);
+  assert.equal(refreshedSync?.timers[0]?.remainingSeconds, 120);
+});
+
 test('question cooldown banner stays explicit during cooldown state', () => {
   const model = buildMatchTimingDisplayModel({
     projection: createProjection({

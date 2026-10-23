@@ -4,7 +4,7 @@ import type { ScaleKey } from '../../../../../packages/shared-types/src/index.ts
 import type { QuestionCategoryViewModel } from './question-catalog.ts';
 import { describeQuestionCategoryForPlayers } from './question-guidance.ts';
 import {
-  formatQuestionDrawRule,
+  formatHiderCardReward,
   formatTimerPolicyLabel
 } from './question-rule-model.ts';
 
@@ -42,7 +42,7 @@ export function QuestionCategoryList(props: QuestionCategoryListProps) {
               {describeQuestionCategoryForPlayers(entry.category)}
             </Text>
             <Text style={styles.rule}>
-              {formatQuestionDrawRule(entry.category)} ·{' '}
+              Hider: {formatHiderCardReward(entry.category)} ·{' '}
               {formatTimerPolicyLabel(
                 entry.category.defaultTimerPolicy,
                 props.selectedScale

@@ -5,43 +5,9 @@ import type {
   TimerPolicyRef
 } from '../../../../../packages/shared-types/src/index.ts';
 
-function hashText(value: string): number {
-  let hash = 0;
-
-  for (const character of value) {
-    hash = ((hash * 31) + character.charCodeAt(0)) >>> 0;
-  }
-
-  return hash;
-}
-
-function sortTemplatesForRound(
-  templates: QuestionTemplateDefinition[],
-  round: number
-): QuestionTemplateDefinition[] {
-  return [...templates].sort((left, right) => {
-    const leftWeight = hashText(`${round}:${left.templateId}`);
-    const rightWeight = hashText(`${round}:${right.templateId}`);
-
-    if (leftWeight !== rightWeight) {
-      return leftWeight - rightWeight;
-    }
-
-    return left.templateId.localeCompare(right.templateId);
-  });
-}
-
 function formatMinutes(totalSeconds: number): string {
   const totalMinutes = Math.round(totalSeconds / 60);
   return totalMinutes === 1 ? '1 minute' : `${totalMinutes} minutes`;
-}
-
-export interface QuestionSelectionRound {
-  categoryId: string;
-  round: number;
-  availableTemplateIds: string[];
-  drawnTemplateIds: string[];
-  keptTemplateIds: string[];
 }
 
 export function filterTemplatesForScale(
@@ -95,82 +61,16 @@ export function formatTimerPolicyLabel(
     .join(' · ') || 'Manual time limit';
 }
 
-export function formatQuestionDrawRule(category: QuestionCategoryDefinition): string {
-  if (category.drawRule.rawText.trim().length > 0) {
-    return category.drawRule.rawText.trim();
+export function formatHiderCardReward(
+  category: QuestionCategoryDefinition,
+  multiplier = 1
+): string {
+  const oneRewardSet = category.drawRule.rawText.trim() ||
+    `Draw ${category.drawRule.drawCount}, Pick ${category.drawRule.pickCount}`;
+
+  if (multiplier <= 1) {
+    return oneRewardSet;
   }
 
-  return `Draw ${category.drawRule.drawCount}, Pick ${category.drawRule.pickCount}`;
-}
-
-export function createQuestionSelectionRound(args: {
-  category: QuestionCategoryDefinition;
-  templates: QuestionTemplateDefinition[];
-  selectedScale?: ScaleKey;
-  previousRound?: QuestionSelectionRound;
-}): QuestionSelectionRound {
-  const availableTemplates = filterTemplatesForScale(args.templates, args.selectedScale);
-  const nextRoundNumber = (args.previousRound?.round ?? 0) + 1;
-  const drawnTemplates = sortTemplatesForRound(availableTemplates, nextRoundNumber)
-    .slice(0, Math.max(1, Math.min(args.category.drawRule.drawCount, availableTemplates.length)));
-
-  return {
-    categoryId: args.category.categoryId,
-    round: nextRoundNumber,
-    availableTemplateIds: availableTemplates.map((template) => template.templateId),
-    drawnTemplateIds: drawnTemplates.map((template) => template.templateId),
-    keptTemplateIds:
-      args.category.drawRule.pickCount === 1 && drawnTemplates[0]
-        ? [drawnTemplates[0].templateId]
-        : []
-  };
-}
-
-export function toggleKeptQuestionTemplate(
-  currentRound: QuestionSelectionRound,
-  templateId: string,
-  pickCount: number
-): QuestionSelectionRound {
-  const currentlyKept = currentRound.keptTemplateIds.includes(templateId);
-  if (currentlyKept) {
-    return {
-      ...currentRound,
-      keptTemplateIds: currentRound.keptTemplateIds.filter((candidate) => candidate !== templateId)
-    };
-  }
-
-  const nextKept = [...currentRound.keptTemplateIds, templateId];
-  return {
-    ...currentRound,
-    keptTemplateIds: nextKept.slice(-pickCount)
-  };
-}
-
-export function canAskPreparedQuestion(
-  round: QuestionSelectionRound | undefined,
-  category: QuestionCategoryDefinition | undefined
-): boolean {
-  if (!round || !category) {
-    return false;
-  }
-
-  return round.keptTemplateIds.length >= Math.max(1, category.drawRule.pickCount);
-}
-
-export function consumePreparedQuestionTemplate(
-  round: QuestionSelectionRound | undefined,
-  templateId: string
-): QuestionSelectionRound | undefined {
-  if (!round) {
-    return undefined;
-  }
-
-  const keptTemplateIds = round.keptTemplateIds.filter((candidate) => candidate !== templateId);
-  const drawnTemplateIds = round.drawnTemplateIds.filter((candidate) => candidate !== templateId);
-
-  return {
-    ...round,
-    keptTemplateIds,
-    drawnTemplateIds
-  };
+  return `${multiplier} separate sets of ${oneRewardSet}`;
 }

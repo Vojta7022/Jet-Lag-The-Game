@@ -518,22 +518,12 @@ export function validateCommandEnvelope(
         askedQuestions: Object.values(aggregate.questionInstances).filter((question) => question.status !== 'canceled')
       });
 
-      if (!selectionState.drawnTemplateIds.includes(template.templateId)) {
-        return [
-          error(
-            envelope.command.type,
-            'QUESTION_NOT_IN_DRAW',
-            'This question is not part of the current workbook draw for its category.'
-          )
-        ];
-      }
-
       if (!selectionState.availableTemplateIds.includes(template.templateId)) {
         return [
           error(
             envelope.command.type,
-            'QUESTION_ALREADY_USED',
-            'This question has already been used from the current workbook draw.'
+            'QUESTION_NOT_AVAILABLE_AT_SCALE',
+            'This question is not available in the selected game scale.'
           )
         ];
       }

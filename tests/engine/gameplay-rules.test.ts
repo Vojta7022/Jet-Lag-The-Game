@@ -11,7 +11,7 @@ import {
   setupMatchToSeekReady
 } from './helpers.ts';
 
-test('ask_question only accepts templates from the current workbook draw and starts a question timer', () => {
+test('ask_question accepts any in-scale investigation-book template and starts a response timer', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
 
@@ -35,33 +35,11 @@ test('ask_question only accepts templates from the current workbook draw and sta
     selectedScale: aggregate.selectedScale,
     askedQuestions: Object.values(aggregate.questionInstances)
   });
-  const invalidTemplate = contentPack.questionTemplates.find(
-    (template) =>
-      template.categoryId === 'matching' && !selection.availableTemplateIds.includes(template.templateId)
+  const printedBookTemplate = contentPack.questionTemplates.find(
+    (template) => template.templateId === 'matching-commercial-airport'
   );
-  assert.ok(invalidTemplate);
-
-  assert.throws(
-    () =>
-      executeCommand(
-        aggregate,
-        makeEnvelope(
-          aggregate.matchId,
-          { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
-          {
-            type: 'ask_question',
-            payload: {
-              questionInstanceId: 'question:invalid-matching',
-              templateId: invalidTemplate!.templateId,
-              targetTeamId: 'team-hider'
-            }
-          },
-          21
-        ),
-        contentPack
-      ),
-    /current workbook draw/i
-  );
+  assert.ok(printedBookTemplate);
+  assert.equal(selection.availableTemplateIds.includes(printedBookTemplate!.templateId), true);
 
   aggregate = executeCommand(
     aggregate,
@@ -72,7 +50,7 @@ test('ask_question only accepts templates from the current workbook draw and sta
         type: 'ask_question',
         payload: {
           questionInstanceId: 'question:valid-matching',
-          templateId: selection.availableTemplateIds[0]!,
+          templateId: printedBookTemplate!.templateId,
           targetTeamId: 'team-hider'
         }
       },
@@ -88,6 +66,72 @@ test('ask_question only accepts templates from the current workbook draw and sta
   assert.ok(questionTimer);
   assert.equal(questionTimer?.durationSeconds, 300);
   assert.equal(questionTimer?.remainingSeconds, 300);
+});
+
+test('a resolved investigation question can be repeated after the next question window opens', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const templateId = 'matching-commercial-airport';
+  const matchingCategory = contentPack.questionCategories.find((entry) => entry.categoryId === 'matching');
+  assert.ok(matchingCategory);
+
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'begin_question_prompt', payload: {} }, 60),
+    contentPack
+  ).aggregate;
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:repeat-one', templateId, targetTeamId: 'team-hider' }
+    }, 61),
+    contentPack
+  ).aggregate;
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, {
+      type: 'answer_question',
+      payload: { questionInstanceId: 'question:repeat-one', answer: { value: 'yes' } }
+    }, 62),
+    contentPack
+  ).aggregate;
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: 'host-1', playerId: 'host-1', role: 'host' }, {
+      type: 'apply_constraint',
+      payload: { questionInstanceId: 'question:repeat-one', constraintId: 'nearest-feature-match', metadata: { answer: 'yes' } }
+    }, 63),
+    contentPack
+  ).aggregate;
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: 'host-1', playerId: 'host-1', role: 'host' }, { type: 'complete_cooldown', payload: {} }, 64),
+    contentPack
+  ).aggregate;
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'begin_question_prompt', payload: {} }, 65),
+    contentPack
+  ).aggregate;
+
+  const repeatState = buildQuestionSelectionState({
+    contentPack,
+    category: matchingCategory!,
+    selectedScale: aggregate.selectedScale,
+    askedQuestions: Object.values(aggregate.questionInstances)
+  });
+
+  assert.equal(repeatState.availableTemplateIds.includes(templateId), true);
+  assert.equal(repeatState.rewardMultiplierByTemplate[templateId], 2);
+  assert.doesNotThrow(() => executeCommand(
+    aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:repeat-two', templateId, targetTeamId: 'team-hider' }
+    }, 66),
+    contentPack
+  ));
 });
 
 test('photo answers require recorded attachments before the hider can answer', () => {

@@ -138,6 +138,6 @@ test('question flow and card resolution windows lock correctly', () => {
     contentPack
   ).aggregate;
 
-  assert.equal(aggregate.seekPhaseSubstate, 'cooldown');
+  assert.equal(aggregate.seekPhaseSubstate, 'ready');
   assert.equal(aggregate.activeCardResolution, undefined);
 });

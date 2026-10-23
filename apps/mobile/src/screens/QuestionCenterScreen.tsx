@@ -31,7 +31,7 @@ import {
   describeQuestionTemplateForPlayers,
   filterTemplatesForScale,
   formatQuestionScaleSet,
-  formatQuestionDrawRule,
+  formatHiderCardReward,
   formatTimerPolicyLabel,
   buildQuestionMapEffectModel,
   chooseConstraintIdForQuestion,
@@ -228,15 +228,13 @@ export function QuestionCenterScreen() {
               (question) => ({
                 templateId: question.templateId,
                 categoryId: question.categoryId,
-                askedAt: question.askedAt
+                askedAt: question.askedAt,
+                status: question.status
               })
             )
           })
         : undefined,
     [projection?.visibleQuestions, selectedCategory, selectedScale]
-  );
-  const drawnTemplates = availableTemplates.filter((template) =>
-    activeSelectionRound?.drawnTemplateIds.includes(template.templateId)
   );
   const readyTemplates = availableTemplates.filter((template) =>
     activeSelectionRound?.availableTemplateIds.includes(template.templateId)
@@ -245,14 +243,16 @@ export function QuestionCenterScreen() {
     readyTemplates.find(
       (template) => template.templateId === selectedTemplateId
     ) ??
-    readyTemplates[0] ??
-    drawnTemplates.find(
-      (template) => template.templateId === selectedTemplateId
-    ) ??
-    drawnTemplates[0];
+    readyTemplates[0];
   const previewTemplate = readyTemplate ?? selectedTemplate;
   const ruleLabel = selectedCategory
-    ? formatQuestionDrawRule(selectedCategory)
+    ? formatHiderCardReward(selectedCategory)
+    : undefined;
+  const selectedRewardMultiplier = previewTemplate
+    ? activeSelectionRound?.rewardMultiplierByTemplate[previewTemplate.templateId] ?? 1
+    : 1;
+  const selectedRewardLabel = selectedCategory
+    ? formatHiderCardReward(selectedCategory, selectedRewardMultiplier)
     : undefined;
   const timerLabel = selectedCategory
     ? formatTimerPolicyLabel(selectedCategory.defaultTimerPolicy, selectedScale)
@@ -277,9 +277,7 @@ export function QuestionCenterScreen() {
         ))
     ) {
       setSelectedTemplateId(
-        activeSelectionRound?.availableTemplateIds[0] ??
-          activeSelectionRound?.drawnTemplateIds[0] ??
-          availableTemplates[0]?.templateId
+          activeSelectionRound?.availableTemplateIds[0] ?? availableTemplates[0]?.templateId
       );
     }
   }, [activeSelectionRound, availableTemplates, selectedTemplateId]);
@@ -433,9 +431,9 @@ export function QuestionCenterScreen() {
   const activeQuestionTimerSeconds = timingModel?.timers.find(
     (timer) => timer.kind === 'question' && timer.status !== 'completed'
   )?.remainingSeconds;
-  const keptSelectionLabel =
+  const availableQuestionLabel =
     selectedCategory && activeSelectionRound
-      ? `${activeSelectionRound.availableTemplateIds.length} ready from ${activeSelectionRound.drawnTemplateIds.length} drawn`
+      ? `${activeSelectionRound.availableTemplateIds.length} questions available`
       : undefined;
 
   const handlePrepareFlow = () => {
@@ -742,7 +740,7 @@ export function QuestionCenterScreen() {
 
       <Panel
         title="Choose A Clue Type"
-        subtitle="Start with the kind of clue you want, then follow the workbook draw and keep rule for that category."
+        subtitle="Pick from the printed investigation book. Card draw rules tell the hider what they earn after an answer."
       >
         <QuestionCategoryList
           categories={categoryViewModels}
@@ -753,8 +751,8 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Workbook Rule"
-        subtitle="This is the real draw, keep, and answer window rule imported from the workbook."
+        title="Printed Rules"
+        subtitle="Question availability follows the selected game scale. The draw and pick values are the hider's card reward."
         tone="soft"
       >
         {selectedCategory ? (
@@ -767,21 +765,21 @@ export function QuestionCenterScreen() {
               items={[
                 { label: 'Prompt', value: selectedCategory.promptTemplate },
                 {
-                  label: 'Draw / Keep',
-                  value: ruleLabel ?? 'Manual draw rule'
+                  label: 'Hider card reward',
+                  value: ruleLabel ?? 'Manual card reward'
                 },
                 {
                   label: 'Response limit',
                   value: timerLabel ?? 'Manual timer'
                 },
-                { label: 'Templates in play', value: availableTemplates.length }
+                { label: 'Questions in this scale', value: availableTemplates.length }
               ]}
             />
             {selectedCategory.drawRule.pickCount > 1 ? (
               <Text style={styles.helper}>
-                This category can use multiple clue cards from the same workbook
-                draw. Ask up to {selectedCategory.drawRule.pickCount} before the
-                next draw rotates in.
+                The hider draws {selectedCategory.drawRule.drawCount} cards and
+                keeps {selectedCategory.drawRule.pickCount} after each answered
+                question.
               </Text>
             ) : null}
           </>
@@ -793,8 +791,8 @@ export function QuestionCenterScreen() {
       </Panel>
 
       <Panel
-        title="Current Draw"
-        subtitle="This draw is authoritative for the current match state, so every device sees the same live workbook options."
+        title="Investigation Book"
+        subtitle="All questions allowed for this scale stay available, including questions the seekers have already asked."
       >
         {!selectedCategory ? (
           <Text style={styles.copy}>Choose a category first.</Text>
@@ -809,20 +807,11 @@ export function QuestionCenterScreen() {
             <FactList
               items={[
                 {
-                  label: 'Workbook rule',
+                  label: 'Hider card reward',
                   value: ruleLabel ?? 'Manual draw rule'
                 },
                 { label: 'Timer', value: timerLabel ?? 'Manual timer' },
-                {
-                  label: 'Current draw',
-                  value: activeSelectionRound
-                    ? `Round ${activeSelectionRound.round}`
-                    : 'Not available yet'
-                },
-                {
-                  label: 'Ready now',
-                  value: keptSelectionLabel ?? 'No ready cards yet'
-                }
+                { label: 'Questions available', value: availableQuestionLabel ?? 'Select a clue type' }
               ]}
             />
             {readyTemplates.length > 0 ? (
@@ -844,9 +833,8 @@ export function QuestionCenterScreen() {
               />
             ) : (
               <Text style={styles.copy}>
-                No question cards are currently ready from this workbook draw.
-                Finish the current clue window or wait for the next
-                authoritative draw to open.
+                No imported questions are available for this game scale. Choose
+                another clue type or update the content pack.
               </Text>
             )}
           </>
@@ -875,6 +863,10 @@ export function QuestionCenterScreen() {
                 detail={selectedQuestionImpact.detail}
               />
             ) : null}
+            <Text style={styles.helper}>
+              Hider reward for this ask: {selectedRewardLabel}. Repeated
+              questions pay this reward in separate draw and pick sets.
+            </Text>
             <FactList
               items={[
                 {

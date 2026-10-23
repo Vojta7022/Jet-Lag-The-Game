@@ -145,8 +145,13 @@ function buildCooldownTimer(aggregate: MatchAggregate, contentPack: ContentPack,
   };
 }
 
-function buildHideTimer(contentPack: ContentPack, rulesetId: string | undefined, occurredAt: string): TimerModel {
-  const durationSeconds = getHidePhaseDurationSeconds(contentPack, rulesetId);
+function buildHideTimer(
+  contentPack: ContentPack,
+  rulesetId: string | undefined,
+  selectedScale: MatchAggregate['selectedScale'],
+  occurredAt: string
+): TimerModel {
+  const durationSeconds = getHidePhaseDurationSeconds(contentPack, rulesetId, selectedScale);
   return {
     timerId: 'hide-phase',
     kind: 'hide',
@@ -448,7 +453,12 @@ function eventsForCommand(
           type: 'match_started',
           payload: {
             lifecycleState: 'hide_phase',
-            timer: buildHideTimer(contentPack, aggregate?.selectedRulesetId, envelope.occurredAt)
+            timer: buildHideTimer(
+              contentPack,
+              aggregate?.selectedRulesetId,
+              aggregate?.selectedScale,
+              envelope.occurredAt
+            )
           }
         })
       ];
@@ -566,7 +576,12 @@ function eventsForCommand(
         draft: resolvedConstraint,
         rawMetadata: envelope.command.payload.metadata
       });
-      const cooldownTimer = envelope.command.payload.openCardResolution
+      const cooldownSeconds = getQuestionCooldownSeconds(
+        contentPack,
+        aggregate!.selectedRulesetId,
+        question.templateId
+      );
+      const cooldownTimer = envelope.command.payload.openCardResolution || cooldownSeconds === 0
         ? undefined
         : buildCooldownTimer(aggregate!, contentPack, question.templateId, envelope.occurredAt);
 
@@ -579,7 +594,7 @@ function eventsForCommand(
             lifecycleState: 'seek_phase',
             seekPhaseSubstate: envelope.command.payload.openCardResolution
               ? 'awaiting_card_resolution'
-              : 'cooldown',
+              : cooldownTimer ? 'cooldown' : 'ready',
             cooldownTimer
           }
         })
@@ -784,14 +799,18 @@ function eventsForCommand(
         }
       }
 
+      const cooldownSeconds = activeQuestion
+        ? getQuestionCooldownSeconds(contentPack, aggregate!.selectedRulesetId, activeQuestion.templateId)
+        : 0;
+
       events.push(
         makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {
           type: 'card_resolution_closed',
           payload: {
             ...envelope.command.payload,
-            seekPhaseSubstate: 'cooldown',
+            seekPhaseSubstate: cooldownSeconds > 0 ? 'cooldown' : 'ready',
             lifecycleState: 'seek_phase',
-            cooldownTimer: activeQuestion
+            cooldownTimer: activeQuestion && cooldownSeconds > 0
               ? buildCooldownTimer(aggregate!, contentPack, activeQuestion.templateId, envelope.occurredAt)
               : undefined
           }

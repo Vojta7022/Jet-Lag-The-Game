@@ -9,6 +9,7 @@ import type { ContentPack } from '../../../packages/shared-types/src/index.ts';
 import { mobileAppEnvironment } from '../src/config/env.ts';
 import { ensureMobileShellContentPack } from '../src/runtime/augment-content-pack.ts';
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
+import { getHidePhaseDurationSeconds, getQuestionCooldownSeconds } from '../../../packages/engine/src/index.ts';
 import {
   findActiveQuestion,
   findQuestionCategory,
@@ -31,6 +32,21 @@ const generatedPackPath = fileURLToPath(
 function loadContentPack(): ContentPack {
   return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
 }
+
+test('default referee rules match printed scale timers, radius, answer windows, and no cooldown', () => {
+  const contentPack = loadContentPack();
+  const ruleset = contentPack.rulesets.find((entry) => entry.rulesetId === 'mobile-shell-ruleset');
+  assert.ok(ruleset);
+
+  assert.equal(getHidePhaseDurationSeconds(contentPack, ruleset!.rulesetId, 'small'), 30 * 60);
+  assert.equal(getHidePhaseDurationSeconds(contentPack, ruleset!.rulesetId, 'medium'), 60 * 60);
+  assert.equal(getHidePhaseDurationSeconds(contentPack, ruleset!.rulesetId, 'large'), 180 * 60);
+  assert.equal(ruleset!.locationPolicies.hidingZoneRadiusMetersByScale?.small, 500);
+  assert.equal(ruleset!.locationPolicies.hidingZoneRadiusMetersByScale?.medium, 500);
+  assert.equal(ruleset!.locationPolicies.hidingZoneRadiusMetersByScale?.large, 1000);
+  assert.equal(getQuestionCooldownSeconds(contentPack, ruleset!.rulesetId, 'matching-commercial-airport'), 0);
+  assert.equal(getQuestionCooldownSeconds(contentPack, ruleset!.rulesetId, 'photos-tree'), 0);
+});
 
 test('question flow bootstrap reaches seek phase ready with a bounded playable region', async () => {
   const contentPack = loadContentPack();
@@ -203,10 +219,7 @@ test('question flow ask, answer, and resolve path updates the authoritative boun
     ]
   );
 
-  assert.ok(
-    resolved.projectionDelivery.projection.seekPhaseSubstate === 'cooldown' ||
-      resolved.projectionDelivery.projection.seekPhaseSubstate === 'ready'
-  );
+  assert.equal(resolved.projectionDelivery.projection.seekPhaseSubstate, 'ready');
   assert.equal(resolved.projectionDelivery.projection.visibleMap?.history.length, 1);
   assert.equal(resolved.projectionDelivery.projection.visibleConstraints.length, 1);
   assert.equal(resolved.projectionDelivery.projection.visibleConstraints[0]?.resolutionMode, 'approximate');

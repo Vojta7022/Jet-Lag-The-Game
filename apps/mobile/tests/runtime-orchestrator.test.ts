@@ -67,6 +67,28 @@ test('runtime orchestrator can create host sessions across all supported foundat
   await orchestrator.disconnect(singleDevice.connection);
 });
 
+test('mobile runtime timestamps authoritative commands using its injected wall clock', async () => {
+  const fixedNow = new Date('2026-10-23T20:00:00.000Z');
+  const orchestrator = new MobileRuntimeOrchestrator({
+    contentPack: loadContentPack(),
+    environment: mobileAppEnvironment,
+    clock: () => fixedNow
+  });
+  const created = await orchestrator.createMatch(
+    { displayName: 'Clock Host', playerId: 'clock-host' },
+    {
+      runtimeKind: 'single_device_referee',
+      matchId: 'match-real-clock',
+      initialScale: 'small',
+      matchMode: 'single_device_referee'
+    }
+  );
+
+  const recovered = await orchestrator.recover(created.connection);
+  assert.equal(recovered?.aggregate.createdAt, fixedNow.toISOString());
+  await orchestrator.disconnect(created.connection);
+});
+
 test('runtime orchestrator nearby guest flow uses host-authoritative join data and returns scoped snapshots', async () => {
   const orchestrator = new MobileRuntimeOrchestrator({
     contentPack: loadContentPack(),

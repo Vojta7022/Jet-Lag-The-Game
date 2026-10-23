@@ -198,6 +198,9 @@ export interface MatchProjection {
     kind: string;
     status: string;
     remainingSeconds: number;
+    durationSeconds: number;
+    startedAt: string;
+    pausedAt?: string;
   }>;
   activeCardResolution?: {
     sourceCardInstanceId: string;

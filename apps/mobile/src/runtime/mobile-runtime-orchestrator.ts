@@ -75,11 +75,6 @@ function normalizeJoinCode(joinCode: string | undefined): string | undefined {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 }
 
-function makeTimestamp(sequence: number): string {
-  const base = Date.UTC(2026, 0, 1, 0, 0, 0);
-  return new Date(base + sequence * 1000).toISOString();
-}
-
 function buildHostRecipient(profile: SessionProfileDraft): ProjectionRecipient {
   return {
     recipientId: `host_admin:${profile.playerId}`,
@@ -149,6 +144,7 @@ export class MobileRuntimeOrchestrator {
   private readonly contentPack: ContentPack;
   private readonly environment: MobileAppEnvironment;
   private readonly singleDevicePersistence: LocalRuntimePersistence;
+  private readonly clock: () => Date;
   private readonly commandSequences = new Map<string, number>();
   private readonly inMemoryRuntimes = new Map<string, InMemoryAuthorityRuntime>();
   private readonly nearbyRuntimes = new Map<string, NearbyAuthorityRuntime>();
@@ -156,10 +152,16 @@ export class MobileRuntimeOrchestrator {
   private readonly nearbyJoinCodeIndex = new Map<string, string>();
   private onlineFoundation?: OnlineFoundationServices;
 
-  constructor(options: { contentPack: ContentPack; environment: MobileAppEnvironment; singleDevicePersistence?: LocalRuntimePersistence }) {
+  constructor(options: {
+    contentPack: ContentPack;
+    environment: MobileAppEnvironment;
+    singleDevicePersistence?: LocalRuntimePersistence;
+    clock?: () => Date;
+  }) {
     this.contentPack = options.contentPack;
     this.environment = options.environment;
     this.singleDevicePersistence = options.singleDevicePersistence ?? new InMemoryPersistence();
+    this.clock = options.clock ?? (() => new Date());
   }
 
   async createMatch(
@@ -834,7 +836,7 @@ export class MobileRuntimeOrchestrator {
       matchId,
       commandId: `command:${createUuid()}`,
       actor,
-      occurredAt: makeTimestamp(sequence),
+      occurredAt: this.clock().toISOString(),
       idempotencyKey: `idempotency:${matchId}:${actor.actorId}:${sequence}`,
       clientSequence: sequence,
       command

@@ -23,4 +23,5 @@ export * from './region-data-source.ts';
 export * from './region-provider.ts';
 export * from './region-types.ts';
 export * from './seed-regions.ts';
+export * from './station-layer.ts';
 export * from './use-region-search.ts';

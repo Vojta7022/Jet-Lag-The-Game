@@ -400,7 +400,10 @@ export function buildMatchProjection(
     timerId: timer.timerId,
     kind: timer.kind,
     status: timer.status,
-    remainingSeconds: timer.remainingSeconds
+    remainingSeconds: timer.remainingSeconds,
+    durationSeconds: timer.durationSeconds,
+    startedAt: timer.startedAt,
+    pausedAt: timer.pausedAt
   }));
 
   const visibleEventLog = aggregate.eventLog

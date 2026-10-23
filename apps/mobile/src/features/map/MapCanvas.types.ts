@@ -4,6 +4,7 @@ import type {
 } from '../../../../../packages/shared-types/src/index.ts';
 
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
+import type { TransitStationCandidate } from './station-layer.ts';
 
 export interface MapCanvasProps {
   visibleMap?: VisibleMapProjection;
@@ -11,4 +12,7 @@ export interface MapCanvasProps {
   previewRegion?: PlayableRegionCatalogEntry;
   height?: number;
   maxWidth?: number;
+  transitStations?: TransitStationCandidate[];
+  selectedStation?: TransitStationCandidate;
+  hidingRadiusMeters?: number;
 }
