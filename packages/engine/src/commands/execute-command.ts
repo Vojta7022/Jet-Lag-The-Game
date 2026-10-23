@@ -597,7 +597,7 @@ function eventsForCommand(
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
           type: 'question_prompt_opened',
           payload: {
-            lifecycleState: 'seek_phase',
+            lifecycleState: aggregate!.lifecycleState,
             seekPhaseSubstate: 'awaiting_question_selection'
           }
         })
@@ -625,7 +625,7 @@ function eventsForCommand(
               status: 'awaiting_answer',
               askedAt: envelope.occurredAt
             },
-            lifecycleState: 'seek_phase',
+            lifecycleState: aggregate!.lifecycleState,
             seekPhaseSubstate: 'awaiting_question_answer',
             questionTimer
           }
@@ -638,7 +638,7 @@ function eventsForCommand(
           type: 'question_answered',
           payload: {
             ...envelope.command.payload,
-            lifecycleState: 'seek_phase',
+            lifecycleState: aggregate!.lifecycleState,
             seekPhaseSubstate: 'applying_constraints'
           }
         })
@@ -684,7 +684,7 @@ function eventsForCommand(
           payload: {
             ...envelope.command.payload,
             constraint: constraintRecord,
-            lifecycleState: 'seek_phase',
+            lifecycleState: aggregate!.lifecycleState,
             seekPhaseSubstate: envelope.command.payload.openCardResolution
               ? 'awaiting_card_resolution'
               : cooldownTimer ? 'cooldown' : 'ready',
@@ -902,7 +902,7 @@ function eventsForCommand(
           payload: {
             ...envelope.command.payload,
             seekPhaseSubstate: cooldownSeconds > 0 ? 'cooldown' : 'ready',
-            lifecycleState: 'seek_phase',
+            lifecycleState: aggregate!.lifecycleState,
             cooldownTimer: activeQuestion && cooldownSeconds > 0
               ? buildCooldownTimer(aggregate!, contentPack, activeQuestion.templateId, envelope.occurredAt)
               : undefined

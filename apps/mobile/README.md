@@ -131,7 +131,7 @@ The first seed regions are:
 
 ## Hide + Seek Field Actions
 
-During seek play, the hider can save a final spot with an explicit confirmation that it is publicly accessible and within 3 m of a marked path. The pin is visible to the hider and referee, then frozen when a seeker reports being inside the hiding zone and off transit. Seekers can confirm the hider was found only after visual identification and a location fix within 2 m. Each GPS fix is captured after a player taps an action; the hider's location is not continuously shared. The first scored result records elapsed unpaused survival time. Multi-round role rotation and time-bonus awards at capture remain in progress.
+During seek play, the hider can save a final spot with an explicit confirmation that it is publicly accessible and within 3 m of a marked path. The pin is visible to the hider and referee, then frozen when a seeker reports being inside the hiding zone and off transit. Seekers can confirm the hider was found only after visual identification and a location fix within 2 m. Each GPS fix is captured after a player taps an action; the hider's location is not continuously shared. The first scored result records elapsed unpaused survival time. Questions remain available during endgame; a photo challenge that cannot be completed from the fixed spot can be recorded as an unable-to-answer response, after which the hider can draw its printed reward from the Deck screen. Multi-round role rotation and time-bonus awards at capture remain in progress.
 
 What is still placeholder in this phase:
 

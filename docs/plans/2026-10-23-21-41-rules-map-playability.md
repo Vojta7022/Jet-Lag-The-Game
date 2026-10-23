@@ -68,4 +68,4 @@
 - Completed the endgame command/event path and live-map field controls. A hider marks one final coordinate and attests public access/path proximity; an in-zone off-transit seeker report starts endgame; a seeker/referee must confirm visual identification and a location fix within 2 m to record a scored result.
 - Final coordinates stay private to the hider/referee, including in the public endgame event. The UI captures GPS only after an explicit action tap.
 - Verified with the engine rule tests, the complete 179-test suite, mobile typecheck, and whitespace checks.
-- Still open: endgame question availability and photo impossibility handling; time-bonus-card awards at capture; next-hider rotation and deck reset; scenario import/export; full live UI round walkthrough.
+- Still open: time-bonus-card awards at capture; next-hider rotation and deck reset; scenario import/export; full live UI round walkthrough. Endgame questions and impossible-photo answers are now implemented and tested.

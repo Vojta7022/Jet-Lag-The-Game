@@ -10,6 +10,7 @@ import {
   buildScaleAwareTimeBonusDescription,
   buildCurseEffectTags
 } from '../src/features/cards/card-workbook-rules.ts';
+import { canDrawCards } from '../src/features/cards/card-catalog.ts';
 
 function createCard(overrides: Partial<CardDefinition> = {}): CardDefinition {
   return {
@@ -48,6 +49,12 @@ function createProjection(lifecycleState: MatchProjection['lifecycleState'], see
     visibleEventLog: []
   };
 }
+
+test('hider can draw the printed question reward during endgame, but not after the game ends', () => {
+  assert.equal(canDrawCards(createProjection('endgame')), true);
+  assert.equal(canDrawCards(createProjection('endgame', 'applying_constraints')), true);
+  assert.equal(canDrawCards(createProjection('game_complete')), false);
+});
 
 test('card workbook helpers expose scale-aware time bonuses and named power-up fallbacks', () => {
   const timeBonus = createCard({

@@ -118,21 +118,21 @@ function describeQuestionFlowStep(
     return 'Wait for hide phase to end';
   }
 
-  if (lifecycleState === 'endgame') {
-    return 'Finish the last live clues';
-  }
-
   if (lifecycleState === 'game_complete') {
     return 'Match complete';
   }
 
-  if (lifecycleState !== 'seek_phase') {
+  if (lifecycleState === 'endgame' && (!seekPhaseSubstate || seekPhaseSubstate === 'ready')) {
+    return 'Ask another clue at the final spot';
+  }
+
+  if (lifecycleState !== 'seek_phase' && lifecycleState !== 'endgame') {
     return formatPhaseLabel(lifecycleState, seekPhaseSubstate);
   }
 
   switch (seekPhaseSubstate) {
     case 'ready':
-      return 'Ask the next clue';
+      return lifecycleState === 'endgame' ? 'Ask another clue at the final spot' : 'Ask the next clue';
     case 'awaiting_question_selection':
       return 'Choose the next clue';
     case 'awaiting_question_answer':
@@ -375,18 +375,20 @@ export function QuestionCenterScreen() {
       (eventFrame) => eventFrame.type === 'constraint_applied'
     ) && latestResolvedEffect
   );
+  const isEndgameQuestionState = projection?.lifecycleState === 'endgame';
+  const activeQuestionSubstate = projection?.seekPhaseSubstate ?? (isEndgameQuestionState ? 'ready' : undefined);
   const isQuestionReadyState =
-    projection?.lifecycleState === 'seek_phase' &&
-    projection.seekPhaseSubstate === 'ready';
+    (projection?.lifecycleState === 'seek_phase' || isEndgameQuestionState) &&
+    activeQuestionSubstate === 'ready';
   const isQuestionSelectionState =
-    projection?.lifecycleState === 'seek_phase' &&
-    projection.seekPhaseSubstate === 'awaiting_question_selection';
+    (projection?.lifecycleState === 'seek_phase' || isEndgameQuestionState) &&
+    activeQuestionSubstate === 'awaiting_question_selection';
   const isAwaitingAnswer =
-    projection?.lifecycleState === 'seek_phase' &&
-    projection.seekPhaseSubstate === 'awaiting_question_answer';
+    (projection?.lifecycleState === 'seek_phase' || isEndgameQuestionState) &&
+    activeQuestionSubstate === 'awaiting_question_answer';
   const isApplyingConstraints =
-    projection?.lifecycleState === 'seek_phase' &&
-    projection.seekPhaseSubstate === 'applying_constraints';
+    (projection?.lifecycleState === 'seek_phase' || isEndgameQuestionState) &&
+    activeQuestionSubstate === 'applying_constraints';
   const canPrepareFlow = Boolean(
     activeMatch &&
       capabilities.canPrepareFlow &&
@@ -487,6 +489,20 @@ export function QuestionCenterScreen() {
       payload: {
         questionInstanceId: activeQuestion.questionInstanceId,
         answer: buildAnswerPayload(activeQuestionTemplate, answerDraft)
+      }
+    });
+  };
+
+  const handleCannotAnswerDuringEndgame = () => {
+    if (!activeQuestion || !activeQuestionCategory || !isEndgameQuestionState) return;
+    void submitCommand({
+      type: 'answer_question',
+      payload: {
+        questionInstanceId: activeQuestion.questionInstanceId,
+        answer: {
+          cannotAnswerDueToEndgame: true,
+          note: 'Impossible to complete because the hider is fixed at the final spot during endgame.'
+        }
       }
     });
   };
@@ -790,6 +806,14 @@ export function QuestionCenterScreen() {
         )}
       </Panel>
 
+      {isEndgameQuestionState ? (
+        <StateBanner
+          tone="warning"
+          title="Endgame is live"
+          detail="Keep asking questions. If a photo challenge requires the hider to leave their fixed final spot, they can record it as impossible and still receive the printed card reward."
+        />
+      ) : null}
+
       <Panel
         title="Investigation Book"
         subtitle="All questions allowed for this scale stay available, including questions the seekers have already asked."
@@ -997,6 +1021,14 @@ export function QuestionCenterScreen() {
               onPress={handleAnswerQuestion}
               disabled={!canAnswerQuestion || state.loadState === 'loading'}
             />
+            {isEndgameQuestionState && activeQuestionCategory?.resolverKind === 'photo_challenge' ? (
+              <AppButton
+                label="Impossible from the final spot — answer and earn reward"
+                tone="secondary"
+                onPress={handleCannotAnswerDuringEndgame}
+                disabled={!canAnswerQuestion || state.loadState === 'loading'}
+              />
+            ) : null}
           </>
         ) : (
           <Text style={styles.copy}>

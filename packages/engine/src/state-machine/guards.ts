@@ -99,19 +99,24 @@ export function validateStateForCommand(
       }
       return [];
     case 'begin_question_prompt':
-      return isSeekPhaseState(aggregate, 'ready')
+      return isSeekPhaseState(aggregate, 'ready') ||
+        (isLifecycleState(aggregate, 'endgame') &&
+          (!aggregate.seekPhaseSubstate || aggregate.seekPhaseSubstate === 'ready'))
         ? []
-        : [error(command.type, 'INVALID_STATE', 'Question prompts can only open from seek phase ready.')];
+        : [error(command.type, 'INVALID_STATE', 'Question prompts can only open when seekers are ready, including during endgame.')];
     case 'ask_question':
-      return isSeekPhaseState(aggregate, 'awaiting_question_selection')
+      return isSeekPhaseState(aggregate, 'awaiting_question_selection') ||
+        (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'awaiting_question_selection')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Questions can only be asked while a prompt is open.')];
     case 'answer_question':
-      return isSeekPhaseState(aggregate, 'awaiting_question_answer')
+      return isSeekPhaseState(aggregate, 'awaiting_question_answer') ||
+        (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'awaiting_question_answer')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Questions can only be answered while awaiting an answer.')];
     case 'apply_constraint':
-      return isSeekPhaseState(aggregate, 'applying_constraints')
+      return isSeekPhaseState(aggregate, 'applying_constraints') ||
+        (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'applying_constraints')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Constraints can only be applied during constraint resolution.')];
     case 'send_chat_message':
@@ -133,7 +138,9 @@ export function validateStateForCommand(
       return aggregate.lifecycleState === 'hide_phase' ||
         isSeekPhaseState(aggregate, 'ready') ||
         isSeekPhaseState(aggregate, 'applying_constraints') ||
-        isSeekPhaseState(aggregate, 'cooldown')
+        isSeekPhaseState(aggregate, 'cooldown') ||
+        (isLifecycleState(aggregate, 'endgame') &&
+          ['ready', 'applying_constraints', 'cooldown'].includes(aggregate.seekPhaseSubstate ?? 'ready'))
         ? []
         : [error(command.type, 'INVALID_STATE', 'Cards can only be drawn in allowed gameplay windows.')];
     case 'play_card':
@@ -175,7 +182,8 @@ export function validateStateForCommand(
         ? []
         : [error(command.type, 'INVALID_STATE', 'Card windows can only close during card resolution.')];
     case 'complete_cooldown':
-      return isSeekPhaseState(aggregate, 'cooldown')
+      return isSeekPhaseState(aggregate, 'cooldown') ||
+        (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'cooldown')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Cooldowns can only complete from the cooldown substate.')];
     case 'pause_match':

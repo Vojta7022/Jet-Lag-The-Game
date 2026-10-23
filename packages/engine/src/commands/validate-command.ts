@@ -650,6 +650,13 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'QUESTION_CATEGORY_NOT_FOUND', 'The active question category could not be resolved.')];
       }
 
+      if (envelope.command.payload.answer.cannotAnswerDueToEndgame === true) {
+        if (aggregate.lifecycleState !== 'endgame' || category.resolverKind !== 'photo_challenge') {
+          return [error(envelope.command.type, 'ENDGAME_UNANSWERABLE_NOT_ALLOWED', 'This unable-to-answer option is only valid for a photo challenge during endgame.')];
+        }
+        return [];
+      }
+
       return validateAnswerPayload({
         commandType: envelope.command.type,
         aggregate,

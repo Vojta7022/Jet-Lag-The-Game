@@ -69,7 +69,7 @@ function nextAutomaticCommand(aggregate: MatchAggregate, contentPack: ContentPac
 
   const cooldownTimer = getTimerByKind(aggregate, 'cooldown');
   if (
-    aggregate.lifecycleState === 'seek_phase' &&
+    (aggregate.lifecycleState === 'seek_phase' || aggregate.lifecycleState === 'endgame') &&
     aggregate.seekPhaseSubstate === 'cooldown' &&
     cooldownTimer &&
     cooldownTimer.status === 'running' &&

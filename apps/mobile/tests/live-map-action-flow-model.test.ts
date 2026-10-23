@@ -34,6 +34,24 @@ test('inline live map flow opens the ask step for seekers when the next clue is 
   );
 });
 
+test('inline live map keeps question actions available during endgame', () => {
+  assert.equal(resolveInlineLiveMapActionMode('seeker', {
+    ...baseProjection,
+    lifecycleState: 'endgame',
+    seekPhaseSubstate: undefined
+  }), 'ask');
+  assert.equal(resolveInlineLiveMapActionMode('hider', {
+    ...baseProjection,
+    lifecycleState: 'endgame',
+    seekPhaseSubstate: 'awaiting_question_answer'
+  }), 'answer');
+  assert.equal(resolveInlineLiveMapActionMode('host', {
+    ...baseProjection,
+    lifecycleState: 'endgame',
+    seekPhaseSubstate: 'applying_constraints'
+  }), 'apply');
+});
+
 test('inline live map flow opens the answer step for hider and host views when a clue is live', () => {
   const awaitingAnswer = {
     ...baseProjection,

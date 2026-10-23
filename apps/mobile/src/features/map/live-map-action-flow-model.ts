@@ -10,25 +10,28 @@ export function resolveInlineLiveMapActionMode(
     return undefined;
   }
 
-  if (projection.lifecycleState !== 'seek_phase') {
+  if (projection.lifecycleState !== 'seek_phase' && projection.lifecycleState !== 'endgame') {
     return undefined;
   }
 
+  const substate = projection.seekPhaseSubstate ??
+    (projection.lifecycleState === 'endgame' ? 'ready' : undefined);
+
   if (
     (role === 'seeker' || role === 'host') &&
-    (projection.seekPhaseSubstate === 'ready' || projection.seekPhaseSubstate === 'awaiting_question_selection')
+    (substate === 'ready' || substate === 'awaiting_question_selection')
   ) {
     return 'ask';
   }
 
   if (
     (role === 'hider' || role === 'host') &&
-    projection.seekPhaseSubstate === 'awaiting_question_answer'
+    substate === 'awaiting_question_answer'
   ) {
     return 'answer';
   }
 
-  if (role === 'host' && projection.seekPhaseSubstate === 'applying_constraints') {
+  if (role === 'host' && substate === 'applying_constraints') {
     return 'apply';
   }
 

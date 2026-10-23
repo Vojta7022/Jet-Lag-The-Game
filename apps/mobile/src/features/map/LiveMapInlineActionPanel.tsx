@@ -73,6 +73,9 @@ export function LiveMapInlineActionPanel() {
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);
   const inlineMode = resolveInlineLiveMapActionMode(viewerRole, projection);
+  const inSeekOrEndgame = projection?.lifecycleState === 'seek_phase' || projection?.lifecycleState === 'endgame';
+  const activeQuestionSubstate = projection?.seekPhaseSubstate ??
+    (projection?.lifecycleState === 'endgame' ? 'ready' : undefined);
   const capabilities = getQuestionFlowCapabilities(viewerRole);
 
   const categoryViewModels = useMemo(
@@ -226,16 +229,16 @@ export function LiveMapInlineActionPanel() {
     activeMatch &&
       capabilities.canAskQuestions &&
       readyTemplate &&
-      projection?.lifecycleState === 'seek_phase' &&
-      (projection.seekPhaseSubstate === 'ready' || projection.seekPhaseSubstate === 'awaiting_question_selection')
+      inSeekOrEndgame &&
+      (activeQuestionSubstate === 'ready' || activeQuestionSubstate === 'awaiting_question_selection')
   );
   const canAnswerQuestion = Boolean(
     activeMatch &&
       capabilities.canAnswerQuestions &&
       activeQuestion &&
       activeQuestionTemplate &&
-      projection?.lifecycleState === 'seek_phase' &&
-      projection.seekPhaseSubstate === 'awaiting_question_answer'
+      inSeekOrEndgame &&
+      activeQuestionSubstate === 'awaiting_question_answer'
   );
   const canApplyQuestion = Boolean(
     activeMatch &&
@@ -243,8 +246,8 @@ export function LiveMapInlineActionPanel() {
       activeQuestion &&
       activeQuestionTemplate &&
       activeQuestionCategory &&
-      projection?.lifecycleState === 'seek_phase' &&
-      projection.seekPhaseSubstate === 'applying_constraints'
+      inSeekOrEndgame &&
+      activeQuestionSubstate === 'applying_constraints'
   );
 
   const handleAskQuestion = () => {
@@ -253,7 +256,7 @@ export function LiveMapInlineActionPanel() {
     }
 
     const commands = [];
-    if (projection.seekPhaseSubstate === 'ready') {
+    if (activeQuestionSubstate === 'ready') {
       commands.push({
         type: 'begin_question_prompt' as const,
         payload: {}
@@ -309,6 +312,22 @@ export function LiveMapInlineActionPanel() {
       payload: {
         questionInstanceId: activeQuestion.questionInstanceId,
         answer: buildAnswerPayload(activeQuestionTemplate, answerDraft)
+      }
+    });
+  };
+
+  const handleCannotAnswerDuringEndgame = () => {
+    if (!activeQuestion || projection?.lifecycleState !== 'endgame' || activeQuestionCategory?.resolverKind !== 'photo_challenge') {
+      return;
+    }
+    void submitCommand({
+      type: 'answer_question',
+      payload: {
+        questionInstanceId: activeQuestion.questionInstanceId,
+        answer: {
+          cannotAnswerDueToEndgame: true,
+          note: 'Impossible to complete because the hider is fixed at the final spot during endgame.'
+        }
       }
     });
   };
@@ -595,6 +614,14 @@ export function LiveMapInlineActionPanel() {
             onPress={handleAnswerQuestion}
             disabled={!canAnswerQuestion || state.loadState === 'loading'}
           />
+          {projection?.lifecycleState === 'endgame' && activeQuestionCategory.resolverKind === 'photo_challenge' ? (
+            <AppButton
+              label="I cannot do this from the final spot"
+              tone="secondary"
+              onPress={handleCannotAnswerDuringEndgame}
+              disabled={!canAnswerQuestion || state.loadState === 'loading'}
+            />
+          ) : null}
           <AppButton
             label="Full Deck View"
             tone="secondary"

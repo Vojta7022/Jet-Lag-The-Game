@@ -176,6 +176,9 @@ export function describeEffectSupport(cardDefinition: CardDefinition): string {
 
 export function canDrawCards(projection: MatchProjection | undefined): boolean {
   return projection?.lifecycleState === 'hide_phase' ||
+    (projection?.lifecycleState === 'endgame' &&
+      (!projection.seekPhaseSubstate ||
+        ['ready', 'applying_constraints', 'cooldown'].includes(projection.seekPhaseSubstate))) ||
     (projection?.lifecycleState === 'seek_phase' &&
       (
         projection.seekPhaseSubstate === 'ready' ||
