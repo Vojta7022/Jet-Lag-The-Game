@@ -258,11 +258,13 @@ export function describeExpectedAnswerGuidance(
   }
   if (
     category && category.answerPolicy !== 'manual' &&
-    (category.resolverKind === 'nearest_feature_match' || category.resolverKind === 'comparative_distance') &&
+    (category.resolverKind === 'nearest_feature_match' || category.resolverKind === 'comparative_distance' || category.resolverKind === 'nearest_candidate') &&
     (template.featureClassRefs ?? []).length > 0 &&
     (template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
   ) {
-    return 'When connected, the app answers from fresh GPS locations for both players and OpenStreetMap places in the selected region.';
+    return category.resolverKind === 'nearest_candidate'
+      ? 'When connected, the app checks the seeker reach radius, then finds the reachable place closest to the hider using fresh GPS and OpenStreetMap data.'
+      : 'When connected, the app answers from fresh GPS locations for both players and OpenStreetMap places in the selected region.';
   }
 
   const answerKind = String(template.answerSchema.kind ?? 'manual');

@@ -184,14 +184,17 @@ export function buildQuestionMapEffectModel(
   const constraint = args.constraint;
   const hasNullAnswer = args.question.answer?.value === null;
   const hasRandomizedNullAnswer = hasNullAnswer && args.question.randomizedNullAnswerAllowed;
+  const tentaclesOutOfReach = hasNullAnswer && args.question.answer?.reason === 'not_within_reach';
   const mapEffect = hasNullAnswer
     ? {
         mapEffectModeLabel: 'No map change',
         mapEffectTone: 'info' as const,
         mapEffectTitle: 'No map change',
-        mapEffectDetail: hasRandomizedNullAnswer
-          ? 'The randomized question had a null answer because no valid answer was available. The search area stayed the same.'
-          : 'The selected map region contains no matching feature for this question. The rulebook null answer resolved it, so the search area stayed the same.',
+        mapEffectDetail: tentaclesOutOfReach
+          ? 'The hider is outside the seekers’ Tentacles reach. The answer is recorded and the search area stays the same.'
+          : hasRandomizedNullAnswer
+            ? 'The randomized question had a null answer because no valid answer was available. The search area stayed the same.'
+            : 'The selected map region contains no matching feature for this question. The rulebook null answer resolved it, so the search area stayed the same.',
         geometryEffect: 'metadata_only' as const
       }
     : buildMapEffectDetails(constraint, args.visibleMap);
@@ -200,17 +203,21 @@ export function buildQuestionMapEffectModel(
   return {
     questionLabel: args.template?.name ?? 'Selected question',
     categoryLabel: args.category?.name ?? 'Question category',
-    answerSummary: hasRandomizedNullAnswer
-      ? 'No valid answer was available'
-      : hasNullAnswer
-        ? 'No matching feature exists in the selected map region'
-        : summarizeAnswer(args.question.answer),
+    answerSummary: tentaclesOutOfReach
+      ? 'The hider is not within reach'
+      : hasRandomizedNullAnswer
+        ? 'No valid answer was available'
+        : hasNullAnswer
+          ? 'No matching feature exists in the selected map region'
+          : summarizeAnswer(args.question.answer),
     resolutionModeLabel: hasNullAnswer ? 'Null answer' : formatResolutionMode(constraint?.resolutionMode),
     resolutionTone: buildResolutionTone(constraint?.resolutionMode),
     resolutionDetail: hasNullAnswer
-      ? hasRandomizedNullAnswer
-        ? 'The rulebook allows a randomized question to resolve with no answer when its answer does not exist in the selected map.'
-        : 'The shared OpenStreetMap feature lookup found no matching feature inside the selected region, so this printed question resolved as a null answer.'
+      ? tentaclesOutOfReach
+        ? 'The rulebook lets the hider answer that they are outside the Tentacles reach; the hider still receives the printed reward.'
+        : hasRandomizedNullAnswer
+          ? 'The rulebook allows a randomized question to resolve with no answer when its answer does not exist in the selected map.'
+          : 'The shared OpenStreetMap feature lookup found no matching feature inside the selected region, so this printed question resolved as a null answer.'
       : describeResolutionMode(constraint?.resolutionMode),
     mapEffectModeLabel: mapEffect.mapEffectModeLabel,
     mapEffectTone: mapEffect.mapEffectTone,

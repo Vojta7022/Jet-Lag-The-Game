@@ -229,3 +229,23 @@ test('question guidance explains automatic regional feature answers for supporte
   assert.equal(impact.label, 'Approximate map update');
   assert.match(describeExpectedAnswerGuidance(template, category), /OpenStreetMap places in the selected region/i);
 });
+
+test('Tentacles guidance explains the seeker-anchored reach and automatic closest-place answer', () => {
+  const category = createCategory({
+    categoryId: 'tentacles',
+    name: 'Tentacles',
+    resolverKind: 'nearest_candidate',
+    promptTemplate: 'Within [Distance] of me, which [Places] are you nearest to?'
+  });
+  const template = createTemplate({
+    templateId: 'tentacles-museums',
+    categoryId: 'tentacles',
+    name: 'Museums within 1.6 km',
+    featureClassRefs: [{ featureClassId: 'museums', label: 'Museums', rawLabel: 'Museums' }],
+    parameters: { distanceThreshold: { meters: 1600, metricText: '1.6 km' } },
+    answerSchema: { kind: 'feature_choice' }
+  });
+
+  assert.match(describeExpectedAnswerGuidance(template, category), /checks the seeker reach radius/i);
+  assert.match(describeExpectedAnswerGuidance(template, category), /closest to the hider/i);
+});

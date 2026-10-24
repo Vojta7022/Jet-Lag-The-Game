@@ -169,6 +169,89 @@ test('Measuring automatically compares fresh player locations to the seeker sele
   assert.equal(result.aggregate.searchArea?.history.at(-1)?.summary.includes('Measuring'), true);
 });
 
+test('Tentacles automatically picks the closest reachable mapped place and narrows from the same seeker-anchored set', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack, 'medium');
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 50.2, longitude: 14.2045,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 50.2, longitude: 14.2,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test-feature-snapshot-v1',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [
+      { featureId: 'osm:node/10', featureClassId: 'museums', label: 'Near Museum', longitude: 14.205, latitude: 50.2, geometrySupport: 'point' as const, coverage: 'approximate' as const },
+      { featureId: 'osm:node/11', featureClassId: 'museums', label: 'Farther Museum', longitude: 14.208, latitude: 50.2, geometrySupport: 'point' as const, coverage: 'approximate' as const },
+      { featureId: 'osm:node/12', featureClassId: 'museums', label: 'Outside Reach Museum', longitude: 14.23, latitude: 50.2, geometrySupport: 'point' as const, coverage: 'approximate' as const }
+    ]
+  };
+  const before = prompted.searchArea?.remainingArea.geometry;
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-tentacles', templateId: 'tentacles-museums-1600', targetTeamId: 'team-hider' }
+    }, 16), contentPack, dataset);
+
+  const question = result.aggregate.questionInstances['question:auto-tentacles'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.selectedFeatureId, 'osm:node/10');
+  assert.equal(question?.answer?.value, 'Near Museum');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:node/10');
+  const constraint = Object.values(result.aggregate.constraints).find((item) => item.sourceQuestionInstanceId === 'question:auto-tentacles');
+  assert.equal(constraint?.metadata.selectedFeatureId, 'osm:node/10');
+  assert.equal('featureData' in (constraint?.metadata ?? {}), false);
+  assert.notDeepEqual(result.aggregate.searchArea?.remainingArea.geometry, before);
+});
+
+test('Tentacles records the valid out-of-reach response without drawing a map constraint', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack, 'medium');
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 50.2, longitude: 14.24,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 50.2, longitude: 14.2,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-tentacles-out-of-reach', templateId: 'tentacles-museums-1600', targetTeamId: 'team-hider' }
+    }, 16), contentPack, {
+      source: 'OpenStreetMap', sourceUrl: 'https://www.openstreetmap.org/copyright',
+      sourceVersion: 'test-feature-snapshot-v1', retrievedAt: new Date(16_000).toISOString(),
+      coverage: 'approximate', features: [
+        { featureId: 'osm:node/10', featureClassId: 'museums', label: 'Near Museum', longitude: 14.205, latitude: 50.2, geometrySupport: 'point', coverage: 'approximate' }
+      ]
+    });
+
+  const question = result.aggregate.questionInstances['question:auto-tentacles-out-of-reach'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.value, null);
+  assert.equal(question?.answer?.reason, 'not_within_reach');
+  assert.equal(Object.values(result.aggregate.constraints).some((item) => item.sourceQuestionInstanceId === question?.questionInstanceId), false);
+  const dealtReward = executeCommand(result.aggregate, makeEnvelope(result.aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, {
+      type: 'deal_question_reward', payload: { questionInstanceId: question!.questionInstanceId }
+    }, 17), contentPack).aggregate;
+  assert.equal(dealtReward.pendingQuestionReward?.sets[0]?.cardInstanceIds.length, 4);
+  assert.equal(dealtReward.pendingQuestionReward?.sets[0]?.pickCount, 2);
+});
+
 test('Thermometer automatically compares the seekers previous and current locations with the hider', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { geometryBoundingBox } from '../../packages/geo/src/index.ts';
+import { geometryBoundingBox, pointInGeometry } from '../../packages/geo/src/index.ts';
 import { executeCommand } from '../../packages/engine/src/index.ts';
 import {
   getCurrentQuestionTemplate,
@@ -233,6 +233,10 @@ test('Measuring resolves approximately when it depends on distance thresholds', 
 test('Tentacles resolves approximately using closest-among-candidates within the threshold', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack, 'medium');
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 50.2, longitude: 14.2,
+    accuracyMeters: 5, source: 'device', step: 119
+  });
   const tentaclesTemplate = getCurrentQuestionTemplate(
     aggregate,
     contentPack,
@@ -253,9 +257,9 @@ test('Tentacles resolves approximately using closest-among-candidates within the
     metadata: {
       gridResolutionMeters: 1_000,
       featureData: [
-        featurePoint('feature-west', featureClassId, 14.18, 50.2, 'Feature West'),
-        featurePoint('feature-east', featureClassId, 14.24, 50.2, 'Feature East'),
-        featurePoint('feature-far', featureClassId, 14.32, 50.25, 'Feature Far')
+        featurePoint('feature-west', featureClassId, 14.198, 50.2, 'Feature West'),
+        featurePoint('feature-east', featureClassId, 14.205, 50.2, 'Feature East'),
+        featurePoint('feature-far', featureClassId, 14.23, 50.2, 'Feature Far')
       ]
     },
     step: 123
@@ -264,6 +268,10 @@ test('Tentacles resolves approximately using closest-among-candidates within the
   const constraint = Object.values(aggregate.constraints)[0];
   assert.equal(constraint.resolutionMode, 'approximate');
   assert.equal(constraint.metadata.selectedFeatureId, 'feature-east');
+  assert.deepEqual(constraint.metadata.candidateFeatureIds, ['feature-west', 'feature-east']);
+  assert.equal(aggregate.searchArea?.remainingArea.geometry
+    ? pointInGeometry([14.24, 50.2], aggregate.searchArea.remainingArea.geometry)
+    : true, false);
   assertBoundsInsidePlayableRegion(aggregate);
 });
 

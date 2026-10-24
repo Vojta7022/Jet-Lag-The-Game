@@ -73,6 +73,18 @@
 - [x] Keep unsupported question feature classes on manual answer flow and report the automatic regional path accurately in question guidance.
 - [x] Verify `npm test` (254 passing), `npm run mobile:typecheck`, and `git diff --check`.
 
+### Current implementation slice: scanned Tentacles question
+
+- [x] Add failing authority and geometry tests for the printed seeker's reach, candidate set, automatic answer, out-of-reach null answer, and map deduction.
+- [x] Load mapped candidate classes on the authority and resolve Tentacles from the seeker's feature radius plus fresh hider/seeker fixes.
+- [x] Correct Tentacles map geometry to use the same seeker-anchored candidate set as the answer, clipped to the printed reach radius.
+- [x] Keep unsupported or incomplete place data manual, update player guidance, and verify the full suite and mobile typecheck.
+
+Ruling: Tentacles candidate places are the mapped features inside the seeker's printed reach radius; the hider must also be inside that radius and answers with the nearest of those places. The scan's diagram and wording on printed pp. 36–37 show the radius centered on the seekers, and state an out-of-reach hider may say so. Using a hider-centered candidate set would answer a different question and produce a mismatched map deduction.
+
+- [x] Test OpenStreetMap selector coverage for the mapped Tentacles place classes and preserve manual handling for metro lines.
+- [x] Verify end-to-end through the online authority with a malicious client feature payload ignored: 260 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.

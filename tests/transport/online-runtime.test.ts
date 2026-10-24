@@ -126,6 +126,68 @@ test('online authority loads matching features server-side and completes answer 
     constraint.sourceQuestionInstanceId === 'question:online-matching'), true);
 });
 
+test('online authority resolves scanned Tentacles from its seeker-anchored candidate set', async () => {
+  const { contentPack, repositories, realtime } = createOnlineHarness();
+  const providerCalls: string[][] = [];
+  const runtime = new OnlineAuthorityRuntime({
+    contentPacks: [contentPack],
+    repositories,
+    realtimeFanout: realtime,
+    questionFeatureDataProvider: {
+      async load(request) {
+        providerCalls.push(request.featureClassIds);
+        return {
+          source: 'OpenStreetMap', sourceUrl: 'https://www.openstreetmap.org/copyright',
+          sourceVersion: 'test-feature-snapshot-v1', retrievedAt: '2026-10-24T00:00:16.000Z',
+          coverage: 'approximate', features: [
+            { featureId: 'osm:node/10', featureClassId: 'museums', label: 'Near Museum', longitude: 14.205, latitude: 50.2, geometrySupport: 'point', coverage: 'approximate' },
+            { featureId: 'osm:node/11', featureClassId: 'museums', label: 'Farther Museum', longitude: 14.208, latitude: 50.2, geometrySupport: 'point', coverage: 'approximate' },
+            { featureId: 'osm:node/12', featureClassId: 'museums', label: 'Outside Reach Museum', longitude: 14.23, latitude: 50.2, geometrySupport: 'point', coverage: 'approximate' }
+          ]
+        };
+      }
+    }
+  });
+  const { matchId, hostSession, hiderSession, seekerSession } = await setupOnlineMatchToHidePhase(
+    runtime, contentPack.packId, 'feature-tentacles-match', 'medium'
+  );
+  await submitOnlineSequence(runtime, [
+    { session: hiderSession, request: makeOnlineCommandRequest(hiderSession, matchId, 11, {
+      type: 'lock_hider_location', payload: { latitude: 50.2, longitude: 14.2045, accuracyMeters: 5 }
+    }) },
+    { session: hostSession, request: makeOnlineCommandRequest(hostSession, matchId, 12, {
+      type: 'end_hide_phase', payload: {}
+    }) },
+    { session: seekerSession, request: makeOnlineCommandRequest(seekerSession, matchId, 13, {
+      type: 'update_location', payload: { latitude: 50.2, longitude: 14.2, accuracyMeters: 5, source: 'device' }
+    }) },
+    { session: hiderSession, request: makeOnlineCommandRequest(hiderSession, matchId, 14, {
+      type: 'update_location', payload: { latitude: 50.2, longitude: 14.2045, accuracyMeters: 5, source: 'device' }
+    }) },
+    { session: seekerSession, request: makeOnlineCommandRequest(seekerSession, matchId, 15, {
+      type: 'begin_question_prompt', payload: {}
+    }) }
+  ]);
+  const asked = await runtime.submitAuthenticatedCommand(seekerSession, makeOnlineCommandRequest(seekerSession, matchId, 16, {
+    type: 'ask_question',
+    payload: {
+      questionInstanceId: 'question:online-tentacles',
+      templateId: 'tentacles-museums-1600',
+      targetTeamId: 'team-hider',
+      featureData: [{ featureId: 'spoofed', featureClassId: 'museums', longitude: 0, latitude: 0 }]
+    } as never
+  }));
+
+  assert.equal(asked.accepted, true);
+  assert.deepEqual(providerCalls, [['museums']]);
+  assert.equal(asked.aggregate?.questionInstances['question:online-tentacles']?.answer?.selectedFeatureId, 'osm:node/10');
+  assert.equal(Object.values(asked.aggregate?.constraints ?? {}).some((constraint) =>
+    constraint.sourceQuestionInstanceId === 'question:online-tentacles'), true);
+  const recordedConstraint = Object.values(asked.aggregate?.constraints ?? {}).find((constraint) =>
+    constraint.sourceQuestionInstanceId === 'question:online-tentacles');
+  assert.deepEqual(recordedConstraint?.metadata.candidateFeatureIds, ['osm:node/10', 'osm:node/11']);
+});
+
 test('online authority runtime persists repository records and publishes scoped fanout notices', async () => {
   const { contentPack, repositories, realtime, runtime } = createOnlineHarness();
   const hostSession = makeOnlineSession('auth-host-1', { defaultPlayerId: 'host-1' });

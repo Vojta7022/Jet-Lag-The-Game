@@ -302,3 +302,16 @@ test('a randomized null answer explains that the map did not change because the 
   assert.equal(model.boundedLabel, 'No map constraint was produced');
   assert.equal(model.artifactCountLabel, '0 visible map layers');
 });
+
+test('a Tentacles out-of-reach answer explains the valid null result and preserved map', () => {
+  const model = buildQuestionMapEffectModel({
+    question: { ...baseQuestion, answer: { value: null, reason: 'not_within_reach' } },
+    template: createTemplate({ templateId: baseQuestion.templateId, categoryId: baseQuestion.categoryId, name: 'Museums within reach' }),
+    category: createCategory({ categoryId: baseQuestion.categoryId, name: 'Tentacles', resolverKind: 'nearest_candidate' })
+  });
+
+  assert.ok(model);
+  assert.equal(model.answerSummary, 'The hider is not within reach');
+  assert.match(model.resolutionDetail, /hider still receives the printed reward/i);
+  assert.match(model.mapEffectDetail, /outside the seekers’ Tentacles reach/i);
+});

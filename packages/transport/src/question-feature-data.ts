@@ -21,7 +21,11 @@ export async function loadQuestionFeatureDataset(args: {
   if (!template) return undefined;
   const category = args.contentPack.questionCategories.find((candidate) =>
     candidate.categoryId === template.categoryId);
-  if (category?.resolverKind !== 'nearest_feature_match' && category?.resolverKind !== 'comparative_distance') return undefined;
+  if (
+    category?.resolverKind !== 'nearest_feature_match' &&
+    category?.resolverKind !== 'comparative_distance' &&
+    category?.resolverKind !== 'nearest_candidate'
+  ) return undefined;
   const featureClassIds = (template.featureClassRefs ?? []).map((feature) => feature.featureClassId);
   if (featureClassIds.length === 0) return undefined;
 

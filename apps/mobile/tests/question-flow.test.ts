@@ -270,6 +270,8 @@ test('question support helper stays honest about approximate and metadata-only p
   const photosCategory = findQuestionCategory(contentPack, photosTemplate?.categoryId);
   const matchingTemplate = findQuestionTemplate(contentPack, 'matching-commercial-airport');
   const matchingCategory = findQuestionCategory(contentPack, matchingTemplate?.categoryId);
+  const tentaclesTemplate = findQuestionTemplate(contentPack, 'tentacles-museums-1600');
+  const tentaclesCategory = findQuestionCategory(contentPack, tentaclesTemplate?.categoryId);
   const adminTemplate = findQuestionTemplate(contentPack, 'matching-1st-admin-state');
 
   assert.equal(
@@ -303,5 +305,13 @@ test('question support helper stays honest about approximate and metadata-only p
       regionId: 'unknown-region'
     }),
     'Will stay as recorded evidence until suitable place data is available'
+  );
+  assert.equal(
+    describeTemplateSupport({
+      template: tentaclesTemplate!,
+      category: tentaclesCategory!,
+      regionId: 'unknown-region'
+    }),
+    'The app can answer from fresh player locations and OpenStreetMap places in the selected region when connected'
   );
 });

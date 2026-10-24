@@ -45,6 +45,29 @@ test('OpenStreetMap question feature provider returns undefined for feature type
   assert.equal(result, undefined);
 });
 
+test('OpenStreetMap provider maps the printed Tentacles place classes and leaves metro lines unsupported', async () => {
+  const submittedQueries: string[] = [];
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQueries.push(decodeURIComponent(String(init?.body).replace(/^data=/, '')));
+      return new Response(JSON.stringify({ elements: [] }), { status: 200 });
+    }
+  });
+  const regionGeometry = {
+    type: 'Polygon' as const,
+    coordinates: [[[14, 50], [14.4, 50], [14.4, 50.4], [14, 50.4], [14, 50]]]
+  };
+
+  const dataset = await provider.load({ featureClassIds: ['museums', 'libraries'], regionGeometry });
+  const unsupported = await provider.load({ featureClassIds: ['metro-lines'], regionGeometry });
+
+  assert.ok(dataset);
+  assert.equal(submittedQueries.length, 2);
+  assert.match(submittedQueries[0]!, /tourism.*museum/);
+  assert.match(submittedQueries[1]!, /amenity.*library/);
+  assert.equal(unsupported, undefined);
+});
+
 test('OpenStreetMap feature lookups reuse a short-lived region and class cache', async () => {
   let requestCount = 0;
   const provider = new OpenStreetMapQuestionFeatureProvider({

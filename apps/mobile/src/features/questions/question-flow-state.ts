@@ -178,7 +178,7 @@ export function describeTemplateSupport(args: {
         (args.template.featureClassRefs ?? []).map((feature) => feature.featureClassId)
       )) return 'Can update the map from the available place data in this region';
       if (
-        (args.category.resolverKind === 'nearest_feature_match' || args.category.resolverKind === 'comparative_distance') &&
+        (args.category.resolverKind === 'nearest_feature_match' || args.category.resolverKind === 'comparative_distance' || args.category.resolverKind === 'nearest_candidate') &&
         (args.template.featureClassRefs ?? []).length > 0 &&
         (args.template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
       ) return 'The app can answer from fresh player locations and OpenStreetMap places in the selected region when connected';

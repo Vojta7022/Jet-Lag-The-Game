@@ -104,7 +104,8 @@ export async function submitOnlineSequence(
 export async function setupOnlineMatchToHidePhase(
   runtime: OnlineAuthorityRuntime,
   contentPackId: string,
-  matchId = 'online-match-1'
+  matchId = 'online-match-1',
+  initialScale: 'small' | 'medium' | 'large' = 'small'
 ) {
   const hostSession = makeOnlineSession('auth-host-1', { defaultPlayerId: 'host-1' });
   const hiderSession = makeOnlineSession('auth-hider-1', { defaultPlayerId: 'hider-1' });
@@ -123,7 +124,7 @@ export async function setupOnlineMatchToHidePhase(
           contentPackId,
           hostPlayerId: 'host-1',
           hostDisplayName: 'Host',
-          initialScale: 'small'
+          initialScale
         }
       })
     },

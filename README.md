@@ -10,7 +10,8 @@ Cross-platform mobile app and rules engine for running a configurable transit-ba
 - Run an Expo mobile client.
 - Import Jet Lag-style content.
 - Provide engine, geo, transport, shared types, and test-kit packages.
-- Play locally as a referee through a game-first UI for Home, lobby, map, clues, cards, and team radio.
+- Join an online game on a personal phone with role-scoped Hider/Seeker views; the single-device referee is a fallback and regression path.
+- Resolve Radar, Thermometer, and mapped Matching/Measuring/Tentacles prompts from fresh location samples and authority-loaded place data; unsupported question classes and photo evidence retain manual handling.
 - Plan maps with OpenStreetMap street context, transit-station hiding zones, saved local scenarios, and compressed share links; the web map supports drag and pinch zoom.
 
 ## User workflows
@@ -57,6 +58,7 @@ The full test suite also uses Python `openpyxl` for workbook importer tests. Cre
 ## Data, storage, and integrations
 
 - Content packages define/import game content. Runtime online mode may use configured backend/public project variables.
+- Automatic regional question features use OpenStreetMap data through Overpass and currently run as prototype authority integration; live production deployment, public-service reliability, and real-device cellular field play are not yet verified.
 
 ## Troubleshooting
 

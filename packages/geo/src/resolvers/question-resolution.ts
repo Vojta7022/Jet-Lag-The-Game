@@ -621,6 +621,7 @@ function resolveMeasuring(
 function resolveTentacles(
   context: QuestionConstraintResolutionContext,
   baseGeometry: GeoJsonGeometryModel,
+  seekerPoint: LonLat | undefined,
   metadata: Record<string, unknown>
 ): ResolvedConstraintDraft {
   const features = featureData(metadata);
@@ -663,39 +664,52 @@ function resolveTentacles(
     });
   }
 
+  if (!seekerPoint) {
+    return metadataOnlyDraft({
+      summary: 'Tentacles could not narrow the map because the asking seeker location was unavailable.',
+      reasoningSteps: ['The seeker location anchors the printed Tentacles reach radius.'],
+      metadata
+    });
+  }
+
+  const candidateFeatures = allCandidates.filter((feature) => {
+    const reference = feature.representativePoint
+      ? [feature.representativePoint.longitude, feature.representativePoint.latitude] as LonLat
+      : representativePointFromGeometry(feature.geometry);
+    return reference ? distanceMeters(reference, seekerPoint) <= threshold : false;
+  });
+
+  if (!candidateFeatures.some((feature) => feature.featureId === chosen.featureId)) {
+    return metadataOnlyDraft({
+      summary: "Tentacles selected feature was outside the seeker's printed reach radius.",
+      reasoningSteps: ['Only features within reach of the asking seeker can form the Tentacles candidate set.'],
+      metadata
+    });
+  }
+
   return approximateGridOutcome({
     baseGeometry,
     stepMeters: gridResolutionMeters(metadata),
     predicate: (point) => {
-      const nearbyCandidates = allCandidates.filter((feature) => {
-        const reference = feature.representativePoint
-          ? [feature.representativePoint.longitude, feature.representativePoint.latitude] as LonLat
-          : representativePointFromGeometry(feature.geometry);
-        return reference ? distanceMeters(reference, point) <= threshold : false;
-      });
-
-      if (nearbyCandidates.length === 0) {
-        return false;
-      }
-
       const closest = queryClosestAmongCandidates({
-        candidates: nearbyCandidates,
+        candidates: candidateFeatures,
         point
       });
 
-      return closest.feature?.featureId === chosen.featureId;
+      return distanceMeters(point, seekerPoint) <= threshold && closest.feature?.featureId === chosen.featureId;
     },
-    summary: `Tentacles approximately keeps areas where ${chosen.label} is the closest qualifying candidate within ${Math.round(threshold)} meters.`,
-    detail: 'Candidate choice is resolved with bounded sampling because it depends on nearby-feature sets and distance thresholds.',
+    summary: `Tentacles approximately keeps areas inside the seeker's ${Math.round(threshold)} meter reach where ${chosen.label} is the closest reachable candidate.`,
+    detail: 'The candidate set is anchored to the asking seeker, then the hider area is sampled inside that radius.',
     reasoningSteps: [
       'Sampled the current candidate area.',
-      `For each sampled cell, considered candidates within ${Math.round(threshold)} meters.`,
-      `Kept cells where ${chosen.label} was the closest candidate.`
+      `Built the candidate set from features within ${Math.round(threshold)} meters of the asking seeker.`,
+      `Kept cells inside the seeker's reach where ${chosen.label} was the closest candidate.`
     ],
     featureCoverage: chosen.coverage,
     metadata: {
       selectedFeatureId: chosen.featureId,
       distanceThresholdMeters: threshold,
+      candidateFeatureIds: candidateFeatures.map((feature) => feature.featureId),
       ...metadata
     }
   });
@@ -769,7 +783,7 @@ export function resolveQuestionConstraint(
             metadata
           });
     case 'nearest_candidate':
-      return resolveTentacles(context, baseGeometry, metadata);
+      return resolveTentacles(context, baseGeometry, seekerPoint, metadata);
     case 'photo_challenge':
       return resolvePhotos(context, metadata);
     default:
