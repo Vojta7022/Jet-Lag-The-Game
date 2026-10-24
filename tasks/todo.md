@@ -28,7 +28,7 @@
 ## Review
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
-- The first material gap is a tested, reliable end-to-end play path. Nearby mode has no LAN transport; online mode has no trusted server-side command gateway.
+- The main remaining gap is a tested, reliable multi-phone end-to-end play path. An authenticated Edge Function gateway and atomic revision commit now exist with unit coverage; production deployment, authorization/privacy audit, and cellular field play still need verification. Nearby mode has no LAN transport.
 - The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, and 21 importer warnings. It remains draft content with no ruleset or map preset; card warnings still need adjudication.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
