@@ -125,6 +125,24 @@ test('single-device referee can complete a rule-based round through found and sc
   assert.equal(resolved.projectionDelivery.projection.visibleMap?.history.length, 1);
   assert.equal(resolved.projectionDelivery.projection.visibleConstraints[0]?.sourceQuestionInstanceId, 'question:round-radar');
 
+  const rewardDealt = await orchestrator.submitCommands(created.connection,
+    { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
+    [{ type: 'deal_question_reward', payload: { questionInstanceId: 'question:round-radar' } }]
+  );
+  const rewardSet = rewardDealt.projectionDelivery.projection.pendingQuestionReward?.sets[0];
+  assert.ok(rewardSet);
+  assert.equal(rewardSet.cardInstanceIds.length, 2, 'Radar pays Draw 2');
+  const rewardChosen = await orchestrator.submitCommands(created.connection,
+    { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
+    [{ type: 'choose_question_reward', payload: {
+      questionInstanceId: 'question:round-radar',
+      selectedCardInstanceIdsBySet: [[rewardSet.cardInstanceIds[0]!]]
+    } }]
+  );
+  assert.equal(rewardChosen.projectionDelivery.projection.pendingQuestionReward, undefined);
+  assert.equal(rewardChosen.projectionDelivery.projection.visibleCards.filter((card) => card.zone === 'hand').length, 1);
+  assert.equal(rewardChosen.projectionDelivery.projection.visibleCards.filter((card) => card.zone === 'reward_selection').length, 0);
+
   await orchestrator.submitCommands(created.connection,
     { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
     [{ type: 'set_final_hiding_spot', payload: { latitude: point[1], longitude: point[0], publiclyAccessible: true, within3mOfMarkedPath: true } }]

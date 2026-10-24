@@ -57,7 +57,8 @@ export type CardZone =
   | 'hand'
   | 'discard_pile'
   | 'exile'
-  | 'pending_resolution';
+  | 'pending_resolution'
+  | 'reward_selection';
 
 export type CardHolderType = 'deck' | 'team' | 'player' | 'system';
 
@@ -154,6 +155,24 @@ export interface QuestionInstanceModel {
   answer?: Record<string, unknown>;
   askedAt: string;
   resolvedAt?: string;
+  cardRewardStatus?: 'pending' | 'complete';
+}
+
+export interface QuestionCardRewardSetModel {
+  setIndex: number;
+  cardInstanceIds: string[];
+  pickCount: number;
+}
+
+export interface PendingQuestionCardRewardModel {
+  questionInstanceId: string;
+  templateId: string;
+  categoryId: string;
+  deckId: string;
+  holderType: CardHolderType;
+  holderId: string;
+  sets: QuestionCardRewardSetModel[];
+  dealtAt: string;
 }
 
 export interface ConstraintExplanationModel {
@@ -360,6 +379,7 @@ export interface MatchAggregate {
   hiddenState: HiddenStateModel;
   activeQuestionInstanceId?: string;
   activeCardResolution?: CardResolutionWindow;
+  pendingQuestionReward?: PendingQuestionCardRewardModel;
   mapRegion?: PlayableRegionModel;
   searchArea?: SearchAreaModel;
   paused?: PauseOverlayState;

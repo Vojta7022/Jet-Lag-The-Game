@@ -152,6 +152,26 @@ test('a resolved investigation question can be repeated after the next question 
   ).aggregate;
   aggregate = executeCommand(
     aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, {
+      type: 'deal_question_reward',
+      payload: { questionInstanceId: 'question:repeat-one' }
+    }, 64.1),
+    contentPack
+  ).aggregate;
+  const reward = aggregate.pendingQuestionReward!;
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, {
+      type: 'choose_question_reward',
+      payload: {
+        questionInstanceId: 'question:repeat-one',
+        selectedCardInstanceIdsBySet: reward.sets.map((set) => [set.cardInstanceIds[0]!])
+      }
+    }, 64.2),
+    contentPack
+  ).aggregate;
+  aggregate = executeCommand(
+    aggregate,
     makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'begin_question_prompt', payload: {} }, 65),
     contentPack
   ).aggregate;
@@ -165,14 +185,31 @@ test('a resolved investigation question can be repeated after the next question 
 
   assert.equal(repeatState.availableTemplateIds.includes(templateId), true);
   assert.equal(repeatState.rewardMultiplierByTemplate[templateId], 2);
-  assert.doesNotThrow(() => executeCommand(
+  aggregate = executeCommand(
     aggregate,
     makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
       type: 'ask_question',
       payload: { questionInstanceId: 'question:repeat-two', templateId, targetTeamId: 'team-hider' }
     }, 66),
     contentPack
-  ));
+  ).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, {
+      type: 'answer_question',
+      payload: { questionInstanceId: 'question:repeat-two', answer: { value: 'yes' } }
+    }, 67), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' }, {
+      type: 'apply_constraint',
+      payload: { questionInstanceId: 'question:repeat-two', constraintId: 'nearest-feature-match', metadata: { answer: 'yes' } }
+    }, 68), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, {
+      type: 'deal_question_reward',
+      payload: { questionInstanceId: 'question:repeat-two' }
+    }, 69), contentPack).aggregate;
+  assert.equal(aggregate.pendingQuestionReward?.sets.length, 2);
+  assert.ok(aggregate.pendingQuestionReward?.sets.every((set) => set.cardInstanceIds.length === matchingCategory!.drawRule.drawCount));
 });
 
 test('photo answers require recorded attachments before the hider can answer', () => {

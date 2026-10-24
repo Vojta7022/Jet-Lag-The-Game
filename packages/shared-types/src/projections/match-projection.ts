@@ -122,6 +122,7 @@ export interface VisibleQuestionProjection {
   templateId: string;
   categoryId: string;
   status: QuestionInstanceStatus;
+  cardRewardStatus?: 'pending' | 'complete';
   askedByPlayerId: string;
   targetTeamId?: string;
   answer?: Record<string, unknown>;
@@ -214,6 +215,13 @@ export interface MatchProjection {
     };
     drawCountOnResolve?: number;
     timeBonusMinutes?: number;
+  };
+  pendingQuestionReward?: {
+    questionInstanceId: string;
+    templateId: string;
+    categoryId: string;
+    drawCount: number;
+    sets: Array<{ setIndex: number; cardInstanceIds: string[]; pickCount: number }>;
   };
   visibleEventLog: EventLogEntry[];
   visibleRoundResults?: RoundResultModel[];

@@ -138,7 +138,17 @@ test('an impossible endgame photo is a valid answer and the hider can still draw
   ).length;
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
     actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
-  }, { type: 'draw_card', payload: { deckId: 'hider-main' } }, 35), contentPack).aggregate;
+  }, { type: 'deal_question_reward', payload: { questionInstanceId: 'question:endgame-photo' } }, 35), contentPack).aggregate;
+  const reward = aggregate.pendingQuestionReward!;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, {
+    type: 'choose_question_reward',
+    payload: {
+      questionInstanceId: 'question:endgame-photo',
+      selectedCardInstanceIdsBySet: reward.sets.map((set) => [set.cardInstanceIds[0]!])
+    }
+  }, 35.1), contentPack).aggregate;
   const cardsAfter = Object.values(aggregate.cardInstances).filter(
     (card) => card.zone === 'hand' && card.holderType === 'team' && card.holderId === 'team-hider'
   ).length;

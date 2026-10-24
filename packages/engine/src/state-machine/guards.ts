@@ -152,6 +152,13 @@ export function validateStateForCommand(
           ['ready', 'applying_constraints', 'cooldown'].includes(aggregate.seekPhaseSubstate ?? 'ready'))
         ? []
         : [error(command.type, 'INVALID_STATE', 'Cards can only be drawn in allowed gameplay windows.')];
+    case 'deal_question_reward':
+    case 'choose_question_reward':
+      return isSeekPhaseState(aggregate, 'ready') ||
+        isSeekPhaseState(aggregate, 'cooldown') ||
+        (isLifecycleState(aggregate, 'endgame') && ['ready', 'cooldown'].includes(aggregate.seekPhaseSubstate ?? 'ready'))
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Question card rewards are handled after the question and map resolution are complete.')];
     case 'play_card':
       if (
         !(

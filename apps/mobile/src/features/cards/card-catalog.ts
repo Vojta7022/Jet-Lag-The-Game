@@ -7,7 +7,7 @@ import type {
   VisibleCardProjection
 } from '../../../../../packages/shared-types/src/index.ts';
 
-export type CardZoneView = 'draw_pile' | 'hand' | 'discard_pile' | 'exile' | 'pending_resolution';
+export type CardZoneView = 'draw_pile' | 'hand' | 'discard_pile' | 'exile' | 'pending_resolution' | 'reward_selection';
 
 export interface ResolvedVisibleCardModel {
   card: VisibleCardProjection;
@@ -27,7 +27,8 @@ function emptyZones(): Record<CardZoneView, ResolvedVisibleCardModel[]> {
     hand: [],
     discard_pile: [],
     exile: [],
-    pending_resolution: []
+    pending_resolution: [],
+    reward_selection: []
   };
 }
 

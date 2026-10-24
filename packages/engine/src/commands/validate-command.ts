@@ -656,6 +656,11 @@ export function validateCommandEnvelope(
       if (hasActiveQuestion(aggregate)) {
         return [error(envelope.command.type, 'QUESTION_FLOW_LOCKED', 'A question is already active.')];
       }
+      if (aggregate.pendingQuestionReward || Object.values(aggregate.questionInstances).some(
+        (question) => question.status === 'resolved' && question.cardRewardStatus !== 'complete'
+      )) {
+        return [error(envelope.command.type, 'QUESTION_REWARD_REQUIRED', 'Finish the hider’s card draw and pick reward before asking another question.')];
+      }
 
       const template = getQuestionTemplate(contentPack, envelope.command.payload.templateId);
       if (!template) {
@@ -684,6 +689,59 @@ export function validateCommandEnvelope(
         ];
       }
 
+      return [];
+    }
+    case 'deal_question_reward': {
+      if (aggregate.pendingQuestionReward) {
+        return [error(envelope.command.type, 'QUESTION_REWARD_PENDING', 'The current question reward must be picked first.')];
+      }
+      const question = aggregate.questionInstances[envelope.command.payload.questionInstanceId];
+      if (!question || question.status !== 'resolved') {
+        return [error(envelope.command.type, 'QUESTION_NOT_RESOLVED', 'Only a resolved Investigation Book question can pay its card reward.')];
+      }
+      if (question.cardRewardStatus) {
+        return [error(envelope.command.type, 'QUESTION_REWARD_ALREADY_DEALT', 'This question already has a card reward in progress or completed.')];
+      }
+      const template = getQuestionTemplate(contentPack, question.templateId);
+      const category = template ? getQuestionCategory(contentPack, template.categoryId) : undefined;
+      if (!template || !category || category.drawRule.drawCount < 1 || category.drawRule.pickCount < 1) {
+        return [error(envelope.command.type, 'QUESTION_REWARD_UNAVAILABLE', 'The question category does not define a valid draw-and-pick reward.')];
+      }
+      const multiplier = Object.values(aggregate.questionInstances).filter(
+        (candidate) => candidate.templateId === question.templateId && candidate.status === 'resolved'
+      ).length;
+      const deck = contentPack.decks.find((candidate) => candidate.ownerScope === 'hider_team');
+      if (!deck) {
+        return [error(envelope.command.type, 'DECK_NOT_FOUND', 'The hider reward deck is missing from this content pack.')];
+      }
+      const requiredCards = category.drawRule.drawCount * multiplier;
+      const availableCards = Object.values(aggregate.cardInstances).filter(
+        (card) => card.holderType === 'deck' && card.holderId === deck.deckId && card.zone === 'draw_pile'
+      ).length;
+      if (availableCards < requiredCards) {
+        return [error(envelope.command.type, 'DRAW_PILE_EMPTY', 'The hider deck does not contain enough cards for this full reward.')];
+      }
+      return [];
+    }
+    case 'choose_question_reward': {
+      const pending = aggregate.pendingQuestionReward;
+      if (!pending || pending.questionInstanceId !== envelope.command.payload.questionInstanceId) {
+        return [error(envelope.command.type, 'QUESTION_REWARD_NOT_PENDING', 'There is no matching question reward to pick.')];
+      }
+      const choices = envelope.command.payload.selectedCardInstanceIdsBySet;
+      if (choices.length !== pending.sets.length || choices.some((set, index) =>
+        !Array.isArray(set) || set.length !== pending.sets[index]?.pickCount || new Set(set).size !== set.length ||
+        set.some((cardId) => !pending.sets[index]?.cardInstanceIds.includes(cardId))
+      )) {
+        return [error(envelope.command.type, 'INVALID_REWARD_SELECTION', 'Choose the printed number of cards from each separate draw set.')];
+      }
+      const selectedCount = choices.reduce((total, set) => total + set.length, 0);
+      const currentHandCount = Object.values(aggregate.cardInstances).filter(
+        (card) => card.holderType === pending.holderType && card.holderId === pending.holderId && card.zone === 'hand'
+      ).length;
+      if (currentHandCount + selectedCount > 6) {
+        return [error(envelope.command.type, 'HAND_SIZE_LIMIT', 'Make room in the hider hand before keeping these reward cards.')];
+      }
       return [];
     }
     case 'answer_question': {
@@ -951,6 +1009,11 @@ export function validateCommandEnvelope(
       }
 
       if (deck.ownerScope === 'hider_team') {
+        if (aggregate.pendingQuestionReward || Object.values(aggregate.questionInstances).some(
+          (question) => question.status === 'resolved' && question.cardRewardStatus !== 'complete'
+        )) {
+          return [error(envelope.command.type, 'QUESTION_REWARD_REQUIRED', 'Use the question’s printed draw-and-pick reward before drawing additional hider cards.')];
+        }
         const handCount = getHandCardsForHolder(aggregate, holder.holderType, holder.holderId).length;
         if (handCount >= 6) {
           return [

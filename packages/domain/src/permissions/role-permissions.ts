@@ -52,6 +52,8 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'send_chat_message',
   'upload_attachment',
   'draw_card',
+  'deal_question_reward',
+  'choose_question_reward',
   'play_card',
   'discard_card',
   'answer_question'

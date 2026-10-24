@@ -85,6 +85,8 @@ export type DomainEvent =
   | ChatMessageSentEvent
   | AttachmentUploadedEvent
   | CardDrawnEvent
+  | QuestionRewardDealtEvent
+  | QuestionRewardChosenEvent
   | CardPlayedEvent
   | TimerAdjustedEvent
   | CardDiscardedEvent
@@ -312,6 +314,22 @@ export interface CardDrawnEvent {
   type: 'card_drawn';
   payload: DrawCardCommand['payload'] & {
     cardInstance: CardInstanceModel;
+  };
+}
+
+export interface QuestionRewardDealtEvent {
+  type: 'question_reward_dealt';
+  payload: {
+    pendingReward: NonNullable<MatchAggregate['pendingQuestionReward']>;
+    cardInstances: CardInstanceModel[];
+  };
+}
+
+export interface QuestionRewardChosenEvent {
+  type: 'question_reward_chosen';
+  payload: {
+    questionInstanceId: string;
+    cardInstances: CardInstanceModel[];
   };
 }
 

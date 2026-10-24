@@ -72,6 +72,8 @@ export function formatZoneLabel(zone: CardZoneView): string {
       return 'Exile';
     case 'pending_resolution':
       return 'Pending resolution';
+    case 'reward_selection':
+      return 'Clue reward';
   }
 }
 

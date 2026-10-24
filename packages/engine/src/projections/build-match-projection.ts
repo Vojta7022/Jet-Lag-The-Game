@@ -350,6 +350,7 @@ export function buildMatchProjection(
     templateId: question.templateId,
     categoryId: question.categoryId,
     status: question.status,
+    cardRewardStatus: question.cardRewardStatus,
     askedByPlayerId: question.askedByPlayerId,
     targetTeamId: question.targetTeamId,
     answer: canViewQuestionAnswer(aggregate, viewer)
@@ -473,6 +474,18 @@ export function buildMatchProjection(
     visibleMap,
     visibleTimers,
     activeCardResolution,
+    pendingQuestionReward:
+      viewer.scope === 'authority' || viewer.scope === 'host_admin' || viewerRole === 'hider'
+        ? aggregate.pendingQuestionReward
+          ? {
+              questionInstanceId: aggregate.pendingQuestionReward.questionInstanceId,
+              templateId: aggregate.pendingQuestionReward.templateId,
+              categoryId: aggregate.pendingQuestionReward.categoryId,
+              drawCount: aggregate.pendingQuestionReward.sets.reduce((total, set) => total + set.cardInstanceIds.length, 0),
+              sets: aggregate.pendingQuestionReward.sets
+            }
+          : undefined
+        : undefined,
     visibleEventLog,
     visibleRoundResults: aggregate.roundResults ?? [],
     roundStartLocation: aggregate.roundStartLocation,

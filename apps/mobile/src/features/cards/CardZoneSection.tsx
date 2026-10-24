@@ -16,6 +16,7 @@ interface CardZoneSectionProps {
   cards: ResolvedVisibleCardModel[];
   emptyText: string;
   selectedCardInstanceId?: string;
+  selectedCardInstanceIds?: string[];
   onSelect: (cardInstanceId: string) => void;
 }
 
@@ -31,7 +32,8 @@ export function CardZoneSection(props: CardZoneSectionProps) {
       ) : (
         <View style={styles.list}>
           {props.cards.map((card) => {
-            const selected = card.card.cardInstanceId === props.selectedCardInstanceId;
+            const selected = card.card.cardInstanceId === props.selectedCardInstanceId ||
+              props.selectedCardInstanceIds?.includes(card.card.cardInstanceId) === true;
             const behavior = buildCardBehaviorModel(card.definition);
             const accentStyle = resolveCardAccent(card.definition.kind);
             return (

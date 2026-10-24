@@ -131,6 +131,7 @@ export function CardsScreen() {
   const [selectedResponseCardIds, setSelectedResponseCardIds] = useState<
     string[]
   >([]);
+  const [selectedRewardCardIdsBySet, setSelectedRewardCardIdsBySet] = useState<string[][]>([]);
   const [drawTrayCardIds, setDrawTrayCardIds] = useState<string[]>([]);
   const previousHandIdsRef = useRef<string[]>([]);
   const selectedCard = findResolvedVisibleCard(
@@ -142,6 +143,10 @@ export function CardsScreen() {
     projection?.activeCardResolution?.sourceCardInstanceId
   );
   const activeQuestion = findActiveQuestion(projection);
+  const pendingQuestionReward = projection?.pendingQuestionReward;
+  const latestResolvedQuestion = [...(projection?.visibleQuestions ?? [])]
+    .reverse()
+    .find((question) => question.status === 'resolved' && !question.cardRewardStatus);
   const activeQuestionCategory = findQuestionCategory(
     defaultContentPack,
     activeQuestion?.categoryId
@@ -172,6 +177,15 @@ export function CardsScreen() {
       setSelectedCardInstanceId(pickDefaultCardInstanceId(selectedDeck));
     }
   }, [selectedCardInstanceId, selectedDeck]);
+
+  useEffect(() => {
+    setSelectedRewardCardIdsBySet((current) => {
+      const sets = pendingQuestionReward?.sets ?? [];
+      return sets.map((set, index) =>
+        (current[index] ?? []).filter((cardId) => set.cardInstanceIds.includes(cardId))
+      );
+    });
+  }, [pendingQuestionReward?.questionInstanceId, pendingQuestionReward?.sets]);
 
   const handCardIds = useMemo(
     () =>
@@ -354,6 +368,16 @@ export function CardsScreen() {
       (viewerRole === 'host' || viewerRole === 'hider') &&
       selectedDeck.deck.ownerScope === 'hider_team'
   );
+  const rewardSelectionValid = Boolean(
+    pendingQuestionReward &&
+    pendingQuestionReward.sets.every((set, index) =>
+      (selectedRewardCardIdsBySet[index]?.length ?? 0) === set.pickCount
+    )
+  );
+  const rewardWouldExceedHand = Boolean(
+    pendingQuestionReward &&
+    handCardIds.length + pendingQuestionReward.sets.reduce((count, set) => count + set.pickCount, 0) > HIDER_HAND_TARGET
+  );
 
   const handleRecordCardEvidence = async () => {
     if (!cardAttachmentContext) {
@@ -406,6 +430,64 @@ export function CardsScreen() {
           title="Read-only spectator view"
           detail="Spectators cannot inspect private hands or perform card actions. Only card state exposed by the current projection scope is visible here."
         />
+      ) : null}
+
+      {activeMatch && latestResolvedQuestion && !pendingQuestionReward && viewerRole === 'hider' ? (
+        <Panel title="Your clue reward" subtitle="The answer is locked in. Draw the printed cards, then choose what to keep." tone="accent">
+          <Text style={styles.copy}>The seekers have their map update. Claim your card reward to unlock the next question.</Text>
+          <AppButton
+            label="Draw clue reward"
+            onPress={() => void submitCommand({
+              type: 'deal_question_reward',
+              payload: { questionInstanceId: latestResolvedQuestion.questionInstanceId }
+            })}
+            disabled={state.loadState === 'loading'}
+          />
+        </Panel>
+      ) : null}
+
+      {pendingQuestionReward && (viewerRole === 'hider' || viewerRole === 'host') ? (
+        <Panel title="Pick your clue reward" subtitle="Choose the required number from each separate draw." tone="accent">
+          {pendingQuestionReward.sets.map((set, index) => {
+            const selectedIds = selectedRewardCardIdsBySet[index] ?? [];
+            const cards = deckViewModels.flatMap((deck) => deck.visibleCards)
+              .filter((card) => set.cardInstanceIds.includes(card.card.cardInstanceId));
+            return (
+              <View key={`${pendingQuestionReward.questionInstanceId}:${set.setIndex}`} style={styles.rewardSet}>
+                <Text style={styles.rewardSetTitle}>Draw {set.cardInstanceIds.length} · Pick {set.pickCount}</Text>
+                <CardZoneSection
+                  title={`Reward set ${set.setIndex + 1}`}
+                  cards={cards}
+                  emptyText="Waiting for your private card selection."
+                  selectedCardInstanceIds={selectedIds}
+                  onSelect={(cardId) => setSelectedRewardCardIdsBySet((current) => {
+                    const next = [...current];
+                    const selected = next[index] ?? [];
+                    next[index] = selected.includes(cardId)
+                      ? selected.filter((candidate) => candidate !== cardId)
+                      : [...selected, cardId].slice(-set.pickCount);
+                    return next;
+                  })}
+                />
+                <Text style={styles.copy}>{selectedIds.length} / {set.pickCount} selected</Text>
+              </View>
+            );
+          })}
+          {rewardWouldExceedHand ? (
+            <StateBanner tone="warning" title="Make room in your hand" detail={`Your hand has ${handCardIds.length} cards. Discard ${handCardIds.length + pendingQuestionReward.sets.reduce((count, set) => count + set.pickCount, 0) - HIDER_HAND_TARGET} before keeping this reward.`} />
+          ) : null}
+          <AppButton
+            label="Keep selected cards"
+            onPress={() => void submitCommand({
+              type: 'choose_question_reward',
+              payload: {
+                questionInstanceId: pendingQuestionReward.questionInstanceId,
+                selectedCardInstanceIdsBySet: selectedRewardCardIdsBySet
+              }
+            })}
+            disabled={!rewardSelectionValid || rewardWouldExceedHand || state.loadState === 'loading'}
+          />
+        </Panel>
       ) : null}
 
       {activeCard && activeCardBehavior ? (
@@ -852,6 +934,19 @@ export function CardsScreen() {
 }
 
 const styles = StyleSheet.create({
+  rewardSet: {
+    borderColor: colors.border,
+    borderTopWidth: 1,
+    gap: 8,
+    paddingTop: 14
+  },
+  rewardSetTitle: {
+    color: colors.accentStrong,
+    fontFamily: fonts.mono,
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
   handCounter: {
     fontFamily: fonts.mono,
     fontSize: 40,

@@ -556,6 +556,39 @@ export function reduceMatchAggregate(
           [eventEnvelope.event.payload.cardInstance.cardInstanceId]: eventEnvelope.event.payload.cardInstance
         }
       };
+    case 'question_reward_dealt': {
+      const questionInstanceId = eventEnvelope.event.payload.pendingReward.questionInstanceId;
+      return {
+        ...base,
+        pendingQuestionReward: eventEnvelope.event.payload.pendingReward,
+        questionInstances: {
+          ...base.questionInstances,
+          [questionInstanceId]: {
+            ...base.questionInstances[questionInstanceId],
+            cardRewardStatus: 'pending'
+          }
+        },
+        cardInstances: {
+          ...base.cardInstances,
+          ...Object.fromEntries(eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card]))
+        }
+      };
+    }
+    case 'question_reward_chosen': {
+      const updatedCards = Object.fromEntries(eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card]));
+      return {
+        ...base,
+        pendingQuestionReward: undefined,
+        questionInstances: {
+          ...base.questionInstances,
+          [eventEnvelope.event.payload.questionInstanceId]: {
+            ...base.questionInstances[eventEnvelope.event.payload.questionInstanceId],
+            cardRewardStatus: 'complete'
+          }
+        },
+        cardInstances: { ...base.cardInstances, ...updatedCards }
+      };
+    }
     case 'card_played':
     case 'card_discarded':
       return {

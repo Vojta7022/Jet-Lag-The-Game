@@ -172,6 +172,16 @@ function findTopCardInDeck(aggregate: MatchAggregate, deckId: string): CardInsta
     )[0];
 }
 
+function findTopCardsInDeck(aggregate: MatchAggregate, deckId: string, count: number): CardInstanceModel[] {
+  return Object.values(aggregate.cardInstances)
+    .filter((card) => card.holderType === 'deck' && card.holderId === deckId && card.zone === 'draw_pile')
+    .sort((left, right) =>
+      (left.drawOrder ?? Number.MAX_SAFE_INTEGER) - (right.drawOrder ?? Number.MAX_SAFE_INTEGER) ||
+      left.cardInstanceId.localeCompare(right.cardInstanceId)
+    )
+    .slice(0, count);
+}
+
 function shuffleAndResetCards(
   aggregate: MatchAggregate,
   contentPack: ContentPack,
@@ -828,6 +838,65 @@ function eventsForCommand(
           }
         })
       ];
+    }
+    case 'deal_question_reward': {
+      const question = aggregate!.questionInstances[envelope.command.payload.questionInstanceId];
+      const template = getQuestionTemplate(contentPack, question.templateId)!;
+      const category = getQuestionCategory(contentPack, template.categoryId)!;
+      const multiplier = Object.values(aggregate!.questionInstances).filter(
+        (candidate) => candidate.templateId === question.templateId && candidate.status === 'resolved'
+      ).length;
+      const deck = contentPack.decks.find((candidate) => candidate.ownerScope === 'hider_team')!;
+      const holder = resolveDeckHolderForDefinition(aggregate!, contentPack, deck.deckId, envelope.actor.playerId, envelope.actor.role);
+      const baseDrawCount = category.drawRule.drawCount;
+      const basePickCount = category.drawRule.pickCount;
+      const allCards = findTopCardsInDeck(aggregate!, deck.deckId, baseDrawCount * multiplier);
+      const cardInstances: CardInstanceModel[] = [];
+      const sets = Array.from({ length: multiplier }, (_, setIndex) => {
+        const sourceCards = allCards.slice(setIndex * baseDrawCount, (setIndex + 1) * baseDrawCount);
+        const selected = sourceCards.map((source) => {
+          const card = {
+            ...source,
+            holderType: holder.holderType,
+            holderId: holder.holderId,
+            zone: 'reward_selection' as const,
+            updatedAt: envelope.occurredAt
+          };
+          cardInstances.push(card);
+          return card.cardInstanceId;
+        });
+        return { setIndex, cardInstanceIds: selected, pickCount: basePickCount };
+      });
+      const pendingReward = {
+        questionInstanceId: question.questionInstanceId,
+        templateId: template.templateId,
+        categoryId: category.categoryId,
+        deckId: deck.deckId,
+        holderType: holder.holderType,
+        holderId: holder.holderId,
+        sets,
+        dealtAt: envelope.occurredAt
+      };
+      return [makeEventEnvelope(aggregate, envelope, 0, 'team_private', {
+        type: 'question_reward_dealt',
+        payload: { pendingReward, cardInstances }
+      })];
+    }
+    case 'choose_question_reward': {
+      const pending = aggregate!.pendingQuestionReward!;
+      const selected = new Set(envelope.command.payload.selectedCardInstanceIdsBySet.flat());
+      const cardInstances = pending.sets.flatMap((set) => set.cardInstanceIds).map((cardId) => {
+        const card = aggregate!.cardInstances[cardId]!;
+        return {
+          ...card,
+          zone: selected.has(cardId) ? 'hand' as const : 'discard_pile' as const,
+          updatedAt: envelope.occurredAt
+        };
+      });
+      return [makeEventEnvelope(aggregate, envelope, 0, 'team_private', {
+        type: 'question_reward_chosen',
+        payload: { questionInstanceId: pending.questionInstanceId, cardInstances }
+      })];
     }
     case 'send_chat_message': {
       const message = buildChatMessage(aggregate!, envelope as typeof envelope & {

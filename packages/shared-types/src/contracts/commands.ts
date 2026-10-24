@@ -52,6 +52,8 @@ export type DomainCommand =
   | SendChatMessageCommand
   | UploadAttachmentCommand
   | DrawCardCommand
+  | DealQuestionRewardCommand
+  | ChooseQuestionRewardCommand
   | PlayCardCommand
   | DiscardCardCommand
   | ResolveCardWindowCommand
@@ -270,6 +272,19 @@ export interface DrawCardCommand {
   payload: {
     deckId: string;
     cardInstanceId?: string;
+  };
+}
+
+export interface DealQuestionRewardCommand {
+  type: 'deal_question_reward';
+  payload: { questionInstanceId: string };
+}
+
+export interface ChooseQuestionRewardCommand {
+  type: 'choose_question_reward';
+  payload: {
+    questionInstanceId: string;
+    selectedCardInstanceIdsBySet: string[][];
   };
 }
 
