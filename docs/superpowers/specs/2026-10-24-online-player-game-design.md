@@ -14,7 +14,7 @@ The implementation should preserve the existing rules engine, role-scoped projec
 
 ## Current evidence and constraints
 
-- At the start of this online phase, the suite passed 237 tests; after Veto/Randomize and Thermometer work the full suite passes 246 tests. Mobile TypeScript typecheck passes. A real-runtime test completes a scored round, and online-runtime tests exercise two separately authenticated phone adapters.
+- At the start of this online phase, the suite passed 237 tests; after Veto/Randomize, Thermometer, and the Measuring schema correction the full suite passes 247 tests. Mobile TypeScript typecheck passes. A real-runtime test completes a scored round, and online-runtime tests exercise two separately authenticated phone adapters.
 - The app has Supabase Auth, role-scoped projections, attachment storage, and an authenticated Edge Function command gateway with atomic revision commits. Production deployment, authorization/privacy review, and a cellular multi-phone field round remain unverified.
 - Hider and seeker devices can publish device fixes. Hider projections receive seeker movement tracks; seeker projections omit hider movement and exact coordinates.
 - Radar and Thermometer have automatic location answers. Thermometer validates the printed minimum seeker travel distance, uses fresh accuracy-bounded fixes to compare seeker start/end distance to the active hider, records frozen endpoint provenance, then applies the same endpoints to its map deduction. Matching, Measuring, Tentacles, and Photos still use manual or assisted answer flows.
@@ -137,4 +137,4 @@ The existing transport interfaces and command/event model remain the client boun
 - Default location answer policy: freeze the latest fresh, sufficiently accurate hider and relevant seeker/team fixes at question acceptance. If a fix is stale, request a refresh rather than calculate from stale data.
 - Default visibility policy: hiders see seeker locations; seekers never see the hider's exact location; seekers see their own team's positions.
 - Recommended hosting: authenticated Supabase Edge Function as gateway plus Postgres as durable authority, with PostGIS/dedicated worker available if geometry exceeds Edge Function limits.
-- The initial codebase audit verified the existing single-device round and 199 tests, plus mobile typecheck. Historical online-phase checkpoints passed 230 and then 237 tests; Veto/Randomize passed 243, and the Thermometer slice passes 246. None of these checks verifies native GPS or multi-device field play.
+- The initial codebase audit verified the existing single-device round and 199 tests, plus mobile typecheck. Historical online-phase checkpoints passed 230 and then 237 tests; Veto/Randomize passed 243, Thermometer passed 246, and the Measuring schema correction passes 247. None of these checks verifies native GPS or multi-device field play.

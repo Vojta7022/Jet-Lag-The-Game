@@ -20,13 +20,13 @@ export type AutomaticQuestionAnswerResult =
       constraintId: string;
       automaticResolution: {
         resolverVersion: string;
-      method: 'threshold_distance' | 'hotter_colder';
+        method: 'threshold_distance' | 'hotter_colder';
         sourceSampleIds: string[];
         sourceRecordedAt: string[];
         sourceAccuracyMeters: number[];
         thresholdMeters: number;
-      movementStartSampleId?: string;
-      movementEndSampleId?: string;
+        movementStartSampleId?: string;
+        movementEndSampleId?: string;
       };
     };
 

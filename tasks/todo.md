@@ -51,6 +51,12 @@
 - [x] Calculate hotter/colder from fresh, accurate hider/seeker fixes; apply the map half-plane from the exact movement endpoints used for the answer.
 - [x] Verify focused/full tests, mobile typecheck, and update rule/content documentation.
 
+### Current rules correction: Measuring answer schema
+
+- [x] Compare the imported Measuring answer schema with the scanned base rulebook.
+- [x] Remove the unsupported “same” answer from the imported category, every template, and its constraint schema.
+- [x] Verify the engine rejects “same” and both workbook mappings expose only “closer”/“further”.
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.
@@ -120,9 +126,10 @@
 - The scanned Draw 1 Expand 1 power-up is now a typed, immediate engine effect: it draws one card, stacks the hand limit for the rest of the round, remains usable during an active answer window, and resets on next-round start. The 239-test full suite and mobile typecheck pass after the change.
 - Veto ends the answer window without a response or card reward but counts as asked for repeat cost. Randomize cancels its original question, selects an unasked same-category question allowed at the selected scale, and starts a fresh timer; the original remains eligible at its original cost. A randomized null response resolves without map geometry and still counts for the printed hider reward. The generated base pack carries both typed effects. [rulebook scan, p. 46; `tests/engine/cards.test.ts`]
 - The app labels a randomized null response as a completed no-map-change result instead of showing it as a pending map outcome. Full suite passed 243 tests; mobile typecheck and `git diff --check` pass.
-- Thermometer importer and automatic resolver slice verified: `npm test` passes 246 tests, `npm run mobile:typecheck` passes, and `git diff --check` is clean. The generated import report has 18 warning and 5 informational findings.
+- Thermometer importer and automatic resolver slice verified: `npm test` passed 246 tests before the Measuring correction; the current full suite passes 247 tests, `npm run mobile:typecheck` passes, and `git diff --check` is clean. The generated import report has 18 warning and 5 informational findings.
 - The printed Thermometer thresholds are 1 km and 5 km for all scales, 15 km for medium/large, and 75 km for large; only hotter/colder are valid answers. The workbook's 805 m, 4.8 km, 16 km, 80 km values and `same` option were not faithful to the scanned Investigation Book, so the importer now uses the printed values and records four informational corrections. Automatic answers require provable travel distance and confidence-bounded direction; the map uses the same frozen seeker endpoints as the answer. [Investigation Book scan, p. 3; base rulebook scan, p. 17; `tests/engine/automatic-question-answer.test.ts`]
 - The regenerated importer report contains 23 findings: 18 warnings and 5 informational items (including the 4 Thermometer corrections). Veto and Randomize removed two former warnings.
+- The base rulebook says Measuring answers are only “closer” or “further”; the app previously allowed “same”. The importer now emits only the printed choices and engine validation rejects `same`. [base rulebook scan pp. 22–23]
 
 ### Review — 2026-10-24
 

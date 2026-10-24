@@ -210,13 +210,9 @@ function playerMovementHistory(aggregate: MatchAggregate, playerId: string | und
 function pointDistanceRelation(
   candidate: number,
   reference: number,
-  relation: 'closer' | 'further' | 'same',
+  relation: 'closer' | 'further',
   toleranceMeters: number
 ): boolean {
-  if (relation === 'same') {
-    return Math.abs(candidate - reference) <= toleranceMeters;
-  }
-
   if (relation === 'closer') {
     return candidate < reference - toleranceMeters;
   }
@@ -584,10 +580,10 @@ function resolveMeasuring(
   }
 
   const relation = answerValue(context.question.answer);
-  if (relation !== 'closer' && relation !== 'further' && relation !== 'same') {
+  if (relation !== 'closer' && relation !== 'further') {
     return metadataOnlyDraft({
-      summary: 'Measuring answer was not recognized as closer/further/same.',
-      reasoningSteps: ['Expected one of: closer, further, same.'],
+      summary: 'Measuring answer was not recognized as closer/further.',
+      reasoningSteps: ['Expected one of: closer, further.'],
       metadata
     });
   }

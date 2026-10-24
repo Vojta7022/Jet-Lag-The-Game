@@ -19,6 +19,12 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(result.pack.questionTemplates.length, 80);
   assert.equal(result.pack.questionTemplates.some((template) => template.templateId === 'measuring-4th-admin-borough'), false);
   assert.equal(result.pack.questionTemplates.some((template) => template.templateId === 'matching-4th-admin-borough'), true);
+  const measuringTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'measuring');
+  assert.deepEqual(result.pack.questionCategories.find((category) => category.categoryId === 'measuring')?.defaultAnswerSchema.allowedValues,
+    ['closer', 'further']);
+  assert.ok(measuringTemplates.every((template) =>
+    JSON.stringify(template.answerSchema.allowedValues) === JSON.stringify(['closer', 'further'])
+  ));
   assert.equal(result.report.issues.some((issue) => issue.code === 'QUESTION_NOT_IN_PRINTED_BOOK'), true);
   assert.equal(result.pack.constraints.length, 9);
   assert.equal(result.pack.decks.length, 1);

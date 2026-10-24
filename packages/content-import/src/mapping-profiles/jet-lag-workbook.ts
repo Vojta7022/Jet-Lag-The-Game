@@ -217,7 +217,7 @@ function buildConstraintDefinitions(packId: string, sourceFileName: string): Con
       packId,
       name: 'Comparative Distance',
       kind: 'comparative_distance',
-      inputSchema: { answerType: 'enum', values: ['closer', 'further', 'same'] },
+      inputSchema: { answerType: 'enum', values: ['closer', 'further'] },
       outputArtifactKinds: ['geometry', 'metadata', 'explanation'],
       confidencePolicy: { mode: 'exact_or_approximate' },
       explanationTemplate: 'Comparative distance constraint applied.',
@@ -1408,7 +1408,7 @@ function buildMeasuringTemplates(
       allScales(),
       {
         kind: 'enum',
-        allowedValues: ['closer', 'further', 'same']
+        allowedValues: ['closer', 'further']
       },
       ['comparative-distance']
     );
@@ -1473,7 +1473,7 @@ function buildMeasuringTemplates(
         }),
         answerSchema: {
           kind: 'enum',
-          allowedValues: ['closer', 'further', 'same']
+          allowedValues: ['closer', 'further']
         },
         resolverConfig: {
           comparisonTarget: featureClassId
@@ -1504,7 +1504,7 @@ function buildMeasuringTemplates(
     allScales(),
     {
       kind: 'enum',
-      allowedValues: ['closer', 'further', 'same']
+      allowedValues: ['closer', 'further']
     },
     ['comparative-distance']
   );
@@ -1559,7 +1559,7 @@ function buildMeasuringTemplates(
       },
       answerSchema: {
         kind: 'enum',
-        allowedValues: ['closer', 'further', 'same']
+        allowedValues: ['closer', 'further']
       },
       resolverConfig: {
         comparisonTarget: featureClassId

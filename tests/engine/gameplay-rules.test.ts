@@ -68,6 +68,37 @@ test('ask_question accepts any in-scale investigation-book template and starts a
   assert.equal(questionTimer?.remainingSeconds, 300);
 });
 
+test('Measuring rejects same because the printed answers are closer or further', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} },
+    20
+  ), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:measuring-valid-answers',
+      templateId: 'measuring-a-commercial-airport',
+      targetTeamId: 'team-hider'
+    } },
+    21
+  ), contentPack).aggregate;
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'answer_question', payload: {
+      questionInstanceId: 'question:measuring-valid-answers',
+      answer: { value: 'same' }
+    } },
+    22
+  ), contentPack), /not valid for this question/);
+});
+
 test('reassigning a player between sides removes them from their previous team', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = executeCommand(undefined, makeEnvelope(
