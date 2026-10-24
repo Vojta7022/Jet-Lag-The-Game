@@ -7,7 +7,6 @@ import { buildQuestionSelectionState } from '../../../packages/domain/src/index.
 import type { ContentPack } from '../../../packages/shared-types/src/index.ts';
 
 import { mobileAppEnvironment } from '../src/config/env.ts';
-import { ensureMobileShellContentPack } from '../src/runtime/augment-content-pack.ts';
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 import { getHidePhaseDurationSeconds, getQuestionCooldownSeconds } from '../../../packages/engine/src/index.ts';
 import {
@@ -33,7 +32,7 @@ const generatedPackPath = fileURLToPath(
 );
 
 function loadContentPack(): ContentPack {
-  return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
+  return JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack;
 }
 
 test('Radar Choose accepts a positive seeker-entered meter value and rejects invalid distances', () => {
@@ -70,7 +69,7 @@ test('Radar Choose accepts a positive seeker-entered meter value and rejects inv
 
 test('default referee rules match printed scale timers, radius, answer windows, and no cooldown', () => {
   const contentPack = loadContentPack();
-  const ruleset = contentPack.rulesets.find((entry) => entry.rulesetId === 'mobile-shell-ruleset');
+  const ruleset = contentPack.rulesets.find((entry) => entry.rulesetId === 'jet-lag-home-game-base');
   assert.ok(ruleset);
 
   assert.equal(getHidePhaseDurationSeconds(contentPack, ruleset!.rulesetId, 'small'), 30 * 60);

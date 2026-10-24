@@ -3,7 +3,7 @@ import type {
   MatchProjection
 } from '../../../../../packages/shared-types/src/index.ts';
 
-import { mobileShellRulesetId } from '../../runtime/augment-content-pack.ts';
+const defaultRulesetId = 'jet-lag-home-game-base';
 
 export const mapSetupSeedPlayers = {
   hider: {
@@ -30,8 +30,11 @@ function roleForPlayer(projection: MatchProjection, playerId: string) {
 
 export function buildMapSetupBootstrapCommands(
   projection: MatchProjection,
-  rulesetId = mobileShellRulesetId
+  rulesetId = defaultRulesetId
 ): DomainCommand[] {
+  if (!rulesetId) {
+    throw new Error('The selected content pack must define a ruleset before map setup can start.');
+  }
   if (
     projection.lifecycleState === 'map_setup' ||
     projection.lifecycleState === 'hide_phase' ||

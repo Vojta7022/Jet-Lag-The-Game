@@ -14,6 +14,25 @@ test('the workbook importer creates a normalized draft content pack', () => {
 
   assert.equal(result.pack.packId, 'jet-lag-the-game-seed');
   assert.equal(result.pack.status, 'draft');
+  assert.equal(result.pack.rulesets.length, 1);
+  assert.equal(result.pack.rulesets[0]?.rulesetId, 'jet-lag-home-game-base');
+  assert.deepEqual(result.pack.rulesets[0]?.phasePolicies.hidePhaseDurationSecondsByScale, {
+    small: 30 * 60,
+    medium: 60 * 60,
+    large: 180 * 60
+  });
+  assert.deepEqual(result.pack.rulesets[0]?.locationPolicies.hidingZoneRadiusMetersByScale, {
+    small: 500,
+    medium: 500,
+    large: 1000
+  });
+  assert.equal(result.pack.rulesets[0]?.questionPolicies.answerWindowSeconds, 5 * 60);
+  assert.equal(result.pack.rulesets[0]?.questionPolicies.photoAnswerWindowSecondsByScale?.large, 20 * 60);
+  assert.equal(result.pack.mapPresets.length, 1);
+  assert.equal(result.pack.mapPresets[0]?.mapPresetId, 'jet-lag-host-selected-city');
+  assert.equal(result.pack.mapPresets[0]?.geometry.kind, 'host_selected_administrative_boundary');
+  assert.equal(result.pack.mapPresets[0]?.locationPrecisionPolicy.hiderCoordinatesHiddenFromSeekers, true);
+  assert.equal(result.pack.mapPresets[0]?.locationPrecisionPolicy.seekerLocationsSharedWithHiders, true);
   assert.equal(result.pack.cards.length, 37);
   assert.equal(result.pack.questionCategories.length, 6);
   assert.equal(result.pack.questionTemplates.length, 80);

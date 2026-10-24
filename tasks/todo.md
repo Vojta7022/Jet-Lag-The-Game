@@ -29,7 +29,7 @@
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
 - The main remaining gap is a tested, reliable multi-phone end-to-end play path. An authenticated Edge Function gateway and atomic revision commit now exist with unit coverage; production deployment, authorization/privacy audit, and cellular field play still need verification. Nearby mode has no LAN transport.
-- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, 13 warnings, and 5 informational import findings. It remains draft content with no ruleset or map preset; remaining card warnings still need adjudication.
+- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, one scan-attributed base ruleset, one host-selected-boundary map preset, 11 warnings, and 5 informational import findings. It remains draft content; remaining card warnings still need adjudication.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
 - The initial implementation target was single-device referee; the 2026-10-24 product clarification made one authenticated phone per player the primary product, with referee mode retained as fallback/regression coverage.
@@ -37,6 +37,7 @@
 - Referee event logs and latest snapshots now use persistent AsyncStorage, and the app stores a resume pointer/profile and reconnects to the recovered host session at startup. Home then offers the existing Continue action.
 - At the initial UI review, protected reveal handoffs were not connected to app UI and their manager was process-local. The referee handoff panel is now part of live map play, and token/checkpoint state survives restarts. A controlled full-round runtime walkthrough passes.
 - The current UI's repeated admin-style header/panel/banner hierarchy and the proposed game-first direction are documented in `knowledge/game-ui-redesign-research.md`.
+- The generated base-game pack previously lacked ruleset/map metadata and the mobile app silently injected a separate fallback ruleset. The importer now emits base timers, question windows, hiding radii, round preparation, and host-selected map policy from the scans; mobile play consumes that ruleset directly. Map-preset selection UI and remaining rule/card adjudication stay open.
 - The Transit Field Kit is now implemented: warm timetable paper, route-ink navy, signal yellow and orange, compact station navigation, illustrated Home, named team spaces, larger bounded map, and redesigned clue/card/chat surfaces. Browser screenshots are in `deliverables/ui-preview/`.
 - Browser review at 1440px desktop and 390px/320px phone widths found no horizontal overflow. A local referee game was resumed, a crew member added, the Prague boundary selected, the match started, and a six-card hand drawn. The roster and city returned after a browser reconnect.
 - Web `accessible={false}` SVG props caused the reported React warning; decorative game SVGs now use `aria-hidden={true}`. Measured map width also prevents the map surface from extending beyond its card.
@@ -81,6 +82,13 @@
 - [x] Keep unsupported or incomplete place data manual, update player guidance, and verify the full suite and mobile typecheck.
 
 Ruling: Tentacles candidate places are the mapped features inside the seeker's printed reach radius; the hider must also be inside that radius and answers with the nearest of those places. The scan's diagram and wording on printed pp. 36–37 show the radius centered on the seekers, and state an out-of-reach hider may say so. Using a hider-centered candidate set would answer a different question and produce a mismatched map deduction.
+
+### Completed implementation slice: base ruleset and map preset in the versioned pack
+
+- [x] Add scan-derived standard timers, answer windows, hand limit, hiding-zone radii, found conditions, and next-hider preparation policy to the base pack.
+- [x] Add a host-selected administrative-boundary map preset with current map dataset/layer and location visibility policies.
+- [x] Remove the mobile-only synthetic fallback ruleset so referee and online runtimes consume the same pack data.
+- [x] Verify importer/reporting, map setup, full suite (280 tests), mobile typecheck, generated pack, and `git diff --check` (2026-10-24).
 
 - [x] Test OpenStreetMap selector coverage for the mapped Tentacles place classes and preserve manual handling for metro lines.
 - [x] Verify end-to-end through the online authority with a malicious client feature payload ignored: 260 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).

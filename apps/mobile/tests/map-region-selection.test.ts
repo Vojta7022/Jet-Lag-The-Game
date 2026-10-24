@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import type { ContentPack } from '../../../packages/shared-types/src/index.ts';
 
-import { ensureMobileShellContentPack, mobileShellRulesetId } from '../src/runtime/augment-content-pack.ts';
+
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 import { mobileAppEnvironment } from '../src/config/env.ts';
 import { buildMapSetupBootstrapCommands } from '../src/features/map/map-setup-flow.ts';
@@ -53,7 +53,7 @@ const generatedPackPath = fileURLToPath(
 );
 
 function loadContentPack(): ContentPack {
-  return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
+  return JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack;
 }
 
 function asProviderRegion(
@@ -105,7 +105,7 @@ test('map bootstrap commands move a host match into map_setup and region selecti
   );
 
   assert.equal(prepared.projectionDelivery.projection.lifecycleState, 'map_setup');
-  assert.equal(prepared.projectionDelivery.projection.selectedRulesetId, mobileShellRulesetId);
+  assert.equal(prepared.projectionDelivery.projection.selectedRulesetId, 'jet-lag-home-game-base');
 
   const selectedRegion = seedPlayableRegions[0]!;
   const applied = await orchestrator.submitCommands(

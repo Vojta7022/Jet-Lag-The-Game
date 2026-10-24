@@ -1,5 +1,5 @@
 {
-  "importJobId": "518c9cb7-1ef0-498c-aaaa-075dd0f2219a",
+  "importJobId": "949afca8-9fb6-4489-9d9e-bfa76a24c3d4",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -214,30 +214,6 @@
       "normalizedValue": "Amusement Parks",
       "suggestedFix": "Review the canonical label and keep the raw text in provenance metadata.",
       "sheetCell": "place9"
-    },
-    {
-      "sheetName": "content-pack",
-      "rowNumber": 1,
-      "columnName": "rulesets",
-      "fieldPath": "rulesets",
-      "severity": "warning",
-      "code": "MISSING_RULESET",
-      "message": "The workbook does not define rulesets, so the imported pack remains draft-only.",
-      "rawValue": [],
-      "normalizedValue": [],
-      "suggestedFix": "Add a ruleset definition before publishing the pack."
-    },
-    {
-      "sheetName": "content-pack",
-      "rowNumber": 1,
-      "columnName": "mapPresets",
-      "fieldPath": "mapPresets",
-      "severity": "warning",
-      "code": "MISSING_MAP_PRESET",
-      "message": "The workbook does not define map presets, so the imported pack remains draft-only.",
-      "rawValue": [],
-      "normalizedValue": [],
-      "suggestedFix": "Add a map preset definition before publishing the pack."
     }
   ]
 }

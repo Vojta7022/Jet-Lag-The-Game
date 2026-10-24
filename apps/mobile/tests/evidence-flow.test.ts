@@ -9,7 +9,6 @@ import type {
 } from '../../../packages/shared-types/src/index.ts';
 
 import { mobileAppEnvironment } from '../src/config/env.ts';
-import { ensureMobileShellContentPack } from '../src/runtime/augment-content-pack.ts';
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 import {
   buildAttachmentUploadCommandFromDraft,
@@ -46,7 +45,7 @@ const generatedPackPath = fileURLToPath(
 );
 
 function loadContentPack(): ContentPack {
-  return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
+  return JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack;
 }
 
 function createChannel(): VisibleChatChannelProjection {

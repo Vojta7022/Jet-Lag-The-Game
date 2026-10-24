@@ -5,9 +5,11 @@ import type {
   DeckDefinition,
   FeatureTaxonomyEntry,
   ImportIssue,
+  MapPresetDefinition,
   QuestionCategoryDefinition,
   QuestionTemplateDefinition,
   RequirementDefinition,
+  RulesetDefinition,
   ScaleSet,
   SourceProvenance,
   TimeValue,
@@ -52,6 +54,91 @@ const CLEANED_EXPECTED_SHEETS = [
   'Tentacles',
   'Photos'
 ];
+
+function buildBaseRuleset(packId: string): RulesetDefinition {
+  return {
+    rulesetId: 'jet-lag-home-game-base',
+    packId,
+    name: 'Home Game — Base Rules',
+    description: 'Base Hide + Seek rules encoded from the scanned rulebook and Investigation Book.',
+    supportedModes: ['online', 'local_nearby', 'single_device_referee'],
+    scaleDefinitions: [
+      { scale: 'small', label: 'Small' },
+      { scale: 'medium', label: 'Medium' },
+      { scale: 'large', label: 'Large' }
+    ],
+    phasePolicies: {
+      hidePhaseDurationSecondsByScale: { small: 30 * 60, medium: 60 * 60, large: 180 * 60 },
+      nextHiderPreparationSeconds: 10 * 60
+    },
+    questionPolicies: {
+      cooldownSeconds: 0,
+      answerWindowSeconds: 5 * 60,
+      photoAnswerWindowSecondsByScale: { small: 10 * 60, medium: 10 * 60, large: 20 * 60 },
+      allowQuestionRepeats: true,
+      repeatRewardGroupsAreSeparate: true
+    },
+    cardPolicies: {
+      stackManualResolutionWindows: false,
+      maximumHandSize: 6
+    },
+    locationPolicies: {
+      requireStationCenteredZone: true,
+      hiderMustConfirmArrivalAtZoneStation: true,
+      hidingZoneRadiusMetersByScale: { small: 500, medium: 500, large: 1000 },
+      finalHidingSpotPathProximityMeters: 3,
+      foundDistanceMeters: 2,
+      foundRequiresVisualConfirmation: true,
+      endgameRequiresOffTransit: true
+    },
+    chatPolicies: {},
+    visibilityPolicies: {},
+    winConditions: [],
+    sourceProvenance: [
+      {
+        sourceType: 'generated',
+        sourceFileName: '2026-10-04 10-19.pdf',
+        notes: 'Base rulebook scan; hide periods and round rules from pp. 5–6, hiding zone and endgame rules from pp. 16–18.'
+      },
+      {
+        sourceType: 'generated',
+        sourceFileName: '2026-10-04-10-56.pdf',
+        notes: 'Investigation Book scan; question response windows and scale-specific Photo timing.'
+      }
+    ]
+  };
+}
+
+function buildBaseMapPreset(packId: string): MapPresetDefinition {
+  return {
+    mapPresetId: 'jet-lag-host-selected-city',
+    packId,
+    name: 'Host-selected play area',
+    description: 'The host searches and composes an administrative boundary before play.',
+    geometry: {
+      kind: 'host_selected_administrative_boundary',
+      allowedRegionKinds: ['city', 'admin_region', 'custom']
+    },
+    featureDatasetRefs: ['osm-admin-boundaries', 'osm-transit-stations', 'osm-question-features'],
+    layerPolicies: {
+      showPlayableBoundary: true,
+      showTransitStations: true,
+      showQuestionConstraints: true
+    },
+    locationPrecisionPolicy: {
+      automaticAnswersRequireFreshSamples: true,
+      hiderCoordinatesHiddenFromSeekers: true,
+      seekerLocationsSharedWithHiders: true
+    },
+    sourceProvenance: [
+      {
+        sourceType: 'generated',
+        sourceFileName: 'apps/mobile/src/features/map/osm-region-provider.ts',
+        notes: 'Host-selected boundary geometry follows the approved searchable-region setup workflow.'
+      }
+    ]
+  };
+}
 
 const SHEET_ALIASES = {
   hiderDeck: ['Hider Deck'],
@@ -2687,12 +2774,12 @@ export function mapJetLagWorkbookToContentPack(
       unmappedSheets,
       normalizationWarnings: []
     },
-    rulesets: [],
+    rulesets: [buildBaseRuleset(packId)],
     decks: [deck],
     cards,
     questionCategories,
     questionTemplates,
-    mapPresets: [],
+    mapPresets: [buildBaseMapPreset(packId)],
     constraints: buildConstraintDefinitions(packId, sourceFileName),
     featureTaxonomy: [...featureTaxonomy.values()].sort((left, right) =>
       left.featureClassId.localeCompare(right.featureClassId)

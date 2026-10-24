@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T20:16:29.185Z",
+    "importedAt": "2026-10-24T20:26:50.923Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -36,7 +36,84 @@
       "Workbook text was normalized into a canonical label."
     ]
   },
-  "rulesets": [],
+  "rulesets": [
+    {
+      "rulesetId": "jet-lag-home-game-base",
+      "packId": "jet-lag-the-game-seed",
+      "name": "Home Game — Base Rules",
+      "description": "Base Hide + Seek rules encoded from the scanned rulebook and Investigation Book.",
+      "supportedModes": [
+        "online",
+        "local_nearby",
+        "single_device_referee"
+      ],
+      "scaleDefinitions": [
+        {
+          "scale": "small",
+          "label": "Small"
+        },
+        {
+          "scale": "medium",
+          "label": "Medium"
+        },
+        {
+          "scale": "large",
+          "label": "Large"
+        }
+      ],
+      "phasePolicies": {
+        "hidePhaseDurationSecondsByScale": {
+          "small": 1800,
+          "medium": 3600,
+          "large": 10800
+        },
+        "nextHiderPreparationSeconds": 600
+      },
+      "questionPolicies": {
+        "cooldownSeconds": 0,
+        "answerWindowSeconds": 300,
+        "photoAnswerWindowSecondsByScale": {
+          "small": 600,
+          "medium": 600,
+          "large": 1200
+        },
+        "allowQuestionRepeats": true,
+        "repeatRewardGroupsAreSeparate": true
+      },
+      "cardPolicies": {
+        "stackManualResolutionWindows": false,
+        "maximumHandSize": 6
+      },
+      "locationPolicies": {
+        "requireStationCenteredZone": true,
+        "hiderMustConfirmArrivalAtZoneStation": true,
+        "hidingZoneRadiusMetersByScale": {
+          "small": 500,
+          "medium": 500,
+          "large": 1000
+        },
+        "finalHidingSpotPathProximityMeters": 3,
+        "foundDistanceMeters": 2,
+        "foundRequiresVisualConfirmation": true,
+        "endgameRequiresOffTransit": true
+      },
+      "chatPolicies": {},
+      "visibilityPolicies": {},
+      "winConditions": [],
+      "sourceProvenance": [
+        {
+          "sourceType": "generated",
+          "sourceFileName": "2026-10-04 10-19.pdf",
+          "notes": "Base rulebook scan; hide periods and round rules from pp. 5–6, hiding zone and endgame rules from pp. 16–18."
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "2026-10-04-10-56.pdf",
+          "notes": "Investigation Book scan; question response windows and scale-specific Photo timing."
+        }
+      ]
+    }
+  ],
   "decks": [
     {
       "deckId": "hider-main",
@@ -9940,7 +10017,44 @@
       ]
     }
   ],
-  "mapPresets": [],
+  "mapPresets": [
+    {
+      "mapPresetId": "jet-lag-host-selected-city",
+      "packId": "jet-lag-the-game-seed",
+      "name": "Host-selected play area",
+      "description": "The host searches and composes an administrative boundary before play.",
+      "geometry": {
+        "kind": "host_selected_administrative_boundary",
+        "allowedRegionKinds": [
+          "city",
+          "admin_region",
+          "custom"
+        ]
+      },
+      "featureDatasetRefs": [
+        "osm-admin-boundaries",
+        "osm-transit-stations",
+        "osm-question-features"
+      ],
+      "layerPolicies": {
+        "showPlayableBoundary": true,
+        "showTransitStations": true,
+        "showQuestionConstraints": true
+      },
+      "locationPrecisionPolicy": {
+        "automaticAnswersRequireFreshSamples": true,
+        "hiderCoordinatesHiddenFromSeekers": true,
+        "seekerLocationsSharedWithHiders": true
+      },
+      "sourceProvenance": [
+        {
+          "sourceType": "generated",
+          "sourceFileName": "apps/mobile/src/features/map/osm-region-provider.ts",
+          "notes": "Host-selected boundary geometry follows the approved searchable-region setup workflow."
+        }
+      ]
+    }
+  ],
   "constraints": [
     {
       "constraintId": "nearest-feature-match",

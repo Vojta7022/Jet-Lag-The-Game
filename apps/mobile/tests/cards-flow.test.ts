@@ -7,7 +7,6 @@ import type { ContentPack } from '../../../packages/shared-types/src/index.ts';
 import { getCardDiscardRequirement } from '../../../packages/domain/src/index.ts';
 
 import { mobileAppEnvironment } from '../src/config/env.ts';
-import { ensureMobileShellContentPack } from '../src/runtime/augment-content-pack.ts';
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 import {
   buildDeckViewModels,
@@ -20,7 +19,7 @@ const generatedPackPath = fileURLToPath(
 );
 
 function loadContentPack(): ContentPack {
-  return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
+  return JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack;
 }
 
 function findPlayableSmokeCard(contentPack: ContentPack, projection: { visibleCards: Array<{ cardDefinitionId: string; zone: string }> }) {

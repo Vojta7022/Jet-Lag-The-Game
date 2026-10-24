@@ -17,7 +17,6 @@ import {
   locationShellReducer
 } from '../src/features/location/location-state.ts';
 import { buildMapOverlayModel } from '../src/features/map/map-overlays.ts';
-import { ensureMobileShellContentPack } from '../src/runtime/augment-content-pack.ts';
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 
 const generatedPackPath = fileURLToPath(
@@ -25,7 +24,7 @@ const generatedPackPath = fileURLToPath(
 );
 
 function loadContentPack(): ContentPack {
-  return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
+  return JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack;
 }
 
 test('location shell reducer makes denied and unavailable states explicit', () => {

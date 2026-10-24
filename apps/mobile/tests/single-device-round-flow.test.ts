@@ -10,7 +10,6 @@ import { makeSquarePolygon } from '../../../tests/engine/helpers.ts';
 
 import { mobileAppEnvironment } from '../src/config/env.ts';
 import { buildMapSetupBootstrapCommands } from '../src/features/map/map-setup-flow.ts';
-import { ensureMobileShellContentPack } from '../src/runtime/augment-content-pack.ts';
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 
 const generatedPackPath = fileURLToPath(
@@ -18,7 +17,7 @@ const generatedPackPath = fileURLToPath(
 );
 
 function loadContentPack(): ContentPack {
-  return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
+  return JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack;
 }
 
 test('single-device referee can complete a rule-based round through found and score', async () => {

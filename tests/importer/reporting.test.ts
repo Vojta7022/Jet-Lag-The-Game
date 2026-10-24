@@ -21,12 +21,12 @@ test('import reporting captures workbook ambiguities and draft-only gaps', () =>
     (result.pack.questionTemplates.find((template) => template.templateId === 'radar-choose')?.parameters?.distanceMode),
     'player_choice'
   );
-  assert.ok(issueCodes.has('MISSING_RULESET'));
-  assert.ok(issueCodes.has('MISSING_MAP_PRESET'));
+  assert.equal(issueCodes.has('MISSING_RULESET'), false);
+  assert.equal(issueCodes.has('MISSING_MAP_PRESET'), false);
   assert.ok(issueCodes.has('POWER_UP_EFFECT_UNSPECIFIED'));
   assert.ok(issueCodes.has('NORMALIZATION_CORRECTION_APPLIED'));
 
   const validationIssues = validateContentPack(result.pack);
-  assert.ok(validationIssues.some((issue) => issue.code === 'MISSING_RULESET'));
-  assert.ok(validationIssues.some((issue) => issue.code === 'MISSING_MAP_PRESET'));
+  assert.equal(validationIssues.some((issue) => issue.code === 'MISSING_RULESET'), false);
+  assert.equal(validationIssues.some((issue) => issue.code === 'MISSING_MAP_PRESET'), false);
 });
