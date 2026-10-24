@@ -292,6 +292,7 @@ export interface PlayCardCommand {
   type: 'play_card';
   payload: {
     cardInstanceId: string;
+    duplicateTargetCardInstanceId?: string;
   };
 }
 

@@ -14,6 +14,7 @@ import { colors } from '../../ui/theme.ts';
 
 interface CardResolutionStatusPanelProps {
   activeCard?: ResolvedVisibleCardModel;
+  copiedCard?: ResolvedVisibleCardModel;
   resolution?: MatchProjection['activeCardResolution'];
   disabled?: boolean;
   canResolve: boolean;
@@ -55,6 +56,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         <View style={styles.headerRow}>
           <View style={styles.headerText}>
             <Text style={styles.cardName}>{props.activeCard.definition.name}</Text>
+            {props.copiedCard ? <Text style={styles.copy}>Copying {props.copiedCard.definition.name}</Text> : null}
             <Text style={styles.copy}>
               {formatCardKindLabel(props.activeCard.definition.kind)} from {props.activeCard.deck.name}
             </Text>
@@ -66,6 +68,11 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Lock</Text>
         <Text style={styles.copy}>{guidance.detail}</Text>
+        {props.copiedCard ? (
+          <Text style={styles.metaChip}>
+            Copied effect: {props.copiedCard.definition.description}
+          </Text>
+        ) : null}
         {discardDetail ? <Text style={styles.metaChip}>{discardDetail}</Text> : null}
         {followThroughDetail ? <Text style={styles.metaChip}>{followThroughDetail}</Text> : null}
       </View>

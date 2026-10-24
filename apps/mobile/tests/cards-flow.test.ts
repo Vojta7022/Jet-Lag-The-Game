@@ -27,7 +27,12 @@ function findPlayableSmokeCard(contentPack: ContentPack, projection: { visibleCa
   return projection.visibleCards.find((card) => {
     if (card.zone !== 'hand') return false;
     const definition = contentPack.cards.find((candidate) => candidate.cardDefinitionId === card.cardDefinitionId);
-    return Boolean(definition && definition.kind !== 'time_bonus' && Object.keys(getCardDiscardRequirement(definition)).length === 0);
+    return Boolean(
+      definition &&
+      definition.kind !== 'time_bonus' &&
+      !definition.effects.some((effect) => ['veto_question', 'randomize_question'].includes(effect.effectType)) &&
+      Object.keys(getCardDiscardRequirement(definition)).length === 0
+    );
   });
 }
 

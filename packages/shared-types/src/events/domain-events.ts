@@ -395,6 +395,7 @@ export interface CardResolutionOpenedEvent {
   type: 'card_resolution_opened';
   payload: {
     sourceCardInstanceId: string;
+    copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
     resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus';

@@ -331,7 +331,7 @@ function validateDiscardResolution(
 
   const requiredCount =
     activeResolution.discardRequirement.discardWholeHand
-      ? Math.max(0, activeResolution.openingHandCardInstanceIds.length - 1)
+      ? Math.max(0, activeResolution.openingHandCardInstanceIds.length - 1 - Number(Boolean(activeResolution.copiedCardInstanceId)))
       : activeResolution.discardRequirement.requiredCards ?? 0;
 
   if (activeResolution.discardRequirement.requiredKind) {
@@ -1072,6 +1072,30 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'CARD_DEFINITION_NOT_FOUND', 'The card definition is missing from the content pack.')];
       }
 
+      const duplicateEffect = cardDefinition.effects.some((effect) => effect.effectType === 'duplicate_card');
+      const duplicateTargetId = envelope.command.payload.duplicateTargetCardInstanceId;
+      let effectCardDefinition = cardDefinition;
+      if (duplicateEffect) {
+        if (!duplicateTargetId) {
+          return [error(envelope.command.type, 'DUPLICATE_TARGET_REQUIRED', 'Choose a card in your hand to copy.')];
+        }
+        const targetCard = aggregate.cardInstances[duplicateTargetId];
+        if (
+          !targetCard || targetCard.zone !== 'hand' ||
+          targetCard.holderType !== cardInstance.holderType || targetCard.holderId !== cardInstance.holderId ||
+          targetCard.cardInstanceId === cardInstance.cardInstanceId
+        ) {
+          return [error(envelope.command.type, 'DUPLICATE_TARGET_NOT_IN_HAND', 'Duplicate can only copy another card in the same hand.')];
+        }
+        const targetDefinition = getCardDefinition(contentPack, targetCard.cardDefinitionId);
+        if (!targetDefinition || targetDefinition.kind === 'time_bonus' || targetDefinition.effects.some((effect) => effect.effectType === 'duplicate_card')) {
+          return [error(envelope.command.type, 'DUPLICATE_TARGET_NOT_PLAYABLE', 'Choose another playable card to copy. Time bonuses stay in hand, and Duplicate cannot copy itself.')];
+        }
+        effectCardDefinition = targetDefinition;
+      } else if (duplicateTargetId) {
+        return [error(envelope.command.type, 'DUPLICATE_TARGET_NOT_ALLOWED', 'Only a Duplicate card can name a card to copy.')];
+      }
+
       if (cardDefinition.kind === 'time_bonus') {
         return [error(envelope.command.type, 'TIME_BONUS_NOT_PLAYABLE', 'Time bonus cards cannot be played. Keep them in hand to add their value to your final hiding time when found, or discard them.')];
       }
@@ -1084,7 +1108,7 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'CARD_NOT_PLAYABLE_IN_ENDGAME', 'This curse cannot be played during the endgame.')];
       }
 
-      const resolutionPlan = buildCardResolutionPlan(cardDefinition, aggregate.selectedScale);
+      const resolutionPlan = buildCardResolutionPlan(effectCardDefinition, aggregate.selectedScale);
       if (resolutionPlan.kind === 'veto_question' || resolutionPlan.kind === 'randomize_question') {
         if (!aggregate.activeQuestionInstanceId || !aggregate.questionInstances[aggregate.activeQuestionInstanceId]) {
           return [error(envelope.command.type, 'QUESTION_NOT_ACTIVE', 'This card can only be played while a question is awaiting an answer.')];
@@ -1113,7 +1137,9 @@ export function validateCommandEnvelope(
       }
 
       const handCards = getHandCardsForHolder(aggregate, cardInstance.holderType, cardInstance.holderId);
-      const otherHandCards = handCards.filter((card) => card.cardInstanceId !== cardInstance.cardInstanceId);
+      const otherHandCards = handCards.filter((card) =>
+        card.cardInstanceId !== cardInstance.cardInstanceId && card.cardInstanceId !== duplicateTargetId
+      );
       if (resolutionPlan.discardRequirement.discardWholeHand && otherHandCards.length === 0) {
         return [error(envelope.command.type, 'DISCARD_COST_UNPAID', 'This card needs spare hand cards to pay its discard cost.')];
       }

@@ -190,9 +190,10 @@ export function countPaidDiscardCost(args: {
 }): number {
   const openingHandIds = args.resolution.openingHandCardInstanceIds ?? [];
   const sourceId = args.resolution.sourceCardInstanceId;
+  const copiedCardId = args.resolution.copiedCardInstanceId;
 
   return openingHandIds.filter((cardInstanceId) => {
-    if (cardInstanceId === sourceId) {
+    if (cardInstanceId === sourceId || cardInstanceId === copiedCardId) {
       return false;
     }
 
@@ -209,9 +210,10 @@ export function countPaidDiscardKindCost(args: {
 }): number {
   const openingHandIds = args.resolution.openingHandCardInstanceIds ?? [];
   const sourceId = args.resolution.sourceCardInstanceId;
+  const copiedCardId = args.resolution.copiedCardInstanceId;
 
   return openingHandIds.filter((cardInstanceId) => {
-    if (cardInstanceId === sourceId) {
+    if (cardInstanceId === sourceId || cardInstanceId === copiedCardId) {
       return false;
     }
 

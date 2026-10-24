@@ -449,6 +449,10 @@ export function buildMatchProjection(
       : aggregate.activeCardResolution
         ? {
             sourceCardInstanceId: aggregate.activeCardResolution.sourceCardInstanceId,
+            copiedCardInstanceId:
+              viewer.scope === 'host_admin' || viewerRole === 'hider'
+                ? aggregate.activeCardResolution.copiedCardInstanceId
+                : undefined,
             resolutionKind: aggregate.activeCardResolution.resolutionKind,
             discardRequirement: aggregate.activeCardResolution.discardRequirement,
             drawCountOnResolve: aggregate.activeCardResolution.drawCountOnResolve,

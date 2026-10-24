@@ -374,6 +374,7 @@ export interface PauseOverlayState {
 
 export interface CardResolutionWindow {
   sourceCardInstanceId: string;
+  copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
   resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus';

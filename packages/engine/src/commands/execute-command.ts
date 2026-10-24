@@ -1067,7 +1067,12 @@ function eventsForCommand(
     case 'play_card': {
       const currentCard = aggregate!.cardInstances[envelope.command.payload.cardInstanceId];
       const cardDefinition = getCardDefinition(contentPack, currentCard.cardDefinitionId) as CardDefinition;
-      const resolutionPlan = buildCardResolutionPlan(cardDefinition, aggregate!.selectedScale);
+      const copiedCardInstanceId = envelope.command.payload.duplicateTargetCardInstanceId;
+      const copiedCardInstance = copiedCardInstanceId ? aggregate!.cardInstances[copiedCardInstanceId] : undefined;
+      const effectCardDefinition = copiedCardInstance
+        ? getCardDefinition(contentPack, copiedCardInstance.cardDefinitionId) as CardDefinition
+        : cardDefinition;
+      const resolutionPlan = buildCardResolutionPlan(effectCardDefinition, aggregate!.selectedScale);
       const opensResolutionWindow =
         resolutionPlan.kind !== 'time_bonus' &&
         resolutionPlan.kind !== 'draw_and_expand_hand' &&
@@ -1254,6 +1259,7 @@ function eventsForCommand(
                   : undefined,
               drawCountOnResolve: resolutionPlan.drawCountOnResolve,
               timeBonusMinutes: resolutionPlan.timeBonusMinutes,
+              copiedCardInstanceId,
               sourceDeckId: cardDefinition.deckId,
               holderType: currentCard.holderType,
               holderId: currentCard.holderId,

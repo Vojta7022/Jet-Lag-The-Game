@@ -679,6 +679,7 @@ export function reduceMatchAggregate(
         seekPhaseSubstate: eventEnvelope.event.payload.seekPhaseSubstate,
         activeCardResolution: {
           sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          copiedCardInstanceId: eventEnvelope.event.payload.copiedCardInstanceId,
           openedAt: eventEnvelope.occurredAt,
           openedByPlayerId: eventEnvelope.actor.playerId ?? eventEnvelope.actor.actorId,
           resolutionKind: eventEnvelope.event.payload.resolutionKind,

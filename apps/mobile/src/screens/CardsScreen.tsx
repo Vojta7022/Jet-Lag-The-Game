@@ -143,6 +143,10 @@ export function CardsScreen() {
     deckViewModels,
     projection?.activeCardResolution?.sourceCardInstanceId
   );
+  const copiedCard = findResolvedVisibleCard(
+    deckViewModels,
+    projection?.activeCardResolution?.copiedCardInstanceId
+  );
   const activeQuestion = findActiveQuestion(projection);
   const pendingQuestionReward = projection?.pendingQuestionReward;
   const latestResolvedQuestion = [...(projection?.visibleQuestions ?? [])]
@@ -199,6 +203,15 @@ export function CardsScreen() {
     () => selectedDeck?.visibleByZone.hand.map((card) => card.definition) ?? [],
     [selectedDeck]
   );
+  const selectedCardIsDuplicate = Boolean(
+    selectedCard?.card.zone === 'hand' &&
+    selectedCard.definition.effects.some((effect) => effect.effectType === 'duplicate_card')
+  );
+  const duplicateTargets = selectedDeck?.visibleByZone.hand.filter((card) =>
+    card.card.cardInstanceId !== selectedCard?.card.cardInstanceId &&
+    card.definition.kind !== 'time_bonus' &&
+    !card.definition.effects.some((effect) => effect.effectType === 'duplicate_card')
+  ) ?? [];
   const handCardKindCounts = handCardDefinitions.reduce<
     Partial<Record<(typeof handCardDefinitions)[number]['kind'], number>>
   >(
@@ -275,6 +288,7 @@ export function CardsScreen() {
       selectedCard &&
       selectedCard.card.zone === 'hand' &&
       selectedCard.definition.kind !== 'time_bonus' &&
+      !selectedCardIsDuplicate &&
       canPlayCards(projection) &&
       !lockReason &&
       viewerRole !== 'spectator'
@@ -832,7 +846,7 @@ export function CardsScreen() {
               lockReason={lockReason}
               canPlay={canPlay}
               canDiscard={canDiscard}
-              playDisabledReason={selectedCardActionState.playReason}
+              playDisabledReason={selectedCardIsDuplicate ? 'Choose the card to copy below.' : selectedCardActionState.playReason}
               discardDisabledReason={selectedCardActionState.discardReason}
               onPlay={() => {
                 if (!selectedCard) {
@@ -863,6 +877,34 @@ export function CardsScreen() {
         </>
       ) : null}
 
+      {selectedCardIsDuplicate && selectedCard ? (
+        <Panel
+          title="Choose a card to copy"
+          subtitle="Duplicate is spent; the original stays in your hand. Time bonuses remain in hand for capture scoring."
+          tone="accent"
+        >
+          {duplicateTargets.length === 0 ? (
+            <Text style={styles.copy}>No other playable card is in this hand.</Text>
+          ) : duplicateTargets.map((target) => (
+            <AppButton
+              key={target.card.cardInstanceId}
+              label={`Copy ${target.definition.name}`}
+              tone="secondary"
+              disabled={!canPlayCards(projection) || state.loadState === 'loading'}
+              onPress={() => {
+                void submitCommand({
+                  type: 'play_card',
+                  payload: {
+                    cardInstanceId: selectedCard.card.cardInstanceId,
+                    duplicateTargetCardInstanceId: target.card.cardInstanceId
+                  }
+                });
+              }}
+            />
+          ))}
+        </Panel>
+      ) : null}
+
       {projection?.activeCardResolution ? (
         <>
           <Panel
@@ -871,6 +913,7 @@ export function CardsScreen() {
           >
             <CardResolutionStatusPanel
               activeCard={activeCard}
+              copiedCard={copiedCard}
               resolution={projection?.activeCardResolution}
               canResolve={canResolve}
               resolveDisabledReason={resolveDisabledReason}

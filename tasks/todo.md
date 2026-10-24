@@ -94,9 +94,15 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 
 ### Current implementation slice: Duplicate's held time-bonus rule
 
-- [x] Import Duplicate with the scanned copy rule and accurately keep unsupported in-round target selection manual.
+- [x] Import Duplicate with the scanned copy rule and keep unsupported copied challenge outcomes manual.
 - [x] Apply the rulebook's end-of-round copy of a held time bonus to capture scoring and player-facing score detail.
 - [x] Add importer and engine regression coverage and regenerate the pack. Full verification: 261 tests pass, mobile typecheck passes, `git diff --check` is clean (2026-10-24).
+
+### Current implementation slice: in-round Duplicate target selection
+
+- [x] Let a hider choose an eligible card in their hand when playing Duplicate, while preserving the original card.
+- [x] Resolve supported copied power-up effects through the same authoritative engine path; keep manual challenges explicit and show the copied card in the resolution window.
+- [x] Verify command validation, UI selection, effect execution, original-card preservation, and seeker projection redaction. Full verification: 263 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
 ## Active: online multiplayer for one phone per player
 

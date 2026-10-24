@@ -223,6 +223,7 @@ export interface MatchProjection {
   }>;
   activeCardResolution?: {
     sourceCardInstanceId: string;
+    copiedCardInstanceId?: string;
     resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus';
     discardRequirement?: {
       requiredCards?: number;

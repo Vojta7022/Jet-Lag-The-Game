@@ -207,6 +207,70 @@ test('Draw 1 Expand 1 can be played during a live answer window without interrup
   assert.equal(aggregate.cardInstances[sourceCardInstanceId]?.zone, 'discard_pile');
 });
 
+test('Duplicate copies a held power-up effect and leaves the original card in hand', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const duplicateCardId = moveCardToTeamHand(aggregate, 'power-up-duplicate', 'team-hider');
+  const originalCardId = moveCardToTeamHand(aggregate, 'power-up-draw-1-expand-1', 'team-hider');
+  const drawPileBefore = Object.values(aggregate.cardInstances).filter(
+    (card) => card.holderType === 'deck' && card.holderId === 'hider-main' && card.zone === 'draw_pile'
+  ).length;
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: duplicateCardId } }, 79), contentPack), /choose a card in your hand to copy/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    {
+      type: 'play_card',
+      payload: { cardInstanceId: duplicateCardId, duplicateTargetCardInstanceId: originalCardId }
+    }, 80), contentPack).aggregate;
+
+  const hiderHand = Object.values(aggregate.cardInstances).filter(
+    (card) => card.holderType === 'team' && card.holderId === 'team-hider' && card.zone === 'hand'
+  );
+  assert.equal(aggregate.cardInstances[duplicateCardId]?.zone, 'discard_pile');
+  assert.equal(aggregate.cardInstances[originalCardId]?.zone, 'hand');
+  assert.equal(hiderHand.length, 2);
+  assert.equal(aggregate.hiderHandLimitBonus, 1);
+  assert.equal(Object.values(aggregate.cardInstances).filter(
+    (card) => card.holderType === 'deck' && card.holderId === 'hider-main' && card.zone === 'draw_pile'
+  ).length, drawPileBefore - 1);
+});
+
+test('Duplicate identifies a copied manual effect in its private resolution window', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const duplicateCardId = moveCardToTeamHand(aggregate, 'power-up-duplicate', 'team-hider');
+  const originalCardId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    {
+      type: 'play_card',
+      payload: { cardInstanceId: duplicateCardId, duplicateTargetCardInstanceId: originalCardId }
+    }, 81), contentPack).aggregate;
+
+  assert.equal(aggregate.cardInstances[duplicateCardId]?.zone, 'pending_resolution');
+  assert.equal(aggregate.cardInstances[originalCardId]?.zone, 'hand');
+  assert.equal(aggregate.activeCardResolution?.copiedCardInstanceId, originalCardId);
+  const hiderProjection = buildMatchProjection(aggregate, contentPack, {
+    scope: 'team_private', viewerPlayerId: 'hider-1', viewerTeamId: 'team-hider', viewerRole: 'hider'
+  });
+  const seekerProjection = buildMatchProjection(aggregate, contentPack, {
+    scope: 'team_private', viewerPlayerId: 'seeker-1', viewerTeamId: 'team-seeker', viewerRole: 'seeker'
+  });
+  assert.equal(hiderProjection.activeCardResolution?.copiedCardInstanceId, originalCardId);
+  assert.equal(seekerProjection.activeCardResolution?.copiedCardInstanceId, undefined);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: duplicateCardId } }, 82), contentPack).aggregate;
+  assert.equal(aggregate.cardInstances[duplicateCardId]?.zone, 'discard_pile');
+  assert.equal(aggregate.cardInstances[originalCardId]?.zone, 'hand');
+});
+
 test('Veto ends the active question without an answer or card reward and counts as asked', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
