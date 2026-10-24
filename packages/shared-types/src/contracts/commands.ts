@@ -28,6 +28,8 @@ export interface CommandEnvelope<TCommand extends DomainCommand = DomainCommand>
 export type DomainCommand =
   | CreateMatchCommand
   | JoinMatchCommand
+  | RemoveMatchPlayerCommand
+  | LeaveMatchCommand
   | ImportContentPackCommand
   | PublishContentPackCommand
   | AssignRoleCommand
@@ -76,6 +78,16 @@ export interface JoinMatchCommand {
     playerId: string;
     displayName: string;
   };
+}
+
+export interface RemoveMatchPlayerCommand {
+  type: 'remove_match_player';
+  payload: { playerId: string };
+}
+
+export interface LeaveMatchCommand {
+  type: 'leave_match';
+  payload: {};
 }
 
 export interface ImportContentPackCommand {

@@ -26,6 +26,7 @@ export interface GameAuthorityDependencies {
   memberships: {
     find(matchId: string, authUserId: string): Promise<MatchMembershipRecord | undefined>;
     bind(record: MatchMembershipRecord): Promise<void>;
+    removePlayer(matchId: string, playerId: string): Promise<void>;
   };
   matches: {
     findByJoinCode(joinCode: string): Promise<string | undefined>;
@@ -213,6 +214,15 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
         if (existing?.status === 'removed') {
           throw Object.assign(new Error('This match membership has been removed.'), { code: 'MEMBERSHIP_REMOVED' });
         }
+        if (existing?.status === 'active') {
+          if (existing.playerId !== playerId) {
+            throw Object.assign(new Error('This authenticated user is already bound to a different player in the match.'), { code: 'PLAYER_ALREADY_JOINED' });
+          }
+          return json(200, {
+            matchId,
+            result: { accepted: true, matchId, commandId: requiredString(body.commandId, 'commandId'), events: [] }
+          });
+        }
         const session = makeSession(user.id, matchId, existing, existing ? undefined : playerId);
         const onlineRequest: OnlineCommandRequest = {
           matchId,
@@ -243,7 +253,13 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
           clientSequence: typeof body.clientSequence === 'number' ? body.clientSequence : undefined,
           command: asDomainCommand(body.command)
         };
-        return json(200, { result: await dependencies.service.submitAuthenticatedCommand(session, onlineRequest) });
+        const result = await dependencies.service.submitAuthenticatedCommand(session, onlineRequest);
+        if (result.accepted && onlineRequest.command.type === 'remove_match_player') {
+          await dependencies.memberships.removePlayer(matchId, onlineRequest.command.payload.playerId);
+        } else if (result.accepted && onlineRequest.command.type === 'leave_match') {
+          await dependencies.memberships.removePlayer(matchId, membership.playerId);
+        }
+        return json(200, { result });
       }
 
       if (operation === 'snapshot') {

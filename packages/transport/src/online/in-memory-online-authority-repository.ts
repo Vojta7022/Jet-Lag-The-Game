@@ -107,6 +107,15 @@ export class InMemoryOnlineAuthorityRepository implements OnlineAuthorityReposit
     };
     this.matches.set(input.matchId, input.match);
     this.eventsByMatch.set(input.matchId, [...existingEvents, ...input.events]);
+    for (const event of input.events) {
+      if (event.event.type !== 'player_removed') continue;
+      const removedPlayerId = event.event.payload.playerId;
+      for (const [key, membership] of this.memberships) {
+        if (membership.matchId === input.matchId && membership.playerId === removedPlayerId && membership.status === 'active') {
+          this.memberships.set(key, { ...membership, status: 'removed' });
+        }
+      }
+    }
     this.commitsByIdempotencyKey.set(idempotencyKey(input.matchId, input.idempotencyKey), {
       commandId: input.commandId,
       committedRevision: input.match.revision,
@@ -162,5 +171,13 @@ export class InMemoryOnlineAuthorityRepository implements OnlineAuthorityReposit
     }
 
     this.memberships.set(membershipKey(record.matchId, record.authUserId), record);
+  }
+
+  async removeMembership(matchId: string, playerId: string): Promise<void> {
+    for (const [key, record] of this.memberships) {
+      if (record.matchId === matchId && record.playerId === playerId && record.status === 'active') {
+        this.memberships.set(key, { ...record, status: 'removed' });
+      }
+    }
   }
 }

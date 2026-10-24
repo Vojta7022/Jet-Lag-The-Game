@@ -219,4 +219,19 @@ export class SupabaseOnlineAuthorityRepository implements OnlineAuthorityReposit
       throw error;
     }
   }
+
+  async removeMembership(matchId: string, playerId: string): Promise<void> {
+    const active = await this.client.selectMany<MatchMembershipRecord>(MEMBERSHIPS_TABLE, {
+      matchId,
+      playerId,
+      status: 'active'
+    });
+    for (const record of active) {
+      await this.client.update(MEMBERSHIPS_TABLE, {
+        matchId,
+        authUserId: record.authUserId,
+        status: 'active'
+      }, { status: 'removed' });
+    }
+  }
 }

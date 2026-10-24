@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Share, StyleSheet, Text, View } from 'react-native';
+import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
 import {
@@ -23,9 +23,10 @@ import { colors, fonts } from '../ui/theme.ts';
 import { GameIcon } from '../ui/GameIcon.tsx';
 import { Field } from '../ui/Field.tsx';
 import { createUuid } from '../runtime/create-uuid.ts';
+import { canLeaveLobby, canManageLobbyMembers, canRemoveLobbyPlayer } from '../features/lobby/lobby-membership-model.ts';
 
 export function LobbyScreen() {
-  const { state, refreshActiveMatch, submitCommand, submitCommands } =
+  const { state, refreshActiveMatch, submitCommand, submitCommands, disconnectActiveMatch } =
     useAppShell();
   const [crewName, setCrewName] = useState('');
   const projection = state.activeMatch?.projection;
@@ -46,6 +47,8 @@ export function LobbyScreen() {
   const assignablePlayers = getAssignablePlayers(projection);
   const rolesReady = hasRequiredRoleAssignments(projection);
   const currentPlayerId = state.activeMatch?.recipient.playerId;
+  const canManageMembers = canManageLobbyMembers(role, projection?.lifecycleState);
+  const canLeave = canLeaveLobby(role, currentPlayerId, projection?.lifecycleState);
   const onlineJoinCode =
     state.activeMatch?.runtimeKind === 'online_foundation'
       ? state.activeMatch.joinCode
@@ -340,20 +343,66 @@ export function LobbyScreen() {
       {projection ? (
         <Panel
           title="Players In Room"
-          subtitle="Everyone currently visible in this match room appears here."
+          subtitle="Check who’s here, who’s reconnecting, and who’s ready for the chase."
         >
           {projection.players.length === 0 ? (
             <Text style={styles.copy}>No players are visible yet.</Text>
           ) : null}
           {projection.players.map((player) => (
-            <View key={player.playerId} style={styles.row}>
-              <Text style={styles.label}>
-                {player.displayName}
-                {player.playerId === currentPlayerId ? ' (You)' : ''}
-              </Text>
-              <Text style={styles.value}>{player.role || 'role hidden'}</Text>
+            <View key={player.playerId} style={styles.memberRow}>
+              <View style={styles.memberDetails}>
+                <Text style={styles.label}>
+                  {player.displayName}
+                  {player.playerId === currentPlayerId ? ' (You)' : ''}
+                </Text>
+                <Text style={styles.memberConnection}>
+                  {player.connectionState === 'connected' ? 'Connected · ready to play' : 'Reconnecting · keeping your seat'}
+                </Text>
+              </View>
+              <View style={styles.memberActions}>
+                <Text style={styles.value}>{player.role || 'role hidden'}</Text>
+                {canRemoveLobbyPlayer(canManageMembers, player.playerId, currentPlayerId) ? (
+                  <AppButton
+                    label="Remove"
+                    tone="ghost"
+                    disabled={state.loadState === 'loading'}
+                    onPress={() => Alert.alert(
+                      'Remove this player?',
+                      `${player.displayName} will lose access to this match. They will need a different match code to join another game.`,
+                      [
+                        { text: 'Keep player', style: 'cancel' },
+                        { text: 'Remove player', style: 'destructive', onPress: () => {
+                          void submitCommand({ type: 'remove_match_player', payload: { playerId: player.playerId } });
+                        } }
+                      ]
+                    )}
+                  />
+                ) : null}
+              </View>
             </View>
           ))}
+          {canLeave ? (
+            <AppButton
+              label="Leave this match"
+              tone="ghost"
+              disabled={state.loadState === 'loading'}
+              onPress={() => Alert.alert(
+                'Leave this match?',
+                'Your seat will be released. You can join another game later with its match code.',
+                [
+                  { text: 'Stay in match', style: 'cancel' },
+                  { text: 'Leave match', style: 'destructive', onPress: () => {
+                    void (async () => {
+                      if (await submitCommand({ type: 'leave_match', payload: {} })) {
+                        await disconnectActiveMatch();
+                        router.replace('/');
+                      }
+                    })();
+                  } }
+                ]
+              )}
+            />
+          ) : null}
         </Panel>
       ) : null}
 
@@ -463,6 +512,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12
   },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingVertical: 10
+  },
+  memberDetails: { flex: 1, gap: 3 },
+  memberConnection: { color: colors.textSubtle, fontSize: 11 },
+  memberActions: { alignItems: 'flex-end', gap: 6 },
   label: {
     color: colors.text,
     fontSize: 13,

@@ -34,6 +34,11 @@ export function validateStateForCommand(
   }
 
   switch (command.type) {
+    case 'remove_match_player':
+    case 'leave_match':
+      return ['draft', 'lobby', 'content_import', 'role_assignment', 'rules_confirmation', 'map_setup'].includes(aggregate.lifecycleState)
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Players can only leave or be removed before gameplay starts.')];
     case 'join_match':
       return ['draft', 'lobby', 'role_assignment'].includes(aggregate.lifecycleState)
         ? []

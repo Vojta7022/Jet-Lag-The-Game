@@ -14,6 +14,7 @@ import { executeCommand } from '../../packages/engine/src/index.ts';
 import {
   createMatchSnapshot,
   EngineCommandGateway,
+  InMemorySupabaseTableClient,
   InMemoryOnlineAuthorityRepository,
   SupabaseOnlineAuthorityRepository
 } from '../../packages/transport/src/index.ts';
@@ -153,6 +154,20 @@ test('one authenticated user cannot bind multiple players in the same match', as
   assert.deepEqual(await store.findMembership('atomic-match', 'auth-player'), membership);
 });
 
+test('server membership removal revokes the player binding without deleting identity history', async () => {
+  const client = new InMemorySupabaseTableClient();
+  const repository = new SupabaseOnlineAuthorityRepository(client);
+  const membership: MatchMembershipRecord = {
+    matchId: 'atomic-match', authUserId: 'auth-player', playerId: 'player-one',
+    joinedAt: '2026-10-24T12:00:00.000Z', status: 'active'
+  };
+  await client.insert('match_memberships', [membership]);
+
+  await repository.removeMembership('atomic-match', 'player-one');
+
+  assert.equal((await repository.findMembership('atomic-match', 'auth-player'))?.status, 'removed');
+});
+
 test('Supabase authority repository uses the transactional RPC and server-owned membership table', async () => {
   const created = createMatch();
   const expectedResult: OnlineCommandCommitResult = {
@@ -172,6 +187,7 @@ test('Supabase authority repository uses the transactional RPC and server-owned 
     async insert(table, rows) {
       calls.push({ kind: 'insert', value: { table, rows } });
     },
+    async update() {},
     async upsert() { throw new Error('Membership identities must be immutable inserts.'); },
     async rpc<TResponse>(functionName, args) {
       calls.push({ kind: 'rpc', value: { functionName, args } });

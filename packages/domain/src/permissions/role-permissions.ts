@@ -22,6 +22,7 @@ function resolveActorRole(aggregate: MatchAggregate | undefined, actor: ActorRef
 
 const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'create_match',
+  'remove_match_player',
   'import_content_pack',
   'publish_content_pack',
   'assign_role',
@@ -43,6 +44,7 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
 
 const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'join_match',
+  'leave_match',
   'lock_hider_location',
   'set_hiding_zone',
   'set_final_hiding_spot',
@@ -57,6 +59,7 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
 
 const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'join_match',
+  'leave_match',
   'begin_question_prompt',
   'ask_question',
   'update_location',
@@ -68,7 +71,7 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'discard_card'
 ]);
 
-const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'send_chat_message']);
+const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);
 
 const SYSTEM_COMMANDS = new Set<DomainCommand['type']>([
   'create_match',

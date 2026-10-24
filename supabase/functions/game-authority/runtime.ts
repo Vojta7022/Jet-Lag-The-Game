@@ -52,7 +52,8 @@ export function createOnlineAuthorityDependencies(env: (name: string) => string 
     },
     memberships: {
       find: (matchId: string, authUserId: string) => authorityRepository.findMembership(matchId, authUserId),
-      bind: (record: Parameters<typeof authorityRepository.bindMembership>[0]) => authorityRepository.bindMembership(record)
+      bind: (record: Parameters<typeof authorityRepository.bindMembership>[0]) => authorityRepository.bindMembership(record),
+      removePlayer: (matchId: string, playerId: string) => authorityRepository.removeMembership(matchId, playerId)
     },
     matches: {
       async findByJoinCode(joinCode: string) {

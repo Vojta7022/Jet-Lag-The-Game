@@ -28,6 +28,13 @@ export class InMemorySupabaseTableClient implements SupabaseTableClient {
     this.tables.set(table, [...current, ...rows.map((row) => ({ ...(row as Record<string, unknown>) }))]);
   }
 
+  async update(table: string, filters: SupabaseTableFilters, values: Record<string, unknown>): Promise<void> {
+    const current = this.tables.get(table) ?? [];
+    this.tables.set(table, current.map((record) => matchesFilters(record, filters)
+      ? { ...record, ...values }
+      : record));
+  }
+
   async upsert(table: string, row: Record<string, unknown>, keyFields: string[]): Promise<void> {
     const current = this.tables.get(table) ?? [];
     const next = [...current];

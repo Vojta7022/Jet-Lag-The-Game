@@ -196,6 +196,24 @@ export function reduceMatchAggregate(
         }
       };
     }
+    case 'player_removed': {
+      const playerId = eventEnvelope.event.payload.playerId;
+      const players = { ...base.players };
+      const roleAssignments = { ...base.roleAssignments };
+      delete players[playerId];
+      delete roleAssignments[playerId];
+      return {
+        ...base,
+        lifecycleState: eventEnvelope.event.payload.lifecycleState,
+        players,
+        roleAssignments,
+        teams: Object.fromEntries(Object.entries(base.teams).map(([teamId, team]) => [
+          teamId,
+          { ...team, memberPlayerIds: team.memberPlayerIds.filter((memberId) => memberId !== playerId) }
+        ])),
+        hiderRotationOrder: base.hiderRotationOrder?.filter((memberId) => memberId !== playerId)
+      };
+    }
     case 'content_import_started':
       return {
         ...base,

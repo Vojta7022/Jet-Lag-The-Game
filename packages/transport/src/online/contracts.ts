@@ -61,6 +61,7 @@ export interface OnlineAuthorityRepository {
   findIdempotentResult(matchId: string, idempotencyKey: string, commandId: string): Promise<CommandSubmissionResult | undefined>;
   findMembership(matchId: string, authUserId: string): Promise<MatchMembershipRecord | undefined>;
   bindMembership(record: MatchMembershipRecord): Promise<void>;
+  removeMembership(matchId: string, playerId: string): Promise<void>;
 }
 
 export interface OnlineRepositoryBundle {
@@ -81,6 +82,7 @@ export interface SupabaseRequestAuthContext {
 
 export interface SupabaseTableClient {
   insert(table: string, rows: unknown[]): Promise<void>;
+  update(table: string, filters: SupabaseTableFilters, values: Record<string, unknown>): Promise<void>;
   upsert(table: string, row: Record<string, unknown>, keyFields: string[]): Promise<void>;
   rpc<TResponse>(functionName: string, args: Record<string, unknown>): Promise<TResponse>;
   selectMany<TRecord>(table: string, filters?: SupabaseTableFilters): Promise<TRecord[]>;

@@ -37,6 +37,7 @@
 - `supabase/functions/game-authority/index.ts` — authenticated HTTP boundary for create/join/command/snapshot/reconnect operations.
 - `supabase/functions/game-authority/runtime.ts` — construct the shared engine runtime from server credentials and the configured default content pack.
 - `supabase/migrations/202610240001_server_authority.sql` — user-to-player match membership, command idempotency, atomic revision commit RPC, and restricted client policies.
+- `supabase/migrations/202610240003_atomic_membership_removal.sql` — atomically revoke removed players when the removal event commits.
 - `packages/shared-types/src/transport/online.ts` — request/response contracts for authenticated membership and authority responses.
 - `packages/transport/src/online/edge-function-service.ts` — mobile `OnlineTransportService` implementation over the authenticated Edge Function.
 - `packages/transport/src/online/supabase-transport-adapter.ts` — keep the transport-facing adapter while removing the client-runtime service path for configured cloud play.
@@ -172,9 +173,9 @@ const response = await fetch(`${projectUrl}/functions/v1/game-authority`, {
 - Consumes: authenticated membership rows and server-projected lobby roster from Tasks 1–3.
 - Produces: host-only pregame remove-player action; participant leave action before start; reconnect path that restores the same player identity; every action is a server-validated command.
 
-- [ ] **Step 1: Inspect existing lobby command tests** and add failing cases for host removal, non-host removal denial, post-start removal denial, member self-leave before start, and stale membership rejection.
-- [ ] **Step 2: Run the focused tests** and record which cases current command/event model lacks.
-- [ ] **Step 3: Add the smallest domain command/event** needed to remove a player and clean team/role membership atomically; reject removal after match start and removal of the host while the match is active.
+- [x] **Step 1: Inspect existing lobby command tests** and add failing cases for host removal, non-host removal denial, post-start removal denial, member self-leave before start, and stale membership rejection.
+- [x] **Step 2: Run the focused tests** and record which cases current command/event model lacks.
+- [x] **Step 3: Add the smallest domain command/event** needed to remove a player and clean team/role membership atomically; reject removal after match start and removal of the host while the match is active.
 
 ```ts
 {
@@ -183,8 +184,8 @@ const response = await fetch(`${projectUrl}/functions/v1/game-authority`, {
 }
 ```
 
-- [ ] **Step 4: Add lobby controls** with a confirmation step for removal, visible join status, and reconnect messaging; disable mutation controls for non-host players.
-- [ ] **Step 5: Test lobby behavior through the online adapter** and run related engine/mobile tests; commit as `feat: add online lobby membership controls`.
+- [x] **Step 4: Add lobby controls** with a confirmation step for removal, visible join status, and reconnect messaging; disable mutation controls for non-host players.
+- [x] **Step 5: Test lobby behavior through the online adapter** and run related engine/mobile tests; commit as `feat: add online lobby membership controls`.
 
 ## Task 5: Lock down deployment and verification for the authority foundation
 

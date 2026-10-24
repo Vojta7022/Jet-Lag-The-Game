@@ -47,6 +47,19 @@ export class SupabaseRestTableClient implements SupabaseTableClient {
     });
   }
 
+  async update(table: string, filters: SupabaseTableFilters, values: Record<string, unknown>): Promise<void> {
+    const params = new URLSearchParams();
+    for (const [field, value] of Object.entries(filters)) {
+      if (value !== undefined) params.set(field, `eq.${String(value)}`);
+    }
+    await this.request(table, {
+      method: 'PATCH',
+      query: params,
+      body: JSON.stringify(values),
+      headers: { Prefer: 'return=minimal' }
+    });
+  }
+
   async upsert(table: string, row: Record<string, unknown>, keyFields: string[]): Promise<void> {
     const params = new URLSearchParams();
     if (keyFields.length > 0) {
@@ -92,7 +105,7 @@ export class SupabaseRestTableClient implements SupabaseTableClient {
   private async request(
     table: string,
     options: {
-      method: 'GET' | 'POST';
+      method: 'GET' | 'POST' | 'PATCH';
       query?: URLSearchParams;
       body?: string;
       headers?: Record<string, string>;

@@ -57,6 +57,13 @@ function dependencies() {
           throw Object.assign(new Error('identity is already bound'), { code: 'PLAYER_ALREADY_JOINED' });
         }
         memberships.set(key, record);
+      },
+      async removePlayer(matchId, playerId) {
+        for (const [key, membership] of memberships) {
+          if (membership.matchId === matchId && membership.playerId === playerId && membership.status === 'active') {
+            memberships.set(key, { ...membership, status: 'removed' });
+          }
+        }
       }
     },
     matches: {
@@ -118,6 +125,27 @@ test('joining with a second Auth user binds only that user to the chosen player'
 
   assert.equal(response.status, 200);
   assert.equal(calls[0]?.session.authUserId, 'auth-user-2');
+  assert.equal(memberships.get('m1:auth-user-2')?.playerId, 'seeker-1');
+});
+
+test('reconnect reuses the authenticated player binding and rejects changing player identity', async () => {
+  const { handler, calls, memberships } = dependencies();
+  const joinBody = {
+    operation: 'join_match', joinCode: 'AB12CD', commandId: 'join-retry',
+    occurredAt: '2026-10-24T12:01:00.000Z', payload: { playerId: 'seeker-1', displayName: 'Seeker' }
+  };
+  const first = await handler(request(joinBody, 'second-token'));
+  const reconnect = await handler(request({ ...joinBody, commandId: 'reconnect-command' }, 'second-token'));
+  const changedPlayer = await handler(request({
+    ...joinBody, payload: { playerId: 'different-player', displayName: 'Seeker' }
+  }, 'second-token'));
+
+  assert.equal(first.status, 200);
+  assert.equal(reconnect.status, 200);
+  assert.equal((await reconnect.json()).result.accepted, true);
+  assert.equal(changedPlayer.status, 409);
+  assert.equal((await changedPlayer.json()).code, 'PLAYER_ALREADY_JOINED');
+  assert.equal(calls.filter((call) => call.operation === 'command').length, 1);
   assert.equal(memberships.get('m1:auth-user-2')?.playerId, 'seeker-1');
 });
 
@@ -185,7 +213,14 @@ test('the handler reads a server-built projection and denies non-members without
     auth: { async getUser(token) { return token === 'host-token' ? { id: 'auth-host' } : token === 'guest-token' ? { id: 'auth-guest' } : undefined; } },
     memberships: {
       async find(matchId, authUserId) { return memberships.get(`${matchId}:${authUserId}`); },
-      async bind(record) { memberships.set(`${record.matchId}:${record.authUserId}`, record); }
+      async bind(record) { memberships.set(`${record.matchId}:${record.authUserId}`, record); },
+      async removePlayer(matchId, playerId) {
+        for (const [key, membership] of memberships) {
+          if (membership.matchId === matchId && membership.playerId === playerId && membership.status === 'active') {
+            memberships.set(key, { ...membership, status: 'removed' });
+          }
+        }
+      }
     },
     matches: { async findByJoinCode() { return undefined; } },
     service: runtime,
@@ -242,12 +277,12 @@ test('two authenticated phone adapters create and join online and receive separa
     contentPacks: [contentPack], repositories, authorityRepository: authority,
     realtimeFanout: new MockOnlineRealtimeFanout()
   });
-  const memberships = new Map<string, MatchMembershipRecord>();
   const handler = createGameAuthorityHandler({
     auth: { async getUser(token) { return token === 'host-jwt' ? { id: 'auth-host' } : token === 'seeker-jwt' ? { id: 'auth-seeker' } : undefined; } },
     memberships: {
-      async find(matchId, authUserId) { return memberships.get(`${matchId}:${authUserId}`); },
-      async bind(record) { memberships.set(`${record.matchId}:${record.authUserId}`, record); }
+      find: (matchId, authUserId) => authority.findMembership(matchId, authUserId),
+      bind: (record) => authority.bindMembership(record),
+      removePlayer: (matchId, playerId) => authority.removeMembership(matchId, playerId)
     },
     matches: {
       async findByJoinCode(joinCode) { return (await repositories.matches.getByJoinCode(joinCode))?.matchId; },
@@ -288,7 +323,7 @@ test('two authenticated phone adapters create and join online and receive separa
   });
   const joined = await seekerTransport.submit(makeEnvelope('join-request-placeholder', {
     actorId: 'auth-seeker', playerId: 'seeker-1', role: 'spectator'
-  }, { type: 'join_match', payload: { playerId: 'seeker-1', displayName: 'Seeker' } }, 1));
+  }, { type: 'join_match', payload: { playerId: 'seeker-1', displayName: 'Seeker' } }, 2));
   const seekerSync = await seekerTransport.requestSnapshot({ matchId: joined.matchId });
 
   assert.equal(created.accepted, true);
@@ -300,4 +335,13 @@ test('two authenticated phone adapters create and join online and receive separa
   assert.equal(seekerSync.projectionDelivery.recipient.playerId, 'seeker-1');
   assert.equal('aggregate' in hostSync.projectionDelivery.projection, false);
   assert.equal('aggregate' in seekerSync.projectionDelivery.projection, false);
+
+  const removed = await hostTransport.submit(makeEnvelope(matchId, {
+    actorId: 'auth-host', playerId: 'host-1', role: 'host'
+  }, { type: 'remove_match_player', payload: { playerId: 'seeker-1' } }, 2));
+  assert.equal(removed.accepted, true, JSON.stringify(removed.rejection));
+  assert.equal((await authority.findMembership(matchId, 'auth-seeker'))?.status, 'removed');
+  await assert.rejects(seekerTransport.requestSnapshot({ matchId }), (error: unknown) =>
+    error instanceof Error && 'code' in error && error.code === 'MATCH_MEMBERSHIP_REQUIRED'
+  );
 });

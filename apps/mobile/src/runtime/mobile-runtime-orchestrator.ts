@@ -291,6 +291,9 @@ export class MobileRuntimeOrchestrator {
     },
     commands: DomainCommand[]
   ): Promise<SyncEnvelope> {
+    const snapshotBeforeLeave = commands.some((command) => command.type === 'leave_match')
+      ? await this.refresh(connection)
+      : undefined;
     for (const command of commands) {
       const result = await connection.transport.submit(
         this.makeEnvelope(connection.matchId, {
@@ -305,7 +308,7 @@ export class MobileRuntimeOrchestrator {
       }
     }
 
-    return this.refresh(connection);
+    return snapshotBeforeLeave ?? this.refresh(connection);
   }
 
   async disconnect(connection: RuntimeConnection | undefined): Promise<void> {

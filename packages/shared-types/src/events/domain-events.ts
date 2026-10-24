@@ -61,6 +61,7 @@ export interface DomainEventEnvelope<TEvent extends DomainEvent = DomainEvent> {
 export type DomainEvent =
   | MatchCreatedEvent
   | PlayerJoinedEvent
+  | PlayerRemovedEvent
   | ContentImportStartedEvent
   | ContentPackPublishedEvent
   | RoleAssignedEvent
@@ -114,6 +115,14 @@ export interface PlayerJoinedEvent {
   type: 'player_joined';
   payload: {
     player: PlayerModel;
+    lifecycleState: MatchLifecycleState;
+  };
+}
+
+export interface PlayerRemovedEvent {
+  type: 'player_removed';
+  payload: {
+    playerId: string;
     lifecycleState: MatchLifecycleState;
   };
 }

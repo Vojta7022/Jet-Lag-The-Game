@@ -421,6 +421,22 @@ function eventsForCommand(
           }
         })
       ];
+    case 'remove_match_player':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'player_removed',
+        payload: {
+          playerId: envelope.command.payload.playerId,
+          lifecycleState: aggregate!.lifecycleState
+        }
+      })];
+    case 'leave_match':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'player_removed',
+        payload: {
+          playerId: envelope.actor.playerId!,
+          lifecycleState: aggregate!.lifecycleState
+        }
+      })];
     case 'import_content_pack':
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'authority', {

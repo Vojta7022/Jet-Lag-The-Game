@@ -109,6 +109,25 @@ test('supabase rest table client rejects RPC path injection', async () => {
   await assert.rejects(client.rpc('commit_match_revision/extra', {}), { code: 'SUPABASE_RPC_NAME_INVALID' });
 });
 
+test('supabase rest table client updates a scoped server-owned row', async () => {
+  const originalFetch = globalThis.fetch;
+  let captured: { url: string; method: string; body?: string } | undefined;
+  globalThis.fetch = (async (input, init) => {
+    captured = { url: String(input), method: init?.method ?? 'GET', body: String(init?.body ?? '') };
+    return new Response(null, { status: 204 });
+  }) as typeof fetch;
+  try {
+    const client = new SupabaseRestTableClient({ baseUrl: 'https://project.supabase.co', anonKey: 'service-role-key' });
+    await client.update('match_memberships', { matchId: 'm1', authUserId: 'u1', status: 'active' }, { status: 'removed' });
+    assert.equal(captured?.method, 'PATCH');
+    assert.match(captured?.url ?? '', /matchId=eq\.m1/);
+    assert.match(captured?.url ?? '', /authUserId=eq\.u1/);
+    assert.deepEqual(JSON.parse(captured?.body ?? '{}'), { status: 'removed' });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('supabase attachment storage client uploads and builds authenticated object access', async () => {
   const originalFetch = globalThis.fetch;
   const calls: Array<{ url: string; method: string; headers: Headers }> = [];

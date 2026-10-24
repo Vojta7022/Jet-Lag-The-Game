@@ -430,6 +430,26 @@ export function validateCommandEnvelope(
   }
 
   switch (envelope.command.type) {
+    case 'remove_match_player': {
+      const playerId = envelope.command.payload.playerId;
+      if (!aggregate.players[playerId]) {
+        return [error(envelope.command.type, 'PLAYER_NOT_FOUND', 'Cannot remove a player who is not in this match.')];
+      }
+      if (playerId === aggregate.createdByPlayerId) {
+        return [error(envelope.command.type, 'HOST_CANNOT_BE_REMOVED', 'The match host cannot be removed from their own match.')];
+      }
+      return [];
+    }
+    case 'leave_match': {
+      const playerId = envelope.actor.playerId;
+      if (!playerId || !aggregate.players[playerId]) {
+        return [error(envelope.command.type, 'MATCH_MEMBERSHIP_REQUIRED', 'A joined player identity is required to leave this match.')];
+      }
+      if (playerId === aggregate.createdByPlayerId) {
+        return [error(envelope.command.type, 'HOST_CANNOT_LEAVE', 'The match host cannot leave before transferring or closing the room.')];
+      }
+      return [];
+    }
     case 'join_match': {
       if (aggregate.players[envelope.command.payload.playerId]) {
         return [error(envelope.command.type, 'PLAYER_EXISTS', 'This player is already part of the match.')];
