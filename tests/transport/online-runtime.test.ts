@@ -730,6 +730,38 @@ test('online runtime automatically completes overdue cooldown before serving the
   assert.equal(cooledSnapshot.projectionDelivery.projection.seekPhaseSubstate, 'ready');
 });
 
+test('online runtime applies the printed photo response deadline before publishing the next snapshot', async () => {
+  const { contentPack, runtime } = createOnlineHarness();
+  const setup = await setupOnlineMatchToHidePhase(runtime, contentPack.packId, 'online-photo-deadline');
+  await submitOnlineSequence(runtime, [
+    { session: setup.hiderSession, request: makeOnlineCommandRequest(setup.hiderSession, setup.matchId, 11, {
+      type: 'lock_hider_location', payload: { latitude: 50.08, longitude: 14.43, accuracyMeters: 5 }
+    }) },
+    { session: setup.hostSession, request: makeOnlineCommandRequest(setup.hostSession, setup.matchId, 12, {
+      type: 'end_hide_phase', payload: {}
+    }) },
+    { session: setup.seekerSession, request: makeOnlineCommandRequest(setup.seekerSession, setup.matchId, 13, {
+      type: 'begin_question_prompt', payload: {}
+    }) },
+    { session: setup.seekerSession, request: makeOnlineCommandRequest(setup.seekerSession, setup.matchId, 14, {
+      type: 'ask_question', payload: {
+        questionInstanceId: 'question:online-photo-deadline',
+        templateId: 'photos-a-tree',
+        targetTeamId: 'team-hider'
+      }
+    }) }
+  ]);
+
+  const hostSnapshot = await runtime.requestAuthenticatedSnapshot(setup.hostSession, {
+    matchId: setup.matchId,
+    requestedScope: 'host_admin'
+  });
+  const question = hostSnapshot.projectionDelivery.projection.visibleQuestions.at(-1);
+  const timer = hostSnapshot.projectionDelivery.projection.visibleTimers.find((candidate) => candidate.kind === 'question');
+  assert.equal(question?.lateResponseStartedAt, '2026-01-01T00:10:14.000Z');
+  assert.equal(timer?.status, 'completed');
+});
+
 test('online runtime rebuilds create_map_region projections from authoritative state when projection cache persistence fails', async () => {
   const tableClient = new InMemorySupabaseTableClient();
   const contentPack = createOnlineHarness().contentPack;

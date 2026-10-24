@@ -155,6 +155,8 @@ export interface QuestionInstanceModel {
   status: QuestionInstanceStatus;
   answer?: Record<string, unknown>;
   askedAt: string;
+  lateResponseStartedAt?: string;
+  lateResponseEndedAt?: string;
   resolvedAt?: string;
   cardRewardStatus?: 'pending' | 'complete';
   automaticResolution?: AutomaticQuestionResolutionModel;

@@ -3,6 +3,7 @@ import type {
   ArchiveMatchCommand,
   ApplyConstraintCommand,
   AskQuestionCommand,
+  ExpireQuestionResponseCommand,
   AssignRoleCommand,
   BeginQuestionPromptCommand,
   CompleteCooldownCommand,
@@ -80,6 +81,7 @@ export type DomainEvent =
   | HidePhaseEndedEvent
   | QuestionPromptOpenedEvent
   | QuestionAskedEvent
+  | QuestionResponseExpiredEvent
   | QuestionAnsweredEvent
   | QuestionVetoedEvent
   | QuestionRandomizedEvent
@@ -279,6 +281,13 @@ export interface QuestionAskedEvent {
     lifecycleState: MatchLifecycleState;
     seekPhaseSubstate: SeekPhaseSubstate;
     questionTimer?: TimerModel;
+  };
+}
+
+export interface QuestionResponseExpiredEvent {
+  type: 'question_response_expired';
+  payload: ExpireQuestionResponseCommand['payload'] & {
+    lateResponseStartedAt: string;
   };
 }
 

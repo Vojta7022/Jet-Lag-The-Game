@@ -127,6 +127,8 @@ export interface VisibleQuestionProjection {
   targetTeamId?: string;
   answer?: Record<string, unknown>;
   askedAt?: string;
+  lateResponseStartedAt?: string;
+  lateResponseEndedAt?: string;
   resolvedAt?: string;
   automaticResolution?: {
     resolverVersion: string;

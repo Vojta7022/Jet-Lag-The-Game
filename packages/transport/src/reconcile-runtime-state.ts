@@ -81,6 +81,23 @@ function nextAutomaticCommand(aggregate: MatchAggregate, contentPack: ContentPac
     };
   }
 
+  const activeQuestion = aggregate.activeQuestionInstanceId
+    ? aggregate.questionInstances[aggregate.activeQuestionInstanceId]
+    : undefined;
+  const responseTimer = activeQuestion
+    ? Object.values(aggregate.timers).find((timer) => timer.kind === 'question' && timer.ownerRef === activeQuestion.questionInstanceId)
+    : undefined;
+  if (
+    (aggregate.lifecycleState === 'seek_phase' || aggregate.lifecycleState === 'endgame') &&
+    aggregate.seekPhaseSubstate === 'awaiting_question_answer' &&
+    activeQuestion?.status === 'awaiting_answer' &&
+    !activeQuestion.lateResponseStartedAt &&
+    responseTimer?.status === 'running' &&
+    timerExpired(responseTimer.startedAt, responseTimer.durationSeconds, nowIso)
+  ) {
+    return { type: 'expire_question_response', payload: { questionInstanceId: activeQuestion.questionInstanceId } };
+  }
+
   return undefined;
 }
 

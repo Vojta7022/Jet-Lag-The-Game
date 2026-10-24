@@ -151,7 +151,11 @@ export function CardsScreen() {
   const pendingQuestionReward = projection?.pendingQuestionReward;
   const latestResolvedQuestion = [...(projection?.visibleQuestions ?? [])]
     .reverse()
-    .find((question) => question.status === 'resolved' && !question.cardRewardStatus);
+    .find((question) => question.status === 'resolved');
+  const latestVisibleQuestion = projection?.visibleQuestions.at(-1);
+  const latestLateResolvedQuestion = latestVisibleQuestion?.status === 'resolved' && latestVisibleQuestion.lateResponseStartedAt
+    ? latestVisibleQuestion
+    : undefined;
   const activeQuestionCategory = findQuestionCategory(
     defaultContentPack,
     activeQuestion?.categoryId
@@ -447,7 +451,16 @@ export function CardsScreen() {
         />
       ) : null}
 
-      {activeMatch && latestResolvedQuestion && !pendingQuestionReward && viewerRole === 'hider' ? (
+      {activeMatch && latestLateResolvedQuestion && viewerRole === 'hider' ? (
+        <StateBanner
+          tone="warning"
+          title="Late answer — no card reward"
+          detail="The answer arrived after its response timer. The map result still counts, but the printed rules do not award cards for a late answer."
+        />
+      ) : null}
+
+      {activeMatch && latestResolvedQuestion && !latestResolvedQuestion.lateResponseStartedAt &&
+      !latestResolvedQuestion.cardRewardStatus && !pendingQuestionReward && viewerRole === 'hider' ? (
         <Panel title="Your clue reward" subtitle="The answer is locked in. Draw the printed cards, then choose what to keep." tone="accent">
           <Text style={styles.copy}>The seekers have their map update. Claim your card reward to unlock the next question.</Text>
           <AppButton

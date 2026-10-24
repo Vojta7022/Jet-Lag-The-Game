@@ -660,7 +660,7 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'QUESTION_FLOW_LOCKED', 'A question is already active.')];
       }
       if (aggregate.pendingQuestionReward || Object.values(aggregate.questionInstances).some(
-        (question) => question.status === 'resolved' && question.cardRewardStatus !== 'complete'
+        (question) => question.status === 'resolved' && !question.lateResponseStartedAt && question.cardRewardStatus !== 'complete'
       )) {
         return [error(envelope.command.type, 'QUESTION_REWARD_REQUIRED', 'Finish the hider’s card draw and pick reward before asking another question.')];
       }
@@ -712,6 +712,23 @@ export function validateCommandEnvelope(
 
       return [];
     }
+    case 'expire_question_response': {
+      if (envelope.actor.role !== 'system') {
+        return [error(envelope.command.type, 'SYSTEM_ONLY', 'Question response timeouts are applied by the match authority.')];
+      }
+      const question = aggregate.questionInstances[envelope.command.payload.questionInstanceId];
+      const timer = Object.values(aggregate.timers).find(
+        (candidate) => candidate.kind === 'question' && candidate.ownerRef === question?.questionInstanceId
+      );
+      if (!question || question.questionInstanceId !== aggregate.activeQuestionInstanceId || question.status !== 'awaiting_answer') {
+        return [error(envelope.command.type, 'QUESTION_NOT_ACTIVE', 'Only the active unanswered question can time out.')];
+      }
+      if (question.lateResponseStartedAt || !timer || timer.status !== 'running' ||
+        Date.parse(envelope.occurredAt) < Date.parse(timer.startedAt) + timer.durationSeconds * 1000) {
+        return [error(envelope.command.type, 'QUESTION_RESPONSE_NOT_EXPIRED', 'The response timer has not expired.')];
+      }
+      return [];
+    }
     case 'deal_question_reward': {
       if (aggregate.pendingQuestionReward) {
         return [error(envelope.command.type, 'QUESTION_REWARD_PENDING', 'The current question reward must be picked first.')];
@@ -719,6 +736,9 @@ export function validateCommandEnvelope(
       const question = aggregate.questionInstances[envelope.command.payload.questionInstanceId];
       if (!question || question.status !== 'resolved') {
         return [error(envelope.command.type, 'QUESTION_NOT_RESOLVED', 'Only a resolved Investigation Book question can pay its card reward.')];
+      }
+      if (question.lateResponseStartedAt) {
+        return [error(envelope.command.type, 'LATE_ANSWER_NO_REWARD', 'Late answers do not earn a hider card reward under the base rules.')];
       }
       if (question.cardRewardStatus) {
         return [error(envelope.command.type, 'QUESTION_REWARD_ALREADY_DEALT', 'This question already has a card reward in progress or completed.')];
@@ -1112,6 +1132,9 @@ export function validateCommandEnvelope(
       if (resolutionPlan.kind === 'veto_question' || resolutionPlan.kind === 'randomize_question') {
         if (!aggregate.activeQuestionInstanceId || !aggregate.questionInstances[aggregate.activeQuestionInstanceId]) {
           return [error(envelope.command.type, 'QUESTION_NOT_ACTIVE', 'This card can only be played while a question is awaiting an answer.')];
+        }
+        if (aggregate.questionInstances[aggregate.activeQuestionInstanceId]!.lateResponseStartedAt) {
+          return [error(envelope.command.type, 'RESPONSE_WINDOW_EXPIRED', 'Veto and Randomize must be played before the response timer expires.')];
         }
         if (aggregate.seekPhaseSubstate !== 'awaiting_question_answer') {
           return [error(envelope.command.type, 'QUESTION_NOT_ANSWERABLE', 'This card can only be played during the question response window.')];

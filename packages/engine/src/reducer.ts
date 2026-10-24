@@ -454,6 +454,25 @@ export function reduceMatchAggregate(
             }
           : base.timers
       };
+    case 'question_response_expired': {
+      const question = base.questionInstances[eventEnvelope.event.payload.questionInstanceId];
+      if (!question) return base;
+      return {
+        ...base,
+        questionInstances: {
+          ...base.questionInstances,
+          [question.questionInstanceId]: {
+            ...question,
+            lateResponseStartedAt: eventEnvelope.event.payload.lateResponseStartedAt
+          }
+        },
+        timers: mapTimers(base.timers, (timer) =>
+          timer.kind === 'question' && timer.ownerRef === question.questionInstanceId
+            ? { ...timer, status: 'completed', remainingSeconds: 0 }
+            : timer
+        )
+      };
+    }
     case 'question_answered': {
       const questionInstanceId = eventEnvelope.event.payload.questionInstanceId;
       const question = base.questionInstances[questionInstanceId];
@@ -467,7 +486,8 @@ export function reduceMatchAggregate(
             ...question,
             status: 'applying_constraints',
             answer: eventEnvelope.event.payload.answer,
-            automaticResolution: eventEnvelope.event.payload.automaticResolution
+            automaticResolution: eventEnvelope.event.payload.automaticResolution,
+            lateResponseEndedAt: question?.lateResponseStartedAt ? eventEnvelope.occurredAt : undefined
           }
         },
         timers: mapTimers(base.timers, (timer) =>
@@ -533,6 +553,7 @@ export function reduceMatchAggregate(
             status: 'resolved',
             answer: eventEnvelope.event.payload.answer,
             automaticResolution: eventEnvelope.event.payload.automaticResolution,
+            lateResponseEndedAt: question?.lateResponseStartedAt ? eventEnvelope.occurredAt : undefined,
             resolvedAt: eventEnvelope.occurredAt
           }
         },

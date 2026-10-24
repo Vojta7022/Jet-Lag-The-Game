@@ -96,6 +96,79 @@ test('endgame permits a full question cycle and stays in endgame after map resol
   assert.equal(afterCooldown.seekPhaseSubstate, 'ready');
 });
 
+test('late question answers pause scored hiding time and do not earn a card reward', () => {
+  const contentPack = loadEngineTestContentPack();
+  contentPack.rulesets[0]!.questionPolicies = { cooldownSeconds: 0 };
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
+  }, { type: 'begin_question_prompt', payload: {} }, 401), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
+  }, {
+    type: 'ask_question',
+    payload: { questionInstanceId: 'question:late-answer', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider' }
+  }, 402), contentPack).aggregate;
+  const responseTimer = Object.values(aggregate.timers).find((timer) => timer.kind === 'question');
+  const hideTimerBefore = Object.values(aggregate.timers).find((timer) => timer.kind === 'hide');
+  assert.ok(responseTimer);
+  assert.ok(hideTimerBefore);
+
+  const lateAt = new Date(Date.parse(responseTimer.startedAt) + responseTimer.durationSeconds * 1000 + 1).toISOString();
+  const late = reconcileRuntimeState({ aggregate, contentPack, occurredAt: lateAt }).aggregate;
+  assert.equal(late.questionInstances['question:late-answer']?.lateResponseStartedAt,
+    new Date(Date.parse(responseTimer.startedAt) + responseTimer.durationSeconds * 1000).toISOString());
+  assert.equal(late.timers[hideTimerBefore.timerId]?.status, hideTimerBefore.status);
+
+  const answered = executeCommand(late, makeEnvelope(late.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, {
+    type: 'answer_question',
+    payload: { questionInstanceId: 'question:late-answer', answer: { value: 'yes' } }
+  }, 703), contentPack).aggregate;
+  assert.equal(answered.timers[hideTimerBefore.timerId]?.status, hideTimerBefore.status);
+  assert.equal(answered.questionInstances['question:late-answer']?.lateResponseEndedAt,
+    new Date(Date.UTC(2026, 0, 1, 0, 11, 43)).toISOString());
+  const resolved = executeCommand(answered, makeEnvelope(answered.matchId, {
+    actorId: 'host-1', playerId: 'host-1', role: 'host'
+  }, {
+    type: 'apply_constraint',
+    payload: { questionInstanceId: 'question:late-answer', constraintId: 'nearest-feature-match', metadata: { answer: 'yes' } }
+  }, 704), contentPack).aggregate;
+  assert.throws(() => executeCommand(answered, makeEnvelope(answered.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, {
+    type: 'deal_question_reward',
+    payload: { questionInstanceId: 'question:late-answer' }
+  }, 705), contentPack), /handled after the question and map resolution/);
+  assert.throws(() => executeCommand(resolved, makeEnvelope(resolved.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, {
+    type: 'deal_question_reward',
+    payload: { questionInstanceId: 'question:late-answer' }
+  }, 706), contentPack), /Late answers/);
+  resolved.lifecycleState = 'endgame';
+  resolved.hiddenState.endgame = {
+    startedAt: new Date(Date.UTC(2026, 0, 1, 0, 11, 44)).toISOString(),
+    triggeredByPlayerId: 'seeker-1',
+    finalHidingSpot: {
+      latitude: 50.1,
+      longitude: 14.1,
+      publiclyAccessible: true,
+      within3mOfMarkedPath: true,
+      selectedAt: new Date(Date.UTC(2026, 0, 1, 0, 11, 44)).toISOString(),
+      selectedByPlayerId: 'hider-1'
+    }
+  };
+  const found = executeCommand(resolved, makeEnvelope(resolved.matchId, {
+    actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
+  }, {
+    type: 'confirm_hider_found',
+    payload: { latitude: 50.1, longitude: 14.1, visuallyIdentified: true }
+  }, 706), contentPack).aggregate;
+  assert.equal(found.roundResults?.at(-1)?.survivalSeconds, 695);
+});
+
 test('an impossible endgame photo is a valid answer and the hider can still draw its reward', () => {
   const { aggregate: initial, contentPack } = setupMatchToEndgame();
   contentPack.rulesets[0]!.questionPolicies = { cooldownSeconds: 0 };

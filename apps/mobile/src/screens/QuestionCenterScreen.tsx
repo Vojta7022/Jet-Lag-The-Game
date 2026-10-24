@@ -710,6 +710,22 @@ export function QuestionCenterScreen() {
         />
       ) : null}
 
+      {activeQuestion?.lateResponseStartedAt && !activeQuestion.lateResponseEndedAt ? (
+        <StateBanner
+          tone="warning"
+          title="Answer overdue · hiding clock paused"
+          detail="The response time ran out. Answer this clue to resume your hiding time; this late answer will not earn card draws."
+        />
+      ) : null}
+
+      {latestQuestion?.status === 'resolved' && latestQuestion.lateResponseStartedAt ? (
+        <StateBanner
+          tone="warning"
+          title="Late answer · no card reward"
+          detail="The answer still updates the investigation map, but the base rules award no hider cards when the response time expires."
+        />
+      ) : null}
+
       {activeQuestion?.randomizedFromQuestionInstanceId ? (
         <StateBanner
           tone="info"

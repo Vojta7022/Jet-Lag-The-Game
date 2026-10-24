@@ -137,6 +137,14 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 
 ## Active: rules-faithful game and reference-map workflows
 
+### Current rules slice: late question answers
+
+- [x] Add authority-side expiration when a question's printed response timer expires.
+- [x] Record the late-answer interval, subtract it from scored hider time, and withhold the card reward.
+- [x] Show the hider that hiding time is paused while the overdue answer remains open.
+- [x] Timestamp online commands on the game authority so phone clocks cannot backdate late answers.
+- [x] Verify the printed 10-minute small-game photo deadline through online snapshot reconciliation, exact late interval score accounting, no reward, server-authoritative timestamps, and the full suite/typecheck. Full verification: 269 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
+
 ### Current implementation slice: scanned hand-expansion power-up
 
 - [x] Add an engine integration test for Draw 1, Expand Maximum Hand Size by 1: draw one, increase hand capacity for the rest of the round, and reset the capacity on the next round.
@@ -208,5 +216,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - The real-runtime single-device referee test now runs a printed Radar question resolved from device fixes, the map deduction, and the printed Draw 2 Pick 1 reward before endgame. Scoring is checked against elapsed time from match start through found, with the rule-timed hide phase as a minimum.
 - Resolved Investigation Book questions now deal the printed number of cards into a private hider selection pool; repeated questions create separate draw/pick sets. Hiders choose the printed number from each set, unchosen cards go to discard, the six-card hand limit is enforced, and another question stays locked until the reward is completed. Radar Draw 2 Pick 1 is covered through the scored single-device round; seeker projections do not expose the private pool.
 - The scanned Draw 1, Expand 1 power-up is now imported as typed authoritative data. Playing it draws one card, raises the hider limit for the remainder of the round without interrupting an active answer window, and the raised limit is enforced for later draws/rewards, visible only to hiders/referee, and reset at round rotation.
+- Question response timers now trigger an authority timeout at the exact printed deadline. The hider may still submit an answer; the result updates the map, scored hiding time excludes the late interval, and no card reward is issued. Veto/Randomize are blocked after their response window. The hider sees an overdue/pause message. [base rulebook scan p. 5; `tests/engine/endgame-questions.test.ts`; `tests/transport/online-runtime.test.ts`]
+- Online game commands receive their timestamps from the authority server, preventing a modified or misconfigured phone clock from backdating a late answer. [tests/transport/online-edge-function.test.ts]
 - The web map fallback draws a bounded set of OSM tiles with attribution and now pans/zooms on touch with visible zoom/reset controls. It does not prefetch or offer offline tile downloads.
 - Visual comparison against the live reference confirms the app map shares the city-boundary, station-zone, and street-map concepts but is not visually identical: the reference is a Leaflet map workbench with editable layers and question controls; this app embeds a game-first map in its match workflow.

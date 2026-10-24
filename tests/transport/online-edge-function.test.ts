@@ -17,7 +17,7 @@ import {
 } from '../../packages/transport/src/index.ts';
 import { EdgeFunctionOnlineService, MockOnlineRealtimeFanout, SupabaseOnlineTransportAdapter } from '../../packages/transport/src/index.ts';
 
-function dependencies() {
+function dependencies(now?: () => string) {
   const calls: Array<{ operation: string; session: OnlineAuthSession; payload: unknown }> = [];
   const memberships = new Map<string, MatchMembershipRecord>();
   const service: OnlineTransportService = {
@@ -69,10 +69,33 @@ function dependencies() {
     matches: {
       async findByJoinCode(joinCode) { return joinCode === 'AB12CD' ? 'm1' : undefined; }
     },
-    service
+    service,
+    now
   });
   return { handler, calls, memberships };
 }
+
+test('game authority timestamps commands on the server instead of trusting the phone clock', async () => {
+  const serverTime = '2026-10-24T12:30:00.000Z';
+  const { handler, calls } = dependencies(() => serverTime);
+  await handler(request({
+    operation: 'create_match',
+    matchId: 'clock-match',
+    commandId: 'clock-create',
+    occurredAt: '2000-01-01T00:00:00.000Z',
+    payload: { mode: 'online', contentPackId: 'pack-v1', hostPlayerId: 'host-clock', hostDisplayName: 'Host' }
+  }, 'valid-token'));
+  await handler(request({
+    operation: 'command',
+    matchId: 'clock-match',
+    commandId: 'clock-command',
+    occurredAt: '2000-01-01T00:01:00.000Z',
+    command: { type: 'end_match', payload: {} }
+  }, 'valid-token'));
+
+  assert.equal((calls[0]?.payload as { occurredAt?: string }).occurredAt, serverTime);
+  assert.equal((calls[1]?.payload as { occurredAt?: string }).occurredAt, serverTime);
+});
 
 function request(body: unknown, token?: string): Request {
   return new Request('https://game.example.test/game-authority', {

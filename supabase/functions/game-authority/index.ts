@@ -81,14 +81,6 @@ function requiredString(value: unknown, field: string, maxLength = 160): string 
   return value;
 }
 
-function validTimestamp(value: unknown): string {
-  const timestamp = requiredString(value, 'occurredAt', 40);
-  if (!Number.isFinite(Date.parse(timestamp))) {
-    throw Object.assign(new Error('"occurredAt" must be a valid timestamp.'), { code: 'REQUEST_INVALID' });
-  }
-  return timestamp;
-}
-
 function projectionScope(value: unknown): ProjectionScope | undefined {
   if (value === undefined) return undefined;
   const scopes: ProjectionScope[] = ['authority', 'host_admin', 'team_private', 'player_private', 'public_match', 'event_feed_public'];
@@ -192,7 +184,7 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
         const onlineRequest: OnlineCommandRequest = {
           matchId,
           commandId: requiredString(body.commandId, 'commandId'),
-          occurredAt: body.occurredAt === undefined ? now() : validTimestamp(body.occurredAt),
+          occurredAt: now(),
           idempotencyKey: body.idempotencyKey === undefined ? undefined : requiredString(body.idempotencyKey, 'idempotencyKey'),
           command
         };
@@ -228,7 +220,7 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
         const onlineRequest: OnlineCommandRequest = {
           matchId,
           commandId: requiredString(body.commandId, 'commandId'),
-          occurredAt: body.occurredAt === undefined ? now() : validTimestamp(body.occurredAt),
+          occurredAt: now(),
           idempotencyKey: body.idempotencyKey === undefined ? undefined : requiredString(body.idempotencyKey, 'idempotencyKey'),
           command: { type: 'join_match', payload: payload as Extract<DomainCommand, { type: 'join_match' }>['payload'] }
         };
@@ -249,7 +241,7 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
         const onlineRequest: OnlineCommandRequest = {
           matchId,
           commandId: requiredString(body.commandId, 'commandId'),
-          occurredAt: validTimestamp(body.occurredAt),
+          occurredAt: now(),
           idempotencyKey: body.idempotencyKey === undefined ? undefined : requiredString(body.idempotencyKey, 'idempotencyKey'),
           clientSequence: typeof body.clientSequence === 'number' ? body.clientSequence : undefined,
           command: asDomainCommand(body.command)

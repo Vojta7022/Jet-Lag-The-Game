@@ -79,6 +79,7 @@ const SYSTEM_COMMANDS = new Set<DomainCommand['type']>([
   'create_match',
   'start_match',
   'end_hide_phase',
+  'expire_question_response',
   'apply_constraint',
   'update_location',
   'complete_cooldown',

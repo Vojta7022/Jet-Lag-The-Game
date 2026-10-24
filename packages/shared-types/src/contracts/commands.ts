@@ -47,6 +47,7 @@ export type DomainCommand =
   | EndHidePhaseCommand
   | BeginQuestionPromptCommand
   | AskQuestionCommand
+  | ExpireQuestionResponseCommand
   | AnswerQuestionCommand
   | ApplyConstraintCommand
   | SendChatMessageCommand
@@ -221,6 +222,11 @@ export interface AskQuestionCommand {
     templateId: string;
     targetTeamId?: string;
   };
+}
+
+export interface ExpireQuestionResponseCommand {
+  type: 'expire_question_response';
+  payload: { questionInstanceId: string };
 }
 
 export interface AnswerQuestionCommand {

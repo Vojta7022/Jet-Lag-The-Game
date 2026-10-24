@@ -357,6 +357,8 @@ export function buildMatchProjection(
       ? sanitizeQuestionAnswer(viewer, question.answer)
       : undefined,
     askedAt: question.askedAt,
+    lateResponseStartedAt: question.lateResponseStartedAt,
+    lateResponseEndedAt: question.lateResponseEndedAt,
     resolvedAt: question.resolvedAt,
     automaticResolution: question.automaticResolution,
     randomizedFromQuestionInstanceId: question.randomizedFromQuestionInstanceId,

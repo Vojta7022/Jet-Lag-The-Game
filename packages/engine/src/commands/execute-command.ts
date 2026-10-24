@@ -314,21 +314,46 @@ function buildLocationSample(
 function elapsedUnpausedSeconds(aggregate: MatchAggregate, startedAt: string, endedAt: string): number {
   const startMs = Date.parse(startedAt);
   const endMs = Date.parse(endedAt);
-  let activeFromMs = startMs;
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return 0;
+  const pausedIntervals: Array<[number, number]> = [];
   let pausedAtMs: number | undefined;
-  let elapsedMs = 0;
   for (const entry of [...aggregate.eventLog].sort((left, right) => left.sequence - right.sequence)) {
     const occurredAtMs = Date.parse(entry.occurredAt);
     if (!Number.isFinite(occurredAtMs) || occurredAtMs <= startMs || occurredAtMs >= endMs) continue;
     if (entry.type === 'match_paused' && pausedAtMs === undefined) {
-      elapsedMs += Math.max(0, occurredAtMs - activeFromMs);
       pausedAtMs = occurredAtMs;
     } else if (entry.type === 'match_resumed' && pausedAtMs !== undefined) {
-      activeFromMs = occurredAtMs;
+      pausedIntervals.push([pausedAtMs, occurredAtMs]);
       pausedAtMs = undefined;
     }
   }
-  if (pausedAtMs === undefined) elapsedMs += Math.max(0, endMs - activeFromMs);
+  if (pausedAtMs !== undefined) pausedIntervals.push([pausedAtMs, endMs]);
+  for (const question of Object.values(aggregate.questionInstances)) {
+    if (!question.lateResponseStartedAt) continue;
+    const lateStartedAt = Date.parse(question.lateResponseStartedAt);
+    const lateEndedAt = question.lateResponseEndedAt ? Date.parse(question.lateResponseEndedAt) : endMs;
+    if (Number.isFinite(lateStartedAt) && Number.isFinite(lateEndedAt)) {
+      pausedIntervals.push([lateStartedAt, Math.min(endMs, lateEndedAt)]);
+    }
+  }
+  const clipped = pausedIntervals
+    .map(([from, to]) => [Math.max(startMs, from), Math.min(endMs, to)] as [number, number])
+    .filter(([from, to]) => to > from)
+    .sort((left, right) => left[0] - right[0]);
+  let pausedMs = 0;
+  let mergedFrom: number | undefined;
+  let mergedTo: number | undefined;
+  for (const [from, to] of clipped) {
+    if (mergedFrom === undefined || mergedTo === undefined || from > mergedTo) {
+      if (mergedFrom !== undefined && mergedTo !== undefined) pausedMs += mergedTo - mergedFrom;
+      mergedFrom = from;
+      mergedTo = to;
+    } else {
+      mergedTo = Math.max(mergedTo, to);
+    }
+  }
+  if (mergedFrom !== undefined && mergedTo !== undefined) pausedMs += mergedTo - mergedFrom;
+  const elapsedMs = endMs - startMs - pausedMs;
   return Math.floor(elapsedMs / 1000);
 }
 
@@ -820,6 +845,19 @@ function eventsForCommand(
           }
         })
       ];
+    case 'expire_question_response': {
+      const question = aggregate!.questionInstances[envelope.command.payload.questionInstanceId];
+      const timer = Object.values(aggregate!.timers).find(
+        (candidate) => candidate.kind === 'question' && candidate.ownerRef === question.questionInstanceId
+      )!;
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'question_response_expired',
+        payload: {
+          questionInstanceId: question.questionInstanceId,
+          lateResponseStartedAt: new Date(Date.parse(timer.startedAt) + timer.durationSeconds * 1000).toISOString()
+        }
+      })];
+    }
     case 'ask_question': {
       const template = getQuestionTemplate(contentPack, envelope.command.payload.templateId)!;
       const category = getQuestionCategory(contentPack, template.categoryId)!;
