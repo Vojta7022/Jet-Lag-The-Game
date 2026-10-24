@@ -104,6 +104,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Resolve supported copied power-up effects through the same authoritative engine path; keep manual challenges explicit and show the copied card in the resolution window.
 - [x] Verify command validation, UI selection, effect execution, original-card preservation, and seeker projection redaction. Full verification: 263 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
+### Current implementation slice: station-name-length Matching
+
+- [x] Load named transit stations from trusted OpenStreetMap feature data and exclude stations without an actual name from this question.
+- [x] Compare normalized Unicode character counts of each player's nearest station name and apply the same nearest-name-length predicate to the map deduction.
+- [x] Verify the OSM provider, direct engine resolution, online authority answer/map update, and role path. Full verification: 266 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.
@@ -120,6 +126,14 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [ ] Add foreground/background location behavior with clear freshness and permission status on both platforms.
 - [ ] Add content-pack selection/validation for the standard game and a versioned extension path for future variants.
 - [ ] Run a full mobile field round on multiple phones with native GPS and cellular connectivity.
+
+### Product-owner clarification — individual phones (2026-10-24)
+
+- Each participant uses their own phone; the online match is shared across the full group.
+- Hiders need live seeker positions. Seekers need question controls and the automatically updated search map; hider coordinates remain private.
+- Hiders answer on their own phones, draw and choose the printed card reward in-app, and supported answers should be calculated from authoritative player locations and trusted map data.
+- Match setup should build playable areas from searchable administrative boundaries, following the reference map's workflow. Keep question/card/rules content versioned so other game variants can be added later.
+- Open design question for the owner: should the standard match always have exactly one hider per round, rotating between all players, or should a custom pack allow multiple hiders on a team? The current base-game flow implements one rotating hider.
 
 ## Active: rules-faithful game and reference-map workflows
 

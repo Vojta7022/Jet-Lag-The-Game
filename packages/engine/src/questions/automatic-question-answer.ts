@@ -191,8 +191,9 @@ export function resolveAutomaticQuestionAnswer(args: {
           }
         };
       }
-      const compareValue = template.featureClassRefs?.[0]?.featureClassId === 'stations-name-length'
-        ? seekerNearest.feature.label.trim().length === hiderNearest.feature.label.trim().length
+      const compareValue = template.featureClassRefs?.some((feature) => feature.featureClassId === 'stations-name-length')
+        ? Array.from(seekerNearest.feature.label.trim().normalize('NFC')).length ===
+          Array.from(hiderNearest.feature.label.trim().normalize('NFC')).length
         : seekerNearest.feature.featureId === hiderNearest.feature.featureId;
       return {
         kind: 'resolved',

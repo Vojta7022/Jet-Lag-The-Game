@@ -126,6 +126,66 @@ test('online authority loads matching features server-side and completes answer 
     constraint.sourceQuestionInstanceId === 'question:online-matching'), true);
 });
 
+test('online authority computes Station Name Length from its trusted station snapshot and applies the matching geometry', async () => {
+  const { contentPack, repositories, realtime } = createOnlineHarness();
+  const providerCalls: string[][] = [];
+  const runtime = new OnlineAuthorityRuntime({
+    contentPacks: [contentPack],
+    repositories,
+    realtimeFanout: realtime,
+    questionFeatureDataProvider: {
+      async load(request) {
+        providerCalls.push(request.featureClassIds);
+        return {
+          source: 'OpenStreetMap', sourceUrl: 'https://www.openstreetmap.org/copyright',
+          sourceVersion: 'test-feature-snapshot-v1', retrievedAt: '2026-10-24T00:00:16.000Z',
+          coverage: 'approximate', features: [
+            { featureId: 'osm:node/1', featureClassId: 'stations-name-length', label: 'Café', longitude: 103.799, latitude: 1.1, geometrySupport: 'point', coverage: 'approximate' },
+            { featureId: 'osm:node/2', featureClassId: 'stations-name-length', label: 'Cafe\u0301', longitude: 103.821, latitude: 1.1, geometrySupport: 'point', coverage: 'approximate' },
+            { featureId: 'osm:node/3', featureClassId: 'stations-name-length', label: 'Broadway', longitude: 103.81, latitude: 1.1, geometrySupport: 'point', coverage: 'approximate' }
+          ]
+        };
+      }
+    }
+  });
+  const { matchId, hostSession, hiderSession, seekerSession } = await setupOnlineMatchToHidePhase(runtime, contentPack.packId, 'station-name-match');
+  await submitOnlineSequence(runtime, [
+    { session: hiderSession, request: makeOnlineCommandRequest(hiderSession, matchId, 11, {
+      type: 'lock_hider_location', payload: { latitude: 1.1, longitude: 103.82, accuracyMeters: 5 }
+    }) },
+    { session: hostSession, request: makeOnlineCommandRequest(hostSession, matchId, 12, {
+      type: 'end_hide_phase', payload: {}
+    }) },
+    { session: seekerSession, request: makeOnlineCommandRequest(seekerSession, matchId, 13, {
+      type: 'update_location', payload: { latitude: 1.1, longitude: 103.8, accuracyMeters: 5, source: 'device' }
+    }) },
+    { session: hiderSession, request: makeOnlineCommandRequest(hiderSession, matchId, 14, {
+      type: 'update_location', payload: { latitude: 1.1, longitude: 103.82, accuracyMeters: 5, source: 'device' }
+    }) },
+    { session: seekerSession, request: makeOnlineCommandRequest(seekerSession, matchId, 15, {
+      type: 'begin_question_prompt', payload: {}
+    }) }
+  ]);
+  const asked = await runtime.submitAuthenticatedCommand(seekerSession, makeOnlineCommandRequest(seekerSession, matchId, 16, {
+    type: 'ask_question',
+    payload: {
+      questionInstanceId: 'question:online-station-name',
+      templateId: 'matching-stations-name-length',
+      targetTeamId: 'team-hider',
+      featureData: [{ featureId: 'spoofed', featureClassId: 'stations-name-length', label: 'Wrong', longitude: 0, latitude: 0 }]
+    } as never
+  }));
+
+  assert.equal(asked.accepted, true);
+  assert.deepEqual(providerCalls, [['stations-name-length']]);
+  assert.equal(asked.aggregate?.questionInstances['question:online-station-name']?.answer?.value, 'yes');
+  const constraint = Object.values(asked.aggregate?.constraints ?? {}).find((item) =>
+    item.sourceQuestionInstanceId === 'question:online-station-name'
+  );
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.match(constraint?.explanation.summary ?? '', /nearest station name/i);
+});
+
 test('online authority resolves scanned Tentacles from its seeker-anchored candidate set', async () => {
   const { contentPack, repositories, realtime } = createOnlineHarness();
   const providerCalls: string[][] = [];

@@ -68,6 +68,27 @@ test('OpenStreetMap provider maps the printed Tentacles place classes and leaves
   assert.equal(unsupported, undefined);
 });
 
+test('OpenStreetMap provider loads only named stations for the station-name-length Matching question', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [
+        { type: 'node', id: 1, lat: 50.1, lon: 14.1, tags: { name: "St. John's Rd", railway: 'station' } },
+        { type: 'node', id: 2, lat: 50.2, lon: 14.2, tags: { ref: 'ST-2', railway: 'station' } }
+      ] }), { status: 200 });
+    }
+  });
+  const dataset = await provider.load({
+    featureClassIds: ['stations-name-length'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[14, 50], [14.4, 50], [14.4, 50.4], [14, 50.4], [14, 50]]] }
+  });
+
+  assert.ok(dataset);
+  assert.match(submittedQuery, /railway.*station/);
+  assert.deepEqual(dataset.features.map((feature) => feature.label), ["St. John's Rd"]);
+});
+
 test('OpenStreetMap feature lookups reuse a short-lived region and class cache', async () => {
   let requestCount = 0;
   const provider = new OpenStreetMapQuestionFeatureProvider({

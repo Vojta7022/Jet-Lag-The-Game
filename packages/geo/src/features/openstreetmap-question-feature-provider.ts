@@ -36,6 +36,13 @@ const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
   'commercial-airport': [{ tags: { aeroway: 'aerodrome', scheduled_service: 'yes' } }],
   'a-rail-station': [{ tags: { railway: 'station' } }, { tags: { railway: 'halt' } }],
   'rail-station': [{ tags: { railway: 'station' } }, { tags: { railway: 'halt' } }],
+  'stations-name-length': [
+    { tags: { railway: 'station' } },
+    { tags: { railway: 'halt' } },
+    { tags: { railway: 'tram_stop' } },
+    { tags: { railway: 'subway_entrance' } },
+    { tags: { public_transport: 'station' } }
+  ],
   aquarium: [{ tags: { tourism: 'aquarium' } }],
   aquariums: [{ tags: { tourism: 'aquarium' } }],
   'a-museum': [{ tags: { tourism: 'museum' } }, { tags: { museum: '*' } }],
@@ -105,7 +112,11 @@ function asFeature(
   const longitude = typeof element.lon === 'number' ? element.lon : element.center?.lon;
   if (typeof latitude !== 'number' || typeof longitude !== 'number' || !pointInGeometry([longitude, latitude], regionGeometry)) return undefined;
   const tags = element.tags ?? {};
-  const label = [tags.name, tags['name:en'], tags.official_name, tags.ref].find((value) => typeof value === 'string' && value.trim());
+  const labelCandidates = featureClassId === 'stations-name-length'
+    ? [tags.name, tags['name:en'], tags.official_name]
+    : [tags.name, tags['name:en'], tags.official_name, tags.ref];
+  const label = labelCandidates.find((value) => typeof value === 'string' && value.trim());
+  if (featureClassId === 'stations-name-length' && typeof label !== 'string') return undefined;
   return {
     featureId: `osm:${element.type}/${element.id}`,
     featureClassId,

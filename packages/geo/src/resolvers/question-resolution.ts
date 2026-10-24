@@ -474,6 +474,37 @@ function resolveMatching(
     ? [nearest.feature.representativePoint.longitude, nearest.feature.representativePoint.latitude] as LonLat
     : representativePointFromGeometry(nearest.feature.geometry);
   const allClassFeatures = features.filter((feature) => featureIds.includes(feature.featureClassId));
+  const stationNameLengthMatching = featureIds.includes('stations-name-length');
+
+  if (stationNameLengthMatching) {
+    const referenceNameLength = Array.from(nearest.feature.label.trim().normalize('NFC')).length;
+    return approximateGridOutcome({
+      baseGeometry,
+      stepMeters: gridResolutionMeters(metadata),
+      predicate: (point) => {
+        const candidateNearest = queryNearestFeature({ features, featureClassIds: featureIds, point });
+        if (!candidateNearest.feature) return false;
+        const candidateMatches = Array.from(candidateNearest.feature.label.trim().normalize('NFC')).length === referenceNameLength;
+        return answer === 'yes' ? candidateMatches : !candidateMatches;
+      },
+      summary: answer === 'yes'
+        ? `Matching keeps areas whose nearest station name has the same length (${referenceNameLength} characters) as the seeker's nearest station.`
+        : `Matching keeps areas whose nearest station name has a different length from the seeker's nearest station (${referenceNameLength} characters).`,
+      detail: 'Station-name matching counts spaces and hyphens in the displayed station name. The map deduction uses the same nearest-station name-length comparison as the automatic answer.',
+      reasoningSteps: [
+        `The seeker's nearest station name has ${referenceNameLength} characters.`,
+        answer === 'yes'
+          ? 'Sampled cells were kept when their nearest station name had the same character count.'
+          : 'Sampled cells were kept when their nearest station name had a different character count.'
+      ],
+      featureCoverage: 'approximate',
+      metadata: {
+        nearestFeatureId: nearest.feature.featureId,
+        nearestStationNameLength: referenceNameLength,
+        ...metadata
+      }
+    });
+  }
 
   if (
     answer === 'yes' &&
