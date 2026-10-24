@@ -54,7 +54,9 @@ It is a map and deduction workbench, not a multiplayer game runtime: it does not
 
 ## Recommended finish strategy
 
-Make the app runnable first, then choose one supported play mode and complete a real end-to-end round in that mode before expanding scope. The quickest credible first-play target is a persisted single-device referee flow; it exercises the current engine and map without pretending the current online or nearby authority is production-safe. If separate phones are essential from day one, choose online mode and make the server-side command/projection boundary the first major milestone. Nearby multiplayer needs actual LAN networking and should be a separate milestone.
+The initial implementation chose a persisted single-device referee round to prove the existing engine and map. That slice is now implemented and covered by a full real-runtime integration test. On 2026-10-24 the product owner clarified that the intended primary game is online, with a separate phone for every player and role-specific views. Treat the referee flow as a fallback/regression path, not as completion of the product. The next major milestone is a trusted server-side command and projection boundary, followed by role-aware live location and automatic location-based answers. Nearby multiplayer still needs actual LAN networking and remains separate.
+
+The proposed online architecture and acceptance criteria are recorded in [Online Player Game Design](../docs/superpowers/specs/2026-10-24-online-player-game-design.md); the written design is awaiting review before implementation planning.
 
 Suggested sequence:
 
@@ -66,7 +68,7 @@ Suggested sequence:
 
 ## Decisions and next steps
 
-The first target is now **single-device referee**. Home has a direct “Start Referee Game” action that selects this runtime and opens match setup; online create/join remain available as secondary paths. A fresh Expo web bundle succeeds with this entry path.
+The first implementation target was **single-device referee**. Home has a direct “Start Referee Game” action that selects this runtime and opens match setup. The complete round passes through the single-device runtime integration. The product's primary target was subsequently clarified as online multi-device play; online create/join remain prototypes until the authority and privacy requirements in the linked design are implemented.
 
 The referee's event log and latest snapshot persist with AsyncStorage, along with a resume pointer and the host profile. Startup rebuilds the authority, reconnects the host session, and returns to Home with the existing Continue action. The live map now connects the protected-reveal manager to a referee handoff panel. Tokens/checkpoints persist across restart, and recovery hides any private projection that was open when the app stopped. AsyncStorage supports Android, iOS, and web; it is unencrypted key-value storage, not a secrets store. [AsyncStorage platform support](https://github.com/react-native-async-storage/async-storage), checked 2026-10-23.
 

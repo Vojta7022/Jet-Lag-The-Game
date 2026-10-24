@@ -7,7 +7,7 @@
 - [x] Inspect the supplied map site and its MIT-licensed source repository.
 - [x] Compare imported content with the booklet and base rules.
 - [x] Record current-state findings and staged completion plan.
-- [x] Choose the first target play mode: single-device referee.
+- [x] Choose the first implementation play mode: single-device referee (delivered as a fallback/regression path; superseded as the primary product mode by the 2026-10-24 online multiplayer requirement).
 - [x] Decide the content-pack distribution approach: treat the current pack as personal/private-use content; keep the scans and full-page transcription local, and review source rights before any public content-pack release.
 - [x] Make referee mode a first-class Home-screen start path and clarify its setup instructions.
 - [x] Add durable event/snapshot storage and automatic referee-session reattachment after app restart.
@@ -42,6 +42,15 @@
 - Web `accessible={false}` SVG props caused the reported React warning; decorative game SVGs now use `aria-hidden={true}`. Measured map width also prevents the map surface from extending beyond its card.
 - The current full suite passes 199/199 with the project `.venv` on `PATH`; mobile TypeScript typecheck passes.
 - The scan-confirmed standard round flow is implemented. Imported workbook card text remains draft and may need manual adjudication; it is kept for personal/private play until distribution rights and importer warnings are reviewed.
+
+## Active: online multiplayer for one phone per player
+
+- [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.
+- [x] Draft and push the proposed server-authoritative design and acceptance criteria in `docs/superpowers/specs/2026-10-24-online-player-game-design.md`.
+- [ ] Product owner reviews and approves the written design before implementation planning.
+- [ ] Write the phased implementation plan after spec approval.
+- [ ] Implement and verify secure online authority, separate-device joining/reconnect, role-specific live locations, automatic question/map resolution, and standard card coverage.
+- [ ] Run a full mobile field round on multiple phones with native GPS and cellular connectivity.
 
 ## Active: rules-faithful game and reference-map workflows
 
