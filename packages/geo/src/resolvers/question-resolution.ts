@@ -302,7 +302,7 @@ function resolveRadar(
   const threshold =
     typeof context.template.parameters?.distanceThreshold === 'object'
       ? (context.template.parameters.distanceThreshold as Record<string, unknown>).meters
-      : context.template.resolverConfig.thresholdMeters;
+      : context.template.resolverConfig.thresholdMeters ?? context.question.chosenDistanceMeters;
 
   if (typeof threshold !== 'number' || threshold <= 0) {
     return metadataOnlyDraft({

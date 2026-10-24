@@ -681,6 +681,15 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'QUESTION_CATEGORY_NOT_FOUND', 'The selected question category does not exist.')];
       }
 
+      const chosenDistanceMeters = envelope.command.payload.chosenDistanceMeters;
+      const needsChosenDistance = template.parameters?.distanceMode === 'player_choice';
+      if (needsChosenDistance && (typeof chosenDistanceMeters !== 'number' || !Number.isFinite(chosenDistanceMeters) || chosenDistanceMeters <= 0)) {
+        return [error(envelope.command.type, 'CHOSEN_DISTANCE_REQUIRED', 'Choose a distance greater than zero meters for this Radar question.')];
+      }
+      if (!needsChosenDistance && chosenDistanceMeters !== undefined) {
+        return [error(envelope.command.type, 'CHOSEN_DISTANCE_NOT_ALLOWED', 'This question uses its printed distance and cannot accept a custom radius.')];
+      }
+
       if (envelope.command.payload.targetTeamId && aggregate.teams[envelope.command.payload.targetTeamId]?.side !== 'hider') {
         return [error(envelope.command.type, 'INVALID_QUESTION_TARGET', 'Investigation Book questions must target the active hider team.')];
       }
@@ -709,6 +718,7 @@ export function validateCommandEnvelope(
         template,
         askedByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId,
         targetTeamId: envelope.command.payload.targetTeamId,
+        chosenDistanceMeters,
         occurredAt: envelope.occurredAt,
         questionFeatureDataset
       });

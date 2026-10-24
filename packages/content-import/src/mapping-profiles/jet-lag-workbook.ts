@@ -1893,16 +1893,14 @@ function buildRadarTemplates(
             cost: costRaw,
             time: timeRaw,
             values: {
-              distanceMode: 'manual-choice'
+              distanceMode: 'player_choice'
             }
           }),
           answerSchema: {
             kind: 'boolean',
             allowedValues: ['yes', 'no']
           },
-          resolverConfig: {
-            requiresRulesetDefinedChoiceBounds: true
-          },
+          resolverConfig: {},
           constraintRefs: ['within-radius', 'outside-radius'],
           scaleSet: allScales(),
           visibilityPolicy: PUBLIC_VISIBILITY,
@@ -1911,21 +1909,6 @@ function buildRadarTemplates(
           ]
         });
 
-        issues.push(
-          createIssue({
-            sheetName: sheet.name,
-            rowNumber: row.rowNumber,
-            columnName: 'distance',
-            fieldPath: 'questionTemplates[radar-choose].parameters.distanceMode',
-            severity: 'warning',
-            code: 'AMBIGUOUS_MANUAL_TEMPLATE',
-            message: 'The workbook includes a `Choose` radar row without bounded choice rules.',
-            rawValue: rawDistance,
-            normalizedValue: 'manual-choice',
-            suggestedFix: 'Provide a ruleset or editor-authored bounded distance policy before publishing.',
-            sheetCell: `A${row.rowNumber}`
-          })
-        );
         continue;
       }
 
@@ -2017,15 +2000,13 @@ function buildRadarTemplates(
         categoryId: category.categoryId,
         name: 'Choose Distance',
         parameters: {
-          distanceMode: 'manual-choice'
+          distanceMode: 'player_choice'
         },
         answerSchema: {
           kind: 'boolean',
           allowedValues: ['yes', 'no']
         },
-        resolverConfig: {
-          requiresRulesetDefinedChoiceBounds: true
-        },
+        resolverConfig: {},
         constraintRefs: ['within-radius', 'outside-radius'],
         scaleSet: allScales(),
         visibilityPolicy: PUBLIC_VISIBILITY,
@@ -2033,23 +2014,6 @@ function buildRadarTemplates(
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'A', rawValue, rawValue)
         ]
       });
-
-      issues.push(
-        createIssue({
-          sheetName: sheet.name,
-          rowNumber: row.rowNumber,
-          columnName: 'A',
-          fieldPath: 'questionTemplates[radar-choose].parameters.distanceMode',
-          severity: 'warning',
-          code: 'AMBIGUOUS_MANUAL_TEMPLATE',
-          message: 'The workbook includes a `Choose` radar row without bounded choice rules.',
-          rawValue,
-          normalizedValue: 'manual-choice',
-          suggestedFix: 'Provide a ruleset or editor-authored bounded distance policy before publishing.',
-          sheetCell: `A${row.rowNumber}`,
-          blocking: true
-        })
-      );
 
       continue;
     }

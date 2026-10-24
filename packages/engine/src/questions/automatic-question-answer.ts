@@ -92,6 +92,7 @@ export function resolveAutomaticQuestionAnswer(args: {
   template: QuestionTemplateDefinition;
   askedByPlayerId: string;
   targetTeamId?: string;
+  chosenDistanceMeters?: number;
   occurredAt: string;
   questionFeatureDataset?: QuestionFeatureDatasetModel;
 }): AutomaticQuestionAnswerResult {
@@ -458,7 +459,8 @@ export function resolveAutomaticQuestionAnswer(args: {
 
   const thresholdMeters = Number(
     template.resolverConfig?.thresholdMeters ??
-    (template.parameters?.distanceThreshold as { meters?: unknown } | undefined)?.meters
+    (template.parameters?.distanceThreshold as { meters?: unknown } | undefined)?.meters ??
+    args.chosenDistanceMeters
   );
   if (!Number.isFinite(thresholdMeters) || thresholdMeters <= 0) {
     return { kind: 'manual' };

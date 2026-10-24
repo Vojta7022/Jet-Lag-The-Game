@@ -27,14 +27,14 @@ The implementation should preserve the existing rules engine, role-scoped projec
 ### Match creation and participants
 
 - A host creates an online match and shares a short join code or QR link.
-- Each participant joins from their own authenticated app installation. A display name is separate from account identity.
+- Every participant plays from their own phone and authenticated app installation; a team-shared phone is not the multiplayer model. A display name is separate from account identity.
 - The host can see the roster, assign or reassign roles before start, remove a participant before start, and close the lobby. Participants can leave before the match starts and reconnect to an active match after temporary disconnection.
 - Once play starts, roles, hider rotation, ruleset, map region, and content-pack version are authority-controlled and appear consistently on all participant phones.
 - Reconnection restores only the caller's current role-appropriate projection and pending action state.
 
 ### Role-specific location visibility
 
-- **Hiders:** see the playable map, all current seeker locations, active question, their team's answers, and their private/shared hider hand. Hider exact coordinates remain private to the authority and hider-side projection.
+- **Hiders:** see the playable map, their own location, all current seeker locations, active question, their team's answers, and their private/shared hider hand. Hider exact coordinates remain private to the authority and hider-side projection.
 - **Seekers:** see the playable map, their own seeker team's locations, public match information, question history, and question-derived search-area overlays. They never receive the hider's exact or raw coordinates.
 - Each device publishes timestamped coordinates, accuracy, and permission/availability state while the player is in an active movement phase. Sampling cadence is configurable by the selected ruleset and tuned for battery use. Background location support is required for normal pocketed-phone play; platform permission loss and operating-system throttling must be visible in the UI.
 - Stale or low-accuracy samples are labeled and excluded from automatic answers. The UI must ask for a fresh fix or show that a question cannot yet be resolved; it must not guess.

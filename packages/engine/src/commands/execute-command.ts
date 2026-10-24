@@ -875,6 +875,7 @@ function eventsForCommand(
         categoryId: template.categoryId,
         askedByPlayerId,
         targetTeamId: envelope.command.payload.targetTeamId,
+        chosenDistanceMeters: envelope.command.payload.chosenDistanceMeters,
         status: 'awaiting_answer',
         askedAt: envelope.occurredAt
       };
@@ -885,6 +886,7 @@ function eventsForCommand(
         template,
         askedByPlayerId,
         targetTeamId: envelope.command.payload.targetTeamId,
+        chosenDistanceMeters: envelope.command.payload.chosenDistanceMeters,
         occurredAt: envelope.occurredAt,
         questionFeatureDataset
       });

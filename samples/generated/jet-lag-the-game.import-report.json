@@ -1,5 +1,5 @@
 {
-  "importJobId": "152e223f-61b3-46a7-8453-05070f8714fe",
+  "importJobId": "518c9cb7-1ef0-498c-aaaa-075dd0f2219a",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -164,19 +164,6 @@
       "sheetCell": "distance5"
     },
     {
-      "sheetName": "Radar",
-      "rowNumber": 11,
-      "columnName": "distance",
-      "fieldPath": "questionTemplates[radar-choose].parameters.distanceMode",
-      "severity": "warning",
-      "code": "AMBIGUOUS_MANUAL_TEMPLATE",
-      "message": "The workbook includes a `Choose` radar row without bounded choice rules.",
-      "rawValue": "Choose",
-      "normalizedValue": "manual-choice",
-      "suggestedFix": "Provide a ruleset or editor-authored bounded distance policy before publishing.",
-      "sheetCell": "A11"
-    },
-    {
       "sheetName": "Tentacles",
       "rowNumber": 2,
       "columnName": "place",
@@ -227,19 +214,6 @@
       "normalizedValue": "Amusement Parks",
       "suggestedFix": "Review the canonical label and keep the raw text in provenance metadata.",
       "sheetCell": "place9"
-    },
-    {
-      "sheetName": "content-pack",
-      "rowNumber": 1,
-      "columnName": "questionTemplates",
-      "fieldPath": "questionTemplates[radar-choose].parameters.distanceMode",
-      "severity": "warning",
-      "code": "AMBIGUOUS_MANUAL_TEMPLATE",
-      "message": "This template still requires a bounded ruleset-defined choice before publication.",
-      "rawValue": "manual-choice",
-      "normalizedValue": "manual-choice",
-      "suggestedFix": "Complete the distance bounds in a follow-up content edit.",
-      "blocking": true
     },
     {
       "sheetName": "content-pack",

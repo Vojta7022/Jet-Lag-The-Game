@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
+import type { TextInputProps } from 'react-native';
 
 import { colors } from './theme.ts';
 
@@ -10,6 +11,7 @@ interface FieldProps {
   autoCapitalize?: 'none' | 'words' | 'sentences' | 'characters';
   multiline?: boolean;
   numberOfLines?: number;
+  keyboardType?: TextInputProps['keyboardType'];
 }
 
 export function Field(props: FieldProps) {
@@ -20,6 +22,7 @@ export function Field(props: FieldProps) {
         accessibilityLabel={props.label}
         autoCapitalize={props.autoCapitalize ?? 'none'}
         multiline={props.multiline}
+        keyboardType={props.keyboardType}
         onChangeText={props.onChangeText}
         numberOfLines={props.numberOfLines}
         placeholder={props.placeholder}

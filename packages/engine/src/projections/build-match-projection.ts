@@ -353,6 +353,7 @@ export function buildMatchProjection(
     cardRewardStatus: question.cardRewardStatus,
     askedByPlayerId: question.askedByPlayerId,
     targetTeamId: question.targetTeamId,
+    chosenDistanceMeters: question.chosenDistanceMeters,
     answer: canViewQuestionAnswer(aggregate, viewer)
       ? sanitizeQuestionAnswer(viewer, question.answer)
       : undefined,

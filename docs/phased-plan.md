@@ -127,7 +127,7 @@ This document defines a realistic implementation sequence for the generic transi
 
 - workbook imports reproducibly into canonical draft JSON
 - all known workbook quirks are either normalized or reported
-- publication gating works for ambiguous inputs such as `Radar -> Choose`
+- publication gating distinguishes unresolved inputs from rule-defined player choices such as the printed `Radar -> Choose` distance
 
 ## Phase 3: Command Model and State Machine
 

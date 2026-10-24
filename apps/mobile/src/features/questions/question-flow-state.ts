@@ -1,4 +1,5 @@
 import type {
+  AskQuestionCommand,
   ContentPack,
   MatchProjection,
   MatchRole,
@@ -16,6 +17,36 @@ export interface QuestionAnswerDraft {
   selectedFeatureId: string;
   attachmentIdsText: string;
   note: string;
+}
+
+export function isQuestionDistanceChoice(template: QuestionTemplateDefinition | undefined): boolean {
+  return template?.parameters?.distanceMode === 'player_choice';
+}
+
+export function parseChosenDistanceMeters(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed.replace(',', '.'));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+export function buildAskQuestionPayload(args: {
+  questionInstanceId: string;
+  template: QuestionTemplateDefinition;
+  targetTeamId?: string;
+  chosenDistanceDraft: string;
+}): AskQuestionCommand['payload'] | undefined {
+  const chosenDistanceMeters = isQuestionDistanceChoice(args.template)
+    ? parseChosenDistanceMeters(args.chosenDistanceDraft)
+    : undefined;
+  if (isQuestionDistanceChoice(args.template) && chosenDistanceMeters === undefined) return undefined;
+
+  return {
+    questionInstanceId: args.questionInstanceId,
+    templateId: args.template.templateId,
+    targetTeamId: args.targetTeamId,
+    ...(chosenDistanceMeters !== undefined ? { chosenDistanceMeters } : {})
+  };
 }
 
 export function createInitialAnswerDraft(template?: QuestionTemplateDefinition): QuestionAnswerDraft {

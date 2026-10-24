@@ -29,7 +29,7 @@
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
 - The main remaining gap is a tested, reliable multi-phone end-to-end play path. An authenticated Edge Function gateway and atomic revision commit now exist with unit coverage; production deployment, authorization/privacy audit, and cellular field play still need verification. Nearby mode has no LAN transport.
-- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, 15 warnings, and 5 informational import findings. It remains draft content with no ruleset or map preset; remaining card warnings still need adjudication.
+- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, 13 warnings, and 5 informational import findings. It remains draft content with no ruleset or map preset; remaining card warnings still need adjudication.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
 - The initial implementation target was single-device referee; the 2026-10-24 product clarification made one authenticated phone per player the primary product, with referee mode retained as fallback/regression coverage.
@@ -119,6 +119,8 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Build and test the authenticated Edge Function gateway, atomic revision commits, separate authenticated phone adapters, and reconnect bindings in the prototype authority.
 - [x] Give each hider/seeker device location publishing; hiders receive live seeker tracks while seeker projections exclude hider coordinates.
 - [x] Automatically resolve Radar from fresh seeker and hider GPS fixes, apply the bounded map deduction, and record fix provenance in the same authority command.
+- [x] Implement the Investigation Book's Radar `Choose` row: seekers enter a positive radius in meters; the authority freezes it, auto-resolves from fresh device fixes, applies that same map radius, and shows it to the hider. Fixed-radius prompts reject custom radii.
+- [x] Reconcile `Radar -> Choose` in the generated content pack and remove its false blocking import warning. Focused verification: 23 engine/importer/mobile-flow tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 - [x] Automatically resolve Thermometer from printed minimum travel distance and fresh GPS fixes; freeze the same seeker movement endpoints for the answer and map deduction.
 - [ ] Deploy and security-audit the online authority; verify it on real devices over cellular data.
 - [x] Add a follow-up migration that removes the legacy blanket database policies and scopes storage objects to an active match membership plus their public/team/player/host scope. Static policy regression test passes; applying and executing it against a Supabase database is still pending.
@@ -138,6 +140,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 ### Product-owner clarification — individual phones (2026-10-24)
 
 - Each participant uses their own phone; the online match is shared across the full group.
+- Team-shared phones are not the intended multiplayer setup; a player joins and receives role-scoped state on their own authenticated app installation.
 - Hiders need live seeker positions. Seekers need question controls and the automatically updated search map; hider coordinates remain private.
 - Hiders answer on their own phones, draw and choose the printed card reward in-app, and supported answers should be calculated from authoritative player locations and trusted map data.
 - Match setup should build playable areas from searchable administrative boundaries, following the reference map's workflow. Keep question/card/rules content versioned so other game variants can be added later.

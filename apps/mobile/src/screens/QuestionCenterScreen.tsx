@@ -22,6 +22,7 @@ import {
   QuestionResolutionPanel,
   QuestionTemplateList,
   buildAnswerPayload,
+  buildAskQuestionPayload,
   buildConstraintResolutionMetadata,
   buildQuestionCategoryViewModels,
   buildQuestionFlowBootstrapCommands,
@@ -33,6 +34,8 @@ import {
   formatQuestionScaleSet,
   formatHiderCardReward,
   formatTimerPolicyLabel,
+  isQuestionDistanceChoice,
+  parseChosenDistanceMeters,
   buildQuestionMapEffectModel,
   chooseConstraintIdForQuestion,
   createInitialAnswerDraft,
@@ -54,6 +57,7 @@ import {
   useMatchTimingModel
 } from '../features/timers/index.ts';
 import { AppButton } from '../ui/AppButton.tsx';
+import { Field } from '../ui/Field.tsx';
 import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
@@ -150,6 +154,7 @@ function describeQuestionFlowStep(
 
 export function QuestionCenterScreen() {
   const [showGameContext, setShowGameContext] = useState(false);
+  const [chosenDistanceDraft, setChosenDistanceDraft] = useState('');
   const {
     state,
     submitCommand,
@@ -297,6 +302,10 @@ export function QuestionCenterScreen() {
   }, [activeSelectionRound, availableTemplates, selectedTemplateId]);
 
   useEffect(() => {
+    setChosenDistanceDraft('');
+  }, [readyTemplate?.templateId]);
+
+  useEffect(() => {
     const composerTemplate =
       activeQuestion?.status === 'awaiting_answer'
         ? activeQuestionTemplate
@@ -420,6 +429,7 @@ export function QuestionCenterScreen() {
     activeMatch &&
       capabilities.canAskQuestions &&
       readyTemplate &&
+      (!isQuestionDistanceChoice(readyTemplate) || parseChosenDistanceMeters(chosenDistanceDraft) !== undefined) &&
       !selectedQuestionIsDisabled &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
@@ -473,6 +483,14 @@ export function QuestionCenterScreen() {
       return;
     }
 
+    const questionPayload = buildAskQuestionPayload({
+      questionInstanceId: `question:${createUuid()}`,
+      template: readyTemplate,
+      targetTeamId: projection.teams.find((team) => team.side === 'hider')?.teamId ?? 'team-hider',
+      chosenDistanceDraft
+    });
+    if (!questionPayload) return;
+
     const commands = [];
     if (isQuestionReadyState) {
       commands.push({
@@ -483,13 +501,7 @@ export function QuestionCenterScreen() {
 
     commands.push({
       type: 'ask_question' as const,
-      payload: {
-        questionInstanceId: `question:${createUuid()}`,
-        templateId: readyTemplate.templateId,
-        targetTeamId:
-          projection.teams.find((team) => team.side === 'hider')?.teamId ??
-          'team-hider'
-      }
+      payload: questionPayload
     });
 
     void submitCommands(commands);
@@ -950,11 +962,27 @@ export function QuestionCenterScreen() {
             <Text style={styles.title}>{previewTemplate.name}</Text>
             <Text style={styles.copy}>
               You will ask:{' '}
-              {describeQuestionTemplateForPlayers(
-                previewTemplate,
-                selectedCategory
-              )}
+              {isQuestionDistanceChoice(previewTemplate)
+                ? describeQuestionTemplateForPlayers(previewTemplate, selectedCategory)
+                    .replace('the chosen distance', parseChosenDistanceMeters(chosenDistanceDraft)
+                      ? `${parseChosenDistanceMeters(chosenDistanceDraft)} meters`
+                      : 'a distance you choose')
+                : describeQuestionTemplateForPlayers(previewTemplate, selectedCategory)}
             </Text>
+            {isQuestionDistanceChoice(previewTemplate) ? (
+              <>
+                <Field
+                  label="Choose the Radar distance (meters)"
+                  value={chosenDistanceDraft}
+                  onChangeText={setChosenDistanceDraft}
+                  placeholder="For example, 1500"
+                  keyboardType="decimal-pad"
+                />
+                <Text style={styles.helper}>
+                  The answer and map radius are calculated from this distance and the current player locations.
+                </Text>
+              </>
+            ) : null}
             {selectedQuestionImpact ? (
               <StateBanner
                 tone={selectedQuestionImpact.tone}
@@ -1023,6 +1051,9 @@ export function QuestionCenterScreen() {
             <FactList
               items={[
                 { label: 'Asked clue', value: activeQuestionTemplate.name },
+                ...(activeQuestion?.chosenDistanceMeters
+                  ? [{ label: 'Chosen distance', value: `${activeQuestion.chosenDistanceMeters} m` }]
+                  : []),
                 {
                   label: 'Workbook timer',
                   value: formatTimerPolicyLabel(

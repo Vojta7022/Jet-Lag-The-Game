@@ -152,6 +152,7 @@ export interface QuestionInstanceModel {
   categoryId: string;
   askedByPlayerId: string;
   targetTeamId?: string;
+  chosenDistanceMeters?: number;
   status: QuestionInstanceStatus;
   answer?: Record<string, unknown>;
   askedAt: string;

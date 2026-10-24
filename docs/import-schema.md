@@ -24,7 +24,7 @@ The cleaned workbook currently contains these sheets:
 | `Matching` | tabular rows with `subject`, `cost`, `time`, `question` | one `QuestionCategoryDefinition` plus one `QuestionTemplateDefinition` per row | subject-driven yes/no wording |
 | `Measuring` | tabular rows with `target`, `cost`, `time`, `question` | one category plus templates | target-driven comparative distance questions |
 | `Thermometer` | tabular rows with `distance`, `availability`, `cost`, `time`, `question`, `notes` | one category plus templates | uses seeker movement history and workbook availability text |
-| `Radar` | tabular rows with `distance`, `cost`, `time`, `question`, `notes` | one category plus templates | threshold-distance questions, including ambiguous rows that may still map to draft/manual templates |
+| `Radar` | tabular rows with `distance`, `cost`, `time`, `question`, `notes` | one category plus templates | fixed threshold questions plus the printed seeker-choice distance |
 | `Tentacles` | tabular rows with `place`, `distance`, `availability`, `cost`, `time`, `question` | one category plus templates | nearest-candidate questions with imported place and availability text |
 | `Photos` | tabular rows with `subject`, `requirements`, `availability`, `cost`, `time`, `question` | one category plus templates | photo prompts with imported requirements and timing |
 | `Hider Deck` | tabular rows with `category`, `card`, `quantity`, `odds` | one `DeckDefinition`, several `CardDefinition`s, and `DeckEntry`s | time bonuses, power-ups, blanks, and curse odds all originate here |
@@ -421,10 +421,8 @@ Mapping rule:
 
 - each distance row becomes one template
 - normal distance rows map to numeric meters
-- the workbook row `Choose` is ambiguous; for v1 it should import as a draft template with:
-  - `parameters.distanceMode = "manual-choice"`
-  - warning-level import notice
-  - publish blocked until a ruleset or editor provides a bounded choice policy
+- the workbook row `Choose` imports with `parameters.distanceMode = "player_choice"`
+- the seeker enters any positive distance in meters; the authority freezes it and uses that same value for the answer and map radius
 
 ### Tentacles
 
@@ -468,7 +466,7 @@ Mapping rule:
 | `1. Matching` | category `matching` plus template per listed feature class |
 | `2. Measuring` | category `measuring` plus template per listed feature class |
 | `3. Thermometer` | category `thermometer` plus template per distance row with normalized scale gates |
-| `4. Radar` | category `radar` plus template per distance row, including a flagged draft template for `Choose` |
+| `4. Radar` | category `radar` plus template per printed distance row; `Choose` is a seeker-entered positive distance in meters |
 | `5. Tentacles` | category `tentacles` plus template per place/radius combination |
 | `6. Photos` | category `photos` plus template per subject/requirements row |
 
@@ -509,7 +507,7 @@ The pack may remain `draft` with warnings, but it must not be `published` if any
 - fatal parse error
 - missing required reference
 - unresolved duplicate normalized ID
-- unbounded ambiguous template such as `Radar -> Choose`
+- unresolved dynamic input policy; the printed `Radar -> Choose` prompt is supported as a seeker-entered positive distance in meters and is not treated as a missing question rule
 - deck count mismatch
 - broken curse row pairing
 

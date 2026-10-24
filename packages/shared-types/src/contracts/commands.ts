@@ -221,6 +221,7 @@ export interface AskQuestionCommand {
     questionInstanceId: string;
     templateId: string;
     targetTeamId?: string;
+    chosenDistanceMeters?: number;
   };
 }
 

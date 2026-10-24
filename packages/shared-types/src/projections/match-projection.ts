@@ -125,6 +125,7 @@ export interface VisibleQuestionProjection {
   cardRewardStatus?: 'pending' | 'complete';
   askedByPlayerId: string;
   targetTeamId?: string;
+  chosenDistanceMeters?: number;
   answer?: Record<string, unknown>;
   askedAt?: string;
   lateResponseStartedAt?: string;

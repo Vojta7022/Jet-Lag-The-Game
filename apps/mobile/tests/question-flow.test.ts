@@ -22,7 +22,10 @@ import {
 import {
   buildConstraintResolutionMetadata,
   chooseConstraintIdForQuestion,
-  describeTemplateSupport
+  buildAskQuestionPayload,
+  describeTemplateSupport,
+  isQuestionDistanceChoice,
+  parseChosenDistanceMeters
 } from '../src/features/questions/question-flow-state.ts';
 
 const generatedPackPath = fileURLToPath(
@@ -32,6 +35,38 @@ const generatedPackPath = fileURLToPath(
 function loadContentPack(): ContentPack {
   return ensureMobileShellContentPack(JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack);
 }
+
+test('Radar Choose accepts a positive seeker-entered meter value and rejects invalid distances', () => {
+  const contentPack = loadContentPack();
+  const radarChoose = contentPack.questionTemplates.find((template) => template.templateId === 'radar-choose');
+  const fixedRadar = contentPack.questionTemplates.find((template) => template.templateId === 'radar-402');
+  assert.ok(radarChoose);
+  assert.ok(fixedRadar);
+  assert.equal(isQuestionDistanceChoice(radarChoose!), true);
+  assert.equal(isQuestionDistanceChoice(fixedRadar!), false);
+  assert.equal(parseChosenDistanceMeters('1500'), 1500);
+  assert.equal(parseChosenDistanceMeters('1,5'), 1.5);
+  for (const invalid of ['', '0', '-1', 'NaN', 'distance']) {
+    assert.equal(parseChosenDistanceMeters(invalid), undefined);
+  }
+  assert.deepEqual(buildAskQuestionPayload({
+    questionInstanceId: 'question:choose-distance',
+    template: radarChoose!,
+    targetTeamId: 'team-hider',
+    chosenDistanceDraft: '1500'
+  }), {
+    questionInstanceId: 'question:choose-distance',
+    templateId: 'radar-choose',
+    targetTeamId: 'team-hider',
+    chosenDistanceMeters: 1500
+  });
+  assert.equal(buildAskQuestionPayload({
+    questionInstanceId: 'question:missing-distance',
+    template: radarChoose!,
+    targetTeamId: 'team-hider',
+    chosenDistanceDraft: ''
+  }), undefined);
+});
 
 test('default referee rules match printed scale timers, radius, answer windows, and no cooldown', () => {
   const contentPack = loadContentPack();

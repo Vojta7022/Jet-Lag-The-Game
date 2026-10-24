@@ -57,6 +57,63 @@ test('Radar automatically answers from fresh hider and seeker fixes and applies 
   assert.equal('longitude' in answerEvent.event.payload, false);
 });
 
+test('Radar Choose freezes the seeker-selected radius for the automatic answer and map deduction', () => {
+  const { aggregate, contentPack } = setupRadarMatch();
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: {
+        questionInstanceId: 'question:radar-chosen-distance',
+        templateId: 'radar-choose',
+        targetTeamId: 'team-hider',
+        chosenDistanceMeters: 1500
+      }
+    }, 16), contentPack);
+
+  const question = result.aggregate.questionInstances['question:radar-chosen-distance'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.value, 'yes');
+  assert.equal(question?.chosenDistanceMeters, 1500);
+  assert.equal(question?.automaticResolution?.thresholdMeters, 1500);
+  const constraint = Object.values(result.aggregate.constraints).find(
+    (item) => item.sourceQuestionInstanceId === 'question:radar-chosen-distance'
+  );
+  assert.equal(constraint?.metadata.radiusMeters, 1500);
+});
+
+test('Radar Choose requires a positive distance and fixed Radar prompts reject custom radii', () => {
+  const { aggregate, contentPack } = setupRadarMatch();
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  for (const chosenDistanceMeters of [undefined, 0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+    assert.throws(() => executeCommand(prompted, makeEnvelope(prompted.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+        type: 'ask_question',
+        payload: {
+          questionInstanceId: `question:invalid-radar-${String(chosenDistanceMeters)}`,
+          templateId: 'radar-choose',
+          targetTeamId: 'team-hider',
+          ...(chosenDistanceMeters !== undefined ? { chosenDistanceMeters } : {})
+        }
+      }, 16), contentPack), /choose a distance greater than zero/i);
+  }
+  assert.throws(() => executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: {
+        questionInstanceId: 'question:fixed-radar-customized',
+        templateId: 'radar-402',
+        targetTeamId: 'team-hider',
+        chosenDistanceMeters: 1500
+      }
+    }, 16), contentPack), /cannot accept a custom radius/i);
+});
+
 test('Matching automatically compares the nearest same-class features and narrows from the trusted feature snapshot', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);

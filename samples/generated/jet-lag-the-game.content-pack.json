@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T19:51:18.598Z",
+    "importedAt": "2026-10-24T20:16:29.185Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -7737,7 +7737,7 @@
         "promptTemplate": "Are you within [Distance] of me?"
       },
       "parameters": {
-        "distanceMode": "manual-choice",
+        "distanceMode": "player_choice",
         "workbookQuestionText": "Are you within [Distance] of me?",
         "workbookCostText": "Draw 2, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -7749,9 +7749,7 @@
           "no"
         ]
       },
-      "resolverConfig": {
-        "requiresRulesetDefinedChoiceBounds": true
-      },
+      "resolverConfig": {},
       "constraintRefs": [
         "within-radius",
         "outside-radius"

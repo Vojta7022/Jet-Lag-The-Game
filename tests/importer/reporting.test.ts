@@ -16,7 +16,11 @@ test('import reporting captures workbook ambiguities and draft-only gaps', () =>
   assert.equal(result.report.issues.some((issue) => issue.severity === 'error'), false);
 
   const issueCodes = new Set(result.report.issues.map((issue) => issue.code));
-  assert.ok(issueCodes.has('AMBIGUOUS_MANUAL_TEMPLATE'));
+  assert.equal(issueCodes.has('AMBIGUOUS_MANUAL_TEMPLATE'), false);
+  assert.equal(
+    (result.pack.questionTemplates.find((template) => template.templateId === 'radar-choose')?.parameters?.distanceMode),
+    'player_choice'
+  );
   assert.ok(issueCodes.has('MISSING_RULESET'));
   assert.ok(issueCodes.has('MISSING_MAP_PRESET'));
   assert.ok(issueCodes.has('POWER_UP_EFFECT_UNSPECIFIED'));
