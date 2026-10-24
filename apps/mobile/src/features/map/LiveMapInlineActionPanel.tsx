@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { buildQuestionSelectionState } from '../../../../../packages/domain/src/index.ts';
 
-import { defaultContentPack } from '../../runtime/default-content-pack.ts';
+import { getBundledContentPackById } from '../../runtime/default-content-pack.ts';
 import { createUuid } from '../../runtime/create-uuid.ts';
 import { useAppShell } from '../../providers/AppShellProvider.tsx';
 import {
@@ -69,6 +69,7 @@ export function LiveMapInlineActionPanel() {
   } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
+  const contentPack = getBundledContentPackById(projection?.contentPackId);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
@@ -80,8 +81,8 @@ export function LiveMapInlineActionPanel() {
   const capabilities = getQuestionFlowCapabilities(viewerRole);
 
   const categoryViewModels = useMemo(
-    () => buildQuestionCategoryViewModels(defaultContentPack),
-    []
+    () => buildQuestionCategoryViewModels(contentPack),
+    [contentPack]
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | undefined>(
     categoryViewModels[0]?.category.categoryId
@@ -89,7 +90,7 @@ export function LiveMapInlineActionPanel() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(
     categoryViewModels[0]?.templates[0]?.templateId
   );
-  const selectedCategory = findQuestionCategory(defaultContentPack, selectedCategoryId);
+  const selectedCategory = findQuestionCategory(contentPack, selectedCategoryId);
   const availableTemplates = filterTemplatesForScale(
     categoryViewModels.find((entry) => entry.category.categoryId === selectedCategoryId)?.templates ?? [],
     selectedScale
@@ -98,7 +99,7 @@ export function LiveMapInlineActionPanel() {
     () =>
       selectedCategory
         ? buildQuestionSelectionState({
-            contentPack: defaultContentPack,
+            contentPack: contentPack,
             category: selectedCategory,
             selectedScale,
             askedQuestions: (projection?.visibleQuestions ?? []).map((question) => ({
@@ -113,7 +114,7 @@ export function LiveMapInlineActionPanel() {
   const readyTemplates = availableTemplates.filter((template) =>
         activeSelectionRound?.availableTemplateIds.includes(template.templateId)
   );
-  const selectedTemplate = findQuestionTemplate(defaultContentPack, selectedTemplateId);
+  const selectedTemplate = findQuestionTemplate(contentPack, selectedTemplateId);
   const readyTemplate = readyTemplates.find((template) => template.templateId === selectedTemplateId)
     ?? readyTemplates[0]
     ?? selectedTemplate;
@@ -138,8 +139,8 @@ export function LiveMapInlineActionPanel() {
   }, [activeSelectionRound, availableTemplates, selectedTemplateId]);
 
   const activeQuestion = findActiveQuestion(projection);
-  const activeQuestionTemplate = findQuestionTemplate(defaultContentPack, activeQuestion?.templateId);
-  const activeQuestionCategory = findQuestionCategory(defaultContentPack, activeQuestion?.categoryId);
+  const activeQuestionTemplate = findQuestionTemplate(contentPack, activeQuestion?.templateId);
+  const activeQuestionCategory = findQuestionCategory(contentPack, activeQuestion?.categoryId);
   const [answerDraft, setAnswerDraft] = useState<QuestionAnswerDraft>(() =>
     createInitialAnswerDraft(activeQuestionTemplate)
   );
@@ -160,8 +161,8 @@ export function LiveMapInlineActionPanel() {
   );
 
   const evidenceContexts = useMemo(
-    () => buildEvidenceContexts(defaultContentPack, projection, viewerRole),
-    [projection, viewerRole]
+    () => buildEvidenceContexts(contentPack, projection, viewerRole),
+    [contentPack, projection, viewerRole]
   );
   const activeQuestionEvidenceContext = evidenceContexts.find((context) => context.kind === 'question');
   const questionAttachmentContext = useMemo<LocalEvidenceContextDescriptor | undefined>(
@@ -189,8 +190,8 @@ export function LiveMapInlineActionPanel() {
       : 'Recording evidence here creates a real attachment record. The image preview stays local to this device session.';
 
   const deckViewModels = useMemo(
-    () => buildDeckViewModels(defaultContentPack, projection, viewerRole),
-    [projection, viewerRole]
+    () => buildDeckViewModels(contentPack, projection, viewerRole),
+    [contentPack, projection, viewerRole]
   );
   const hiderDeck = deckViewModels.find((deck) => deck.deck.ownerScope === 'hider_team') ??
     deckViewModels.find((deck) => deck.deck.ownerScope === 'hider_player');
@@ -368,7 +369,7 @@ export function LiveMapInlineActionPanel() {
         questionInstanceId: activeQuestion.questionInstanceId,
         constraintId,
         metadata: buildConstraintResolutionMetadata({
-          contentPack: defaultContentPack,
+          contentPack: contentPack,
           visibleMap,
           template: activeQuestionTemplate,
           question: activeQuestion
@@ -608,8 +609,8 @@ export function LiveMapInlineActionPanel() {
               resolution={projection?.activeCardResolution}
               canResolve={canResolveCard}
               resolveDisabledReason={resolveDisabledReason}
-              questionCategories={defaultContentPack.questionCategories}
-              questionTemplates={defaultContentPack.questionTemplates}
+              questionCategories={contentPack.questionCategories}
+              questionTemplates={contentPack.questionTemplates}
               selectedScale={selectedScale}
               disabled={state.loadState === 'loading'}
               onResolve={(questionTemplateIds) => {

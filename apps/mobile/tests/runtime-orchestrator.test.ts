@@ -67,6 +67,60 @@ test('runtime orchestrator can create host sessions across all supported foundat
   await orchestrator.disconnect(singleDevice.connection);
 });
 
+test('runtime orchestrator binds a match to a selected installed content pack and rejects missing packs', async () => {
+  const standardPack = loadContentPack();
+  const alternatePack: ContentPack = {
+    ...standardPack,
+    packId: 'extension-city-sprint',
+    packVersion: '1.0.0',
+    title: 'City Sprint Extension'
+  };
+  const orchestrator = new MobileRuntimeOrchestrator({
+    contentPacks: [standardPack, alternatePack],
+    environment: mobileAppEnvironment
+  });
+  const profile = { displayName: 'Host', playerId: 'pack-host' };
+
+  const created = await orchestrator.createMatch(profile, {
+    runtimeKind: 'single_device_referee',
+    matchId: 'extension-pack-match',
+    initialScale: 'small',
+    contentPackId: alternatePack.packId
+  });
+  assert.equal(created.initialSync.projectionDelivery.projection.contentPackId, alternatePack.packId);
+  await orchestrator.disconnect(created.connection);
+
+  const invalidPack: ContentPack = {
+    ...alternatePack,
+    decks: alternatePack.decks.map((deck, index) => index === 0
+      ? { ...deck, entries: [{ ...deck.entries[0]!, cardDefinitionId: 'missing-card-definition' }, ...deck.entries.slice(1)] }
+      : deck)
+  };
+  const invalidOrchestrator = new MobileRuntimeOrchestrator({
+    contentPacks: [invalidPack],
+    environment: mobileAppEnvironment
+  });
+  await assert.rejects(
+    () => invalidOrchestrator.createMatch(profile, {
+      runtimeKind: 'single_device_referee',
+      matchId: 'invalid-pack-match',
+      initialScale: 'small',
+      contentPackId: invalidPack.packId
+    }),
+    /failed validation: .*missing-card-definition/i
+  );
+
+  await assert.rejects(
+    () => orchestrator.createMatch(profile, {
+      runtimeKind: 'single_device_referee',
+      matchId: 'missing-pack-match',
+      initialScale: 'small',
+      contentPackId: 'not-installed'
+    }),
+    /content pack .*not-installed.*not installed/i
+  );
+});
+
 test('mobile runtime timestamps authoritative commands using its injected wall clock', async () => {
   const fixedNow = new Date('2026-10-23T20:00:00.000Z');
   const orchestrator = new MobileRuntimeOrchestrator({

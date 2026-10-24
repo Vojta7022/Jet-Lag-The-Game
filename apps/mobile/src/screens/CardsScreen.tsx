@@ -5,7 +5,7 @@ import { StyleSheet, Switch, Text, View } from 'react-native';
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
-import { defaultContentPack } from '../runtime/default-content-pack.ts';
+import { getBundledContentPackById } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
@@ -109,6 +109,7 @@ export function CardsScreen() {
   const [showPiles, setShowPiles] = useState(false);
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
+  const contentPack = getBundledContentPackById(projection?.contentPackId);
   const hiderHandLimit = projection?.hiderHandLimit ?? HIDER_HAND_TARGET;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);
@@ -118,8 +119,8 @@ export function CardsScreen() {
   );
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
   const deckViewModels = useMemo(
-    () => buildDeckViewModels(defaultContentPack, projection, viewerRole),
-    [projection, viewerRole]
+    () => buildDeckViewModels(contentPack, projection, viewerRole),
+    [contentPack, projection, viewerRole]
   );
   const [selectedDeckId, setSelectedDeckId] = useState<string | undefined>(
     deckViewModels[0]?.deck.deckId
@@ -159,7 +160,7 @@ export function CardsScreen() {
     ? latestVisibleQuestion
     : undefined;
   const activeQuestionCategory = findQuestionCategory(
-    defaultContentPack,
+    contentPack,
     activeQuestion?.categoryId
   );
   const responseSelectionLimit =
@@ -351,8 +352,8 @@ export function CardsScreen() {
       )
     : undefined;
   const evidenceContexts = useMemo(
-    () => buildEvidenceContexts(defaultContentPack, projection, viewerRole),
-    [projection, viewerRole]
+    () => buildEvidenceContexts(contentPack, projection, viewerRole),
+    [contentPack, projection, viewerRole]
   );
   const activeCardEvidenceContext = evidenceContexts.find(
     (context) => context.kind === 'card'
@@ -952,8 +953,8 @@ export function CardsScreen() {
               resolution={projection?.activeCardResolution}
               canResolve={canResolve}
               resolveDisabledReason={resolveDisabledReason}
-              questionCategories={defaultContentPack.questionCategories}
-              questionTemplates={defaultContentPack.questionTemplates}
+              questionCategories={contentPack.questionCategories}
+              questionTemplates={contentPack.questionTemplates}
               selectedScale={selectedScale}
               disabled={state.loadState === 'loading'}
               onResolve={(questionTemplateIds) => {

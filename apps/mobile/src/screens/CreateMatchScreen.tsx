@@ -12,6 +12,11 @@ import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 import { GameArtwork } from '../ui/GameArtwork.tsx';
+import {
+  bundledContentPacks,
+  defaultContentPack,
+  getBundledContentPackValidationIssues
+} from '../runtime/default-content-pack.ts';
 
 const SCALE_OPTIONS = [
   { value: 'small', label: 'Small' },
@@ -28,6 +33,7 @@ export function CreateMatchScreen() {
   const [initialScale, setInitialScale] = useState<
     'small' | 'medium' | 'large'
   >('small');
+  const [contentPackId, setContentPackId] = useState(defaultContentPack.packId);
   const matchMode =
     runtimeKind === 'online_foundation'
       ? 'online'
@@ -138,6 +144,36 @@ export function CreateMatchScreen() {
             })}
           </View>
         </View>
+        <View style={styles.choiceGroup}>
+          <Text style={styles.choiceLabel}>Rules & Question Set</Text>
+          <Text style={styles.packHint}>Everyone in the match uses this exact pack version.</Text>
+          {bundledContentPacks.map((pack) => {
+            const selected = pack.packId === contentPackId;
+            const issues = getBundledContentPackValidationIssues(pack);
+            const blockingIssueCount = issues.filter((issue) => issue.blocking || issue.severity === 'error').length;
+            return (
+              <Pressable
+                key={`${pack.packId}@${pack.packVersion}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => setContentPackId(pack.packId)}
+                disabled={blockingIssueCount > 0}
+                style={[styles.packOption, selected ? styles.packOptionSelected : null]}
+              >
+                <View style={styles.packText}>
+                  <Text style={[styles.choiceChipLabel, selected ? styles.choiceChipLabelSelected : null]}>
+                    {pack.title}
+                  </Text>
+                  <Text style={styles.packHint}>{pack.summary ?? 'Rules, questions, and reward cards.'}</Text>
+                  <Text style={styles.packVersion}>
+                    Version {pack.packVersion} · {pack.status} · {blockingIssueCount === 0 ? 'validated' : `${blockingIssueCount} blocking issues`}
+                  </Text>
+                </View>
+                <Text style={styles.packCheck}>{selected ? '✓' : ''}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
         {runtimeKind === 'online_foundation' ? (
           <StateBanner
             tone="info"
@@ -173,6 +209,7 @@ export function CreateMatchScreen() {
             void createMatch({
               matchId: matchId.trim(),
               initialScale,
+              contentPackId,
               matchMode
             }).then((accepted) => {
               if (accepted) {
@@ -188,6 +225,23 @@ export function CreateMatchScreen() {
 
 const styles = StyleSheet.create({
   routeArtwork: { height: 140, overflow: 'hidden', borderRadius: 12 },
+  packOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceRaised,
+    paddingHorizontal: 14,
+    paddingVertical: 12
+  },
+  packOptionSelected: { borderColor: colors.accent, backgroundColor: colors.accentMuted },
+  packText: { flex: 1, gap: 3 },
+  packHint: { color: colors.textMuted, fontSize: 12, lineHeight: 17 },
+  packVersion: { color: colors.textMuted, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.4 },
+  packCheck: { color: colors.ink, fontSize: 18, fontWeight: '800' },
   choiceDetail: {
     color: colors.textMuted,
     fontSize: 10,

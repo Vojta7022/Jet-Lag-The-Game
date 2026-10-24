@@ -7,7 +7,7 @@ import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
 import { canAccessHostControls } from '../navigation/player-flow.ts';
-import { defaultContentPack } from '../runtime/default-content-pack.ts';
+import { getBundledContentPackById } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
@@ -164,6 +164,7 @@ export function QuestionCenterScreen() {
   } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
+  const contentPack = getBundledContentPackById(projection?.contentPackId);
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);
   const viewerRole = resolveCurrentRole(
@@ -178,8 +179,8 @@ export function QuestionCenterScreen() {
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
   const capabilities = getQuestionFlowCapabilities(viewerRole);
   const categoryViewModels = useMemo(
-    () => buildQuestionCategoryViewModels(defaultContentPack),
-    []
+    () => buildQuestionCategoryViewModels(contentPack),
+    [contentPack]
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState<
     string | undefined
@@ -191,23 +192,23 @@ export function QuestionCenterScreen() {
   const latestQuestion = projection?.visibleQuestions[projection.visibleQuestions.length - 1];
   const resolvedQuestion = findLatestResolvedQuestion(projection);
   const activeQuestionTemplate = findQuestionTemplate(
-    defaultContentPack,
+    contentPack,
     activeQuestion?.templateId
   );
   const activeQuestionCategory = findQuestionCategory(
-    defaultContentPack,
+    contentPack,
     activeQuestion?.categoryId
   );
   const resolvedQuestionTemplate = findQuestionTemplate(
-    defaultContentPack,
+    contentPack,
     resolvedQuestion?.templateId
   );
   const resolvedQuestionCategory = findQuestionCategory(
-    defaultContentPack,
+    contentPack,
     resolvedQuestion?.categoryId
   );
   const selectedCategory = findQuestionCategory(
-    defaultContentPack,
+    contentPack,
     selectedCategoryId
   );
   const availableTemplates = filterTemplatesForScale(
@@ -217,7 +218,7 @@ export function QuestionCenterScreen() {
     selectedScale
   );
   const selectedTemplate = findQuestionTemplate(
-    defaultContentPack,
+    contentPack,
     selectedTemplateId
   );
   const [answerDraft, setAnswerDraft] = useState<QuestionAnswerDraft>(() =>
@@ -227,7 +228,7 @@ export function QuestionCenterScreen() {
     () =>
       selectedCategory
         ? buildQuestionSelectionState({
-            contentPack: defaultContentPack,
+            contentPack: contentPack,
             category: selectedCategory,
             selectedScale,
             askedQuestions: (projection?.visibleQuestions ?? []).map(
@@ -349,7 +350,7 @@ export function QuestionCenterScreen() {
     resolvedQuestion?.questionInstanceId
   );
   const evidenceContexts = useMemo(
-    () => buildEvidenceContexts(defaultContentPack, projection, viewerRole),
+    () => buildEvidenceContexts(contentPack, projection, viewerRole),
     [projection, viewerRole]
   );
   const activeQuestionEvidenceContext = evidenceContexts.find(
@@ -613,7 +614,7 @@ export function QuestionCenterScreen() {
         questionInstanceId: activeQuestion.questionInstanceId,
         constraintId,
         metadata: buildConstraintResolutionMetadata({
-          contentPack: defaultContentPack,
+          contentPack: contentPack,
           visibleMap,
           template: activeQuestionTemplate,
           question: activeQuestion
@@ -854,7 +855,7 @@ export function QuestionCenterScreen() {
         {projection?.disabledQuestionCategoryId ? (
           <StateBanner
             tone="warning"
-            title={`${findQuestionCategory(defaultContentPack, projection.disabledQuestionCategoryId)?.name ?? 'A clue category'} is blocked`}
+            title={`${findQuestionCategory(contentPack, projection.disabledQuestionCategoryId)?.name ?? 'A clue category'} is blocked`}
             detail="Curse of Spotty Memory rerolls the blocked category after the next accepted question."
           />
         ) : null}

@@ -141,6 +141,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [ ] Add content-pack selection/validation for the standard game and a versioned extension path for future variants.
 - [ ] Run a full mobile field round on multiple phones with native GPS and cellular connectivity.
 
+### Current implementation slice: local content-pack selection and validation
+
+- [x] Add a device-installed pack catalog and a rules/question-set picker during match creation; record the selected pack ID in the match.
+- [x] Resolve question/card/rules UI data from the match's selected pack ID instead of a screen-level hard-coded standard pack.
+- [x] Validate each installed pack once, reject invalid selections, and reject joining a match whose selected pack is not installed locally.
+- [ ] Preserve and enforce the exact `packVersion` across server records and match projections; distribute additional variant packs and validate the online join path against multiple installed versions.
+
 ### Completed implementation slice: Move authority timer
 
 - [x] Add the community-transcribed Small/Medium/Large durations (10/20/60 minutes) to typed Move content with source provenance; remove the stale missing-duration importer warning.

@@ -18,7 +18,7 @@ import { ProtectedRoleHandoffPanel } from '../features/map/ProtectedRoleHandoffP
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
 import { createMapScenario, decodeMapScenario, encodeMapScenario, type MapScenario } from '../features/map/map-scenarios.ts';
 import { loadSavedMapScenarios, saveMapScenario } from '../features/map/map-scenario-storage.ts';
-import { defaultContentPack } from '../runtime/default-content-pack.ts';
+import { getBundledContentPackById } from '../runtime/default-content-pack.ts';
 
 import {
   LiveMapActionPanel,
@@ -171,6 +171,7 @@ export function MapScreen() {
     initialRegionId: mapSetupDraft?.selectedPreviewRegionId
   });
   const projection = activeMatch?.projection;
+  const contentPack = getBundledContentPackById(projection?.contentPackId);
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
@@ -182,19 +183,19 @@ export function MapScreen() {
     appliedMap: projection?.visibleMap
   });
   const activeQuestion = findActiveQuestion(projection);
-  const activeQuestionTemplate = findQuestionTemplate(defaultContentPack, activeQuestion?.templateId);
-  const activeQuestionCategory = findQuestionCategory(defaultContentPack, activeQuestion?.categoryId);
+  const activeQuestionTemplate = findQuestionTemplate(contentPack, activeQuestion?.templateId);
+  const activeQuestionCategory = findQuestionCategory(contentPack, activeQuestion?.categoryId);
   const latestResolvedQuestion = findLatestResolvedQuestion(projection);
   const latestResolvedConstraint = findConstraintForQuestion(
     projection,
     latestResolvedQuestion?.questionInstanceId
   );
   const latestResolvedTemplate = findQuestionTemplate(
-    defaultContentPack,
+    contentPack,
     latestResolvedQuestion?.templateId
   );
   const latestResolvedCategory = findQuestionCategory(
-    defaultContentPack,
+    contentPack,
     latestResolvedQuestion?.categoryId
   );
   const latestQuestionEffect = useMemo(
@@ -296,8 +297,8 @@ export function MapScreen() {
   );
   const rolesReadyForMapSetup = hasRequiredRoleAssignments(projection);
   const deckViewModels = useMemo(
-    () => buildDeckViewModels(defaultContentPack, projection, viewerRole),
-    [projection, viewerRole]
+    () => buildDeckViewModels(contentPack, projection, viewerRole),
+    [contentPack, projection, viewerRole]
   );
   const hiderDeck = deckViewModels.find((deck) => deck.deck.ownerScope === 'hider_team') ??
     deckViewModels.find((deck) => deck.deck.ownerScope === 'hider_player');
@@ -442,7 +443,7 @@ export function MapScreen() {
   const liveStatusItems = useMemo(
     () => {
       if (!liveGameplayState) return [];
-      const selectedRuleset = defaultContentPack.rulesets.find(
+      const selectedRuleset = contentPack.rulesets.find(
         (ruleset) => ruleset.rulesetId === projection?.selectedRulesetId
       );
       const configuredMaxAge = selectedRuleset?.locationPolicies.automaticQuestionMaxAgeSeconds;

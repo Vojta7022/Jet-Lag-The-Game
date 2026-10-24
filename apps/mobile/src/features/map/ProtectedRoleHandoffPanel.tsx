@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { MatchProjection, SingleDeviceRevealResult, SingleDeviceRevealToken, VisiblePlayerProjection } from '../../../../../packages/shared-types/src/index.ts';
 import { useAppShell } from '../../providers/AppShellProvider.tsx';
-import { defaultContentPack } from '../../runtime/default-content-pack.ts';
+import { getBundledContentPackById } from '../../runtime/default-content-pack.ts';
 import { AppButton } from '../../ui/AppButton.tsx';
 import { Panel } from '../../ui/Panel.tsx';
 import { colors } from '../../ui/theme.ts';
@@ -22,6 +22,7 @@ export function ProtectedRoleHandoffPanel() {
   } = useAppShell();
   const match = state.activeMatch;
   const projection = match?.projection;
+  const contentPack = getBundledContentPackById(projection?.contentPackId);
   const isReferee = match?.runtimeKind === 'single_device_referee' && match.recipient.scope === 'host_admin';
   const players = projection?.players.filter((player) => player.role === 'hider' || player.role === 'seeker') ?? [];
   const [token, setToken] = useState<SingleDeviceRevealToken>();
@@ -98,7 +99,7 @@ export function ProtectedRoleHandoffPanel() {
         <Text style={styles.detail}>Private cards in your view: {teamCards.length}</Text>
         {teamCards.map((card) => (
           <Text key={card.cardInstanceId} style={styles.cardName}>
-            {defaultContentPack.cards.find((definition) => definition.cardDefinitionId === card.cardDefinitionId)?.name ?? card.cardDefinitionId}
+            {contentPack.cards.find((definition) => definition.cardDefinitionId === card.cardDefinitionId)?.name ?? card.cardDefinitionId}
           </Text>
         ))}
         <Text style={styles.detail}>Investigation history visible: {revealed.projection.visibleQuestions.length}</Text>

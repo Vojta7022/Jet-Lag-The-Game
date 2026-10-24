@@ -2,6 +2,7 @@ import type {
   ActorRef,
   AuthorityRuntime,
   ContentPack,
+  ImportIssue,
   DomainCommand,
   MatchMode,
   MatchProjection,
@@ -41,6 +42,7 @@ import {
 } from '../../../../packages/transport/src/index.ts';
 import type { OnlineRepositoryBundle, OnlineTransportService } from '../../../../packages/transport/src/index.ts';
 import { OpenStreetMapQuestionFeatureProvider } from '../../../../packages/geo/src/index.ts';
+import { validateContentPack } from '../../../../packages/content-import/src/validation.ts';
 
 import type { MobileAppEnvironment, MobileRuntimeKind } from '../config/env.ts';
 import {
@@ -146,6 +148,8 @@ function getPlayerRoleFromProjection(
 
 export class MobileRuntimeOrchestrator {
   private readonly contentPack: ContentPack;
+  private readonly contentPacks: ContentPack[];
+  private readonly contentPackIssuesById = new Map<string, ImportIssue[]>();
   private readonly environment: MobileAppEnvironment;
   private readonly singleDevicePersistence: LocalRuntimePersistence;
   private readonly clock: () => Date;
@@ -158,13 +162,24 @@ export class MobileRuntimeOrchestrator {
   private onlineFoundation?: OnlineFoundationServices;
 
   constructor(options: {
-    contentPack: ContentPack;
+    contentPack?: ContentPack;
+    contentPacks?: ContentPack[];
     environment: MobileAppEnvironment;
     singleDevicePersistence?: LocalRuntimePersistence;
     clock?: () => Date;
     onlineSessionManager?: Pick<SupabaseMobileSessionManager, 'isConfigured' | 'createOnlineAuthSession'>;
   }) {
-    this.contentPack = options.contentPack;
+    this.contentPacks = options.contentPacks ?? (options.contentPack ? [options.contentPack] : []);
+    if (this.contentPacks.length === 0) {
+      throw new Error('At least one content pack must be installed before creating a match.');
+    }
+    const packIds = new Set<string>();
+    for (const pack of this.contentPacks) {
+      if (packIds.has(pack.packId)) throw new Error(`Content pack ID "${pack.packId}" is installed more than once.`);
+      packIds.add(pack.packId);
+      this.contentPackIssuesById.set(pack.packId, validateContentPack(pack));
+    }
+    this.contentPack = options.contentPack ?? this.contentPacks[0]!;
     this.environment = options.environment;
     this.singleDevicePersistence = options.singleDevicePersistence ?? new InMemoryPersistence();
     this.clock = options.clock ?? (() => new Date());
@@ -175,6 +190,17 @@ export class MobileRuntimeOrchestrator {
     profile: SessionProfileDraft,
     input: CreateMatchInput
   ): Promise<ConnectedMatchResult> {
+    const selectedPackId = input.contentPackId ?? this.contentPack.packId;
+    const selectedPack = this.contentPacks.find((pack) => pack.packId === selectedPackId);
+    if (!selectedPack) {
+      throw new Error(`Content pack "${selectedPackId}" is not installed on this device.`);
+    }
+    const blockingIssues = (this.contentPackIssuesById.get(selectedPack.packId) ?? [])
+      .filter((issue) => issue.blocking || issue.severity === 'error');
+    if (blockingIssues.length > 0) {
+      throw new Error(`Content pack "${selectedPack.title}" (${selectedPack.packId}) failed validation: ${blockingIssues.map((issue) => issue.message).join(' ')}`);
+    }
+    input = { ...input, contentPackId: selectedPackId };
     switch (input.runtimeKind) {
       case 'online_foundation':
         return this.createOnlineMatch(profile, input);
@@ -371,6 +397,15 @@ export class MobileRuntimeOrchestrator {
 
   summarize(connection: RuntimeConnection, syncEnvelope: SyncEnvelope): ConnectionSnapshotSummary {
     const projection = syncEnvelope.projectionDelivery.projection;
+    const projectionPack = this.contentPacks.find((pack) => pack.packId === projection.contentPackId);
+    if (!projectionPack) {
+      throw new Error(`Content pack "${projection.contentPackId}" is not installed on this device. Install the matching pack version before joining this match.`);
+    }
+    const blockingIssues = (this.contentPackIssuesById.get(projectionPack.packId) ?? [])
+      .filter((issue) => issue.blocking || issue.severity === 'error');
+    if (blockingIssues.length > 0) {
+      throw new Error(`This match's content pack failed validation: ${blockingIssues.map((issue) => issue.message).join(' ')}`);
+    }
     const onlineFoundation = connection.runtimeKind === 'online_foundation'
       ? this.getOrCreateOnlineFoundation()
       : undefined;
@@ -424,7 +459,7 @@ export class MobileRuntimeOrchestrator {
       recipient
     });
 
-    await this.submitCreateMatch(transport, input.matchId, matchMode, profile, input.initialScale);
+    await this.submitCreateMatch(transport, input.matchId, matchMode, profile, input.initialScale, input.contentPackId!);
     const initialSync = await transport.requestSnapshot({ matchId: input.matchId });
 
     return {
@@ -506,7 +541,7 @@ export class MobileRuntimeOrchestrator {
       authSession
     });
 
-    const createResult = await this.submitCreateMatch(transport, input.matchId, 'online', boundProfile, input.initialScale);
+    const createResult = await this.submitCreateMatch(transport, input.matchId, 'online', boundProfile, input.initialScale, input.contentPackId!);
     const initialSync = await transport.requestSnapshot({ matchId: input.matchId });
     const joinCode = createResult.joinCode
       ?? (await foundation.repositories?.matches.getByMatchId(input.matchId))?.joinCode;
@@ -618,7 +653,7 @@ export class MobileRuntimeOrchestrator {
       recipient
     });
 
-    await this.submitCreateMatch(transport, input.matchId, 'local_nearby', profile, input.initialScale);
+    await this.submitCreateMatch(transport, input.matchId, 'local_nearby', profile, input.initialScale, input.contentPackId!);
     const joinOffer = await runtime.createJoinOffer(input.matchId, {
       hostSessionId: `nearby-host:${profile.playerId}`,
       hostAlias: profile.displayName,
@@ -717,7 +752,7 @@ export class MobileRuntimeOrchestrator {
       recipient
     });
 
-    await this.submitCreateMatch(transport, input.matchId, 'single_device_referee', profile, input.initialScale);
+    await this.submitCreateMatch(transport, input.matchId, 'single_device_referee', profile, input.initialScale, input.contentPackId!);
     const initialSync = await transport.requestSnapshot({ matchId: input.matchId });
 
     return {
@@ -786,7 +821,7 @@ export class MobileRuntimeOrchestrator {
           : 'single_device_referee';
     const runtime = new InMemoryAuthorityRuntime({
       mode: runtimeMode,
-      contentPacks: [this.contentPack],
+      contentPacks: this.contentPacks,
       persistence: new InMemoryPersistence()
     });
     this.inMemoryRuntimes.set(matchId, runtime);
@@ -800,7 +835,7 @@ export class MobileRuntimeOrchestrator {
     }
 
     const runtime = new NearbyAuthorityRuntime({
-      contentPacks: [this.contentPack],
+      contentPacks: this.contentPacks,
       persistence: new InMemoryDurableLocalHostPersistence()
     });
     this.nearbyRuntimes.set(matchId, runtime);
@@ -814,7 +849,7 @@ export class MobileRuntimeOrchestrator {
     }
 
     const runtime = new SingleDeviceRefereeRuntime({
-      contentPacks: [this.contentPack],
+      contentPacks: this.contentPacks,
       persistence: this.singleDevicePersistence,
       questionFeatureDataProvider: new OpenStreetMapQuestionFeatureProvider()
     });
@@ -838,7 +873,7 @@ export class MobileRuntimeOrchestrator {
     } : undefined;
     const realtime: OnlineRealtimeFanout = new MockOnlineRealtimeFanout();
     const runtime = repositories ? new OnlineAuthorityRuntime({
-      contentPacks: [this.contentPack],
+      contentPacks: this.contentPacks,
       repositories,
       realtimeFanout: realtime,
       questionFeatureDataProvider: new OpenStreetMapQuestionFeatureProvider()
@@ -911,7 +946,8 @@ export class MobileRuntimeOrchestrator {
     matchId: string,
     matchMode: MatchMode,
     profile: SessionProfileDraft,
-    initialScale: CreateMatchInput['initialScale']
+    initialScale: CreateMatchInput['initialScale'],
+    contentPackId: string
   ) {
     const result = await transport.submit(
       this.makeEnvelope(
@@ -921,7 +957,7 @@ export class MobileRuntimeOrchestrator {
           type: 'create_match',
           payload: {
             mode: matchMode,
-            contentPackId: this.contentPack.packId,
+            contentPackId,
             hostPlayerId: profile.playerId,
             hostDisplayName: profile.displayName,
             initialScale

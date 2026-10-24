@@ -26,6 +26,7 @@ export interface CreateMatchInput {
   runtimeKind: MobileRuntimeKind;
   matchId: string;
   initialScale: 'small' | 'medium' | 'large';
+  contentPackId?: string;
   matchMode?: MatchMode;
 }
 
