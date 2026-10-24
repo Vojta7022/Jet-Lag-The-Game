@@ -110,9 +110,9 @@ end if;
 - Consumes: Task 1 membership and atomic-commit services, existing `EngineCommandGateway`, `buildSyncEnvelope`, and the standard content pack.
 - Produces: one user-JWT-protected endpoint that handles create, join, command submission, snapshot, and catch-up; it derives actor/player/role/team from verified server state.
 
-- [ ] **Step 1: Add failing handler tests** for missing/invalid JWT, a valid host creating a room, a second Auth user joining by code, non-member snapshot denial, and role impersonation denial.
-- [ ] **Step 2: Run the focused Edge Function test** and confirm failures identify the absent handler/auth binding.
-- [ ] **Step 3: Implement request parsing and Auth verification**. Reject unknown operations, malformed JSON, oversized requests, unsupported commands, and missing match membership with typed responses.
+- [x] **Step 1: Add failing handler tests** for missing/invalid JWT, a valid host creating a room, a second Auth user joining by code, non-member snapshot denial, and role impersonation denial.
+- [x] **Step 2: Run the focused Edge Function test** and confirm failures identify the absent handler/auth binding.
+- [x] **Step 3: Implement request parsing and Auth verification**. Reject unknown operations, malformed JSON, oversized requests, unsupported commands, and missing match membership with typed responses.
 
 ```ts
 const authorization = request.headers.get('authorization');
@@ -122,11 +122,11 @@ const user = await authClient.auth.getUser(authorization.slice('Bearer '.length)
 if (user.error || !user.data.user) return jsonError(401, 'AUTH_INVALID');
 ```
 
-- [ ] **Step 4: Implement server runtime construction** with server-only credentials, versioned bundled content, the shared engine gateway, user membership binding, and atomic persistence from Task 1.
+- [x] **Step 4: Implement server runtime construction** with server-only credentials, versioned bundled content, the shared engine gateway, user membership binding, and atomic persistence from Task 1.
 
 The `join_match` branch validates the join code, dispatches the existing engine command, then associates the verified Auth user with the resulting player ID in the same authority operation. A user already bound to another player in the same match receives `PLAYER_ALREADY_JOINED`.
-- [ ] **Step 5: Add a function-level test** proving an accepted command produces a projection from the server aggregate and a denied command writes no events.
-- [ ] **Step 6: Run focused tests, `deno check supabase/functions/game-authority/index.ts`, and `git diff --check`; commit as `feat: add authenticated online game authority`.
+- [x] **Step 5: Add a function-level test** proving an accepted command produces a projection from the server aggregate and a denied command writes no events.
+- [x] **Step 6: Run focused tests, `deno check supabase/functions/game-authority/index.ts`, and `git diff --check`; commit as `feat: add authenticated online game authority`.
 
 ## Task 3: Route configured mobile online sessions through the server
 

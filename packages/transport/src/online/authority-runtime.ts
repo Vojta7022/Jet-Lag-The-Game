@@ -33,6 +33,7 @@ import { buildSyncEnvelope, createMatchSnapshot } from '../sync.ts';
 import { DefaultOnlineSessionBinder } from './auth.ts';
 import type {
   OnlineRealtimeFanout,
+  OnlineAuthorityRepository,
   OnlineRepositoryBundle,
   OnlineSessionBinder,
   OnlineTransportService
@@ -55,6 +56,7 @@ export interface OnlineAuthorityRuntimeOptions {
   contentPacks: ContentPack[];
   repositories: OnlineRepositoryBundle;
   realtimeFanout: OnlineRealtimeFanout;
+  authorityRepository?: OnlineAuthorityRepository;
   gateway?: CommandGateway;
   sessionBinder?: OnlineSessionBinder;
 }
@@ -84,6 +86,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
 
   private readonly repositories: OnlineRepositoryBundle;
   private readonly realtimeFanout: OnlineRealtimeFanout;
+  private readonly authorityRepository?: OnlineAuthorityRepository;
   private readonly sessionBinder: OnlineSessionBinder;
   private readonly contentPacksById: Map<string, ContentPack>;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
@@ -94,6 +97,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     this.gateway = options.gateway ?? new EngineCommandGateway();
     this.repositories = options.repositories;
     this.realtimeFanout = options.realtimeFanout;
+    this.authorityRepository = options.authorityRepository;
     this.sessionBinder = options.sessionBinder ?? new DefaultOnlineSessionBinder();
     this.contentPacksById = new Map(options.contentPacks.map((contentPack) => [contentPack.packId, contentPack]));
   }
@@ -223,12 +227,14 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
 
     const recoveredSnapshot = createMatchSnapshot(aggregate, this.mode);
     this.aggregateCache.set(matchId, aggregate);
-    await this.repositories.snapshots.save(recoveredSnapshot);
-    const joinCode = await this.getOrCreateJoinCode(matchId);
-    await this.repositories.matches.save({
-      ...toMatchRecord(aggregate),
-      joinCode
-    });
+    if (!this.authorityRepository) {
+      await this.repositories.snapshots.save(recoveredSnapshot);
+      const joinCode = await this.getOrCreateJoinCode(matchId);
+      await this.repositories.matches.save({
+        ...toMatchRecord(aggregate),
+        joinCode
+      });
+    }
     return recoveredSnapshot;
   }
 
@@ -253,10 +259,32 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       return result;
     }
 
+    const snapshot = createMatchSnapshot(result.aggregate, this.mode);
+    if (this.authorityRepository) {
+      const committed = await this.persistAtomicState({
+        aggregate: result.aggregate,
+        contentPack,
+        events: result.events,
+        expectedRevision: aggregate?.revision ?? null,
+        commandId: envelope.commandId,
+        idempotencyKey: envelope.idempotencyKey ?? envelope.commandId,
+        snapshot
+      });
+      if (committed.status === 'revision_conflict') {
+        throw new TransportRuntimeError(
+          'MATCH_REVISION_CONFLICT',
+          'Another player changed the match. Refresh the match and retry this action.'
+        );
+      }
+      if (committed.status === 'duplicate') return committed.result;
+      this.aggregateCache.set(envelope.matchId, result.aggregate);
+      await this.publishProjectionNotices(committed.projections);
+      await this.notifyLocalSubscribers(envelope.matchId);
+      return committed.result;
+    }
+
     await this.repositories.events.append(envelope.matchId, result.events);
     this.aggregateCache.set(envelope.matchId, result.aggregate);
-
-    const snapshot = createMatchSnapshot(result.aggregate, this.mode);
     await this.persistDerivedStateBestEffort(result.aggregate, contentPack, snapshot);
 
     await this.notifyLocalSubscribers(envelope.matchId);
@@ -392,13 +420,29 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       };
     }
 
-    await this.repositories.events.append(matchId, reconciliation.events);
+    const snapshot = createMatchSnapshot(reconciliation.aggregate, this.mode);
+    if (this.authorityRepository) {
+      const committed = await this.persistAtomicState({
+        aggregate: reconciliation.aggregate,
+        contentPack,
+        events: reconciliation.events,
+        expectedRevision: aggregate.revision,
+        commandId: reconciliation.events[0]?.eventId ?? `system:${matchId}:${aggregate.revision}`,
+        idempotencyKey: `system:${matchId}:${snapshot.lastEventSequence}`,
+        snapshot
+      });
+      if (committed.status === 'revision_conflict') {
+        throw new TransportRuntimeError(
+          'MATCH_REVISION_CONFLICT',
+          'Another player changed the match while automatic rules were being applied. Refresh and retry.'
+        );
+      }
+      await this.publishProjectionNotices(committed.projections);
+    } else {
+      await this.repositories.events.append(matchId, reconciliation.events);
+      await this.persistDerivedStateBestEffort(reconciliation.aggregate, contentPack, snapshot);
+    }
     this.aggregateCache.set(matchId, reconciliation.aggregate);
-    await this.persistDerivedStateBestEffort(
-      reconciliation.aggregate,
-      contentPack,
-      createMatchSnapshot(reconciliation.aggregate, this.mode)
-    );
 
     return {
       aggregate: reconciliation.aggregate,
@@ -557,6 +601,45 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
 
     const projectionRecords = buildProjectionRecords(aggregate, contentPack, this.mode);
     await this.tryPersistProjectionRecords(projectionRecords);
+
+    await this.publishProjectionNotices(projectionRecords);
+  }
+
+  private async persistAtomicState(args: {
+    aggregate: MatchAggregate;
+    contentPack: ContentPack;
+    events: import('../../../shared-types/src/index.ts').DomainEventEnvelope[];
+    expectedRevision: number | null;
+    commandId: string;
+    idempotencyKey: string;
+    snapshot: MatchRuntimeSnapshot;
+  }) {
+    if (!this.authorityRepository) throw new Error('Atomic online repository is not configured.');
+    const joinCode = await this.getOrCreateJoinCode(args.aggregate.matchId);
+    const projections = buildProjectionRecords(args.aggregate, args.contentPack, this.mode);
+    const result = {
+      accepted: true,
+      matchId: args.aggregate.matchId,
+      commandId: args.commandId,
+      aggregateRevision: args.aggregate.revision,
+      events: []
+    };
+    const committed = await this.authorityRepository.commit({
+      matchId: args.aggregate.matchId,
+      expectedRevision: args.expectedRevision,
+      commandId: args.commandId,
+      idempotencyKey: args.idempotencyKey,
+      match: { ...toMatchRecord(args.aggregate), joinCode },
+      events: args.events,
+      snapshot: args.snapshot,
+      projections,
+      result
+    });
+    if (committed.status !== 'revision_conflict') this.joinCodesByMatchId.set(args.aggregate.matchId, joinCode);
+    return { ...committed, projections };
+  }
+
+  private async publishProjectionNotices(projectionRecords: ProjectionRecord[]): Promise<void> {
 
     try {
       await this.realtimeFanout.publish(

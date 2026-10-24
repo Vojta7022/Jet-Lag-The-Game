@@ -1,0 +1,249 @@
+import type {
+  CommandSubmissionResult,
+  DomainCommand,
+  MatchMembershipRecord,
+  OnlineAuthSession,
+  OnlineCommandRequest,
+  ProjectionScope,
+  SyncCursor
+} from '../../../packages/shared-types/src/index.ts';
+import type { OnlineTransportService } from '../../../packages/transport/src/online/contracts.ts';
+
+const MAX_REQUEST_BYTES = 64 * 1024;
+const JSON_HEADERS = {
+  'content-type': 'application/json; charset=utf-8',
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'POST, OPTIONS',
+  'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info'
+};
+const CLIENT_IDENTITY_FIELDS = ['actor', 'actorId', 'playerId', 'role', 'teamId', 'authUserId'];
+
+export interface GameAuthorityDependencies {
+  auth: { getUser(accessToken: string): Promise<{ id: string } | undefined> };
+  memberships: {
+    find(matchId: string, authUserId: string): Promise<MatchMembershipRecord | undefined>;
+    bind(record: MatchMembershipRecord): Promise<void>;
+  };
+  matches: { findByJoinCode(joinCode: string): Promise<string | undefined> };
+  service: OnlineTransportService;
+  now?: () => string;
+}
+
+type JsonObject = Record<string, unknown>;
+
+function json(status: number, payload: JsonObject): Response {
+  return new Response(JSON.stringify(payload), { status, headers: JSON_HEADERS });
+}
+
+function errorResponse(error: unknown): Response {
+  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : 'AUTHORITY_ERROR';
+  const status = code === 'PLAYER_ALREADY_JOINED' || code === 'PLAYER_ID_ALREADY_BOUND' || code === 'IDEMPOTENCY_KEY_REUSE' || code === 'MATCH_REVISION_CONFLICT' ? 409
+    : code === 'MATCH_MEMBERSHIP_REQUIRED' || code === 'MEMBERSHIP_REMOVED' || code === 'PROJECTION_SCOPE_FORBIDDEN' ? 403
+      : code === 'MATCH_NOT_FOUND' ? 404
+        : code === 'REQUEST_TOO_LARGE' ? 413
+          : code.startsWith('REQUEST_') || code === 'JSON_INVALID' || code === 'IDENTITY_CLAIMS_NOT_ALLOWED' || code === 'OPERATION_UNSUPPORTED' ? 400
+            : 500;
+  const knownRequestError = status < 500 || code === 'MATCH_REVISION_CONFLICT';
+  const message = knownRequestError && error instanceof Error ? error.message : 'The game service could not complete this request.';
+  return json(status, { error: message, code });
+}
+
+function isRecord(value: unknown): value is JsonObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasIdentityClaims(request: JsonObject): boolean {
+  return CLIENT_IDENTITY_FIELDS.some((field) => field in request);
+}
+
+function requiredString(value: unknown, field: string, maxLength = 160): string {
+  if (typeof value !== 'string' || value.length < 1 || value.length > maxLength) {
+    throw Object.assign(new Error(`"${field}" must be a non-empty string no longer than ${maxLength} characters.`), { code: 'REQUEST_INVALID' });
+  }
+  return value;
+}
+
+function validTimestamp(value: unknown): string {
+  const timestamp = requiredString(value, 'occurredAt', 40);
+  if (!Number.isFinite(Date.parse(timestamp))) {
+    throw Object.assign(new Error('"occurredAt" must be a valid timestamp.'), { code: 'REQUEST_INVALID' });
+  }
+  return timestamp;
+}
+
+function projectionScope(value: unknown): ProjectionScope | undefined {
+  if (value === undefined) return undefined;
+  const scopes: ProjectionScope[] = ['authority', 'host_admin', 'team_private', 'player_private', 'public_match', 'event_feed_public'];
+  if (typeof value !== 'string' || !scopes.includes(value as ProjectionScope)) {
+    throw Object.assign(new Error('"requestedScope" is not a supported projection scope.'), { code: 'REQUEST_INVALID' });
+  }
+  return value as ProjectionScope;
+}
+
+function syncCursor(value: unknown): SyncCursor {
+  if (!isRecord(value)
+    || typeof value.snapshotVersion !== 'number'
+    || typeof value.lastEventSequence !== 'number'
+    || value.snapshotVersion < 0
+    || value.lastEventSequence < 0) {
+    throw Object.assign(new Error('"cursor" must contain non-negative snapshotVersion and lastEventSequence values.'), { code: 'REQUEST_INVALID' });
+  }
+  return { snapshotVersion: value.snapshotVersion, lastEventSequence: value.lastEventSequence };
+}
+
+function asDomainCommand(value: unknown): DomainCommand {
+  if (!isRecord(value) || typeof value.type !== 'string' || !isRecord(value.payload)) {
+    throw Object.assign(new Error('A command type and payload are required.'), { code: 'REQUEST_INVALID' });
+  }
+  if (value.type === 'create_match' || value.type === 'join_match') {
+    throw Object.assign(new Error('Use the dedicated create_match or join_match operation.'), { code: 'REQUEST_INVALID' });
+  }
+  return value as unknown as DomainCommand;
+}
+
+function makeSession(authUserId: string, matchId: string, membership?: MatchMembershipRecord, defaultPlayerId?: string): OnlineAuthSession {
+  return {
+    authProvider: 'supabase',
+    authSessionId: authUserId,
+    authUserId,
+    defaultPlayerId: membership?.status === 'active' ? membership.playerId : defaultPlayerId,
+    memberships: membership?.status === 'active'
+      ? [{ matchId, playerId: membership.playerId }]
+      : []
+  };
+}
+
+function membershipRecord(matchId: string, authUserId: string, playerId: string, joinedAt: string): MatchMembershipRecord {
+  return { matchId, authUserId, playerId, joinedAt, status: 'active' };
+}
+
+async function readBody(request: Request): Promise<JsonObject> {
+  const contentLength = Number(request.headers.get('content-length') ?? 0);
+  if (contentLength > MAX_REQUEST_BYTES) {
+    throw Object.assign(new Error('Request body exceeds the 64 KB limit.'), { code: 'REQUEST_TOO_LARGE' });
+  }
+  const raw = await request.text();
+  if (new TextEncoder().encode(raw).byteLength > MAX_REQUEST_BYTES) {
+    throw Object.assign(new Error('Request body exceeds the 64 KB limit.'), { code: 'REQUEST_TOO_LARGE' });
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    throw Object.assign(new Error('Request body must be valid JSON.'), { code: 'JSON_INVALID' });
+  }
+  if (!isRecord(body)) {
+    throw Object.assign(new Error('Request body must be a JSON object.'), { code: 'REQUEST_INVALID' });
+  }
+  if (hasIdentityClaims(body)) {
+    throw Object.assign(new Error('Identity and role are derived from the authenticated session.'), { code: 'IDENTITY_CLAIMS_NOT_ALLOWED' });
+  }
+  return body;
+}
+
+export function createGameAuthorityHandler(dependencies: GameAuthorityDependencies): (request: Request) => Promise<Response> {
+  const now = dependencies.now ?? (() => new Date().toISOString());
+
+  return async (request) => {
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: JSON_HEADERS });
+    if (request.method !== 'POST') return json(405, { code: 'METHOD_NOT_ALLOWED', error: 'Use POST.' });
+
+    const authorization = request.headers.get('authorization');
+    if (!authorization?.startsWith('Bearer ') || authorization.length <= 7) {
+      return json(401, { code: 'AUTH_REQUIRED', error: 'A Supabase user access token is required.' });
+    }
+
+    let user: { id: string } | undefined;
+    try {
+      user = await dependencies.auth.getUser(authorization.slice(7));
+    } catch {
+      return json(401, { code: 'AUTH_INVALID', error: 'The Supabase access token is invalid or expired.' });
+    }
+    if (!user?.id) return json(401, { code: 'AUTH_INVALID', error: 'The Supabase access token is invalid or expired.' });
+
+    try {
+      const body = await readBody(request);
+      const operation = requiredString(body.operation, 'operation', 32);
+      if (operation === 'create_match') {
+        const payload = isRecord(body.payload) ? body.payload : undefined;
+        if (!payload) throw Object.assign(new Error('Match setup payload is required.'), { code: 'REQUEST_INVALID' });
+        const playerId = requiredString(payload.hostPlayerId, 'payload.hostPlayerId');
+        const matchId = requiredString(body.matchId, 'matchId');
+        const command: DomainCommand = { type: 'create_match', payload: payload as Extract<DomainCommand, { type: 'create_match' }>['payload'] };
+        const onlineRequest: OnlineCommandRequest = {
+          matchId,
+          commandId: requiredString(body.commandId, 'commandId'),
+          occurredAt: body.occurredAt === undefined ? now() : validTimestamp(body.occurredAt),
+          idempotencyKey: body.idempotencyKey === undefined ? undefined : requiredString(body.idempotencyKey, 'idempotencyKey'),
+          command
+        };
+        const session = makeSession(user.id, matchId, undefined, playerId);
+        const result = await dependencies.service.submitAuthenticatedCommand(session, onlineRequest);
+        if (result.accepted) await dependencies.memberships.bind(membershipRecord(matchId, user.id, playerId, now()));
+        return json(200, { matchId, result });
+      }
+
+      if (operation === 'join_match') {
+        const joinCode = requiredString(body.joinCode, 'joinCode', 16).toUpperCase();
+        const matchId = await dependencies.matches.findByJoinCode(joinCode);
+        if (!matchId) throw Object.assign(new Error('No match uses that join code.'), { code: 'MATCH_NOT_FOUND' });
+        const payload = isRecord(body.payload) ? body.payload : undefined;
+        if (!payload) throw Object.assign(new Error('Player details are required.'), { code: 'REQUEST_INVALID' });
+        const playerId = requiredString(payload.playerId, 'payload.playerId');
+        const existing = await dependencies.memberships.find(matchId, user.id);
+        if (existing?.status === 'removed') {
+          throw Object.assign(new Error('This match membership has been removed.'), { code: 'MEMBERSHIP_REMOVED' });
+        }
+        const session = makeSession(user.id, matchId, existing, existing ? undefined : playerId);
+        const onlineRequest: OnlineCommandRequest = {
+          matchId,
+          commandId: requiredString(body.commandId, 'commandId'),
+          occurredAt: body.occurredAt === undefined ? now() : validTimestamp(body.occurredAt),
+          idempotencyKey: body.idempotencyKey === undefined ? undefined : requiredString(body.idempotencyKey, 'idempotencyKey'),
+          command: { type: 'join_match', payload: payload as Extract<DomainCommand, { type: 'join_match' }>['payload'] }
+        };
+        const result = await dependencies.service.submitAuthenticatedCommand(session, onlineRequest);
+        if (result.accepted) await dependencies.memberships.bind(membershipRecord(matchId, user.id, playerId, now()));
+        return json(200, { matchId, result });
+      }
+
+      const matchId = requiredString(body.matchId, 'matchId');
+      const membership = await dependencies.memberships.find(matchId, user.id);
+      if (!membership || membership.status !== 'active') {
+        throw Object.assign(new Error('Join this match before requesting its data.'), { code: 'MATCH_MEMBERSHIP_REQUIRED' });
+      }
+      const session = makeSession(user.id, matchId, membership);
+
+      if (operation === 'command') {
+        const onlineRequest: OnlineCommandRequest = {
+          matchId,
+          commandId: requiredString(body.commandId, 'commandId'),
+          occurredAt: validTimestamp(body.occurredAt),
+          idempotencyKey: body.idempotencyKey === undefined ? undefined : requiredString(body.idempotencyKey, 'idempotencyKey'),
+          clientSequence: typeof body.clientSequence === 'number' ? body.clientSequence : undefined,
+          command: asDomainCommand(body.command)
+        };
+        return json(200, { result: await dependencies.service.submitAuthenticatedCommand(session, onlineRequest) });
+      }
+
+      if (operation === 'snapshot') {
+        const requestedScope = projectionScope(body.requestedScope);
+        return json(200, { sync: await dependencies.service.requestAuthenticatedSnapshot(session, { matchId, requestedScope }) });
+      }
+      if (operation === 'catch_up') {
+        return json(200, { sync: await dependencies.service.catchUpAuthenticated(session, { matchId, requestedScope: projectionScope(body.requestedScope), cursor: syncCursor(body.cursor) }) });
+      }
+      if (operation === 'reconnect') {
+        return json(200, { sync: await dependencies.service.reconnectAuthenticated(session, { matchId, requestedScope: projectionScope(body.requestedScope), cursor: body.cursor === undefined ? undefined : syncCursor(body.cursor) }) });
+      }
+      throw Object.assign(new Error(`Unsupported operation "${operation}".`), { code: 'OPERATION_UNSUPPORTED' });
+    } catch (error) {
+      return errorResponse(error);
+    }
+  };
+}
+
+if (import.meta.main) {
+  const { createOnlineAuthorityHandler } = await import('./runtime.ts');
+  Deno.serve(createOnlineAuthorityHandler());
+}

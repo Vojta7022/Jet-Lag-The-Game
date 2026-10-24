@@ -10,6 +10,7 @@ import {
   SupabaseMatchRepository,
   SupabaseSnapshotRepository,
   InMemorySupabaseTableClient,
+  InMemoryOnlineAuthorityRepository,
   OnlineAuthorityRuntime
 } from '../../packages/transport/src/index.ts';
 import { createTransportHarness, makeRecipient } from './helpers.ts';
@@ -20,6 +21,44 @@ import {
   submitOnlineSequence,
   setupOnlineMatchToHidePhase
 } from './online.helpers.ts';
+
+test('online runtime commits authoritative changes atomically when configured for server mode', async () => {
+  const { contentPack, repositories, realtime } = createOnlineHarness();
+  const commits: Array<{ expectedRevision: number | null; result: { events: unknown[] }; projections: unknown[] }> = [];
+  const atomicStore = new class extends InMemoryOnlineAuthorityRepository {
+    override async commit(input: Parameters<InMemoryOnlineAuthorityRepository['commit']>[0]) {
+      commits.push({ expectedRevision: input.expectedRevision, result: input.result, projections: input.projections });
+      return super.commit(input);
+    }
+  }();
+  const runtime = new OnlineAuthorityRuntime({
+    contentPacks: [contentPack],
+    repositories,
+    authorityRepository: atomicStore,
+    realtimeFanout: realtime
+  });
+  const hostSession = makeOnlineSession('atomic-host', { defaultPlayerId: 'host-atomic' });
+  const matchId = 'atomic-runtime-match';
+
+  const created = await runtime.submitAuthenticatedCommand(hostSession, makeOnlineCommandRequest(hostSession, matchId, 1, {
+    type: 'create_match',
+    payload: {
+      mode: 'online', contentPackId: contentPack.packId, hostPlayerId: 'host-atomic',
+      hostDisplayName: 'Atomic Host', initialScale: 'small'
+    }
+  }));
+  const joined = await runtime.submitAuthenticatedCommand(hostSession, makeOnlineCommandRequest(hostSession, matchId, 2, {
+    type: 'join_match', payload: { playerId: 'setup-player', displayName: 'Setup Player' }
+  }));
+
+  assert.equal(created.accepted, true);
+  assert.equal(created.aggregate, undefined);
+  assert.deepEqual(created.events, []);
+  assert.equal(joined.accepted, true);
+  assert.deepEqual(commits.map((commit) => commit.expectedRevision), [null, 1]);
+  assert.ok(commits.every((commit) => commit.projections.length > 0));
+  assert.ok(commits.every((commit) => commit.result.events.length === 0));
+});
 
 test('online authority runtime persists repository records and publishes scoped fanout notices', async () => {
   const { contentPack, repositories, realtime, runtime } = createOnlineHarness();
