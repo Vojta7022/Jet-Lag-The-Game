@@ -973,6 +973,7 @@ function buildCurseCards(
       }
 
       const normalizedName = normalizeLabel(nameRaw);
+      const locksQuestionTemplates = normalizedName.slug === 'curse-of-the-drained-brain';
       buildNormalizationIssue(
         issues,
         sourceFileName,
@@ -995,25 +996,27 @@ function buildCurseCards(
         name: normalizedName.displayText,
         shortName: normalizedName.displayText,
         description: applyWorkbookCorrections(descriptionRaw),
-        automationLevel: 'manual',
+        automationLevel: locksQuestionTemplates ? 'authoritative' : 'manual',
         castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
         effects: [
           {
-            effectType: 'curse_challenge',
+            effectType: locksQuestionTemplates ? 'disable_question_templates' : 'curse_challenge',
             description: applyWorkbookCorrections(descriptionRaw),
-            automationLevel: 'manual',
+            automationLevel: locksQuestionTemplates ? 'authoritative' : 'manual',
             rawText: descriptionRaw,
             payload: {
-              workbookName: normalizedName.displayText
+              ...(locksQuestionTemplates
+                ? { questionCount: 3, requireDistinctCategories: true, duration: 'hider_run' }
+                : { workbookName: normalizedName.displayText })
             }
           }
         ],
         rewardsOrPenalties: [],
         requirements: {
-          requiresManualApproval: true
+          requiresManualApproval: !locksQuestionTemplates
         },
         visibilityPolicy: HIDER_DECK_VISIBILITY,
-        tags: ['curse', 'manual-resolution'],
+        tags: locksQuestionTemplates ? ['curse', 'authoritative-effect'] : ['curse', 'manual-resolution'],
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'name', nameRaw, nameRaw),
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'description', descriptionRaw, nameRaw),
@@ -1082,6 +1085,7 @@ function buildCurseCards(
     }
 
     const normalizedName = normalizeLabel(nameRaw);
+    const locksQuestionTemplates = normalizedName.slug === 'curse-of-the-drained-brain';
     buildNormalizationIssue(
       issues,
       sourceFileName,
@@ -1105,25 +1109,27 @@ function buildCurseCards(
       name: normalizedName.displayText,
       shortName: normalizedName.displayText,
       description: applyWorkbookCorrections(descriptionRaw),
-      automationLevel: 'manual',
+      automationLevel: locksQuestionTemplates ? 'authoritative' : 'manual',
       castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
       effects: [
         {
-          effectType: 'curse_challenge',
+          effectType: locksQuestionTemplates ? 'disable_question_templates' : 'curse_challenge',
           description: applyWorkbookCorrections(descriptionRaw),
-          automationLevel: 'manual',
+          automationLevel: locksQuestionTemplates ? 'authoritative' : 'manual',
           rawText: descriptionRaw,
           payload: {
-            order: collapseLineBreaks(orderRaw)
+            ...(locksQuestionTemplates
+              ? { questionCount: 3, requireDistinctCategories: true, duration: 'hider_run' }
+              : { order: collapseLineBreaks(orderRaw) })
           }
         }
       ],
       rewardsOrPenalties: [],
       requirements: {
-        requiresManualApproval: true
+        requiresManualApproval: !locksQuestionTemplates
       },
       visibilityPolicy: HIDER_DECK_VISIBILITY,
-      tags: ['curse', 'manual-resolution'],
+      tags: locksQuestionTemplates ? ['curse', 'authoritative-effect'] : ['curse', 'manual-resolution'],
       sourceProvenance: [
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'B', nameRaw, orderRaw),
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'C', descriptionRaw, nameRaw),

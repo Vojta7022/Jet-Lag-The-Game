@@ -151,6 +151,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Verify the provider builds a bounded region query and normalizes the result for the existing authority-side location resolver.
 - [x] Run the full suite and mobile typecheck. Full verification: 270 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
+### Current implementation slice: Curse of the Drained Brain
+
+- [x] Type its exact-question lock as authoritative card data; let the hider select exactly three prompts from different Investigation Book categories during card resolution.
+- [x] Persist the locked prompt IDs in public match state, reset them on hider rotation, and reject only those exact seeker questions.
+- [x] Let the hider resolve their own card window in online play while preserving host referee control; show the picker in Cards and broadcast the selected prompts.
+- [x] Verify invalid selections, question blocking, per-run reset, role permissions, full tests, and mobile typecheck after correcting the earlier category-wide interpretation. Full verification: 271 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
+
 ### Current implementation slice: scanned hand-expansion power-up
 
 - [x] Add an engine integration test for Draw 1, Expand Maximum Hand Size by 1: draw one, increase hand capacity for the rest of the round, and reset the capacity on the next round.

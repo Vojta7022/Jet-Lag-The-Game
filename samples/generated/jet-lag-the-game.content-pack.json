@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T18:47:31.398Z",
+    "importedAt": "2026-10-24T19:34:07.600Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3315,7 +3315,7 @@
       "name": "Curse Of The Drained Brain",
       "shortName": "Curse Of The Drained Brain",
       "description": "Choose three questions in different categories. The seekers cannot ask those questions for the rest of the run.",
-      "automationLevel": "manual",
+      "automationLevel": "authoritative",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3325,18 +3325,20 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "disable_question_templates",
           "description": "Choose three questions in different categories. The seekers cannot ask those questions for the rest of the run.",
-          "automationLevel": "manual",
+          "automationLevel": "authoritative",
           "rawText": "Choose three questions in different categories. The seekers cannot ask those questions for the rest of the run.",
           "payload": {
-            "workbookName": "Curse Of The Drained Brain"
+            "questionCount": 3,
+            "requireDistinctCategories": true,
+            "duration": "hider_run"
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3347,7 +3349,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "authoritative-effect"
       ],
       "sourceProvenance": [
         {

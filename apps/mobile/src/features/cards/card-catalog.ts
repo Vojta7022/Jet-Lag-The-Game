@@ -210,5 +210,5 @@ export function canDiscardCards(projection: MatchProjection | undefined): boolea
 }
 
 export function canResolveCardWindow(role: MatchRole, projection: MatchProjection | undefined): boolean {
-  return role === 'host' && Boolean(projection?.activeCardResolution?.sourceCardInstanceId);
+  return (role === 'host' || role === 'hider') && Boolean(projection?.activeCardResolution?.sourceCardInstanceId);
 }

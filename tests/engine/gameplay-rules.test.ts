@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { buildQuestionSelectionState } from '../../packages/domain/src/index.ts';
-import { executeCommand } from '../../packages/engine/src/index.ts';
+import { buildMatchProjection, executeCommand } from '../../packages/engine/src/index.ts';
 import {
   loadEngineTestContentPack,
   makeEnvelope,
@@ -576,4 +576,115 @@ test('curses with discard-a-power-up casting costs are blocked until that paymen
   ).aggregate;
 
   assert.equal(aggregate.activeCardResolution?.discardRequirement?.requiredKind, 'power_up');
+});
+
+test('the hider can lock three distinct questions for the current run and seekers can ask other questions in those categories', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const sourceCardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-drained-brain', 'team-hider');
+  const paidCardId = moveCardToTeamHand(aggregate, 'power-up-randomize', 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: sourceCardId } },
+    70
+  ), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'disable_question_templates');
+  assert.equal(aggregate.activeCardResolution?.questionTemplateCount, 3);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'discard_card', payload: { cardInstanceId: paidCardId } },
+    71
+  ), contentPack).aggregate;
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: {
+      sourceCardInstanceId: sourceCardId,
+      questionTemplateIds: ['matching-commercial-airport', 'radar-402']
+    } },
+    72
+  ), contentPack), /choose exactly 3 different questions, each from a different category/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: {
+      sourceCardInstanceId: sourceCardId,
+      questionTemplateIds: ['matching-commercial-airport', 'radar-402', 'radar-402']
+    } },
+    73
+  ), contentPack), /choose exactly 3 different questions, each from a different category/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: {
+      sourceCardInstanceId: sourceCardId,
+      questionTemplateIds: ['matching-commercial-airport', 'radar-402', 'not-a-question']
+    } },
+    74
+  ), contentPack), /choose exactly 3 different questions, each from a different category/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: {
+      sourceCardInstanceId: sourceCardId,
+      questionTemplateIds: ['matching-commercial-airport', 'matching-hospital', 'photos-a-tree']
+    } },
+    75
+  ), contentPack), /each from a different category/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: {
+      sourceCardInstanceId: sourceCardId,
+      questionTemplateIds: ['matching-commercial-airport', 'thermometer-15000', 'photos-a-tree']
+    } },
+    75.5
+  ), contentPack), /available in the selected game scale/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: {
+      sourceCardInstanceId: sourceCardId,
+      questionTemplateIds: ['matching-commercial-airport', 'radar-402', 'photos-a-tree']
+    } },
+    76
+  ), contentPack).aggregate;
+
+  assert.deepEqual(aggregate.disabledQuestionTemplateIds, ['matching-commercial-airport', 'radar-402', 'photos-a-tree']);
+  const seekerView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'player_private', viewerPlayerId: 'seeker-1', viewerRole: 'seeker', viewerTeamId: 'team-seeker'
+  });
+  assert.deepEqual(seekerView.disabledQuestionTemplateIds, ['matching-commercial-airport', 'radar-402', 'photos-a-tree']);
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} },
+    77
+  ), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:disabled-matching',
+      templateId: 'matching-commercial-airport',
+      targetTeamId: 'team-hider'
+    } },
+    78
+  ), contentPack), /question is locked for the rest of the hider run/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:allowed-matching',
+      templateId: 'matching-hospital',
+      targetTeamId: 'team-hider'
+    } },
+    79
+  ), contentPack).aggregate;
+  assert.equal(aggregate.activeQuestionInstanceId, 'question:allowed-matching');
 });

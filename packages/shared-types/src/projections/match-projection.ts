@@ -226,7 +226,7 @@ export interface MatchProjection {
   activeCardResolution?: {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
-    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus';
+    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates';
     discardRequirement?: {
       requiredCards?: number;
       requiredKind?: CardKind;
@@ -234,7 +234,10 @@ export interface MatchProjection {
     };
     drawCountOnResolve?: number;
     timeBonusMinutes?: number;
+    questionTemplateCount?: number;
+    requireDistinctQuestionCategories?: boolean;
   };
+  disabledQuestionTemplateIds?: string[];
   hiderHandLimit?: number;
   pendingQuestionReward?: {
     questionInstanceId: string;

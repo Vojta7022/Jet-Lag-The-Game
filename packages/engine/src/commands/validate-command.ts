@@ -669,6 +669,9 @@ export function validateCommandEnvelope(
       if (!template) {
         return [error(envelope.command.type, 'QUESTION_TEMPLATE_NOT_FOUND', 'The selected question template does not exist.')];
       }
+      if ((aggregate.disabledQuestionTemplateIds ?? []).includes(template.templateId)) {
+        return [error(envelope.command.type, 'QUESTION_TEMPLATE_DISABLED', 'This question is locked for the rest of the hider run.')];
+      }
 
       const category = getQuestionCategory(contentPack, template.categoryId);
       if (!category) {
@@ -1217,8 +1220,38 @@ export function validateCommandEnvelope(
       return [];
     }
     case 'resolve_card_window': {
-      if (aggregate.activeCardResolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
+      const activeResolution = aggregate.activeCardResolution;
+      if (activeResolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
         return [error(envelope.command.type, 'CARD_WINDOW_NOT_ACTIVE', 'This card resolution window is not active.')];
+      }
+
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId);
+      const sourceCard = aggregate.cardInstances[activeResolution.sourceCardInstanceId];
+      if (actorRole === 'hider' && (!sourceCard || !isCardAccessibleToActor(aggregate, sourceCard, envelope.actor.playerId, envelope.actor.role))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'A hider can only resolve a card from their own team hand.')];
+      }
+
+      const questionTemplateIds = envelope.command.payload.questionTemplateIds ?? [];
+      if (activeResolution.resolutionKind === 'disable_question_templates') {
+        const selectedTemplates = questionTemplateIds.map((templateId) =>
+          contentPack.questionTemplates.find((template) => template.templateId === templateId)
+        );
+        if (selectedTemplates.some((template) =>
+          template && aggregate.selectedScale && !template.scaleSet.appliesTo.includes(aggregate.selectedScale)
+        )) {
+          return [error(envelope.command.type, 'QUESTION_TEMPLATE_NOT_AVAILABLE_AT_SCALE', 'A selected question is not available in the selected game scale.')];
+        }
+        if (
+          questionTemplateIds.length !== activeResolution.questionTemplateCount ||
+          new Set(questionTemplateIds).size !== questionTemplateIds.length ||
+          selectedTemplates.some((template) => !template) ||
+          (activeResolution.requireDistinctQuestionCategories &&
+            new Set(selectedTemplates.map((template) => template?.categoryId)).size !== questionTemplateIds.length)
+        ) {
+          return [error(envelope.command.type, 'QUESTION_TEMPLATE_SELECTION_INVALID', `Choose exactly ${activeResolution.questionTemplateCount} different questions${activeResolution.requireDistinctQuestionCategories ? ', each from a different category' : ''}.`)];
+        }
+      } else if (questionTemplateIds.length > 0) {
+        return [error(envelope.command.type, 'QUESTION_TEMPLATE_SELECTION_NOT_ALLOWED', 'This card does not select questions.')];
       }
 
       return validateDiscardResolution(

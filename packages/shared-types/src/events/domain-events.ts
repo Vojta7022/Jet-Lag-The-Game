@@ -97,6 +97,7 @@ export type DomainEvent =
   | CardDiscardedEvent
   | CardResolutionOpenedEvent
   | CardResolutionClosedEvent
+  | QuestionTemplatesDisabledEvent
   | HiderHandLimitExpandedEvent
   | CooldownCompletedEvent
   | MatchPausedEvent
@@ -407,7 +408,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus';
+    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates';
     discardRequirement?: {
       requiredCards?: number;
       requiredKind?: CardKind;
@@ -415,10 +416,20 @@ export interface CardResolutionOpenedEvent {
     };
     drawCountOnResolve?: number;
     timeBonusMinutes?: number;
+    questionTemplateCount?: number;
+    requireDistinctQuestionCategories?: boolean;
     sourceDeckId?: string;
     holderType?: CardInstanceModel['holderType'];
     holderId?: string;
     openingHandCardInstanceIds?: string[];
+  };
+}
+
+export interface QuestionTemplatesDisabledEvent {
+  type: 'question_templates_disabled';
+  payload: {
+    questionTemplateIds: string[];
+    sourceCardInstanceId: string;
   };
 }
 

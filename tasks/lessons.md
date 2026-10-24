@@ -8,3 +8,4 @@
 
 - 2026-10-23: When asked to follow a source game and its map workbench, implement and validate those behaviors against the source materials. A visual pass alone does not make the game playable; distinguish instructions for the players from mechanics the engine enforces.
 - 2026-10-24: Treat the user's explicit correction that each player uses their own phone as the primary product requirement. A single-device referee flow is only a fallback/regression path; do not frame it as the intended finished game.
+- 2026-10-24: Read scanned card wording literally at the level it names: “choose questions in different categories” locks the selected question prompts, not every prompt in each category. Keep user choice precise in the picker, shared state, and engine validation.

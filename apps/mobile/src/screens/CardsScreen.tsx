@@ -373,7 +373,7 @@ export function CardsScreen() {
     : [];
   const resolveDisabledReason =
     activeCard && !canResolve
-      ? 'A host-admin view must close the active card window after the effect is handled.'
+      ? 'The hider holding this card or a host-admin must close the active card window after the effect is handled.'
       : undefined;
   const cardEvidenceHint =
     activeMatch?.onlineStatus?.attachmentStorageMode ===
@@ -930,8 +930,11 @@ export function CardsScreen() {
               resolution={projection?.activeCardResolution}
               canResolve={canResolve}
               resolveDisabledReason={resolveDisabledReason}
+              questionCategories={defaultContentPack.questionCategories}
+              questionTemplates={defaultContentPack.questionTemplates}
+              selectedScale={selectedScale}
               disabled={state.loadState === 'loading'}
-              onResolve={() => {
+              onResolve={(questionTemplateIds) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -940,7 +943,8 @@ export function CardsScreen() {
                   type: 'resolve_card_window',
                   payload: {
                     sourceCardInstanceId:
-                      projection.activeCardResolution.sourceCardInstanceId
+                      projection.activeCardResolution.sourceCardInstanceId,
+                    ...(questionTemplateIds.length > 0 ? { questionTemplateIds } : {})
                   }
                 });
               }}

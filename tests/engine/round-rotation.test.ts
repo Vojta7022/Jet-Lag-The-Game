@@ -71,6 +71,7 @@ test('starting the next round rotates the hider, resets round state and deck, an
   const bonusCardId = moveCardToTeamHand(found, 'time-bonus-red', 'team-hider');
   found.cardInstances[bonusCardId] = { ...found.cardInstances[bonusCardId]!, zone: 'hand' };
   found.hiderHandLimitBonus = 2;
+  found.disabledQuestionTemplateIds = ['matching-commercial-airport', 'photos-a-tree', 'radar-402'];
   const started = executeCommand(found, makeEnvelope(found.matchId,
     { actorId: 'host-1', playerId: 'host-1', role: 'host' },
     { type: 'start_next_round', payload: { nextHiderPlayerId: 'seeker-1' } },
@@ -81,6 +82,7 @@ test('starting the next round rotates the hider, resets round state and deck, an
   assert.equal(started.events[0]?.event.type, 'round_started');
   assert.equal(next.lifecycleState, 'hide_phase');
   assert.equal(next.hiderHandLimitBonus, 0);
+  assert.deepEqual(next.disabledQuestionTemplateIds, []);
   assert.equal(next.roleAssignments['seeker-1']?.role, 'hider');
   assert.equal(next.roleAssignments['hider-1']?.role, 'seeker');
   assert.deepEqual(next.teams['team-hider']?.memberPlayerIds, ['seeker-1']);

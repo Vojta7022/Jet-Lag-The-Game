@@ -323,6 +323,7 @@ export function reduceMatchAggregate(
         questionInstances: {},
         activeQuestionInstanceId: undefined,
         activeCardResolution: undefined,
+        disabledQuestionTemplateIds: [],
         constraints: {},
         locationSamples: [],
         hiddenState: {},
@@ -707,6 +708,8 @@ export function reduceMatchAggregate(
           discardRequirement: eventEnvelope.event.payload.discardRequirement,
           drawCountOnResolve: eventEnvelope.event.payload.drawCountOnResolve,
           timeBonusMinutes: eventEnvelope.event.payload.timeBonusMinutes,
+          questionTemplateCount: eventEnvelope.event.payload.questionTemplateCount,
+          requireDistinctQuestionCategories: eventEnvelope.event.payload.requireDistinctQuestionCategories,
           sourceDeckId: eventEnvelope.event.payload.sourceDeckId,
           holderType: eventEnvelope.event.payload.holderType,
           holderId: eventEnvelope.event.payload.holderId,
@@ -754,6 +757,14 @@ export function reduceMatchAggregate(
           : base.timers
       };
     }
+    case 'question_templates_disabled':
+      return {
+        ...base,
+        disabledQuestionTemplateIds: [...new Set([
+          ...(base.disabledQuestionTemplateIds ?? []),
+          ...eventEnvelope.event.payload.questionTemplateIds
+        ])]
+      };
     case 'hider_hand_limit_expanded':
       return {
         ...base,

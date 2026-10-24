@@ -1297,6 +1297,8 @@ function eventsForCommand(
                   : undefined,
               drawCountOnResolve: resolutionPlan.drawCountOnResolve,
               timeBonusMinutes: resolutionPlan.timeBonusMinutes,
+              questionTemplateCount: resolutionPlan.questionTemplateCount,
+              requireDistinctQuestionCategories: resolutionPlan.requireDistinctQuestionCategories,
               copiedCardInstanceId,
               sourceDeckId: cardDefinition.deckId,
               holderType: currentCard.holderType,
@@ -1373,6 +1375,16 @@ function eventsForCommand(
       const cooldownSeconds = activeQuestion
         ? getQuestionCooldownSeconds(contentPack, aggregate!.selectedRulesetId, activeQuestion.templateId)
         : 0;
+
+      if (activeResolution?.resolutionKind === 'disable_question_templates') {
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+          type: 'question_templates_disabled',
+          payload: {
+            questionTemplateIds: envelope.command.payload.questionTemplateIds ?? [],
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId
+          }
+        }));
+      }
 
       events.push(
         makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {

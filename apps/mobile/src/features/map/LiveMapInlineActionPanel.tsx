@@ -217,7 +217,7 @@ export function LiveMapInlineActionPanel() {
   const activeCardBehavior = activeCard ? buildCardBehaviorModel(activeCard.definition) : undefined;
   const canResolveCard = Boolean(activeMatch && canResolveCardWindow(viewerRole, projection));
   const resolveDisabledReason = activeCard && !canResolveCard
-    ? 'Only the host can close this card window after the live effect is handled.'
+    ? 'The hider holding this card or a host-admin can close this card window after the live effect is handled.'
     : undefined;
 
   const activeQuestionTimerSeconds = timingModel?.timers.find(
@@ -592,8 +592,11 @@ export function LiveMapInlineActionPanel() {
               resolution={projection?.activeCardResolution}
               canResolve={canResolveCard}
               resolveDisabledReason={resolveDisabledReason}
+              questionCategories={defaultContentPack.questionCategories}
+              questionTemplates={defaultContentPack.questionTemplates}
+              selectedScale={selectedScale}
               disabled={state.loadState === 'loading'}
-              onResolve={() => {
+              onResolve={(questionTemplateIds) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -601,7 +604,8 @@ export function LiveMapInlineActionPanel() {
                 void submitCommand({
                   type: 'resolve_card_window',
                   payload: {
-                    sourceCardInstanceId: projection.activeCardResolution.sourceCardInstanceId
+                    sourceCardInstanceId: projection.activeCardResolution.sourceCardInstanceId,
+                    ...(questionTemplateIds.length > 0 ? { questionTemplateIds } : {})
                   }
                 });
               }}

@@ -56,6 +56,7 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'choose_question_reward',
   'play_card',
   'discard_card',
+  'resolve_card_window',
   'answer_question'
 ]);
 

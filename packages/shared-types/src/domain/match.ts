@@ -379,7 +379,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus';
+  resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates';
   discardRequirement?: {
     requiredCards?: number;
     requiredKind?: CardKind;
@@ -387,6 +387,8 @@ export interface CardResolutionWindow {
   };
   drawCountOnResolve?: number;
   timeBonusMinutes?: number;
+  questionTemplateCount?: number;
+  requireDistinctQuestionCategories?: boolean;
   sourceDeckId?: string;
   holderType?: CardHolderType;
   holderId?: string;
@@ -422,6 +424,7 @@ export interface MatchAggregate {
   activeQuestionInstanceId?: string;
   activeCardResolution?: CardResolutionWindow;
   hiderHandLimitBonus?: number;
+  disabledQuestionTemplateIds?: string[];
   pendingQuestionReward?: PendingQuestionCardRewardModel;
   mapRegion?: PlayableRegionModel;
   searchArea?: SearchAreaModel;

@@ -23,6 +23,7 @@ interface QuestionTemplateListProps {
   category: QuestionCategoryDefinition;
   selectedTemplateId?: string;
   selectedTemplateIds?: string[];
+  disabledTemplateIds?: string[];
   regionId?: string;
   selectionLimit?: number;
   describeSupport: (template: QuestionTemplateDefinition, category: QuestionCategoryDefinition) => string;
@@ -38,6 +39,7 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
     <View style={styles.list}>
       {props.templates.map((template) => {
         const selected = selectedTemplateIds.has(template.templateId);
+        const locked = props.disabledTemplateIds?.includes(template.templateId) ?? false;
         const featureLabels = (template.featureClassRefs ?? [])
           .map((feature) => feature.label?.trim())
           .filter((label): label is string => Boolean(label))
@@ -55,8 +57,10 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
           <Pressable
             key={template.templateId}
             accessibilityRole="button"
+            accessibilityState={{ selected, disabled: locked }}
+            disabled={locked}
             onPress={() => props.onSelect(template.templateId)}
-            style={[styles.item, selected ? styles.itemSelected : null]}
+            style={[styles.item, selected ? styles.itemSelected : null, locked ? styles.itemLocked : null]}
           >
             <View style={styles.header}>
               <Text style={styles.title}>{template.name}</Text>
@@ -65,6 +69,7 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
                   {props.selectionLimit && props.selectionLimit > 1 ? 'Kept' : 'Ready'}
                 </Text>
               ) : null}
+              {locked ? <Text style={styles.lockedTag}>Locked</Text> : null}
             </View>
             <ResolutionModePill label={impact.label} tone={impact.tone} />
             <Text style={styles.copy}>{describeQuestionTemplateForPlayers(template, props.category)}</Text>
@@ -99,6 +104,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentMuted,
     borderColor: colors.accent
   },
+  itemLocked: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.warning,
+    opacity: 0.72
+  },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -114,6 +124,12 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 11,
     fontWeight: '700',
+    textTransform: 'uppercase'
+  },
+  lockedTag: {
+    color: colors.warning,
+    fontSize: 11,
+    fontWeight: '800',
     textTransform: 'uppercase'
   },
   copy: {

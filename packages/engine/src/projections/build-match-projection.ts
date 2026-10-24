@@ -458,7 +458,9 @@ export function buildMatchProjection(
             resolutionKind: aggregate.activeCardResolution.resolutionKind,
             discardRequirement: aggregate.activeCardResolution.discardRequirement,
             drawCountOnResolve: aggregate.activeCardResolution.drawCountOnResolve,
-            timeBonusMinutes: aggregate.activeCardResolution.timeBonusMinutes
+            timeBonusMinutes: aggregate.activeCardResolution.timeBonusMinutes,
+            questionTemplateCount: aggregate.activeCardResolution.questionTemplateCount,
+            requireDistinctQuestionCategories: aggregate.activeCardResolution.requireDistinctQuestionCategories
           }
         : undefined;
 
@@ -483,6 +485,7 @@ export function buildMatchProjection(
     visibleMap,
     visibleTimers,
     activeCardResolution,
+    disabledQuestionTemplateIds: aggregate.disabledQuestionTemplateIds ?? [],
     hiderHandLimit:
       viewer.scope === 'authority' || viewer.scope === 'host_admin' || viewerRole === 'hider'
         ? 6 + (aggregate.hiderHandLimitBonus ?? 0)

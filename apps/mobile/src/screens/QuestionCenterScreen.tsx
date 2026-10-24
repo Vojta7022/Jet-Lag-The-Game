@@ -245,6 +245,9 @@ export function QuestionCenterScreen() {
       (template) => template.templateId === selectedTemplateId
     ) ??
     readyTemplates[0];
+  const selectedQuestionIsDisabled = Boolean(
+    readyTemplate && projection?.disabledQuestionTemplateIds?.includes(readyTemplate.templateId)
+  );
   const previewTemplate = readyTemplate ?? selectedTemplate;
   const ruleLabel = selectedCategory
     ? formatHiderCardReward(selectedCategory)
@@ -406,6 +409,7 @@ export function QuestionCenterScreen() {
     activeMatch &&
       capabilities.canAskQuestions &&
       readyTemplate &&
+      !selectedQuestionIsDisabled &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
   const canAnswerQuestion = Boolean(
@@ -860,8 +864,15 @@ export function QuestionCenterScreen() {
 
       <Panel
         title="Investigation Book"
-        subtitle="All questions allowed for this scale stay available, including questions the seekers have already asked."
+        subtitle="Questions remain available after being asked. Curse locks mark the exact prompts seekers cannot ask this run."
       >
+        {selectedQuestionIsDisabled ? (
+          <StateBanner
+            tone="warning"
+            title="This exact question is locked"
+            detail="A hider's curse has blocked this prompt for the rest of the current run. Choose another question."
+          />
+        ) : null}
         {!selectedCategory ? (
           <Text style={styles.copy}>Choose a category first.</Text>
         ) : availableTemplates.length === 0 ? (
@@ -887,6 +898,7 @@ export function QuestionCenterScreen() {
                 templates={readyTemplates}
                 category={selectedCategory}
                 selectedTemplateId={selectedTemplateId}
+                disabledTemplateIds={projection?.disabledQuestionTemplateIds}
                 regionId={selectedRegionId}
                 describeSupport={(template, category) =>
                   describeTemplateSupport({

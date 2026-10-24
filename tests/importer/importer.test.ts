@@ -78,6 +78,13 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.ok(discardDrawThree);
   assert.equal(discardDrawThree.automationLevel, 'authoritative');
   assert.equal(discardDrawThree.effects[0]?.effectType, 'discard_then_draw');
+
+  const drainedBrain = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-drained-brain');
+  assert.ok(drainedBrain);
+  assert.equal(drainedBrain.automationLevel, 'authoritative');
+  assert.equal(drainedBrain.effects[0]?.effectType, 'disable_question_templates');
+  assert.deepEqual(drainedBrain.effects[0]?.payload, { questionCount: 3, requireDistinctCategories: true, duration: 'hider_run' });
+  assert.equal(drainedBrain.requirements?.requiresManualApproval, false);
   assert.deepEqual(discardDrawThree.effects[0]?.payload, { discardCount: 2, drawCount: 3 });
   assert.match(discardDrawThree.description, /discard 2 cards from your hand, then draw and keep 3 replacement cards/i);
 

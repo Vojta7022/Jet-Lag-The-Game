@@ -12,11 +12,13 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus';
+  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
   timeBonusMinutes?: number;
+  questionTemplateCount?: number;
+  requireDistinctQuestionCategories?: boolean;
 }
 
 function normalizedCardName(cardDefinition: CardDefinition): string {
@@ -176,6 +178,22 @@ export function buildCardResolutionPlan(
 
   if (cardDefinition.effects.some((effect) => effect.effectType === 'randomize_question')) {
     return { kind: 'randomize_question', discardRequirement: {} };
+  }
+
+  const disableTemplatesEffect = cardDefinition.effects.find((effect) => effect.effectType === 'disable_question_templates');
+  if (disableTemplatesEffect) {
+    const payload = disableTemplatesEffect.payload as { questionCount?: unknown; requireDistinctCategories?: unknown } | undefined;
+    const questionTemplateCount = typeof payload?.questionCount === 'number' && Number.isInteger(payload.questionCount) && payload.questionCount > 0
+      ? payload.questionCount
+      : undefined;
+    if (questionTemplateCount !== undefined) {
+      return {
+        kind: 'disable_question_templates',
+        discardRequirement: getCardDiscardRequirement(cardDefinition),
+        questionTemplateCount,
+        requireDistinctQuestionCategories: payload?.requireDistinctCategories === true
+      };
+    }
   }
 
   return {

@@ -313,6 +313,7 @@ export interface ResolveCardWindowCommand {
   type: 'resolve_card_window';
   payload: {
     sourceCardInstanceId: string;
+    questionTemplateIds?: string[];
   };
 }
 
