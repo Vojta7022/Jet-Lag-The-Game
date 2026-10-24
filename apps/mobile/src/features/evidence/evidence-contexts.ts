@@ -71,10 +71,12 @@ function resolveQuestionEvidenceContext(args: {
     title: `Photo Evidence: ${template.name}`,
     detail: 'Pick or capture an image, then record the attachment metadata honestly in the match before submitting the answer.',
     questionInstanceId: question.questionInstanceId,
-    suggestedVisibilityScope: resolveSuggestedEvidenceScope({
-      role: args.role,
-      teamId: question.targetTeamId
-    }),
+    suggestedVisibilityScope: category.resolverKind === 'photo_challenge'
+      ? 'public_match'
+      : resolveSuggestedEvidenceScope({
+          role: args.role,
+          teamId: question.targetTeamId
+        }),
     teamId: question.targetTeamId,
     attachments
   };

@@ -88,7 +88,7 @@ test('chat projections keep public, team-private, and evidence placeholders corr
           kind: 'photo_evidence',
           label: 'Tree photo placeholder',
           note: 'Manual evidence only',
-          visibilityScope: 'team_private',
+          visibilityScope: 'public_match',
           questionInstanceId: 'question:photo-1',
           captureMetadata: {
             source: 'tests'
@@ -134,7 +134,7 @@ test('chat projections keep public, team-private, and evidence placeholders corr
     publicProjection.visibleChatMessages.some((message) => message.messageId === 'message:hider-team'),
     false
   );
-  assert.equal(publicProjection.visibleAttachments.length, 0);
+  assert.equal(publicProjection.visibleAttachments.length, 1);
 
   assert.equal(
     hiderTeamProjection.visibleChatChannels.some((channel) => channel.channelId === 'channel:team:team-hider'),
@@ -154,5 +154,5 @@ test('chat projections keep public, team-private, and evidence placeholders corr
     seekerTeamProjection.visibleChatMessages.some((message) => message.messageId === 'message:hider-team'),
     false
   );
-  assert.equal(seekerTeamProjection.visibleAttachments.length, 0);
+  assert.equal(seekerTeamProjection.visibleAttachments.length, 1);
 });

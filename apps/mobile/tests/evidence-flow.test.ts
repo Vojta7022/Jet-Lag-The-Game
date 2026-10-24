@@ -169,6 +169,8 @@ test('question photo evidence can be recorded through the runtime and referenced
   ).find((context) => context.kind === 'question');
 
   assert.ok(evidenceContext);
+  assert.equal(evidenceContext?.suggestedVisibilityScope, 'public_match');
+  assert.match(evidenceContext?.detail ?? '', /record the attachment metadata/i);
 
   const localDraft = createLocalMediaAttachmentDraft({
     context: {

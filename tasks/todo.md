@@ -165,6 +165,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add scan-derived instructions for all 18 photo prompts in cleaned and legacy workbook mappings, including shared photo rules and referee review guidance.
 - [x] Correct scan/workbook mismatches: 1 km street tracing, 2 m park clearance, building-story requirements, 2 m × 2 m identifying areas, and the mountain's maximum 3× zoom.
 - [x] Regenerate the draft content pack; verify all 292 tests, mobile typecheck, and `git diff --check` (2026-10-24).
+- [x] Make photo evidence visible to seeker and hider match projections so the seeking team can judge the submitted answer; verify both scope selection and projection redaction.
 
 ### Current security slice: Supabase access lockdown
 
