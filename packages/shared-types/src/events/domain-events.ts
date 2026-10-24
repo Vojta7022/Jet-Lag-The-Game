@@ -92,6 +92,7 @@ export type DomainEvent =
   | CardDiscardedEvent
   | CardResolutionOpenedEvent
   | CardResolutionClosedEvent
+  | HiderHandLimitExpandedEvent
   | CooldownCompletedEvent
   | MatchPausedEvent
   | MatchResumedEvent
@@ -383,6 +384,14 @@ export interface CardResolutionClosedEvent {
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
     cooldownTimer?: TimerModel;
+  };
+}
+
+export interface HiderHandLimitExpandedEvent {
+  type: 'hider_hand_limit_expanded';
+  payload: {
+    sourceCardInstanceId: string;
+    increaseBy: number;
   };
 }
 

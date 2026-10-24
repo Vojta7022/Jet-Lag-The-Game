@@ -499,7 +499,7 @@ export function LiveMapInlineActionPanel() {
             <Text style={styles.sectionTitle}>Hand context</Text>
             <LiveMapInfoChips
               items={[
-                { label: 'Hand', value: `${hiderDeck.visibleByZone.hand.length} / ${HIDER_HAND_TARGET}` },
+                { label: 'Hand', value: `${hiderDeck.visibleByZone.hand.length} / ${projection?.hiderHandLimit ?? HIDER_HAND_TARGET}` },
                 { label: 'Draw pile', value: hiderDeck.visibleByZone.draw_pile.length },
                 { label: 'Clue type', value: activeQuestionCategory.name }
               ]}

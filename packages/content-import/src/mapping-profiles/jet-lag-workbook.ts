@@ -638,6 +638,28 @@ function buildPowerUpCards(
   sheet: WorkbookSheet,
   issues: ImportIssue[]
 ): { cards: CardDefinition[]; entries: DeckDefinition['entries'] } {
+  const ruleForPowerUp = (label: string): {
+    description: string;
+    automationLevel: CardDefinition['automationLevel'];
+    effect: CardDefinition['effects'][number];
+  } | undefined => {
+    if (normalizeLabel(label).displayText.toLowerCase() !== 'draw 1 expand 1') {
+      return undefined;
+    }
+    const description = 'Draw and keep one card, then permanently increase your maximum hand size by one for this round.';
+    return {
+      description,
+      automationLevel: 'authoritative',
+      effect: {
+        effectType: 'draw_and_expand_hand',
+        description,
+        automationLevel: 'authoritative',
+        rawText: label,
+        payload: { drawCount: 1, handSizeIncrease: 1 }
+      }
+    };
+  };
+
   if (sheetHasHeaders(sheet, ['category', 'card', 'quantity', 'odds'])) {
     const headerIndex = buildHeaderIndex(sheet);
     const cards: CardDefinition[] = [];
@@ -666,7 +688,8 @@ function buildPowerUpCards(
       );
 
       const cardDefinitionId = `power-up-${normalized.slug}`;
-      const description = 'Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.';
+      const rule = ruleForPowerUp(label);
+      const description = rule?.description ?? 'Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.';
 
       cards.push({
         cardDefinitionId,
@@ -676,15 +699,13 @@ function buildPowerUpCards(
         name: normalized.displayText,
         shortName: normalized.displayText,
         description,
-        automationLevel: 'manual',
-        effects: [
-          {
-            effectType: 'manual_power_up',
-            description,
-            automationLevel: 'manual',
-            rawText: label
-          }
-        ],
+        automationLevel: rule?.automationLevel ?? 'manual',
+        effects: [rule?.effect ?? {
+          effectType: 'manual_power_up',
+          description,
+          automationLevel: 'manual',
+          rawText: label
+        }],
         visibilityPolicy: HIDER_DECK_VISIBILITY,
         tags: ['power-up'],
         sourceProvenance: [
@@ -704,7 +725,7 @@ function buildPowerUpCards(
         ]
       });
 
-      issues.push(
+      if (!rule) issues.push(
         createIssue({
           sheetName: sheet.name,
           rowNumber: row.rowNumber,
@@ -752,7 +773,8 @@ function buildPowerUpCards(
     );
 
     const cardDefinitionId = `power-up-${normalized.slug}`;
-    const description = 'Effect text is not defined in the workbook. Resolve using the active ruleset or a content editor.';
+    const rule = ruleForPowerUp(label);
+    const description = rule?.description ?? 'Effect text is not defined in the workbook. Resolve using the active ruleset or a content editor.';
 
     cards.push({
       cardDefinitionId,
@@ -762,15 +784,13 @@ function buildPowerUpCards(
       name: normalized.displayText,
       shortName: normalized.displayText,
       description,
-      automationLevel: 'manual',
-      effects: [
-        {
-          effectType: 'manual_power_up',
-          description,
-          automationLevel: 'manual',
-          rawText: label
-        }
-      ],
+      automationLevel: rule?.automationLevel ?? 'manual',
+      effects: [rule?.effect ?? {
+        effectType: 'manual_power_up',
+        description,
+        automationLevel: 'manual',
+        rawText: label
+      }],
       visibilityPolicy: HIDER_DECK_VISIBILITY,
       tags: ['power-up'],
       sourceProvenance: [
@@ -786,7 +806,7 @@ function buildPowerUpCards(
       ]
     });
 
-    issues.push(
+    if (!rule) issues.push(
       createIssue({
         sheetName: sheet.name,
         rowNumber: row.rowNumber,

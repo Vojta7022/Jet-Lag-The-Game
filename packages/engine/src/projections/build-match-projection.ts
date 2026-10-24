@@ -475,6 +475,10 @@ export function buildMatchProjection(
     visibleMap,
     visibleTimers,
     activeCardResolution,
+    hiderHandLimit:
+      viewer.scope === 'authority' || viewer.scope === 'host_admin' || viewerRole === 'hider'
+        ? 6 + (aggregate.hiderHandLimitBonus ?? 0)
+        : undefined,
     pendingQuestionReward:
       viewer.scope === 'authority' || viewer.scope === 'host_admin' || viewerRole === 'hider'
         ? aggregate.pendingQuestionReward

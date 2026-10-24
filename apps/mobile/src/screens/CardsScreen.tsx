@@ -108,6 +108,7 @@ export function CardsScreen() {
   const [showPiles, setShowPiles] = useState(false);
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
+  const hiderHandLimit = projection?.hiderHandLimit ?? HIDER_HAND_TARGET;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);
   const viewerRole = resolveCurrentRole(
@@ -266,7 +267,7 @@ export function CardsScreen() {
   );
   const cardsNeededToReachTarget = Math.max(
     0,
-    HIDER_HAND_TARGET - handCardIds.length
+    hiderHandLimit - handCardIds.length
   );
   const canDrawToTarget = canDraw && cardsNeededToReachTarget > 0;
   const canPlay = Boolean(
@@ -376,7 +377,7 @@ export function CardsScreen() {
   );
   const rewardWouldExceedHand = Boolean(
     pendingQuestionReward &&
-    handCardIds.length + pendingQuestionReward.sets.reduce((count, set) => count + set.pickCount, 0) > HIDER_HAND_TARGET
+    handCardIds.length + pendingQuestionReward.sets.reduce((count, set) => count + set.pickCount, 0) > hiderHandLimit
   );
 
   const handleRecordCardEvidence = async () => {
@@ -474,7 +475,7 @@ export function CardsScreen() {
             );
           })}
           {rewardWouldExceedHand ? (
-            <StateBanner tone="warning" title="Make room in your hand" detail={`Your hand has ${handCardIds.length} cards. Discard ${handCardIds.length + pendingQuestionReward.sets.reduce((count, set) => count + set.pickCount, 0) - HIDER_HAND_TARGET} before keeping this reward.`} />
+            <StateBanner tone="warning" title="Make room in your hand" detail={`Your hand has ${handCardIds.length} cards. Discard ${handCardIds.length + pendingQuestionReward.sets.reduce((count, set) => count + set.pickCount, 0) - hiderHandLimit} before keeping this reward.`} />
           ) : null}
           <AppButton
             label="Keep selected cards"
@@ -519,7 +520,7 @@ export function CardsScreen() {
             {handCardIds.length}
             <Text style={styles.handCounterLabel}>
               {' '}
-              / {HIDER_HAND_TARGET} cards in hand
+              / {hiderHandLimit} cards in hand
             </Text>
           </Text>
 
@@ -652,7 +653,7 @@ export function CardsScreen() {
                 <View style={styles.chipRow}>
                   <View style={styles.infoChip}>
                     <Text style={styles.infoValue}>
-                      {handCardIds.length} / {HIDER_HAND_TARGET}
+                      {handCardIds.length} / {hiderHandLimit}
                     </Text>
                     <Text style={styles.infoLabel}>Hand target</Text>
                   </View>

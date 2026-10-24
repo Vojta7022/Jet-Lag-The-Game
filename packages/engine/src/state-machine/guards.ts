@@ -163,6 +163,7 @@ export function validateStateForCommand(
       if (
         !(
           aggregate.lifecycleState === 'hide_phase' ||
+          isSeekPhaseState(aggregate, 'awaiting_question_answer') ||
           isSeekPhaseState(aggregate, 'ready') ||
           isSeekPhaseState(aggregate, 'applying_constraints') ||
           isSeekPhaseState(aggregate, 'awaiting_card_resolution') ||

@@ -757,7 +757,7 @@ export function validateCommandEnvelope(
       const currentHandCount = Object.values(aggregate.cardInstances).filter(
         (card) => card.holderType === pending.holderType && card.holderId === pending.holderId && card.zone === 'hand'
       ).length;
-      if (currentHandCount + selectedCount > 6) {
+      if (currentHandCount + selectedCount > 6 + (aggregate.hiderHandLimitBonus ?? 0)) {
         return [error(envelope.command.type, 'HAND_SIZE_LIMIT', 'Make room in the hider hand before keeping these reward cards.')];
       }
       return [];
@@ -1033,12 +1033,12 @@ export function validateCommandEnvelope(
           return [error(envelope.command.type, 'QUESTION_REWARD_REQUIRED', 'Use the question’s printed draw-and-pick reward before drawing additional hider cards.')];
         }
         const handCount = getHandCardsForHolder(aggregate, holder.holderType, holder.holderId).length;
-        if (handCount >= 6) {
+        if (handCount >= 6 + (aggregate.hiderHandLimitBonus ?? 0)) {
           return [
             error(
               envelope.command.type,
               'HAND_SIZE_LIMIT',
-              'The hider hand is already at the target size of 6 cards.'
+              `The hider hand is already at its target size of ${6 + (aggregate.hiderHandLimitBonus ?? 0)} cards.`
             )
           ];
         }

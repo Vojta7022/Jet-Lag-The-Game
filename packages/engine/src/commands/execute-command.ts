@@ -1030,7 +1030,9 @@ function eventsForCommand(
       const cardDefinition = getCardDefinition(contentPack, currentCard.cardDefinitionId) as CardDefinition;
       const resolutionPlan = buildCardResolutionPlan(cardDefinition, aggregate!.selectedScale);
       const opensResolutionWindow =
-        resolutionPlan.kind !== 'time_bonus' && aggregate?.lifecycleState === 'seek_phase';
+        resolutionPlan.kind !== 'time_bonus' &&
+        resolutionPlan.kind !== 'draw_and_expand_hand' &&
+        aggregate?.lifecycleState === 'seek_phase';
       const playedCard: CardInstanceModel = {
         ...currentCard,
         zone: opensResolutionWindow ? 'pending_resolution' : 'discard_pile',
@@ -1048,6 +1050,37 @@ function eventsForCommand(
           }
         })
       ];
+
+      if (resolutionPlan.kind === 'draw_and_expand_hand') {
+        let workingAggregate = reduceMatchAggregate(aggregate!, events[0]!);
+        for (let index = 0; index < (resolutionPlan.drawCountOnResolve ?? 0); index += 1) {
+          const nextCard = findTopCardInDeck(workingAggregate, cardDefinition.deckId);
+          if (!nextCard) break;
+          const drawEvent = makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {
+            type: 'card_drawn',
+            payload: {
+              deckId: cardDefinition.deckId,
+              cardInstance: {
+                ...nextCard,
+                zone: 'hand',
+                holderType: currentCard.holderType,
+                holderId: currentCard.holderId,
+                updatedAt: envelope.occurredAt
+              }
+            }
+          });
+          events.push(drawEvent);
+          workingAggregate = reduceMatchAggregate(workingAggregate, drawEvent);
+        }
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {
+          type: 'hider_hand_limit_expanded',
+          payload: {
+            sourceCardInstanceId: currentCard.cardInstanceId,
+            increaseBy: resolutionPlan.handSizeIncreaseOnResolve ?? 1
+          }
+        }));
+        return events;
+      }
 
       if (opensResolutionWindow) {
         const openingHandCardInstanceIds = Object.values(aggregate!.cardInstances)
@@ -1161,7 +1194,7 @@ function eventsForCommand(
             lifecycleState: aggregate!.lifecycleState,
             cooldownTimer: activeQuestion && cooldownSeconds > 0
               ? buildCooldownTimer(aggregate!, contentPack, activeQuestion.templateId, envelope.occurredAt)
-              : undefined
+              : undefined,
           }
         })
       );

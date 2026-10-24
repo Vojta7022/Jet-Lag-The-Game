@@ -224,6 +224,7 @@ export interface MatchProjection {
     drawCountOnResolve?: number;
     timeBonusMinutes?: number;
   };
+  hiderHandLimit?: number;
   pendingQuestionReward?: {
     questionInstanceId: string;
     templateId: string;

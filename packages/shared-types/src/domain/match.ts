@@ -389,6 +389,7 @@ export interface MatchAggregate {
   hiddenState: HiddenStateModel;
   activeQuestionInstanceId?: string;
   activeCardResolution?: CardResolutionWindow;
+  hiderHandLimitBonus?: number;
   pendingQuestionReward?: PendingQuestionCardRewardModel;
   mapRegion?: PlayableRegionModel;
   searchArea?: SearchAreaModel;

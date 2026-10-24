@@ -134,6 +134,7 @@ export function buildLiveGameplayGuideModel(
   args: BuildLiveGameplayGuideModelArgs
 ): LiveGameplayGuideModel {
   const baseFacts = buildBaseFacts(args);
+  const hiderHandLimit = args.projection?.hiderHandLimit ?? HIDER_HAND_TARGET;
   const activeQuestionPrompt =
     args.activeQuestionTemplate && args.activeQuestionCategory
       ? describeQuestionTemplateForPlayers(args.activeQuestionTemplate, args.activeQuestionCategory)
@@ -262,7 +263,7 @@ export function buildLiveGameplayGuideModel(
       title: 'Keep the hider hand ready',
       detail:
         args.hasDeckAccess
-          ? `Watch the map, keep ${HIDER_HAND_TARGET} cards ready, and be prepared to answer the next clue quickly.`
+          ? `Watch the map, keep ${hiderHandLimit} cards ready, and be prepared to answer the next clue quickly.`
           : 'Watch the map and stay ready for the next clue.',
       tone: 'info',
       facts: baseFacts,
@@ -362,8 +363,9 @@ export function buildLiveDeckSummaryModel(
   }
 
   const handCount = args.hiderDeck.visibleByZone.hand.length;
+  const hiderHandLimit = args.projection.hiderHandLimit ?? HIDER_HAND_TARGET;
   const pendingResolutionCount = args.hiderDeck.visibleByZone.pending_resolution.length;
-  const cardsNeeded = Math.max(0, HIDER_HAND_TARGET - handCount);
+  const cardsNeeded = Math.max(0, hiderHandLimit - handCount);
   const activeClueLabel = args.activeQuestionCategory?.name ?? 'No live clue right now';
 
   if (pendingResolutionCount > 0 || args.projection.activeCardResolution?.sourceCardInstanceId) {
@@ -373,7 +375,7 @@ export function buildLiveDeckSummaryModel(
         'Finish the open card effect from the deck screen before the live flow moves on.',
       facts: [
         { label: 'Pending effects', value: pendingResolutionCount },
-        { label: 'Hand', value: `${handCount} / ${HIDER_HAND_TARGET}` },
+        { label: 'Hand', value: `${handCount} / ${hiderHandLimit}` },
         { label: 'Active clue', value: activeClueLabel }
       ],
       action: { label: 'Hand & Effects', href: '/cards', tone: 'primary' }
@@ -383,9 +385,9 @@ export function buildLiveDeckSummaryModel(
   if (cardsNeeded > 0) {
     return {
       title: 'Refill the hand before the next clue',
-      detail: `The hider side should stay close to the target hand of ${HIDER_HAND_TARGET} cards.`,
+      detail: `The hider side should stay close to the target hand of ${hiderHandLimit} cards.`,
       facts: [
-        { label: 'Current hand', value: `${handCount} / ${HIDER_HAND_TARGET}` },
+        { label: 'Current hand', value: `${handCount} / ${hiderHandLimit}` },
         { label: 'Need to draw', value: `${cardsNeeded}` },
         { label: 'Active clue', value: activeClueLabel }
       ],
@@ -398,7 +400,7 @@ export function buildLiveDeckSummaryModel(
     detail:
       'The hider hand is full and ready. Open the deck when you need response cards or a card effect during the chase.',
     facts: [
-      { label: 'Current hand', value: `${handCount} / ${HIDER_HAND_TARGET}` },
+      { label: 'Current hand', value: `${handCount} / ${hiderHandLimit}` },
       { label: 'Active clue', value: activeClueLabel },
       { label: 'Visible discards', value: args.hiderDeck.visibleByZone.discard_pile.length }
     ],

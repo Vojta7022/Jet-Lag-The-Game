@@ -43,7 +43,7 @@ export function buildKnownPowerUpDescription(cardDefinition: CardDefinition): st
     case 'discard 2 draw 3':
       return 'Discard two spare cards from hand, then draw three replacements to dig deeper into the deck.';
     case 'draw 1 expand 1':
-      return 'Draw one extra option and expand the keep limit for the current question-response round by one.';
+      return 'Draw and keep one card, then increase your maximum hand size by one for the rest of the round.';
     default:
       return undefined;
   }
@@ -186,6 +186,14 @@ export function buildCardWorkbookPlayability(args: {
       label: 'Keep for scoring',
       tone: 'info',
       detail: scaleDescription ?? 'This bonus adds to your final hiding time if it is still in your hand when found.'
+    };
+  }
+
+  if (args.card.automationLevel === 'authoritative') {
+    return {
+      label: 'Engine-supported',
+      tone: 'success',
+      detail: args.card.description
     };
   }
 

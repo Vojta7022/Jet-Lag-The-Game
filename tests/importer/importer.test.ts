@@ -40,6 +40,12 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.ok(randomize);
   assert.equal(randomize.name, 'Randomize');
 
+  const handExpansion = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-draw-1-expand-1');
+  assert.ok(handExpansion);
+  assert.equal(handExpansion.automationLevel, 'authoritative');
+  assert.equal(handExpansion.effects[0]?.effectType, 'draw_and_expand_hand');
+  assert.deepEqual(handExpansion.effects[0]?.payload, { drawCount: 1, handSizeIncrease: 1 });
+
   const firstCurse = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-zoologist');
   assert.ok(firstCurse);
   assert.equal(firstCurse.castingCost?.[0]?.description, 'A photo of an animal');

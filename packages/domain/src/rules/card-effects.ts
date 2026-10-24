@@ -12,9 +12,10 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'discard_then_draw' | 'time_bonus';
+  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'time_bonus';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
+  handSizeIncreaseOnResolve?: number;
   timeBonusMinutes?: number;
 }
 
@@ -125,6 +126,23 @@ export function buildCardResolutionPlan(
       kind: 'discard_then_draw',
       discardRequirement: { requiredCards: 2 },
       drawCountOnResolve: 3
+    };
+  }
+
+  const expansionEffect = cardDefinition.effects.find((effect) => effect.effectType === 'draw_and_expand_hand');
+  if (expansionEffect) {
+    const payload = expansionEffect.payload as { drawCount?: unknown; handSizeIncrease?: unknown } | undefined;
+    const drawCount = typeof payload?.drawCount === 'number' && payload.drawCount > 0
+      ? Math.floor(payload.drawCount)
+      : 1;
+    const handSizeIncrease = typeof payload?.handSizeIncrease === 'number' && payload.handSizeIncrease > 0
+      ? Math.floor(payload.handSizeIncrease)
+      : 1;
+    return {
+      kind: 'draw_and_expand_hand',
+      discardRequirement: {},
+      drawCountOnResolve: drawCount,
+      handSizeIncreaseOnResolve: handSizeIncrease
     };
   }
 

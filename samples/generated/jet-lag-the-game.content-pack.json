@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T16:44:46.132Z",
+    "importedAt": "2026-10-24T17:23:32.987Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -1722,14 +1722,18 @@
       "kind": "power_up",
       "name": "Draw 1 Expand 1",
       "shortName": "Draw 1 Expand 1",
-      "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "automationLevel": "manual",
+      "description": "Draw and keep one card, then permanently increase your maximum hand size by one for this round.",
+      "automationLevel": "authoritative",
       "effects": [
         {
-          "effectType": "manual_power_up",
-          "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-          "automationLevel": "manual",
-          "rawText": "Draw 1 Expand 1"
+          "effectType": "draw_and_expand_hand",
+          "description": "Draw and keep one card, then permanently increase your maximum hand size by one for this round.",
+          "automationLevel": "authoritative",
+          "rawText": "Draw 1 Expand 1",
+          "payload": {
+            "drawCount": 1,
+            "handSizeIncrease": 1
+          }
         }
       ],
       "visibilityPolicy": {

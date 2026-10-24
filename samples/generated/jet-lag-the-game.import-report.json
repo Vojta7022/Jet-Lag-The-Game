@@ -1,5 +1,5 @@
 {
-  "importJobId": "aff7cc8d-fcf2-458b-953d-eb613c5e9af1",
+  "importJobId": "4bbd4e36-0fcf-485a-9191-a1a5c585e73f",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -85,19 +85,6 @@
       "normalizedValue": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
       "suggestedFix": "Keep the imported card name and add authored effect details later if fuller automation is needed.",
       "sheetCell": "B12"
-    },
-    {
-      "sheetName": "Hider Deck",
-      "rowNumber": 13,
-      "columnName": "card",
-      "fieldPath": "cards[power-up-draw-1-expand-1].description",
-      "severity": "warning",
-      "code": "POWER_UP_EFFECT_UNSPECIFIED",
-      "message": "The workbook provides a power-up name but no detailed effect text.",
-      "rawValue": "Draw 1 Expand 1",
-      "normalizedValue": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "suggestedFix": "Keep the imported card name and add authored effect details later if fuller automation is needed.",
-      "sheetCell": "B13"
     },
     {
       "sheetName": "Matching",

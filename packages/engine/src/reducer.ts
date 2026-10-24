@@ -328,6 +328,7 @@ export function reduceMatchAggregate(
         hiddenState: {},
         roundStartLocation: eventEnvelope.event.payload.roundStartLocation,
         hiderRotationOrder: eventEnvelope.event.payload.hiderRotationOrder,
+        hiderHandLimitBonus: 0,
         searchArea: base.mapRegion
           ? initializeSearchAreaFromRegion(base.mapRegion, eventEnvelope.occurredAt)
           : undefined,
@@ -667,6 +668,11 @@ export function reduceMatchAggregate(
           : base.timers
       };
     }
+    case 'hider_hand_limit_expanded':
+      return {
+        ...base,
+        hiderHandLimitBonus: (base.hiderHandLimitBonus ?? 0) + eventEnvelope.event.payload.increaseBy
+      };
     case 'cooldown_completed': {
       const updatedTimers = mapTimers(base.timers, (timer) =>
         timer.kind === 'cooldown'
