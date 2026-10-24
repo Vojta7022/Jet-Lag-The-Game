@@ -57,6 +57,102 @@ test('Radar automatically answers from fresh hider and seeker fixes and applies 
   assert.equal('longitude' in answerEvent.event.payload, false);
 });
 
+test('Thermometer automatically compares the seekers previous and current locations with the hider', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.12, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.109, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.101, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 15
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.101, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 16
+  });
+  const startSampleId = aggregate.locationSamples.find((sample) => sample.playerId === 'seeker-1')?.sampleId;
+  const currentSampleId = [...aggregate.locationSamples].reverse().find((sample) => sample.playerId === 'seeker-1')?.sampleId;
+  const hiderSampleId = aggregate.locationSamples.find((sample) => sample.playerId === 'hider-1')?.sampleId;
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 17), contentPack).aggregate;
+
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-thermometer', templateId: 'thermometer-1000', targetTeamId: 'team-hider' }
+    }, 18), contentPack);
+
+  assert.equal(result.aggregate.questionInstances['question:auto-thermometer']?.status, 'resolved');
+  assert.equal(result.aggregate.questionInstances['question:auto-thermometer']?.answer?.value, 'hotter');
+  assert.deepEqual(result.aggregate.questionInstances['question:auto-thermometer']?.automaticResolution?.sourceSampleIds,
+    [startSampleId, currentSampleId, hiderSampleId]);
+  const thermometerConstraint = Object.values(result.aggregate.constraints)
+    .find((constraint) => constraint.sourceQuestionInstanceId === 'question:auto-thermometer');
+  assert.equal(thermometerConstraint?.status, 'active');
+  assert.equal((thermometerConstraint?.metadata.automaticResolution as { movementStartSampleId?: string }).movementStartSampleId, startSampleId);
+  assert.match(result.aggregate.searchArea?.history.at(-1)?.summary ?? '', /Thermometer/i);
+  assert.match(thermometerConstraint?.explanation.reasoningSteps.join(' ') ?? '', /frozen Thermometer start and end locations/i);
+});
+
+test('Thermometer refuses to answer until the printed minimum distance is proven by GPS', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.12, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 23
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.101, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 24
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.115, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 25
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 26), contentPack).aggregate;
+
+  assert.throws(() => executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:short-thermometer', templateId: 'thermometer-1000', targetTeamId: 'team-hider' }
+    }, 27), contentPack), /travel at least 1 km/i);
+});
+
+test('Thermometer asks for better GPS when positional uncertainty overlaps the travel minimum', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.12, longitude: 103.8,
+    accuracyMeters: 10, source: 'device', step: 33
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.11, longitude: 103.8,
+    accuracyMeters: 10, source: 'device', step: 34
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.111, longitude: 103.8,
+    accuracyMeters: 10, source: 'device', step: 35
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 36), contentPack).aggregate;
+
+  assert.throws(() => executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:uncertain-thermometer', templateId: 'thermometer-1000', targetTeamId: 'team-hider' }
+    }, 37), contentPack), /GPS uncertainty overlaps the Thermometer travel minimum/i);
+});
+
 test('Radar refuses to guess when either location fix is stale or too imprecise', () => {
   const { aggregate, contentPack } = setupRadarMatch();
   const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,

@@ -1,5 +1,5 @@
 {
-  "importJobId": "c6221923-308f-45de-a8bb-6e4734d3e309",
+  "importJobId": "69961700-0332-46c8-8d37-33b32a096a9f",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -149,6 +149,58 @@
       "normalizedValue": "Foreign Consulate",
       "suggestedFix": "Review the canonical label and keep the raw text in provenance metadata.",
       "sheetCell": "target22"
+    },
+    {
+      "sheetName": "Thermometer",
+      "rowNumber": 2,
+      "columnName": "distance",
+      "fieldPath": "questionTemplates[].parameters.minimumDistance",
+      "severity": "info",
+      "code": "THERMOMETER_DISTANCE_RECONCILED_TO_BOOK",
+      "message": "The workbook lists 0.5mi 805m, but the scanned Investigation Book lists 1 km; the base-game question uses the printed distance.",
+      "rawValue": "0.5mi 805m",
+      "normalizedValue": "1 km",
+      "suggestedFix": "Keep the scanned Investigation Book distance in the base-game pack; preserve the workbook value only in source provenance.",
+      "sheetCell": "distance2"
+    },
+    {
+      "sheetName": "Thermometer",
+      "rowNumber": 3,
+      "columnName": "distance",
+      "fieldPath": "questionTemplates[].parameters.minimumDistance",
+      "severity": "info",
+      "code": "THERMOMETER_DISTANCE_RECONCILED_TO_BOOK",
+      "message": "The workbook lists 3mi 4.8km, but the scanned Investigation Book lists 5 km; the base-game question uses the printed distance.",
+      "rawValue": "3mi 4.8km",
+      "normalizedValue": "5 km",
+      "suggestedFix": "Keep the scanned Investigation Book distance in the base-game pack; preserve the workbook value only in source provenance.",
+      "sheetCell": "distance3"
+    },
+    {
+      "sheetName": "Thermometer",
+      "rowNumber": 4,
+      "columnName": "distance",
+      "fieldPath": "questionTemplates[].parameters.minimumDistance",
+      "severity": "info",
+      "code": "THERMOMETER_DISTANCE_RECONCILED_TO_BOOK",
+      "message": "The workbook lists 10mi 16km, but the scanned Investigation Book lists 15 km; the base-game question uses the printed distance.",
+      "rawValue": "10mi 16km",
+      "normalizedValue": "15 km",
+      "suggestedFix": "Keep the scanned Investigation Book distance in the base-game pack; preserve the workbook value only in source provenance.",
+      "sheetCell": "distance4"
+    },
+    {
+      "sheetName": "Thermometer",
+      "rowNumber": 5,
+      "columnName": "distance",
+      "fieldPath": "questionTemplates[].parameters.minimumDistance",
+      "severity": "info",
+      "code": "THERMOMETER_DISTANCE_RECONCILED_TO_BOOK",
+      "message": "The workbook lists 50mi 80km, but the scanned Investigation Book lists 75 km; the base-game question uses the printed distance.",
+      "rawValue": "50mi 80km",
+      "normalizedValue": "75 km",
+      "suggestedFix": "Keep the scanned Investigation Book distance in the base-game pack; preserve the workbook value only in source provenance.",
+      "sheetCell": "distance5"
     },
     {
       "sheetName": "Radar",

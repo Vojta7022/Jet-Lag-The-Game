@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T17:35:51.034Z",
+    "importedAt": "2026-10-24T17:58:26.695Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3731,8 +3731,7 @@
         "kind": "enum",
         "allowedValues": [
           "hotter",
-          "colder",
-          "same"
+          "colder"
         ]
       },
       "visibilityPolicy": {
@@ -6804,19 +6803,19 @@
       ]
     },
     {
-      "templateId": "thermometer-805",
+      "templateId": "thermometer-1000",
       "packId": "jet-lag-the-game-seed",
       "categoryId": "thermometer",
-      "name": "0.5mi 805m",
+      "name": "1 km",
       "promptOverrides": {
         "promptTemplate": "I just traveled (at least) [Distance]. Am I hotter or colder?"
       },
       "parameters": {
         "minimumDistance": {
-          "meters": 805,
-          "rawText": "0.5mi 805m",
+          "meters": 1000,
+          "rawText": "1 km",
           "milesText": "0.5mi 805m",
-          "metricText": "0.5mi 805m"
+          "metricText": "1 km"
         },
         "workbookQuestionText": "I just traveled (at least) [Distance]. Am I hotter or colder?",
         "workbookCostText": "Draw 2, Pick 1",
@@ -6827,8 +6826,7 @@
         "kind": "enum",
         "allowedValues": [
           "hotter",
-          "colder",
-          "same"
+          "colder"
         ]
       },
       "resolverConfig": {
@@ -6883,19 +6881,19 @@
       ]
     },
     {
-      "templateId": "thermometer-4800",
+      "templateId": "thermometer-5000",
       "packId": "jet-lag-the-game-seed",
       "categoryId": "thermometer",
-      "name": "3mi 4.8km",
+      "name": "5 km",
       "promptOverrides": {
         "promptTemplate": "I just traveled (at least) [Distance]. Am I hotter or colder?"
       },
       "parameters": {
         "minimumDistance": {
-          "meters": 4800,
-          "rawText": "3mi 4.8km",
+          "meters": 5000,
+          "rawText": "5 km",
           "milesText": "3mi 4.8km",
-          "metricText": "3mi 4.8km"
+          "metricText": "5 km"
         },
         "workbookQuestionText": "I just traveled (at least) [Distance]. Am I hotter or colder?",
         "workbookCostText": "Draw 2, Pick 1",
@@ -6906,8 +6904,7 @@
         "kind": "enum",
         "allowedValues": [
           "hotter",
-          "colder",
-          "same"
+          "colder"
         ]
       },
       "resolverConfig": {
@@ -6962,19 +6959,19 @@
       ]
     },
     {
-      "templateId": "thermometer-16000",
+      "templateId": "thermometer-15000",
       "packId": "jet-lag-the-game-seed",
       "categoryId": "thermometer",
-      "name": "10mi 16km",
+      "name": "15 km",
       "promptOverrides": {
         "promptTemplate": "I just traveled (at least) [Distance]. Am I hotter or colder?"
       },
       "parameters": {
         "minimumDistance": {
-          "meters": 16000,
-          "rawText": "10mi 16km",
+          "meters": 15000,
+          "rawText": "15 km",
           "milesText": "10mi 16km",
-          "metricText": "10mi 16km"
+          "metricText": "15 km"
         },
         "workbookQuestionText": "I just traveled (at least) [Distance]. Am I hotter or colder?",
         "workbookCostText": "Draw 2, Pick 1",
@@ -6985,8 +6982,7 @@
         "kind": "enum",
         "allowedValues": [
           "hotter",
-          "colder",
-          "same"
+          "colder"
         ]
       },
       "resolverConfig": {
@@ -7040,19 +7036,19 @@
       ]
     },
     {
-      "templateId": "thermometer-80000",
+      "templateId": "thermometer-75000",
       "packId": "jet-lag-the-game-seed",
       "categoryId": "thermometer",
-      "name": "50mi 80km",
+      "name": "75 km",
       "promptOverrides": {
         "promptTemplate": "I just traveled (at least) [Distance]. Am I hotter or colder?"
       },
       "parameters": {
         "minimumDistance": {
-          "meters": 80000,
-          "rawText": "50mi 80km",
+          "meters": 75000,
+          "rawText": "75 km",
           "milesText": "50mi 80km",
-          "metricText": "50mi 80km"
+          "metricText": "75 km"
         },
         "workbookQuestionText": "I just traveled (at least) [Distance]. Am I hotter or colder?",
         "workbookCostText": "Draw 2, Pick 1",
@@ -7063,8 +7059,7 @@
         "kind": "enum",
         "allowedValues": [
           "hotter",
-          "colder",
-          "same"
+          "colder"
         ]
       },
       "resolverConfig": {

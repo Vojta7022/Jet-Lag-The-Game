@@ -169,6 +169,8 @@ export interface AutomaticQuestionResolutionModel {
   sourceRecordedAt: string[];
   sourceAccuracyMeters: number[];
   thresholdMeters?: number;
+  movementStartSampleId?: string;
+  movementEndSampleId?: string;
 }
 
 export interface QuestionCardRewardSetModel {

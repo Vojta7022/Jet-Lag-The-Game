@@ -53,6 +53,22 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(handExpansion.effects[0]?.effectType, 'draw_and_expand_hand');
   assert.deepEqual(handExpansion.effects[0]?.payload, { drawCount: 1, handSizeIncrease: 1 });
 
+  const thermometers = result.pack.questionTemplates
+    .filter((template) => template.categoryId === 'thermometer')
+    .map((template) => ({
+      id: template.templateId,
+      meters: (template.parameters?.minimumDistance as { meters?: number } | undefined)?.meters,
+      scales: template.scaleSet.appliesTo
+    }));
+  assert.deepEqual(thermometers, [
+    { id: 'thermometer-1000', meters: 1000, scales: ['small', 'medium', 'large'] },
+    { id: 'thermometer-5000', meters: 5000, scales: ['small', 'medium', 'large'] },
+    { id: 'thermometer-15000', meters: 15000, scales: ['medium', 'large'] },
+    { id: 'thermometer-75000', meters: 75000, scales: ['large'] }
+  ]);
+  assert.deepEqual(result.pack.questionCategories.find((category) => category.categoryId === 'thermometer')?.defaultAnswerSchema.allowedValues,
+    ['hotter', 'colder']);
+
   const firstCurse = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-zoologist');
   assert.ok(firstCurse);
   assert.equal(firstCurse.castingCost?.[0]?.description, 'A photo of an animal');

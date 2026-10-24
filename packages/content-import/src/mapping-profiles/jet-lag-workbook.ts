@@ -1582,6 +1582,34 @@ function buildThermometerTemplates(
   sheet: WorkbookSheet,
   issues: ImportIssue[]
 ): { category: QuestionCategoryDefinition; templates: QuestionTemplateDefinition[] } {
+  const printedDistances = [
+    { meters: 1_000, label: '1 km' },
+    { meters: 5_000, label: '5 km' },
+    { meters: 15_000, label: '15 km' },
+    { meters: 75_000, label: '75 km' }
+  ];
+  const reconcilePrintedDistance = (distance: NonNullable<ReturnType<typeof parseDistanceValue>>, rawText: string, rowNumber: number, columnName: string, templateIndex: number) => {
+    const printed = printedDistances[templateIndex];
+    if (!printed || distance.meters === printed.meters) return { distance, label: collapseLineBreaks(rawText) };
+    issues.push(createIssue({
+      sheetName: sheet.name,
+      rowNumber,
+      columnName,
+      fieldPath: 'questionTemplates[].parameters.minimumDistance',
+      severity: 'info',
+      code: 'THERMOMETER_DISTANCE_RECONCILED_TO_BOOK',
+      message: `The workbook lists ${distance.metricText ?? distance.rawText}, but the scanned Investigation Book lists ${printed.label}; the base-game question uses the printed distance.`,
+      rawValue: rawText,
+      normalizedValue: printed.label,
+      suggestedFix: 'Keep the scanned Investigation Book distance in the base-game pack; preserve the workbook value only in source provenance.',
+      sheetCell: `${columnName}${rowNumber}`
+    }));
+    return {
+      distance: { ...distance, meters: printed.meters, rawText: printed.label, metricText: printed.label },
+      label: printed.label
+    };
+  };
+
   if (sheetHasHeaders(sheet, ['distance', 'availability', 'cost', 'time', 'question'])) {
     const headerIndex = buildHeaderIndex(sheet);
     const rows = dataRowsAfterHeader(sheet);
@@ -1599,7 +1627,7 @@ function buildThermometerTemplates(
       allScales(),
       {
         kind: 'enum',
-        allowedValues: ['hotter', 'colder', 'same']
+        allowedValues: ['hotter', 'colder']
       },
       ['hotter-colder']
     );
@@ -1638,13 +1666,14 @@ function buildThermometerTemplates(
         continue;
       }
 
+      const reconciled = reconcilePrintedDistance(distance, rawDistance, row.rowNumber, 'distance', templates.length);
       const scaleSet = availabilityRaw ? normalizeScaleGate(availabilityRaw) ?? allScales(availabilityRaw) : allScales();
 
       templates.push({
-        templateId: `thermometer-${Math.round(distance.meters)}`,
+        templateId: `thermometer-${Math.round(reconciled.distance.meters)}`,
         packId,
         categoryId: category.categoryId,
-        name: collapseLineBreaks(rawDistance),
+        name: reconciled.label,
         promptOverrides: questionRaw ? { promptTemplate: applyWorkbookCorrections(questionRaw) } : undefined,
         parameters: workbookQuestionParameters({
           question: questionRaw,
@@ -1652,12 +1681,12 @@ function buildThermometerTemplates(
           time: timeRaw,
           availability: availabilityRaw,
           values: {
-            minimumDistance: distance
+            minimumDistance: reconciled.distance
           }
         }),
         answerSchema: {
           kind: 'enum',
-          allowedValues: ['hotter', 'colder', 'same']
+          allowedValues: ['hotter', 'colder']
         },
         resolverConfig: {
           requiresSeekerMovementHistory: true
@@ -1689,7 +1718,7 @@ function buildThermometerTemplates(
     allScales(),
     {
       kind: 'enum',
-      allowedValues: ['hotter', 'colder', 'same']
+      allowedValues: ['hotter', 'colder']
     },
     ['hotter-colder']
   );
@@ -1730,17 +1759,18 @@ function buildThermometerTemplates(
       continue;
     }
 
+    const reconciled = reconcilePrintedDistance(distance, rawValue, row.rowNumber, 'A', templates.length);
     templates.push({
-      templateId: `thermometer-${Math.round(distance.meters)}`,
+      templateId: `thermometer-${Math.round(reconciled.distance.meters)}`,
       packId,
       categoryId: category.categoryId,
-      name: collapseLineBreaks(rawValue),
+      name: reconciled.label,
       parameters: {
-        minimumDistance: distance
+        minimumDistance: reconciled.distance
       },
       answerSchema: {
         kind: 'enum',
-        allowedValues: ['hotter', 'colder', 'same']
+        allowedValues: ['hotter', 'colder']
       },
       resolverConfig: {
         requiresSeekerMovementHistory: true

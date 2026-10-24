@@ -13,18 +13,20 @@ const DEFAULT_MAX_FIX_ACCURACY_METERS = 50;
 
 export type AutomaticQuestionAnswerResult =
   | { kind: 'manual' }
-  | { kind: 'blocked'; code: 'LOCATION_FIX_REQUIRED' | 'LOCATION_ANSWER_AMBIGUOUS'; message: string }
+  | { kind: 'blocked'; code: 'LOCATION_FIX_REQUIRED' | 'LOCATION_ANSWER_AMBIGUOUS' | 'TRAVEL_DISTANCE_REQUIRED'; message: string }
   | {
       kind: 'resolved';
       answer: Record<string, unknown>;
       constraintId: string;
       automaticResolution: {
         resolverVersion: string;
-        method: 'threshold_distance';
+      method: 'threshold_distance' | 'hotter_colder';
         sourceSampleIds: string[];
         sourceRecordedAt: string[];
         sourceAccuracyMeters: number[];
         thresholdMeters: number;
+      movementStartSampleId?: string;
+      movementEndSampleId?: string;
       };
     };
 
@@ -46,7 +48,8 @@ export function resolveAutomaticQuestionAnswer(args: {
   occurredAt: string;
 }): AutomaticQuestionAnswerResult {
   const { aggregate, contentPack, category, template } = args;
-  if (category.answerPolicy === 'manual' || category.resolverKind !== 'threshold_distance') return { kind: 'manual' };
+  if (category.answerPolicy === 'manual') return { kind: 'manual' };
+  if (category.resolverKind !== 'threshold_distance' && category.resolverKind !== 'hotter_colder') return { kind: 'manual' };
 
   const seeker = latestSample(aggregate.locationSamples, (sample) =>
     sample.playerId === args.askedByPlayerId && sample.role === 'seeker' &&
@@ -79,6 +82,98 @@ export function resolveAutomaticQuestionAnswer(args: {
       kind: 'blocked',
       code: 'LOCATION_FIX_REQUIRED',
       message: `A fresh and accurate location fix is required from the seeker and hider (within ${maxAgeSeconds} seconds and ${maxAccuracyMeters} meters accuracy).`
+    };
+  }
+
+  if (category.resolverKind === 'hotter_colder') {
+    const requiredTravelMeters = Number(
+      template.resolverConfig?.minimumDistanceMeters ??
+      (template.parameters?.minimumDistance as { meters?: unknown } | undefined)?.meters
+    );
+    if (!Number.isFinite(requiredTravelMeters) || requiredTravelMeters <= 0) return { kind: 'manual' };
+
+    const seekerHistory = aggregate.locationSamples
+      .filter((sample) => sample.playerId === args.askedByPlayerId && sample.role === 'seeker' &&
+        aggregate.roleAssignments[sample.playerId]?.role === 'seeker' && sample.source === 'device')
+      .sort((left, right) => left.recordedAt.localeCompare(right.recordedAt));
+    const seekStartedAt = aggregate.eventLog
+      .filter((event) => event.type === 'hide_phase_ended')
+      .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt))
+      .at(-1)?.occurredAt;
+    const currentRoundHistory = seekStartedAt
+      ? seekerHistory.filter((sample) => sample.recordedAt >= seekStartedAt)
+      : seekerHistory;
+    const lastResolvedThermometer = Object.values(aggregate.questionInstances)
+      .filter((question) => question.categoryId === category.categoryId && question.askedByPlayerId === args.askedByPlayerId && question.status === 'resolved')
+      .sort((left, right) => (left.resolvedAt ?? left.askedAt).localeCompare(right.resolvedAt ?? right.askedAt))
+      .at(-1);
+    const previousEndId = lastResolvedThermometer?.automaticResolution?.movementEndSampleId;
+    const previousEndAt = previousEndId
+      ? currentRoundHistory.find((sample) => sample.sampleId === previousEndId)?.recordedAt
+      : lastResolvedThermometer?.resolvedAt;
+    const eligibleStarts = currentRoundHistory.filter((sample) =>
+      sample.sampleId !== seeker.sampleId && (!previousEndAt || sample.recordedAt > previousEndAt));
+    const candidateStarts = [...eligibleStarts].reverse().flatMap((sample) => {
+      if (typeof sample.accuracyMeters !== 'number' || sample.accuracyMeters < 0 || sample.accuracyMeters > maxAccuracyMeters) return [];
+      const distance = distanceMeters([sample.longitude, sample.latitude], [seeker.longitude, seeker.latitude]);
+      return [{ sample, distance, minimumDistance: distance - sample.accuracyMeters - seeker.accuracyMeters! }];
+    });
+    const start = candidateStarts.find((candidate) => candidate.minimumDistance >= requiredTravelMeters)?.sample;
+
+    if (!start) {
+      if (candidateStarts.some((candidate) => candidate.distance + candidate.sample.accuracyMeters! + seeker.accuracyMeters! >= requiredTravelMeters)) {
+        return {
+          kind: 'blocked',
+          code: 'LOCATION_ANSWER_AMBIGUOUS',
+          message: 'GPS uncertainty overlaps the Thermometer travel minimum. Refresh your locations after traveling farther.'
+        };
+      }
+      return {
+        kind: 'blocked',
+        code: 'TRAVEL_DISTANCE_REQUIRED',
+        message: `Travel at least ${Math.round(requiredTravelMeters / 100) / 10} km from your last Thermometer point before asking this question.`
+      };
+    }
+
+    const startAccuracy = start.accuracyMeters;
+    const endAccuracy = seeker.accuracyMeters;
+    if (typeof startAccuracy !== 'number' || typeof endAccuracy !== 'number') {
+      return {
+        kind: 'blocked',
+        code: 'LOCATION_ANSWER_AMBIGUOUS',
+        message: 'GPS uncertainty overlaps the Thermometer travel minimum. Refresh your locations after traveling farther.'
+      };
+    }
+
+    const startToHider = distanceMeters([start.longitude, start.latitude], [hider.longitude, hider.latitude]);
+    const endToHider = distanceMeters([seeker.longitude, seeker.latitude], [hider.longitude, hider.latitude]);
+    const distanceChange = startToHider - endToHider;
+    const comparisonUncertainty = startAccuracy + endAccuracy + 2 * (hider.accuracyMeters ?? maxAccuracyMeters);
+    if (Math.abs(distanceChange) <= comparisonUncertainty) {
+      return {
+        kind: 'blocked',
+        code: 'LOCATION_ANSWER_AMBIGUOUS',
+        message: 'GPS uncertainty cannot tell whether the seekers became hotter or colder. Refresh the location fixes and try again.'
+      };
+    }
+
+    const refs = new Set([...(template.constraintRefs ?? []), ...(category.defaultConstraintRefs ?? [])]);
+    const constraint = contentPack.constraints.find((candidate) => refs.has(candidate.constraintId) && candidate.kind === 'hotter_colder');
+    if (!constraint) return { kind: 'manual' };
+    return {
+      kind: 'resolved',
+      answer: { value: distanceChange > 0 ? 'hotter' : 'colder' },
+      constraintId: constraint.constraintId,
+      automaticResolution: {
+        resolverVersion: AUTOMATIC_QUESTION_RESOLVER_VERSION,
+        method: 'hotter_colder',
+        sourceSampleIds: [start.sampleId, seeker.sampleId, hider.sampleId],
+        sourceRecordedAt: [start.recordedAt, seeker.recordedAt, hider.recordedAt],
+        sourceAccuracyMeters: [startAccuracy, endAccuracy, hider.accuracyMeters ?? maxAccuracyMeters],
+        thresholdMeters: requiredTravelMeters,
+        movementStartSampleId: start.sampleId,
+        movementEndSampleId: seeker.sampleId
+      }
     };
   }
 

@@ -135,6 +135,8 @@ export interface VisibleQuestionProjection {
     sourceRecordedAt: string[];
     sourceAccuracyMeters: number[];
     thresholdMeters?: number;
+    movementStartSampleId?: string;
+    movementEndSampleId?: string;
   };
   randomizedFromQuestionInstanceId?: string;
   randomizedNullAnswerAllowed?: boolean;

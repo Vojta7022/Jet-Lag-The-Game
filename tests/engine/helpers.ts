@@ -401,10 +401,10 @@ export function openAnsweredQuestion(
   }
 ): MatchAggregate {
   // This fixture explicitly creates a manually answered question for constraint
-  // unit tests. Production Radar commands are automatically resolved from GPS.
+  // unit tests. Production Radar and Thermometer commands are automatically resolved from GPS.
   const template = contentPack.questionTemplates.find((candidate) => candidate.templateId === args.templateId);
   const category = template && contentPack.questionCategories.find((candidate) => candidate.categoryId === template.categoryId);
-  const fixturePack = category?.resolverKind === 'threshold_distance'
+  const fixturePack = category?.resolverKind === 'threshold_distance' || category?.resolverKind === 'hotter_colder'
     ? {
         ...contentPack,
         questionCategories: contentPack.questionCategories.map((candidate) => candidate.categoryId === category.categoryId

@@ -108,7 +108,7 @@ test('Radar resolves as an approximate bounded inclusion or exclusion constraint
 test('Thermometer uses seeker movement history and can resolve to an exact half-plane clip', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
-  const thermometerTemplate = getCurrentQuestionTemplate(aggregate, contentPack, 'thermometer', 'thermometer-805');
+  const thermometerTemplate = getCurrentQuestionTemplate(aggregate, contentPack, 'thermometer', 'thermometer-1000');
   aggregate = recordLocationUpdate(aggregate, contentPack, {
     playerId: 'seeker-1',
     role: 'seeker',

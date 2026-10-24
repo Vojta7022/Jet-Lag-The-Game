@@ -29,7 +29,7 @@
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
 - The main remaining gap is a tested, reliable multi-phone end-to-end play path. An authenticated Edge Function gateway and atomic revision commit now exist with unit coverage; production deployment, authorization/privacy audit, and cellular field play still need verification. Nearby mode has no LAN transport.
-- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, and 19 importer warnings. It remains draft content with no ruleset or map preset; remaining card warnings still need adjudication.
+- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, 18 warnings, and 5 informational import findings. It remains draft content with no ruleset or map preset; remaining card warnings still need adjudication.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
 - The initial implementation target was single-device referee; the 2026-10-24 product clarification made one authenticated phone per player the primary product, with referee mode retained as fallback/regression coverage.
@@ -42,7 +42,14 @@
 - Web `accessible={false}` SVG props caused the reported React warning; decorative game SVGs now use `aria-hidden={true}`. Measured map width also prevents the map surface from extending beyond its card.
 - At the start of the online multiplayer phase the full suite passes 237/237 with the project `.venv` on `PATH`; mobile TypeScript typecheck passes.
 - The scan-confirmed standard round flow is implemented. Imported workbook card text remains draft and may need manual adjudication; it is kept for personal/private play until distribution rights and importer warnings are reviewed.
-- Reconciled the workbook's extra “4th Admin (Borough)” Measuring row against the scanned Investigation Book: it is not listed there, so the base-game importer now excludes it and reports the source discrepancy. The 4th Admin Matching prompt remains. The regenerated pack has 80 templates and the importer now reports 19 warnings plus one informational exclusion after Veto and Randomize gained typed effects.
+- Reconciled the workbook's extra “4th Admin (Borough)” Measuring row against the scanned Investigation Book: it is not listed there, so the base-game importer now excludes it and reports the source discrepancy. The 4th Admin Matching prompt remains. The regenerated pack has 80 templates; Veto and Randomize are typed effects, and four workbook Thermometer distances are corrected to the scanned values with import provenance.
+
+### Completed implementation slice: automatic Thermometer questions
+
+- [x] Test scanned distances, answer direction, minimum-travel enforcement, GPS uncertainty, and frozen sample provenance.
+- [x] Reconcile workbook distances and answer options to the scanned Investigation Book and regenerate both base-game pack outputs.
+- [x] Calculate hotter/colder from fresh, accurate hider/seeker fixes; apply the map half-plane from the exact movement endpoints used for the answer.
+- [x] Verify focused/full tests, mobile typecheck, and update rule/content documentation.
 
 ## Active: online multiplayer for one phone per player
 
@@ -53,6 +60,7 @@
 - [x] Build and test the authenticated Edge Function gateway, atomic revision commits, separate authenticated phone adapters, and reconnect bindings in the prototype authority.
 - [x] Give each hider/seeker device location publishing; hiders receive live seeker tracks while seeker projections exclude hider coordinates.
 - [x] Automatically resolve Radar from fresh seeker and hider GPS fixes, apply the bounded map deduction, and record fix provenance in the same authority command.
+- [x] Automatically resolve Thermometer from printed minimum travel distance and fresh GPS fixes; freeze the same seeker movement endpoints for the answer and map deduction.
 - [ ] Deploy and security-audit the online authority; verify it on real devices over cellular data.
 - [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
 - [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects.
@@ -112,6 +120,9 @@
 - The scanned Draw 1 Expand 1 power-up is now a typed, immediate engine effect: it draws one card, stacks the hand limit for the rest of the round, remains usable during an active answer window, and resets on next-round start. The 239-test full suite and mobile typecheck pass after the change.
 - Veto ends the answer window without a response or card reward but counts as asked for repeat cost. Randomize cancels its original question, selects an unasked same-category question allowed at the selected scale, and starts a fresh timer; the original remains eligible at its original cost. A randomized null response resolves without map geometry and still counts for the printed hider reward. The generated base pack carries both typed effects. [rulebook scan, p. 46; `tests/engine/cards.test.ts`]
 - The app labels a randomized null response as a completed no-map-change result instead of showing it as a pending map outcome. Full suite passed 243 tests; mobile typecheck and `git diff --check` pass.
+- Thermometer importer and automatic resolver slice verified: `npm test` passes 246 tests, `npm run mobile:typecheck` passes, and `git diff --check` is clean. The generated import report has 18 warning and 5 informational findings.
+- The printed Thermometer thresholds are 1 km and 5 km for all scales, 15 km for medium/large, and 75 km for large; only hotter/colder are valid answers. The workbook's 805 m, 4.8 km, 16 km, 80 km values and `same` option were not faithful to the scanned Investigation Book, so the importer now uses the printed values and records four informational corrections. Automatic answers require provable travel distance and confidence-bounded direction; the map uses the same frozen seeker endpoints as the answer. [Investigation Book scan, p. 3; base rulebook scan, p. 17; `tests/engine/automatic-question-answer.test.ts`]
+- The regenerated importer report contains 23 findings: 18 warnings and 5 informational items (including the 4 Thermometer corrections). Veto and Randomize removed two former warnings.
 
 ### Review — 2026-10-24
 

@@ -364,7 +364,16 @@ function resolveThermometer(
   baseGeometry: GeoJsonGeometryModel,
   metadata: Record<string, unknown>
 ): ResolvedConstraintDraft {
-  const movement = playerMovementHistory(context.aggregate, context.question.askedByPlayerId);
+  const provenance = metadata.automaticResolution as {
+    movementStartSampleId?: string;
+    movementEndSampleId?: string;
+  } | undefined;
+  const movementStart = context.aggregate.locationSamples.find((sample) => sample.sampleId === provenance?.movementStartSampleId);
+  const movementEnd = context.aggregate.locationSamples.find((sample) => sample.sampleId === provenance?.movementEndSampleId);
+  const movement = movementStart && movementEnd
+    ? [[movementStart.longitude, movementStart.latitude] as LonLat, [movementEnd.longitude, movementEnd.latitude] as LonLat]
+    : playerMovementHistory(context.aggregate, context.question.askedByPlayerId);
+  const usesFrozenMovement = Boolean(movementStart && movementEnd);
   if (movement.length < 2) {
     return metadataOnlyDraft({
       summary: 'Thermometer could not resolve because seeker movement history is incomplete.',
@@ -391,9 +400,13 @@ function resolveThermometer(
         relation === 'hotter'
           ? 'Thermometer keeps areas closer to the seeker’s newer location than the previous one.'
           : 'Thermometer keeps areas closer to the seeker’s previous location than the newer one.',
-      detail: 'This is an exact half-plane clip derived from the last two seeker samples.',
+      detail: usesFrozenMovement
+        ? 'This exact half-plane clip uses the seeker start and end locations frozen when the Thermometer question was accepted.'
+        : 'This is an exact half-plane clip derived from the last two seeker samples.',
       reasoningSteps: [
-        'Used the two most recent seeker location samples.',
+        usesFrozenMovement
+          ? 'Used the frozen Thermometer start and end locations from the question provenance.'
+          : 'Used the two most recent seeker location samples.',
         'Computed the perpendicular bisector between them.',
         relation === 'hotter'
           ? 'Kept the side of the bisector that is closer to the newer sample.'
