@@ -10,6 +10,7 @@ import type { QuestionAnswerDraft } from './question-flow-state.ts';
 import { getAnswerOptions } from './question-flow-state.ts';
 import {
   describeWorkbookAvailability,
+  describeQuestionRulebookGuidance,
   describeWorkbookRequirementSummary,
   describeWorkbookRuleSummary,
   describeExpectedAnswerGuidance,
@@ -52,6 +53,7 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
   const answerKind = String(props.template.answerSchema.kind ?? 'manual');
   const options = getAnswerOptions(props.template);
   const workbookRequirement = describeWorkbookRequirementSummary(props.template);
+  const rulebookGuidance = describeQuestionRulebookGuidance(props.template);
   const workbookRule = describeWorkbookRuleSummary(props.template, props.category);
   const workbookAvailability = describeWorkbookAvailability(props.template);
 
@@ -68,6 +70,7 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
         <Text style={styles.guidanceTitle}>Workbook rule</Text>
         <Text style={styles.copy}>{workbookRule}</Text>
         <Text style={styles.copy}>Availability: {workbookAvailability}</Text>
+        {rulebookGuidance ? <Text style={styles.copy}>Rulebook guidance: {rulebookGuidance}</Text> : null}
         {workbookRequirement ? <Text style={styles.copy}>Requirement: {workbookRequirement}</Text> : null}
       </View>
 

@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T21:09:48.814Z",
+    "importedAt": "2026-10-24T21:16:32.588Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -4185,6 +4185,7 @@
       ],
       "parameters": {
         "subjectLabel": "Transit Line",
+        "rulebookGuidanceText": "Ask only while the seekers are riding moving transit. Answer Yes only if that service would stop at the hider’s station; passing through without stopping counts as No. Sharing the service’s stop list helps the hider verify the answer.",
         "workbookQuestionText": "Is your nearest _____ the same as my nearest _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -4235,6 +4236,11 @@
           "columnName": "question",
           "rawLabel": "Transit Line",
           "rawValue": "Is your nearest _____ the same as my nearest _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 18",
+          "notes": "Question clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -4255,6 +4261,7 @@
       ],
       "parameters": {
         "subjectLabel": "Station's Name Length",
+        "rulebookGuidanceText": "Count characters in the station name shown by the agreed mapping app. Spaces and hyphens count, and the word “station” counts if the app includes it.",
         "workbookQuestionText": "Is your nearest _____ the same as my nearest _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -4305,6 +4312,11 @@
           "columnName": "question",
           "rawLabel": "Station's Name Length",
           "rawValue": "Is your nearest _____ the same as my nearest _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 19",
+          "notes": "Question clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -4325,6 +4337,7 @@
       ],
       "parameters": {
         "subjectLabel": "Street or Path",
+        "rulebookGuidanceText": "A street or path segment ends when its name changes. If it is unnamed, treat each intersection as a start or end.",
         "workbookQuestionText": "Is your nearest _____ the same as my nearest _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -4375,6 +4388,11 @@
           "columnName": "question",
           "rawLabel": "Street or Path",
           "rawValue": "Is your nearest _____ the same as my nearest _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 19",
+          "notes": "Question clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -4395,6 +4413,7 @@
       ],
       "parameters": {
         "subjectLabel": "1st Admin (State)",
+        "rulebookGuidanceText": "Use the country’s biggest formal administrative division, such as a US state, Swiss canton, or Japanese prefecture.",
         "workbookQuestionText": "Is your nearest _____ the same as my nearest _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -4445,6 +4464,11 @@
           "columnName": "question",
           "rawLabel": "1st Admin (State)",
           "rawValue": "Is your nearest _____ the same as my nearest _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 18",
+          "notes": "Question clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -4465,6 +4489,7 @@
       ],
       "parameters": {
         "subjectLabel": "2nd Admin (County)",
+        "rulebookGuidanceText": "Use the next, more detailed administrative level, such as a US county, Swiss district, or Japanese subprefecture.",
         "workbookQuestionText": "Is your nearest _____ the same as my nearest _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -4515,6 +4540,11 @@
           "columnName": "question",
           "rawLabel": "2nd Admin (County)",
           "rawValue": "Is your nearest _____ the same as my nearest _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 18",
+          "notes": "Question clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -4535,6 +4565,7 @@
       ],
       "parameters": {
         "subjectLabel": "3rd Admin (Municipality | City | Town)",
+        "rulebookGuidanceText": "Use the next administrative level down (municipality in the US, Switzerland, and Japan). If municipal borders are ambiguous, seekers should clarify which boundary they mean before asking.",
         "workbookQuestionText": "Is your nearest _____ the same as my nearest _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -4585,6 +4616,11 @@
           "columnName": "question",
           "rawLabel": "3rd Admin (Municipality | City | Town)",
           "rawValue": "Is your nearest _____ the same as my nearest _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 18",
+          "notes": "Question clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -4605,6 +4641,7 @@
       ],
       "parameters": {
         "subjectLabel": "4th Admin (Borough)",
+        "rulebookGuidanceText": "A fourth administrative level does not exist everywhere. Examples include New York boroughs, Zurich districts, and Tokyo special wards; agree on the applicable local division before asking.",
         "workbookQuestionText": "Is your nearest _____ the same as my nearest _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -4655,6 +4692,11 @@
           "columnName": "question",
           "rawLabel": "4th Admin (Borough)",
           "rawValue": "Is your nearest _____ the same as my nearest _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 18",
+          "notes": "Question clarification paraphrased from the scanned base rulebook."
         }
       ]
     },

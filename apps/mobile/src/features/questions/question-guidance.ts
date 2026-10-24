@@ -174,6 +174,10 @@ export function describeWorkbookRequirementSummary(template: QuestionTemplateDef
   return manualRequirement?.description?.trim() || undefined;
 }
 
+export function describeQuestionRulebookGuidance(template: QuestionTemplateDefinition): string | undefined {
+  return readWorkbookParameterText(template, 'rulebookGuidanceText');
+}
+
 export function describeQuestionCategoryForPlayers(category: QuestionCategoryDefinition): string {
   if (category.promptTemplate.trim().length > 0) {
     return `Questions in this group sound like: "${category.promptTemplate.trim()}"`;

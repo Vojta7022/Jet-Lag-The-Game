@@ -8,6 +8,7 @@ import type {
 import { ResolutionModePill } from './ResolutionModePill.tsx';
 import {
   describeExpectedAnswerGuidance,
+  describeQuestionRulebookGuidance,
   describeQuestionImpactExpectation,
   describeQuestionTemplateForPlayers,
   describeWorkbookAvailability,
@@ -50,6 +51,7 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
           regionId: props.regionId
         });
         const workbookRequirement = describeWorkbookRequirementSummary(template);
+        const rulebookGuidance = describeQuestionRulebookGuidance(template);
         const workbookRule = describeWorkbookRuleSummary(template, props.category);
         const workbookAvailability = describeWorkbookAvailability(template);
 
@@ -76,6 +78,7 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
             <Text style={styles.meta}>Workbook rule: {workbookRule}</Text>
             <Text style={styles.meta}>How to answer: {describeExpectedAnswerGuidance(template, props.category)}</Text>
             <Text style={styles.meta}>What usually happens: {impact.detail}</Text>
+            {rulebookGuidance ? <Text style={styles.meta}>Rulebook guidance: {rulebookGuidance}</Text> : null}
             {workbookRequirement ? <Text style={styles.meta}>Workbook requirement: {workbookRequirement}</Text> : null}
             {featureLabels ? <Text style={styles.support}>Places involved: {featureLabels}</Text> : null}
             <Text style={styles.support}>Availability: {workbookAvailability}</Text>

@@ -12,6 +12,7 @@ import {
   describeQuestionImpactExpectation,
   describeQuestionTemplateForPlayers,
   describeWorkbookAvailability,
+  describeQuestionRulebookGuidance,
   describeWorkbookRequirementSummary,
   describeWorkbookRuleSummary,
   formatQuestionScaleSet
@@ -153,6 +154,21 @@ test('question guidance surfaces workbook rule, availability, and requirement te
   assert.equal(describeWorkbookRuleSummary(template, category), 'Cost 2 · 10 minutes · S/M only');
   assert.equal(describeWorkbookAvailability(template), 'S/M only');
   assert.equal(describeWorkbookRequirementSummary(template), 'Must include the entire tree');
+});
+
+test('question guidance exposes scan-derived clarifications separately from workbook requirements', () => {
+  const template = createTemplate({
+    parameters: {
+      workbookRequirementsText: 'Send the current transit stop list.',
+      rulebookGuidanceText: 'Ask only while riding moving transit. A train passing the hider station without stopping counts as No.'
+    }
+  });
+
+  assert.equal(
+    describeQuestionRulebookGuidance(template),
+    'Ask only while riding moving transit. A train passing the hider station without stopping counts as No.'
+  );
+  assert.equal(describeWorkbookRequirementSummary(template), 'Send the current transit stop list.');
 });
 
 test('question guidance stays honest about metadata-only evidence flows', () => {

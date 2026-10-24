@@ -1379,6 +1379,41 @@ function buildCategory(
   };
 }
 
+const MATCHING_RULEBOOK_GUIDANCE: Record<string, { text: string; source: string }> = {
+  'transit-line': {
+    text: 'Ask only while the seekers are riding moving transit. Answer Yes only if that service would stop at the hider’s station; passing through without stopping counts as No. Sharing the service’s stop list helps the hider verify the answer.',
+    source: 'Scanned base rulebook, printed p. 18'
+  },
+  'stations-name-length': {
+    text: 'Count characters in the station name shown by the agreed mapping app. Spaces and hyphens count, and the word “station” counts if the app includes it.',
+    source: 'Scanned base rulebook, printed p. 19'
+  },
+  'street-or-path': {
+    text: 'A street or path segment ends when its name changes. If it is unnamed, treat each intersection as a start or end.',
+    source: 'Scanned base rulebook, printed p. 19'
+  },
+  '1st-admin-state': {
+    text: 'Use the country’s biggest formal administrative division, such as a US state, Swiss canton, or Japanese prefecture.',
+    source: 'Scanned base rulebook, printed p. 18'
+  },
+  '2nd-admin-county': {
+    text: 'Use the next, more detailed administrative level, such as a US county, Swiss district, or Japanese subprefecture.',
+    source: 'Scanned base rulebook, printed p. 18'
+  },
+  '3rd-admin-municipality-city-town': {
+    text: 'Use the next administrative level down (municipality in the US, Switzerland, and Japan). If municipal borders are ambiguous, seekers should clarify which boundary they mean before asking.',
+    source: 'Scanned base rulebook, printed p. 18'
+  },
+  '4th-admin-borough': {
+    text: 'A fourth administrative level does not exist everywhere. Examples include New York boroughs, Zurich districts, and Tokyo special wards; agree on the applicable local division before asking.',
+    source: 'Scanned base rulebook, printed p. 18'
+  }
+};
+
+function matchingRulebookGuidance(featureClassId: string): { text: string; source: string } | undefined {
+  return MATCHING_RULEBOOK_GUIDANCE[featureClassId];
+}
+
 function buildMatchingTemplates(
   sourceFileName: string,
   packId: string,
@@ -1436,6 +1471,7 @@ function buildMatchingTemplates(
       const constraintRefs = featureClassId.includes('admin')
         ? ['same-admin-region']
         : ['nearest-feature-match'];
+      const rulebookGuidance = matchingRulebookGuidance(featureClassId);
 
       templates.push({
         templateId: `matching-${normalized.slug}`,
@@ -1455,7 +1491,8 @@ function buildMatchingTemplates(
           cost: costRaw,
           time: timeRaw,
           values: {
-            subjectLabel: normalized.displayText
+            subjectLabel: normalized.displayText,
+            ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {})
           }
         }),
         answerSchema: {
@@ -1470,7 +1507,8 @@ function buildMatchingTemplates(
         visibilityPolicy: PUBLIC_VISIBILITY,
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'subject', rawLabel, rawLabel),
-          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'question', questionRaw, rawLabel)
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'question', questionRaw, rawLabel),
+          ...(rulebookGuidance ? [generatedProvenance(rulebookGuidance.source, 'Question clarification paraphrased from the scanned base rulebook.')] : [])
         ]
       });
     }
@@ -1520,6 +1558,7 @@ function buildMatchingTemplates(
     const constraintRefs = featureClassId.includes('admin')
       ? ['same-admin-region']
       : ['nearest-feature-match'];
+    const rulebookGuidance = matchingRulebookGuidance(featureClassId);
 
     templates.push({
       templateId: `matching-${normalized.slug}`,
@@ -1534,7 +1573,8 @@ function buildMatchingTemplates(
         }
       ],
       parameters: {
-        subjectLabel: normalized.displayText
+        subjectLabel: normalized.displayText,
+        ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {})
       },
       answerSchema: {
         kind: 'boolean',
@@ -1547,7 +1587,8 @@ function buildMatchingTemplates(
       scaleSet: allScales(),
       visibilityPolicy: PUBLIC_VISIBILITY,
       sourceProvenance: [
-        sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'A', rawLabel, rawLabel)
+        sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'A', rawLabel, rawLabel),
+        ...(rulebookGuidance ? [generatedProvenance(rulebookGuidance.source, 'Question clarification paraphrased from the scanned base rulebook.')] : [])
       ]
     });
   }

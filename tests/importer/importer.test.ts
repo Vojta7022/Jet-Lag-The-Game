@@ -38,6 +38,14 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(result.pack.questionTemplates.length, 80);
   assert.equal(result.pack.questionTemplates.some((template) => template.templateId === 'measuring-4th-admin-borough'), false);
   assert.equal(result.pack.questionTemplates.some((template) => template.templateId === 'matching-4th-admin-borough'), true);
+  const transitLineQuestion = result.pack.questionTemplates.find((template) => template.templateId === 'matching-transit-line');
+  assert.ok(transitLineQuestion);
+  assert.match(String(transitLineQuestion.parameters?.rulebookGuidanceText), /riding moving transit/i);
+  assert.match(String(transitLineQuestion.parameters?.rulebookGuidanceText), /would stop at the hider.?s station/i);
+  const firstAdminQuestion = result.pack.questionTemplates.find((template) => template.templateId === 'matching-1st-admin-state');
+  assert.match(String(firstAdminQuestion?.parameters?.rulebookGuidanceText), /biggest formal administrative division/i);
+  const thirdAdminQuestion = result.pack.questionTemplates.find((template) => template.templateId === 'matching-3rd-admin-municipality-city-town');
+  assert.match(String(thirdAdminQuestion?.parameters?.rulebookGuidanceText), /if municipal borders are ambiguous, seekers should clarify/i);
   const measuringTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'measuring');
   assert.deepEqual(result.pack.questionCategories.find((category) => category.categoryId === 'measuring')?.defaultAnswerSchema.allowedValues,
     ['closer', 'further']);
