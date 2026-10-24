@@ -80,6 +80,17 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.match(duplicate.description, /exact copy of any other card currently in your hand/i);
   assert.match(duplicate.description, /remains in your hand at the end of the round/i);
 
+  const move = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-move');
+  assert.ok(move);
+  assert.equal(move.automationLevel, 'manual');
+  assert.equal(move.effects[0]?.effectType, 'move_power_up');
+  assert.deepEqual(move.timingWindow?.allowedPhases, ['hide_phase', 'seek_phase']);
+  assert.match(move.description, /hiding timer pauses/i);
+  assert.match(move.description, /seekers must stay where they are and refrain from asking questions/i);
+  assert.match(move.description, /immediately discard your entire hand/i);
+  assert.match(move.description, /cannot be played during the end game/i);
+  assert.ok(result.report.issues.some((issue) => issue.code === 'MOVE_DURATION_NOT_IN_SCAN' && issue.severity === 'warning'));
+
   const handExpansion = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-draw-1-expand-1');
   assert.ok(handExpansion);
   assert.equal(handExpansion.automationLevel, 'authoritative');

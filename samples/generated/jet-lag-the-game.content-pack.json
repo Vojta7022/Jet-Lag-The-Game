@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T20:26:50.923Z",
+    "importedAt": "2026-10-24T20:44:58.426Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -1659,12 +1659,18 @@
       "kind": "power_up",
       "name": "Move",
       "shortName": "Move",
-      "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
+      "description": "When played, establish a new hiding zone within the time for your game size. Choose a new transit station as the center and use only valid transit. While you move, your hiding timer pauses and seekers must stay where they are and refrain from asking questions. When the move timer ends, play resumes and your hiding timer continues. Immediately discard your entire hand and tell the seekers your original transit station. Move cannot be played during the end game.",
       "automationLevel": "manual",
+      "timingWindow": {
+        "allowedPhases": [
+          "hide_phase",
+          "seek_phase"
+        ]
+      },
       "effects": [
         {
-          "effectType": "manual_power_up",
-          "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
+          "effectType": "move_power_up",
+          "description": "When played, establish a new hiding zone within the time for your game size. Choose a new transit station as the center and use only valid transit. While you move, your hiding timer pauses and seekers must stay where they are and refrain from asking questions. When the move timer ends, play resumes and your hiding timer continues. Immediately discard your entire hand and tell the seekers your original transit station. Move cannot be played during the end game.",
           "automationLevel": "manual",
           "rawText": "Move"
         }
@@ -1697,6 +1703,11 @@
           "columnName": "odds",
           "rawLabel": "Move",
           "rawValue": 0.01
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, page 26",
+          "notes": "Move procedure reconciled from the scan; scale-specific durations are not present in the scanned rulebook or workbook."
         }
       ]
     },

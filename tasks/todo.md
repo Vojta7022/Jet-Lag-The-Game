@@ -134,6 +134,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add a follow-up migration that removes the legacy blanket database policies and scopes storage objects to an active match membership plus their public/team/player/host scope. Static policy regression test passes; applying and executing it against a Supabase database is still pending.
 - [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
 - [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects. The Move card's general procedure is in the scan (base rulebook p. 26), but the per-scale durations are missing from the scan/workbook; an online secondary reference says 10/20/60 minutes and awaits verification against the physical card.
+- [x] Import the scan-backed Move procedure and reject its use after endgame begins; keep the effect explicitly manual and report the unverified duration as a pack warning. Focused importer/engine tests pass.
 - [ ] Add foreground/background location behavior with clear freshness and permission status on both platforms.
 - [ ] Add content-pack selection/validation for the standard game and a versioned extension path for future variants.
 - [ ] Run a full mobile field round on multiple phones with native GPS and cellular connectivity.

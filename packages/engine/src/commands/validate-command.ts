@@ -1137,6 +1137,15 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'DUPLICATE_TARGET_NOT_ALLOWED', 'Only a Duplicate card can name a card to copy.')];
       }
 
+      const allowedPhases = effectCardDefinition.timingWindow?.allowedPhases;
+      if (allowedPhases && !allowedPhases.includes(aggregate.lifecycleState)) {
+        return [error(
+          envelope.command.type,
+          'CARD_NOT_ALLOWED_IN_PHASE',
+          `${effectCardDefinition.name} cannot be played during the ${aggregate.lifecycleState.replaceAll('_', ' ')}.`
+        )];
+      }
+
       if (cardDefinition.kind === 'time_bonus') {
         return [error(envelope.command.type, 'TIME_BONUS_NOT_PLAYABLE', 'Time bonus cards cannot be played. Keep them in hand to add their value to your final hiding time when found, or discard them.')];
       }

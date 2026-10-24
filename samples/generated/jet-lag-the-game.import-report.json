@@ -1,5 +1,5 @@
 {
-  "importJobId": "949afca8-9fb6-4489-9d9e-bfa76a24c3d4",
+  "importJobId": "ee7fd971-3f90-4d67-9e15-ef5216a8cd57",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -12,13 +12,13 @@
       "sheetName": "Hider Deck",
       "rowNumber": 10,
       "columnName": "card",
-      "fieldPath": "cards[power-up-move].description",
+      "fieldPath": "cards[power-up-move].effects[move_power_up].duration",
       "severity": "warning",
-      "code": "POWER_UP_EFFECT_UNSPECIFIED",
-      "message": "The workbook provides a power-up name but no detailed effect text.",
+      "code": "MOVE_DURATION_NOT_IN_SCAN",
+      "message": "The base rulebook explains the Move procedure but omits its game-size-specific durations.",
       "rawValue": "Move",
-      "normalizedValue": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "suggestedFix": "Keep the imported card name and add authored effect details later if fuller automation is needed.",
+      "normalizedValue": "10/20/60 minutes is reported by a community card reference but is not verified against the physical card.",
+      "suggestedFix": "Confirm the Move card durations from a clear photo of the physical card before publishing this content pack.",
       "sheetCell": "B10"
     },
     {

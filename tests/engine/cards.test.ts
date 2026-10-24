@@ -35,6 +35,25 @@ test('discard_card moves an accessible hand card into the discard pile', () => {
   assert.equal(aggregate.cardInstances[cardInstanceId]?.holderId, 'team-hider');
 });
 
+test('Move cannot be played after the endgame has started', () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToSeekReady(contentPack);
+  const moveCardInstanceId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
+  aggregate.lifecycleState = 'endgame';
+  aggregate.seekPhaseSubstate = 'ready';
+
+  assert.throws(() => executeCommand(
+    aggregate,
+    makeEnvelope(
+      aggregate.matchId,
+      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+      { type: 'play_card', payload: { cardInstanceId: moveCardInstanceId } },
+      39
+    ),
+    contentPack
+  ), /cannot be played during the endgame/i);
+});
+
 test('player_private projections can still see the viewer team shared hand without leaking other teams', () => {
   const contentPack = loadEngineTestContentPack();
   const aggregate = setupMatchToSeekReady(contentPack);
