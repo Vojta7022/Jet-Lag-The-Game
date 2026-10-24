@@ -72,7 +72,7 @@ The referee's event log and latest snapshot persist with AsyncStorage, along wit
 
 Round completion now adds scale-adjusted values from time bonus cards still in the hider's hand to final hiding time; time bonuses cannot be played, and discarded bonuses do not score. At match start, every registered participant is shuffled into a persisted hider order and the first hider is drawn randomly. The referee can start the next round within 10 minutes; each transition reshuffles and resets the deck, clears prior-round clue/map state, and carries the last found coordinates into the next round's map start marker. After every scheduled player completes a round, the final screen ranks them by final hiding time and recognizes tied winners. [Rulebook scans, pp. 3–6; `tests/engine/round-rotation.test.ts`; checked 2026-10-24.]
 
-Next, walk a complete round from setup through found/round result, and reconcile any remaining scan discrepancies. The content-pack distribution/licensing decision remains open; do not add the scans or a full-text transcription to the public repository until that is settled.
+The full round now has an integration test through the real single-device runtime: it covers randomized roles, station-centered zone, arrival/location lock, hide timer expiry, seeker endgame trigger, visual find confirmation, and scoring with a controlled clock. A physical phone/GPS walk and any remaining scan discrepancy review are still open. The content-pack distribution/licensing decision remains open; do not add the scans or a full-text transcription to the public repository until that is settled.
 
 Remaining product decision: whether the project should stay a generic reusable rules engine or prioritize a personal Jet Lag Home Game ruleset.
 

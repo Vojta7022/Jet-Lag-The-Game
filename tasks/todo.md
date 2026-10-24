@@ -12,7 +12,8 @@
 - [x] Make referee mode a first-class Home-screen start path and clarify its setup instructions.
 - [x] Add durable event/snapshot storage and automatic referee-session reattachment after app restart.
 - [x] Connect protected reveal handoffs to the mobile UI and persist their state across restart.
-- [ ] Complete a full round walkthrough and close remaining rules/content gaps.
+- [x] Verify a complete referee round through the real single-device runtime with rule-timed hide, endgame, found confirmation, and scoring.
+- [ ] Run a physical-device/GPS walkthrough and reconcile any remaining scan discrepancies.
 
 ## UI: make the player experience feel like a game
 
@@ -59,7 +60,8 @@
 - [x] Randomly choose the first hider before play and show final match standings after everyone completes a round.
 - [x] Allow Investigation Book questions during endgame, preserve the endgame lifecycle through resolution, and support impossible photo challenges from the fixed spot.
 - [ ] Port the map workbench's useful save/load/share and overlay workflows into the existing match/map architecture.
-- [ ] Walk and test a full local referee round through endgame, found, and round scoring; reconcile any remaining scan discrepancies.
+- [x] Add a full single-device referee runtime walkthrough through hiding-zone selection, automatic timer expiry, endgame, found, and score.
+- [ ] Walk the same path on a physical phone with GPS and reconcile any remaining scan discrepancies.
 
 ### Findings for this pass
 
@@ -72,7 +74,7 @@
 - The hider now marks a final pin during seek phase and explicitly attests that it is publicly accessible and within 3 m of a marked path. An off-transit seeker location report inside the zone starts endgame and freezes that pin. The pin is not sent in the public endgame event or seeker projection. Found requires a seeker/referee confirmation, visual identification, and coordinates within 2 m; the match records a survival-time result and displays it on the live map. Mobile actions capture a one-time GPS fix only after the player taps; continuous sharing is not used for the hider.
 - Endgame completes a scored round. Captured-round score includes real survival time plus scale-adjusted time bonuses still held. All registered participants are shuffled into a persisted hider order at match start, and roles update to match the first draw. Next rounds enforce that order, reset and shuffle cards, begin at the last found spot, and must start within 10 minutes. The final screen ranks each hider by final hiding time and names tied winners. The OSM-selected station itself is not independently verified by the engine.
 - Running timers now carry original start/duration anchors into visible projections; injected mobile commands use the real wall clock; pause records current remaining time and resume shifts the anchor to preserve it. Timer and rules flows have focused passing coverage.
-- Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" pnpm test` (192 tests), `pnpm mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
+- Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" pnpm test` (193 tests), `pnpm mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
 
 ### Review — 2026-10-24
 
@@ -86,3 +88,4 @@
 - The host can start the next round from the score screen, up to 10 minutes after capture. The chosen player becomes hider and the former hider joins seekers. The opening hider is now drawn randomly from all registered participants; each completed round records its hider for a final ranked leaderboard, including ties.
 - Full final-screen UI walkthrough, map scenario save/load/share, and remaining scan discrepancies still need review.
 - Single-device referee play now includes a private team handoff panel on the live map. The host arms a role-scoped reveal, the player explicitly opens it after receiving the device, and the view can be hidden on passback. Reveal tokens/checkpoints persist with local runtime storage; process recovery closes any previously open private projection before another player can take over. The underlying AsyncStorage store remains unencrypted.
+- An integration test now runs a complete single-device referee round through the real mobile orchestrator and transport: map setup, randomized roles, station-centered hiding zone, location lock, automatic timer expiry, private final spot, seeker endgame trigger, visual found confirmation, and round score. It advances a controlled clock to the scanned hide duration and expects the survival score to match.
