@@ -22,6 +22,7 @@ export interface CardResolutionPlan {
   rerollAfterQuestion?: boolean;
   questionRewardCount?: number;
   extraQuestionRewardDrawCount?: number;
+  moveDurationSeconds?: number;
 }
 
 function normalizedCardName(cardDefinition: CardDefinition): string {
@@ -184,7 +185,16 @@ export function buildCardResolutionPlan(
   }
 
   if (cardDefinition.effects.some((effect) => effect.effectType === 'move_power_up')) {
-    return { kind: 'move', discardRequirement: { discardWholeHand: true } };
+    const moveEffect = cardDefinition.effects.find((effect) => effect.effectType === 'move_power_up');
+    const durationMinutesByScale = (moveEffect?.payload as { durationMinutesByScale?: Partial<Record<ScaleKey, number>> } | undefined)?.durationMinutesByScale;
+    const durationMinutes = selectedScale ? durationMinutesByScale?.[selectedScale] : undefined;
+    return {
+      kind: 'move',
+      discardRequirement: { discardWholeHand: true },
+      moveDurationSeconds: typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) && durationMinutes > 0
+        ? durationMinutes * 60
+        : undefined
+    };
   }
 
   const disableTemplatesEffect = cardDefinition.effects.find((effect) => effect.effectType === 'disable_question_templates');

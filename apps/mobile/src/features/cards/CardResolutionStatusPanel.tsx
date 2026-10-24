@@ -59,7 +59,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
               Original transit station: {props.resolution.moveOriginStationName ?? 'not recorded'}.
             </Text>
             <Text style={styles.copy}>
-              Seekers stay in place and do not ask questions while the hider moves. The hider must choose a different station, travel by valid transit, and confirm arrival. End the window only after the printed Move duration has elapsed; that scale duration is not present in the scanned rulebook.
+              Seekers stay in place and do not ask questions while the hider moves. The hider must choose a different station, travel by valid transit, and confirm arrival. The engine enforces the selected game-size timer ({Math.ceil((props.resolution.moveDurationSeconds ?? 0) / 60)} minutes) before the window can end.
             </Text>
           </>
         ) : null}

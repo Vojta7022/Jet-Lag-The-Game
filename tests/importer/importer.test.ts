@@ -84,12 +84,14 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.ok(move);
   assert.equal(move.automationLevel, 'manual');
   assert.equal(move.effects[0]?.effectType, 'move_power_up');
+  assert.deepEqual(move.effects[0]?.payload, { durationMinutesByScale: { small: 10, medium: 20, large: 60 } });
   assert.deepEqual(move.timingWindow?.allowedPhases, ['hide_phase', 'seek_phase']);
   assert.match(move.description, /hiding timer pauses/i);
   assert.match(move.description, /seekers must stay where they are and refrain from asking questions/i);
   assert.match(move.description, /immediately discard your entire hand/i);
   assert.match(move.description, /cannot be played during the end game/i);
-  assert.ok(result.report.issues.some((issue) => issue.code === 'MOVE_DURATION_NOT_IN_SCAN' && issue.severity === 'warning'));
+  assert.equal(result.report.issues.some((issue) => issue.code === 'MOVE_DURATION_NOT_IN_SCAN'), false);
+  assert.ok(move.sourceProvenance.some((source) => source.sourceFileName === 'https://jetlag.naenae.cat/'));
 
   const handExpansion = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-draw-1-expand-1');
   assert.ok(handExpansion);

@@ -1357,6 +1357,7 @@ function eventsForCommand(
               resolutionKind: resolutionPlan.kind,
               moveOriginStationId: resolutionPlan.kind === 'move' ? aggregate!.hiddenState.hidingZone?.stationId : undefined,
               moveOriginStationName: resolutionPlan.kind === 'move' ? aggregate!.hiddenState.hidingZone?.stationName : undefined,
+              moveDurationSeconds: resolutionPlan.moveDurationSeconds,
               discardRequirement: resolutionPlan.kind === 'move'
                 ? undefined
                 : resolutionPlan.discardRequirement.requiredCards ||

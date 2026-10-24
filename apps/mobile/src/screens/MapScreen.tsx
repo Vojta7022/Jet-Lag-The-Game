@@ -255,6 +255,15 @@ export function MapScreen() {
     ) <= 100
   );
   const hideTimerRemaining = timingModel?.timers.find((timer) => timer.kind === 'hide')?.remainingSeconds;
+  const moveResolution = projection?.activeCardResolution?.resolutionKind === 'move'
+    ? projection.activeCardResolution
+    : undefined;
+  const moveDeadline = moveResolution?.openedAt && moveResolution.moveDurationSeconds
+    ? Date.parse(moveResolution.openedAt) + moveResolution.moveDurationSeconds * 1000
+    : undefined;
+  const moveRemainingSeconds = moveDeadline === undefined
+    ? undefined
+    : Math.max(0, Math.ceil((moveDeadline - freshnessNow) / 1000));
 
   useEffect(() => {
     const matchId = activeMatch?.matchId;
@@ -876,11 +885,11 @@ export function MapScreen() {
 
         {projection?.paused ? <MatchTimingBanner model={timingModel} /> : null}
 
-        {projection?.activeCardResolution?.resolutionKind === 'move' ? (
+        {moveResolution ? (
           <StateBanner
             tone="info"
             title="Move is in progress"
-            detail={`Original station: ${projection.activeCardResolution.moveOriginStationName ?? 'not recorded'}. The hider is choosing a new station. Seekers must stay put and must not ask questions. The Move timer duration is missing from the scanned rulebook, so follow the printed card and finish the window only after it expires.`}
+            detail={`Original station: ${moveResolution.moveOriginStationName ?? 'not recorded'}. The hider is choosing a new station. Seekers must stay put and must not ask questions. ${moveRemainingSeconds === undefined ? 'Waiting for the Move timer.' : moveRemainingSeconds > 0 ? `${formatCountdown(moveRemainingSeconds)} until the ${Math.ceil((moveResolution.moveDurationSeconds ?? 0) / 60)} minute Move timer expires.` : 'The Move timer has expired; the hider can finish after arriving at the new station.'}`}
           />
         ) : null}
 

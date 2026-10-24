@@ -23,7 +23,7 @@ test('import reporting captures workbook ambiguities and draft-only gaps', () =>
   );
   assert.equal(issueCodes.has('MISSING_RULESET'), false);
   assert.equal(issueCodes.has('MISSING_MAP_PRESET'), false);
-  assert.ok(issueCodes.has('MOVE_DURATION_NOT_IN_SCAN'));
+  assert.equal(issueCodes.has('MOVE_DURATION_NOT_IN_SCAN'), false);
   assert.ok(issueCodes.has('NORMALIZATION_CORRECTION_APPLIED'));
 
   const validationIssues = validateContentPack(result.pack);

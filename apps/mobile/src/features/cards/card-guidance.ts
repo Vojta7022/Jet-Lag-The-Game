@@ -97,7 +97,7 @@ export function buildCardBehaviorModel(cardDefinition: CardDefinition): CardBeha
     return {
       label: 'Assisted',
       tone: 'warning',
-      detail: 'The engine enforces the relocation flow, station arrival, seeker freeze, and hand discard. The duration still comes from the physical card because its scale values are missing from the scan.'
+      detail: 'The engine enforces the scale-specific relocation timer, station arrival, seeker freeze, and hand discard.'
     };
   }
 

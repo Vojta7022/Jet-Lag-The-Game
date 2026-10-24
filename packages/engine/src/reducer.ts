@@ -729,6 +729,7 @@ export function reduceMatchAggregate(
           resolutionKind: eventEnvelope.event.payload.resolutionKind,
           moveOriginStationId: eventEnvelope.event.payload.moveOriginStationId,
           moveOriginStationName: eventEnvelope.event.payload.moveOriginStationName,
+          moveDurationSeconds: eventEnvelope.event.payload.moveDurationSeconds,
           discardRequirement: eventEnvelope.event.payload.discardRequirement,
           drawCountOnResolve: eventEnvelope.event.payload.drawCountOnResolve,
           timeBonusMinutes: eventEnvelope.event.payload.timeBonusMinutes,

@@ -42,6 +42,7 @@ test('Move lets only the hider relocate, select a new zone, and confirm arrival'
     { type: 'play_card', payload: { cardInstanceId: moveCardId } },
     33), contentPack).aggregate;
   assert.equal(aggregate.activeCardResolution?.resolutionKind, 'move');
+  assert.equal(aggregate.activeCardResolution?.moveDurationSeconds, 10 * 60);
   assert.equal(aggregate.activeCardResolution?.moveOriginStationName, 'Old Station');
   assert.equal(aggregate.hiddenState.hiderLocation, undefined);
   assert.equal(aggregate.cardInstances[spareCardId]?.zone, 'discard_pile');
@@ -69,10 +70,15 @@ test('Move lets only the hider relocate, select a new zone, and confirm arrival'
     { type: 'lock_hider_location', payload: newStation },
     37), contentPack).aggregate;
 
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: moveCardId } },
+    632), contentPack), /Move timer has not expired/i);
+
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
     { type: 'resolve_card_window', payload: { sourceCardInstanceId: moveCardId } },
-    39), contentPack).aggregate;
+    633), contentPack).aggregate;
 
   assert.equal(aggregate.hiddenState.hidingZone?.stationId, 'node/new');
   assert.equal(aggregate.hiddenState.hiderLocation?.latitude, newStation.latitude);
@@ -86,7 +92,7 @@ test('Move lets only the hider relocate, select a new zone, and confirm arrival'
       publiclyAccessible: true,
       within3mOfMarkedPath: true
     } },
-    40), contentPack).aggregate;
+    634), contentPack).aggregate;
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
     { type: 'update_location', payload: {
@@ -95,7 +101,7 @@ test('Move lets only the hider relocate, select a new zone, and confirm arrival'
       source: 'manual',
       onTransit: false
     } },
-    44), contentPack).aggregate;
+    638), contentPack).aggregate;
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
     { type: 'confirm_hider_found', payload: {
@@ -103,7 +109,7 @@ test('Move lets only the hider relocate, select a new zone, and confirm arrival'
       longitude: newStation.longitude,
       visuallyIdentified: true
     } },
-    49), contentPack).aggregate;
+    643), contentPack).aggregate;
   assert.equal(aggregate.roundResults?.at(-1)?.survivalSeconds, 33);
 });
 
@@ -150,12 +156,12 @@ test('Move pauses and resumes the hide-phase timer without consuming its remaini
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
     { type: 'resolve_card_window', payload: { sourceCardInstanceId: moveCardId } },
-    60), contentPack).aggregate;
+    630), contentPack).aggregate;
 
   const resumedTimer = Object.values(aggregate.timers).find((timer) => timer.kind === 'hide');
   assert.equal(resumedTimer?.status, 'running');
   assert.equal(resumedTimer?.remainingSeconds, 100);
-  assert.equal(resumedTimer?.startedAt, new Date(Date.UTC(2026, 0, 1, 0, 0, 40)).toISOString());
+  assert.equal(resumedTimer?.startedAt, new Date(Date.UTC(2026, 0, 1, 0, 10, 10)).toISOString());
 });
 
 test('discard_card moves an accessible hand card into the discard pile', () => {

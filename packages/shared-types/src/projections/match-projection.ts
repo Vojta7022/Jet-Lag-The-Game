@@ -227,9 +227,11 @@ export interface MatchProjection {
   activeCardResolution?: {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
+    openedAt?: string;
     resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
+    moveDurationSeconds?: number;
     discardRequirement?: {
       requiredCards?: number;
       requiredKind?: CardKind;

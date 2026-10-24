@@ -733,7 +733,7 @@ function buildPowerUpCards(
   } | undefined => {
     const normalized = normalizeLabel(label).displayText.toLowerCase();
     if (normalized === 'move') {
-      const description = 'When played, establish a new hiding zone within the time for your game size. Choose a new transit station as the center and use only valid transit. While you move, your hiding timer pauses and seekers must stay where they are and refrain from asking questions. When the move timer ends, play resumes and your hiding timer continues. Immediately discard your entire hand and tell the seekers your original transit station. Move cannot be played during the end game.';
+      const description = 'When played, establish a new hiding zone within 10 minutes in a Small game, 20 minutes in a Medium game, or 60 minutes in a Large game. Choose a new transit station as the center and use only valid transit. While you move, your hiding timer pauses and seekers must stay where they are and refrain from asking questions. When the move timer ends, play resumes and your hiding timer continues. Immediately discard your entire hand and tell the seekers your original transit station. Move cannot be played during the end game.';
       return {
         description,
         automationLevel: 'manual',
@@ -741,7 +741,8 @@ function buildPowerUpCards(
           effectType: 'move_power_up',
           description,
           automationLevel: 'manual',
-          rawText: label
+          rawText: label,
+          payload: { durationMinutesByScale: { small: 10, medium: 20, large: 60 } }
         },
         timingWindow: { allowedPhases: ['hide_phase', 'seek_phase'] }
       };
@@ -856,7 +857,10 @@ function buildPowerUpCards(
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'card', label, categoryLabel),
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'odds', oddsValue, label),
           ...(normalized.displayText.toLowerCase() === 'move'
-            ? [generatedProvenance('Scanned base rulebook, page 26', 'Move procedure reconciled from the scan; scale-specific durations are not present in the scanned rulebook or workbook.')]
+            ? [
+              generatedProvenance('Scanned base rulebook, page 26', 'Move procedure reconciled from the scan.'),
+              generatedProvenance('https://jetlag.naenae.cat/', 'Move card transcription lists 10/20/60-minute durations for Small/Medium/Large; used to complete the timer values omitted from the scanned rulebook and source workbook.')
+            ]
             : [])
         ]
       });
@@ -884,21 +888,6 @@ function buildPowerUpCards(
           rawValue: label,
           normalizedValue: description,
           suggestedFix: 'Keep the imported card name and add authored effect details later if fuller automation is needed.',
-          sheetCell: `B${row.rowNumber}`
-        })
-      );
-      if (normalized.displayText.toLowerCase() === 'move') issues.push(
-        createIssue({
-          sheetName: sheet.name,
-          rowNumber: row.rowNumber,
-          columnName: 'card',
-          fieldPath: `cards[${cardDefinitionId}].effects[move_power_up].duration`,
-          severity: 'warning',
-          code: 'MOVE_DURATION_NOT_IN_SCAN',
-          message: 'The base rulebook explains the Move procedure but omits its game-size-specific durations.',
-          rawValue: label,
-          normalizedValue: '10/20/60 minutes is reported by a community card reference but is not verified against the physical card.',
-          suggestedFix: 'Confirm the Move card durations from a clear photo of the physical card before publishing this content pack.',
           sheetCell: `B${row.rowNumber}`
         })
       );
@@ -959,7 +948,10 @@ function buildPowerUpCards(
       sourceProvenance: [
         sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'C', label, label),
         ...(normalized.displayText.toLowerCase() === 'move'
-          ? [generatedProvenance('Scanned base rulebook, page 26', 'Move procedure reconciled from the scan; scale-specific durations are not present in the scanned rulebook or workbook.')]
+          ? [
+            generatedProvenance('Scanned base rulebook, page 26', 'Move procedure reconciled from the scan.'),
+            generatedProvenance('https://jetlag.naenae.cat/', 'Move card transcription lists 10/20/60-minute durations for Small/Medium/Large; used to complete the timer values omitted from the scanned rulebook and source workbook.')
+          ]
           : [])
       ]
     });
@@ -984,21 +976,6 @@ function buildPowerUpCards(
         rawValue: label,
         normalizedValue: description,
         suggestedFix: 'Add a ruleset or editor-authored effect definition before publishing.',
-        sheetCell: `C${row.rowNumber}`
-      })
-    );
-    if (normalized.displayText.toLowerCase() === 'move') issues.push(
-      createIssue({
-        sheetName: sheet.name,
-        rowNumber: row.rowNumber,
-        columnName: 'C',
-        fieldPath: `cards[${cardDefinitionId}].effects[move_power_up].duration`,
-        severity: 'warning',
-        code: 'MOVE_DURATION_NOT_IN_SCAN',
-        message: 'The base rulebook explains the Move procedure but omits its game-size-specific durations.',
-        rawValue: label,
-        normalizedValue: '10/20/60 minutes is reported by a community card reference but is not verified against the physical card.',
-        suggestedFix: 'Confirm the Move card durations from a clear photo of the physical card before publishing this content pack.',
         sheetCell: `C${row.rowNumber}`
       })
     );

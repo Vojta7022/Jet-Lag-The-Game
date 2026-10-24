@@ -1,5 +1,5 @@
 {
-  "importJobId": "ee7fd971-3f90-4d67-9e15-ef5216a8cd57",
+  "importJobId": "23ddd716-ce92-434a-b052-d02a30c80eef",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -8,19 +8,6 @@
   "status": "draft_output",
   "generatedPackId": "jet-lag-the-game-seed",
   "issues": [
-    {
-      "sheetName": "Hider Deck",
-      "rowNumber": 10,
-      "columnName": "card",
-      "fieldPath": "cards[power-up-move].effects[move_power_up].duration",
-      "severity": "warning",
-      "code": "MOVE_DURATION_NOT_IN_SCAN",
-      "message": "The base rulebook explains the Move procedure but omits its game-size-specific durations.",
-      "rawValue": "Move",
-      "normalizedValue": "10/20/60 minutes is reported by a community card reference but is not verified against the physical card.",
-      "suggestedFix": "Confirm the Move card durations from a clear photo of the physical card before publishing this content pack.",
-      "sheetCell": "B10"
-    },
     {
       "sheetName": "Matching",
       "rowNumber": 13,

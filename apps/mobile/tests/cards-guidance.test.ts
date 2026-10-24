@@ -101,7 +101,7 @@ test('card guidance stays honest about manual and authoritative behavior', () =>
   assert.match(authoritative.detail, /engine applies this card directly/i);
 });
 
-test('Move guidance separates the enforced relocation flow from its unverified duration', () => {
+test('Move guidance identifies the enforced scale-specific timer', () => {
   const move = buildCardBehaviorModel(createCardDefinition({
     cardDefinitionId: 'power-up-move',
     name: 'Move',
@@ -109,8 +109,8 @@ test('Move guidance separates the enforced relocation flow from its unverified d
   }));
 
   assert.equal(move.label, 'Assisted');
-  assert.match(move.detail, /relocation flow/i);
-  assert.match(move.detail, /duration.*physical card/i);
+  assert.match(move.detail, /relocation timer/i);
+  assert.match(move.detail, /scale-specific.*timer/i);
 });
 
 test('card guidance provides honest fallback descriptions when workbook text is weak', () => {

@@ -1282,6 +1282,12 @@ export function validateCommandEnvelope(
       }
 
       if (activeResolution.resolutionKind === 'move') {
+        if (
+          typeof activeResolution.moveDurationSeconds === 'number' &&
+          Date.parse(envelope.occurredAt) < Date.parse(activeResolution.openedAt) + activeResolution.moveDurationSeconds * 1000
+        ) {
+          return [error(envelope.command.type, 'MOVE_TIMER_ACTIVE', 'The Move timer has not expired yet.')];
+        }
         const zone = aggregate.hiddenState.hidingZone;
         if (!zone || (activeResolution.moveOriginStationId && zone.stationId === activeResolution.moveOriginStationId)) {
           return [error(envelope.command.type, 'MOVE_ZONE_REQUIRED', 'Choose a new transit station as the hiding-zone center before ending Move.')];

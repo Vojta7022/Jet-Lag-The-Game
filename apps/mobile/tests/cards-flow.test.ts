@@ -29,7 +29,7 @@ function findPlayableSmokeCard(contentPack: ContentPack, projection: { visibleCa
     return Boolean(
       definition &&
       definition.kind !== 'time_bonus' &&
-      !definition.effects.some((effect) => ['veto_question', 'randomize_question'].includes(effect.effectType)) &&
+      !definition.effects.some((effect) => ['duplicate_card', 'veto_question', 'randomize_question'].includes(effect.effectType)) &&
       Object.keys(getCardDiscardRequirement(definition)).length === 0
     );
   });
