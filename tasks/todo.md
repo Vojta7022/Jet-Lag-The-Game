@@ -40,17 +40,24 @@
 - The Transit Field Kit is now implemented: warm timetable paper, route-ink navy, signal yellow and orange, compact station navigation, illustrated Home, named team spaces, larger bounded map, and redesigned clue/card/chat surfaces. Browser screenshots are in `deliverables/ui-preview/`.
 - Browser review at 1440px desktop and 390px/320px phone widths found no horizontal overflow. A local referee game was resumed, a crew member added, the Prague boundary selected, the match started, and a six-card hand drawn. The roster and city returned after a browser reconnect.
 - Web `accessible={false}` SVG props caused the reported React warning; decorative game SVGs now use `aria-hidden={true}`. Measured map width also prevents the map surface from extending beyond its card.
-- The current full suite passes 230/230 with the project `.venv` on `PATH`; mobile TypeScript typecheck passes.
+- At the start of the online multiplayer phase the full suite passes 237/237 with the project `.venv` on `PATH`; mobile TypeScript typecheck passes.
 - The scan-confirmed standard round flow is implemented. Imported workbook card text remains draft and may need manual adjudication; it is kept for personal/private play until distribution rights and importer warnings are reviewed.
 - Reconciled the workbook's extra “4th Admin (Borough)” Measuring row against the scanned Investigation Book: it is not listed there, so the base-game importer now excludes it and reports the source discrepancy. The 4th Admin Matching prompt remains. The regenerated pack has 80 templates and the full importer report records 21 warnings plus one informational exclusion.
 
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.
-- [x] Draft and push the proposed server-authoritative design and acceptance criteria in `docs/superpowers/specs/2026-10-24-online-player-game-design.md`.
+- [x] Draft and push the approved server-authoritative design and acceptance criteria in `docs/superpowers/specs/2026-10-24-online-player-game-design.md`.
 - [x] Product owner approves the written design and implementation choices (2026-10-24).
 - [x] Write the phased implementation plan.
-- [ ] Implement and verify secure online authority, separate-device joining/reconnect, role-specific live locations, automatic question/map resolution, and standard card coverage.
+- [x] Build and test the authenticated Edge Function gateway, atomic revision commits, separate authenticated phone adapters, and reconnect bindings in the prototype authority.
+- [x] Give each hider/seeker device location publishing; hiders receive live seeker tracks while seeker projections exclude hider coordinates.
+- [x] Automatically resolve Radar from fresh seeker and hider GPS fixes, apply the bounded map deduction, and record fix provenance in the same authority command.
+- [ ] Deploy and security-audit the online authority; verify it on real devices over cellular data.
+- [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
+- [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects.
+- [ ] Add foreground/background location behavior with clear freshness and permission status on both platforms.
+- [ ] Add content-pack selection/validation for the standard game and a versioned extension path for future variants.
 - [ ] Run a full mobile field round on multiple phones with native GPS and cellular connectivity.
 
 ## Active: rules-faithful game and reference-map workflows

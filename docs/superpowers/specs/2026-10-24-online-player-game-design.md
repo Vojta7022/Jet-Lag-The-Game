@@ -1,6 +1,6 @@
 # Online Player Game Design
 
-**Status:** Proposed for user review  
+**Status:** Approved direction; implementation in progress
 **Date:** 2026-10-24  
 **Product:** Jet Lag Hide + Seek mobile game
 
@@ -14,13 +14,13 @@ The implementation should preserve the existing rules engine, role-scoped projec
 
 ## Current evidence and constraints
 
-- The suite passes 230 tests with the project's `.venv` on `PATH`; mobile TypeScript typecheck passes. A real-runtime test completes a full single-device round.
-- The app already has Supabase Auth, tables, snapshot/event persistence, polling fanout, role projections, attachment storage, and an `OnlineAuthorityRuntime` TypeScript class.
-- `OnlineAuthorityRuntime` is currently instantiated by the mobile app. The Supabase REST data client uses the anon key and the development migration grants broad table access. This is a prototype, not a trusted shared authority.
-- Seeker location sharing and map tracks exist for seeker-side views. Hider devices cannot currently publish location, and hider views do not receive seeker tracks.
+- The suite passes 237 tests with the project's `.venv` on `PATH`; mobile TypeScript typecheck passes. A real-runtime test completes a scored round, and online-runtime tests exercise two separately authenticated phone adapters.
+- The app has Supabase Auth, role-scoped projections, attachment storage, and an authenticated Edge Function command gateway with atomic revision commits. Production deployment, authorization/privacy review, and a cellular multi-phone field round remain unverified.
+- Hider and seeker devices can publish device fixes. Hider projections receive seeker movement tracks; seeker projections omit hider movement and exact coordinates.
+- Radar is the first fully automatic location question: the authority uses fresh, accuracy-bounded seeker and hider fixes, records the sample provenance, answers the clue, and applies its bounded map deduction in one command. Other question categories still use manual or assisted answer flows.
 - The hider's exact location is intentionally omitted from seeker projections. Preserve this invariant.
 - The pack contains 80 question templates reconciled to the scanned Investigation Book and 37 card definitions (125 card instances); 21 importer warnings remain and many card effects are not authoritative. The generated pack is draft and should be reconciled against the local scanned books before claiming physical-game parity.
-- Existing map tools support region composition, station discovery, saved local scenarios, compressed link sharing, and question overlays. A complete searchable administrative-boundary workflow, content-pack selector, physical-device GPS test, and reliable multi-device field test remain open.
+- Existing map tools support searchable administrative boundaries, region composition, station discovery, saved local scenarios, compressed link sharing, and question overlays. Content-pack selection, background location sharing, a physical-device GPS test, and reliable multi-device field play remain open.
 
 ## Product behavior
 
