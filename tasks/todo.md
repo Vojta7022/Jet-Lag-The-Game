@@ -121,6 +121,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Automatically resolve Radar from fresh seeker and hider GPS fixes, apply the bounded map deduction, and record fix provenance in the same authority command.
 - [x] Automatically resolve Thermometer from printed minimum travel distance and fresh GPS fixes; freeze the same seeker movement endpoints for the answer and map deduction.
 - [ ] Deploy and security-audit the online authority; verify it on real devices over cellular data.
+- [ ] Remove the legacy blanket anon/authenticated database and attachment-storage policies before any live deployment; current server-authority migration does not revoke the older development policies.
 - [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
 - [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects.
 - [ ] Add foreground/background location behavior with clear freshness and permission status on both platforms.

@@ -58,6 +58,8 @@ The initial implementation chose a persisted single-device referee round to prov
 
 The approved online architecture and acceptance criteria are recorded in [Online Player Game Design](../docs/superpowers/specs/2026-10-24-online-player-game-design.md). Implementation includes an authenticated Edge Function command gateway, atomic event commits, membership-bound role projections, multi-phone adapter tests, hider-private location with seeker tracks, foreground GPS sharing that starts automatically during active play after permission is granted, and automatic location-backed answers for Radar, Thermometer, mapped Matching/Measuring, and supported Tentacles place classes. Production deployment/security review, background GPS, unmapped question classes, remaining card rules, and field play are still open.
 
+Security audit finding (2026-10-24): the earlier development RLS migration grants anon and authenticated blanket access to match tables and all objects in the attachment bucket. The later server-authority migration grants service-role access but does not remove those development policies. The Edge Function is not safe to call production-ready until a follow-up migration removes blanket policies and attachment access is scoped to each recipient's projection.
+
 Suggested sequence:
 
 1. Install from the checked-in npm workspace and start the selected app target. Record actual launch/build issues and fix only blockers needed for a reproducible developer start.
