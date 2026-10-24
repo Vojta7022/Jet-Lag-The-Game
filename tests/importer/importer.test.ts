@@ -59,6 +59,20 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(handExpansion.effects[0]?.effectType, 'draw_and_expand_hand');
   assert.deepEqual(handExpansion.effects[0]?.payload, { drawCount: 1, handSizeIncrease: 1 });
 
+  const discardDrawTwo = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-discard-1-draw-2');
+  assert.ok(discardDrawTwo);
+  assert.equal(discardDrawTwo.automationLevel, 'authoritative');
+  assert.equal(discardDrawTwo.effects[0]?.effectType, 'discard_then_draw');
+  assert.deepEqual(discardDrawTwo.effects[0]?.payload, { discardCount: 1, drawCount: 2 });
+  assert.match(discardDrawTwo.description, /discard 1 card from your hand, then draw and keep 2 replacement cards/i);
+
+  const discardDrawThree = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-discard-2-draw-3');
+  assert.ok(discardDrawThree);
+  assert.equal(discardDrawThree.automationLevel, 'authoritative');
+  assert.equal(discardDrawThree.effects[0]?.effectType, 'discard_then_draw');
+  assert.deepEqual(discardDrawThree.effects[0]?.payload, { discardCount: 2, drawCount: 3 });
+  assert.match(discardDrawThree.description, /discard 2 cards from your hand, then draw and keep 3 replacement cards/i);
+
   const thermometers = result.pack.questionTemplates
     .filter((template) => template.categoryId === 'thermometer')
     .map((template) => ({

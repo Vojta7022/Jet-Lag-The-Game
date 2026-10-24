@@ -1,5 +1,5 @@
 {
-  "importJobId": "e2116595-34c8-4215-980f-e7d00abf7a50",
+  "importJobId": "b551eebd-594f-4991-b25d-46b3cf471c57",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -33,32 +33,6 @@
       "normalizedValue": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
       "suggestedFix": "Keep the imported card name and add authored effect details later if fuller automation is needed.",
       "sheetCell": "B10"
-    },
-    {
-      "sheetName": "Hider Deck",
-      "rowNumber": 11,
-      "columnName": "card",
-      "fieldPath": "cards[power-up-discard-1-draw-2].description",
-      "severity": "warning",
-      "code": "POWER_UP_EFFECT_UNSPECIFIED",
-      "message": "The workbook provides a power-up name but no detailed effect text.",
-      "rawValue": "Discard 1 Draw 2",
-      "normalizedValue": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "suggestedFix": "Keep the imported card name and add authored effect details later if fuller automation is needed.",
-      "sheetCell": "B11"
-    },
-    {
-      "sheetName": "Hider Deck",
-      "rowNumber": 12,
-      "columnName": "card",
-      "fieldPath": "cards[power-up-discard-2-draw-3].description",
-      "severity": "warning",
-      "code": "POWER_UP_EFFECT_UNSPECIFIED",
-      "message": "The workbook provides a power-up name but no detailed effect text.",
-      "rawValue": "Discard 2 Draw 3",
-      "normalizedValue": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "suggestedFix": "Keep the imported card name and add authored effect details later if fuller automation is needed.",
-      "sheetCell": "B12"
     },
     {
       "sheetName": "Matching",

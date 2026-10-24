@@ -12,6 +12,7 @@ Cross-platform mobile app and rules engine for running a configurable transit-ba
 - Provide engine, geo, transport, shared types, and test-kit packages.
 - Join an online game on a personal phone with role-scoped Hider/Seeker views; the single-device referee is a fallback and regression path.
 - Resolve Radar, Thermometer, and mapped Matching/Measuring/Tentacles prompts from fresh location samples and authority-loaded place data; unsupported question classes and photo evidence retain manual handling.
+- Importer and engine handle the scanned Discard 1 Draw 2 and Discard 2 Draw 3 power-ups from typed effect data, including paying the discard cost before drawing replacements.
 - Plan maps with OpenStreetMap street context, transit-station hiding zones, saved local scenarios, and compressed share links; the web map supports drag and pinch zoom.
 
 ## User workflows

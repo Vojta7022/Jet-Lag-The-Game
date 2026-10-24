@@ -14,6 +14,8 @@ Checked 2026-10-24 against the local October 4 rulebook scans and the supplied `
 
 ## Map implementation state
 
+- Discard 1 Draw 2 and Discard 2 Draw 3 now import as authoritative `discard_then_draw` effects with explicit discard/draw counts. The engine requires payment from other cards in hand before drawing replacements, and mobile marks the cards engine-supported. [base rulebook scan, p. 46; `tests/engine/gameplay-rules.test.ts`, checked 2026-10-24]
+
 - The mobile app can query candidate train, tram, and rail stations from Overpass using the selected region bounds. Results are filtered to the actual selected polygon, including holes, then deduplicated by OSM element ID and merged for same-name stops within 200 m.
 - The map workbench can select a result and preview its geodesic scale-correct radius on web SVG and native map overlays. Requests are on demand, and the UI attributes station data to OpenStreetMap contributors.
 - During the hide phase, the hider can set a station-centered zone. The command stores station ID/name/coordinates, selected time, selector, and the scale-specific radius in authoritative hidden state. The hider and referee can view it; seeker and public projections do not expose it.

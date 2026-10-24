@@ -656,6 +656,22 @@ function buildPowerUpCards(
         effectType: 'randomize_question', description, automationLevel: 'authoritative', rawText: label
       } };
     }
+    if (normalized === 'discard 1 draw 2' || normalized === 'discard 2 draw 3') {
+      const discardCount = normalized === 'discard 1 draw 2' ? 1 : 2;
+      const drawCount = discardCount + 1;
+      const description = `Discard ${discardCount} card${discardCount === 1 ? '' : 's'} from your hand, then draw and keep ${drawCount} replacement cards.`;
+      return {
+        description,
+        automationLevel: 'authoritative',
+        effect: {
+          effectType: 'discard_then_draw',
+          description,
+          automationLevel: 'authoritative',
+          rawText: label,
+          payload: { discardCount, drawCount }
+        }
+      };
+    }
     if (normalized !== 'draw 1 expand 1') return undefined;
     const description = 'Draw and keep one card, then permanently increase your maximum hand size by one for this round.';
     return {

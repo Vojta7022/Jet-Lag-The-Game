@@ -121,6 +121,12 @@ function getDiscardCostNeed(cardDefinition: CardDefinition): {
   requiredKind?: CardDefinition['kind'];
   discardWholeHand?: boolean;
 } {
+  const discardThenDraw = cardDefinition.effects.find((effect) => effect.effectType === 'discard_then_draw');
+  const discardCount = (discardThenDraw?.payload as { discardCount?: unknown } | undefined)?.discardCount;
+  if (typeof discardCount === 'number' && Number.isInteger(discardCount) && discardCount > 0) {
+    return { requiredCards: discardCount };
+  }
+
   switch (normalizedCardName(cardDefinition)) {
     case 'discard 1 draw 2':
       return {

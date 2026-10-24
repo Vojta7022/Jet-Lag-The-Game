@@ -447,6 +447,61 @@ test('discard-then-draw power-ups require discard payment and then draw replacem
   assert.equal(hiderHandCount, 2);
 });
 
+test('Discard 2 Draw 3 uses the imported typed effect and replaces both paid cards', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const sourceCardId = moveCardToTeamHand(aggregate, 'power-up-discard-2-draw-3', 'team-hider');
+  const spareCardIds = [
+    moveCardToTeamHand(aggregate, 'power-up-randomize', 'team-hider'),
+    moveCardToTeamHand(aggregate, 'power-up-veto', 'team-hider')
+  ];
+
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(
+      aggregate.matchId,
+      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+      { type: 'play_card', payload: { cardInstanceId: sourceCardId } },
+      54
+    ),
+    contentPack
+  ).aggregate;
+
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'discard_then_draw');
+  assert.equal(aggregate.activeCardResolution?.discardRequirement?.requiredCards, 2);
+  assert.equal(aggregate.activeCardResolution?.drawCountOnResolve, 3);
+
+  for (const [index, cardInstanceId] of spareCardIds.entries()) {
+    aggregate = executeCommand(
+      aggregate,
+      makeEnvelope(
+        aggregate.matchId,
+        { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+        { type: 'discard_card', payload: { cardInstanceId } },
+        55 + index
+      ),
+      contentPack
+    ).aggregate;
+  }
+
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(
+      aggregate.matchId,
+      { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+      { type: 'resolve_card_window', payload: { sourceCardInstanceId: sourceCardId } },
+      57
+    ),
+    contentPack
+  ).aggregate;
+
+  const hiderHandCount = Object.values(aggregate.cardInstances).filter(
+    (card) => card.zone === 'hand' && card.holderType === 'team' && card.holderId === 'team-hider'
+  ).length;
+  assert.equal(aggregate.activeCardResolution, undefined);
+  assert.equal(hiderHandCount, 3);
+});
+
 test('time bonus cards cannot be played to extend the hide timer', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToHidePhase(contentPack);

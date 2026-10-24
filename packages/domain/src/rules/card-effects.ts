@@ -24,6 +24,12 @@ function normalizedCardName(cardDefinition: CardDefinition): string {
 }
 
 export function getCardDiscardRequirement(cardDefinition: CardDefinition): CardDiscardRequirement {
+  const discardThenDraw = cardDefinition.effects.find((effect) => effect.effectType === 'discard_then_draw');
+  const discardCount = (discardThenDraw?.payload as { discardCount?: unknown } | undefined)?.discardCount;
+  if (typeof discardCount === 'number' && Number.isInteger(discardCount) && discardCount > 0) {
+    return { requiredCards: discardCount };
+  }
+
   switch (normalizedCardName(cardDefinition)) {
     case 'discard 1 draw 2':
       return { requiredCards: 1 };
@@ -111,6 +117,24 @@ export function buildCardResolutionPlan(
       discardRequirement: {},
       timeBonusMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale)
     };
+  }
+
+  const discardThenDraw = cardDefinition.effects.find((effect) => effect.effectType === 'discard_then_draw');
+  if (discardThenDraw) {
+    const payload = discardThenDraw.payload as { discardCount?: unknown; drawCount?: unknown } | undefined;
+    const discardCount = typeof payload?.discardCount === 'number' && payload.discardCount > 0
+      ? Math.floor(payload.discardCount)
+      : undefined;
+    const drawCount = typeof payload?.drawCount === 'number' && payload.drawCount > 0
+      ? Math.floor(payload.drawCount)
+      : undefined;
+    if (discardCount !== undefined && drawCount !== undefined) {
+      return {
+        kind: 'discard_then_draw',
+        discardRequirement: { requiredCards: discardCount },
+        drawCountOnResolve: drawCount
+      };
+    }
   }
 
   if (lowerName === 'discard 1 draw 2') {

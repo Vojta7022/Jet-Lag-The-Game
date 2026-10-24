@@ -85,6 +85,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Test OpenStreetMap selector coverage for the mapped Tentacles place classes and preserve manual handling for metro lines.
 - [x] Verify end-to-end through the online authority with a malicious client feature payload ignored: 260 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
+### Current implementation slice: type the scanned discard-and-draw power-ups
+
+- [x] Add importer assertions for typed, authoritative Discard 1 Draw 2 and Discard 2 Draw 3 definitions from the scanned p. 46 rules.
+- [x] Emit their discard/draw counts and scan-faithful descriptions as typed effect payloads; resolve engine behavior from typed data instead of card names.
+- [x] Update mobile card payment guidance to read the typed cost, regenerate the standard content pack/report, and verify full tests and mobile typecheck.
+- [x] Verify the imported Discard 2 Draw 3 effect through the engine payment and replacement draw flow. Full verification: 261 tests pass, mobile typecheck passes, `git diff --check` is clean (2026-10-24).
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.

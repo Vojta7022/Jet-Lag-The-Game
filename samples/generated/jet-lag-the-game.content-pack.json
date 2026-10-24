@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T18:05:37.588Z",
+    "importedAt": "2026-10-24T18:43:24.800Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -1626,14 +1626,18 @@
       "kind": "power_up",
       "name": "Discard 1 Draw 2",
       "shortName": "Discard 1 Draw 2",
-      "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "automationLevel": "manual",
+      "description": "Discard 1 card from your hand, then draw and keep 2 replacement cards.",
+      "automationLevel": "authoritative",
       "effects": [
         {
-          "effectType": "manual_power_up",
-          "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-          "automationLevel": "manual",
-          "rawText": "Discard 1 Draw 2"
+          "effectType": "discard_then_draw",
+          "description": "Discard 1 card from your hand, then draw and keep 2 replacement cards.",
+          "automationLevel": "authoritative",
+          "rawText": "Discard 1 Draw 2",
+          "payload": {
+            "discardCount": 1,
+            "drawCount": 2
+          }
         }
       ],
       "visibilityPolicy": {
@@ -1674,14 +1678,18 @@
       "kind": "power_up",
       "name": "Discard 2 Draw 3",
       "shortName": "Discard 2 Draw 3",
-      "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "automationLevel": "manual",
+      "description": "Discard 2 cards from your hand, then draw and keep 3 replacement cards.",
+      "automationLevel": "authoritative",
       "effects": [
         {
-          "effectType": "manual_power_up",
-          "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-          "automationLevel": "manual",
-          "rawText": "Discard 2 Draw 3"
+          "effectType": "discard_then_draw",
+          "description": "Discard 2 cards from your hand, then draw and keep 3 replacement cards.",
+          "automationLevel": "authoritative",
+          "rawText": "Discard 2 Draw 3",
+          "payload": {
+            "discardCount": 2,
+            "drawCount": 3
+          }
         }
       ],
       "visibilityPolicy": {
