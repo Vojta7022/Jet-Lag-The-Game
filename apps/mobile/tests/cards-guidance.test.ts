@@ -15,6 +15,7 @@ import {
   buildCardDescription,
   buildCardPurposeSummary,
   buildCardRestrictionSummary,
+  describeCardRulebookGuidance,
   buildCardScaleNotes,
   buildResolutionWindowGuidance,
   describeDeckVisibility,
@@ -210,4 +211,14 @@ test('card guidance extracts scale notes and resolution guidance honestly', () =
   assert.equal(inactiveGuidance.title, 'No active resolution window');
   assert.match(activeGuidance.title, /awaiting resolution/i);
   assert.match(activeGuidance.nextStep, /host-admin view must close/i);
+});
+
+test('card guidance returns scan-derived rulebook text for card details', () => {
+  const card = createCardDefinition({
+    kind: 'curse',
+    rulebookGuidanceText: 'Questions already asked on transit still need an answer.'
+  });
+
+  assert.equal(describeCardRulebookGuidance(card), 'Questions already asked on transit still need an answer.');
+  assert.equal(describeCardRulebookGuidance(createCardDefinition()), undefined);
 });

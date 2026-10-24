@@ -160,6 +160,11 @@ export function buildCardDescription(cardDefinition: CardDefinition): string {
   return buildCardPurposeSummary(cardDefinition);
 }
 
+export function describeCardRulebookGuidance(cardDefinition: CardDefinition): string | undefined {
+  const text = cardDefinition.rulebookGuidanceText?.trim();
+  return text || undefined;
+}
+
 export function buildCardRestrictionSummary(cardDefinition: CardDefinition): string {
   const restrictions = [
     ...buildCardRequirementLines(cardDefinition),

@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T21:26:43.696Z",
+    "importedAt": "2026-10-24T21:37:29.976Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -1888,6 +1888,7 @@
       "name": "Curse of The Zoologist",
       "shortName": "Curse of The Zoologist",
       "description": "Take a photo of a wild fish, bird, mammal, reptile, amphibian or bug. The seeker(s) must take a picture of a wild animal in the same category before asking another question.",
+      "rulebookGuidanceText": "“Wild” means not kept in human captivity, including farms and sanctuaries. “Bug” includes insects, arachnids, millipedes, centipedes, and animals commonly called bugs; crustaceans do not count. The image must show enough of the animal to identify its category. If classification is disputed, use Wikipedia.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -1949,6 +1950,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse of The Zoologist",
           "rawValue": "A photo of an animal"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 50",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -1961,6 +1967,7 @@
       "name": "Curse Of The Unguided Tourist",
       "shortName": "Curse Of The Unguided Tourist",
       "description": "Send the seeker(s) an unzoomed google Street View image from a street within 500ft (152m) of where they are now. The shot has to be parallel to the horizon and include at least one human-built structure other than a road. Without using the internet for research, they must find what you sent them in real life before they can use transportation or ask another question. They must send a picture the hiders for verification.",
+      "rulebookGuidanceText": "The pictured human-built structure cannot be part of a road, including a curb or sidewalk. Remove this card from decks in places with very limited Street View coverage.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2022,6 +2029,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Unguided Tourist",
           "rawValue": "Seker(s) must be outside"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 53",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2034,6 +2046,7 @@
       "name": "Curse Of The Endless Tumble",
       "shortName": "Curse Of The Endless Tumble",
       "description": "Seekers Must roll a die at least 100ft (30m) and have it land on a 5 or a 6 before they can ask another question. The die must roll the full distance, unaided, using only the momentum from the initial throw and gravity to travel the 100ft (30m). If the seekers accidentally hit someone with a die you are awarded a [S10, M20, L30] minute bonus",
+      "rulebookGuidanceText": "Measure the 30 m roll parallel to the ground. The die must travel using only the initial throw and gravity, without assistance. If it hits someone, award the hider’s scale bonus immediately.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2095,6 +2108,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Endless Tumble",
           "rawValue": "Roll a die. If its 5 or 6 this card has no effect."
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 56",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2107,6 +2125,7 @@
       "name": "Curse Of The Hidden Hangman",
       "shortName": "Curse Of The Hidden Hangman",
       "description": "Before asking another question or boarding another form of transportation, seeker(s) must be the hider(s) in game of hangman.",
+      "rulebookGuidanceText": "The hider’s five-letter word must be a real dictionary word in the language the group is playing in.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2168,6 +2187,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Hidden Hangman",
           "rawValue": "Discard 2 cards"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 56",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2180,6 +2204,7 @@
       "name": "Curse Of The Overflowing Chalice",
       "shortName": "Curse Of The Overflowing Chalice",
       "description": "For the next three questions, you may draw (not keep) an additional card when drawing from the hider deck",
+      "rulebookGuidanceText": "The bonus is one additional card drawn, not kept, for each of the next three question rewards. The category-specific draw and keep counts otherwise remain in effect.",
       "automationLevel": "authoritative",
       "castingCost": [
         {
@@ -2243,6 +2268,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Overflowing Chalice",
           "rawValue": "Discard a card"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 56",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2255,6 +2285,7 @@
       "name": "Curse Of The Mediocre Travel Agent",
       "shortName": "Curse Of The Mediocre Travel Agent",
       "description": "Choose any publicly-accessible place within [S0.25, M0.25, L0.50]mi [S0.40, M0.40, 0.50]km of the seeker(s) current location. They cannot currently be on transit. They must go there, and spend at least [S5, M5, L10] minutes there, before asking another question. They must send you at least three photos of them enjoying their vacation, and procure an object to bring you as souvenir. If this souvenir is lost before they can get to you, you are awarded and extra [S30, M45, L60] minutes.",
+      "rulebookGuidanceText": "“Publicly accessible” follows the hiding-spot rule. The destination may be an area rather than a point. The souvenir may be any physical object and need not stay with the seekers throughout the trip, but it must be with them when they are caught.",
       "automationLevel": "manual",
       "castingCost": [],
       "effects": [
@@ -2310,6 +2341,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Mediocre Travel Agent",
           "rawValue": null
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 53",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2322,6 +2358,7 @@
       "name": "Curse Of The Luxury Car",
       "shortName": "Curse Of The Luxury Car",
       "description": "Take a photo of a car. The seekers must take a photo of a more expensive car before asking another question.",
+      "rulebookGuidanceText": "The submitted photo must show enough of the car to identify it, and seekers must agree that it is the claimed car. Compare MSRP for the production year, ignoring paid upgrades and modifications. If model or year is uncertain, both sides agree which one to use.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2383,6 +2420,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Luxury Car",
           "rawValue": "A photo of a car"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 48",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2395,6 +2437,7 @@
       "name": "Curse Of The U-Turn",
       "shortName": "Curse Of The U-Turn",
       "description": "Seeker(s) must disembark their current mode of transportation at the next station (as long as that station is served by another form of transit in the next [S0.5, M0.5, L1] hours",
+      "rulebookGuidanceText": "Use the next station that the seekers’ current route will actually stop at; ignore skipped stops. If the route or stop is uncertain, ask the seekers and tell them which station you believe is next so they can confirm. A route that eventually moves toward the hider may still qualify when its next station is farther away.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2456,6 +2499,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The U-Turn",
           "rawValue": "Seekers must be heading the wrong way. (Their next station is further from you then they are.)"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 55",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2468,6 +2516,7 @@
       "name": "Curse Of The Bridge Troll",
       "shortName": "Curse Of The Bridge Troll",
       "description": "The seekers must ask their next question from under a bridge",
+      "rulebookGuidanceText": "A bridge is an elevated structure intended for pedestrians, cars, or other vehicles to cross as a path, road, or railway. When the next question is asked, every seeker must have some part of their body under the bridge. Remove this card if the playable map has no bridges.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2529,6 +2578,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Bridge Troll",
           "rawValue": "Seekers Must be at least [S1, M5, L30]mi [S0.3, M1.5, L9.1]km from you"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 50",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2541,6 +2595,7 @@
       "name": "Curse Of Water Weight",
       "shortName": "Curse Of Water Weight",
       "description": "Seeker(s) must acquire and carry at least 2 liters of liquid per seeker for the rest of your run. They cannot ask another question until they have acquired the liquid. The water may be distributed between seeker as they see fit. If the liquid is lost or abandoned at any point the hider is awarded a [S30, M30, L60] minute bonus",
+      "rulebookGuidanceText": "Liquid already being carried when the curse is played does not count. It may be split between any number of containers and passed between seekers. Seekers may set it down while stationary or on transit; it is abandoned when it is no longer within 3 m of any seeker. Award the hider’s bonus immediately when that happens. A qualifying body of water need not be natural, but cannot be a pool and must be large enough to appear on the map.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2602,6 +2657,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of Water Weight",
           "rawValue": "Seekers must be within 1,000ft (300 meters) of a body of water"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 51",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2614,6 +2674,7 @@
       "name": "Curse Of The Jammed Door",
       "shortName": "Curse Of The Jammed Door",
       "description": "For the next [S0.5, M1, L3] hours, whenever the seeker(s) want to pass through a doorway into a building, business, train, or other vehicle they must first roll 2 dice. If they do not roll a 7 or higher they cannot enter that space (including through other doorways) any given doorway can be reattempted after [S5, M10, L15] minutes.",
+      "rulebookGuidanceText": "Roll only once the doorway is visible. Doors leading to another part of the same building do not need a check. If it is reasonably unclear whether something is a separate building, require the roll. When the curse expires, any doorway cooldown ends too.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2675,6 +2736,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Jammed Door",
           "rawValue": "Discard 2 cards"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 52",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2687,6 +2753,7 @@
       "name": "Curse Of The Cairn",
       "shortName": "Curse Of The Cairn",
       "description": "You have one attempt to stack as many rocks on top of each other as you can in a freestanding tower. Each rock may only touch one other rock. Once you have added a rock to the tower it may not be removed. Before adding another rock, the tower must stand for at least 5 seconds. If at any point any rock other then the base rock touches the ground, your tower has fallen. Once your tower falls tell the seekers how many rocks high your tower was when it last stood for five seconds. The seekers must then construct a rock tower of the same number of rucks, under the same parameters before asking another question. If their tower falls they must restart. The rocks must be found in nature and both teams must disperse the rocks after building.",
+      "rulebookGuidanceText": "The rocks must be found in nature rather than purchased. After both teams build, each team disperses its rocks.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2748,6 +2815,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Cairn",
           "rawValue": "Build a rock tower"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 54",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2760,6 +2832,7 @@
       "name": "Curse Of The Urban Explorer",
       "shortName": "Curse Of The Urban Explorer",
       "description": "For the rest of the run seekers cannot ask question when they are on transit or in a train station",
+      "rulebookGuidanceText": "Questions already asked while seekers were on transit still need an answer. During the curse, seekers cannot ask from a platform or from a building associated with the transit station.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2821,6 +2894,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Urban Explorer",
           "rawValue": "Discard 2 cards"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 56",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2833,6 +2911,7 @@
       "name": "Curse Of The Impressionable Consumer",
       "shortName": "Curse Of The Impressionable Consumer",
       "description": "Seekers must enter and gain admission (if applicable) to a location or buy a product that they saw an advertisement for before asking another question. This advertisement musts be found out in the world and must be at least 100ft (30m) from the product or location itself.",
+      "rulebookGuidanceText": "An advertisement is an object or display mainly intended to raise awareness of a product, service, or business. If it advertises a specific service, seekers must buy and receive that service; if it advertises a place, they must enter it. Public places such as parks do not count as private businesses. Remove this card if the group does not want possible spending.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2894,6 +2973,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Impressionable Consumer",
           "rawValue": "The seekers next question is free"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 54",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2906,6 +2990,7 @@
       "name": "Curse Of The Egg Partner",
       "shortName": "Curse Of The Egg Partner",
       "description": "Seeker(s) must acquire an egg before asking another question. This egg is now treated as an official team member of the seekers. If any team members are abandoned or killed (defined as crack in the eggs case) before the end of your run you are awarded an extra [S30 M45 L60] minutes. This curse cannot be played during the endgame.",
+      "rulebookGuidanceText": "The egg must be real; a visible crack, however small, counts as killing it. Treat the egg as a seeker for other curses that apply to every seeker. Remove this card if the group objects to buying an egg or to the animal-welfare implications.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -2967,6 +3052,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Egg Partner",
           "rawValue": "Discard two cards"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 50",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -2979,6 +3069,7 @@
       "name": "Curse Of The Distant Cuisine",
       "shortName": "Curse Of The Distant Cuisine",
       "description": "Find a restaurant within your zone that explicitly serves food from a specific foreign country. The seekers must visit a restaurant serving food from a country that is an equal or greater distance away before asking another question",
+      "rulebookGuidanceText": "The restaurant must explicitly name one country, or a region within one country, in its name or other public-facing material. A broad label such as “Asian” does not qualify. Measure country distance from the seeker’s exact location to the nearest point in that country.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -3040,6 +3131,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Distant Cuisine",
           "rawValue": "You must be at the restaurant"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 55",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -3052,6 +3148,7 @@
       "name": "Curse Of The Right Turn",
       "shortName": "Curse Of The Right Turn",
       "description": "For the next [S20, M40, L60] minutes the seekers can only turn right at any street intersection. If at any point they find themselves in dead end where they cannot continue forward or turn right for another 1,000ft (304m) they must do a full 180. A right turn is defined as a road at any angle that veers to the right of the seekers",
+      "rulebookGuidanceText": "This applies only at intersections of roads intended for cars, including their pedestrian sidewalks. It has no effect indoors or where there are no streets.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -3113,6 +3210,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Right Turn",
           "rawValue": "Discard a card"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 57",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -3125,6 +3227,7 @@
       "name": "Curse Of The Labyrinth",
       "shortName": "Curse Of The Labyrinth",
       "description": "Spend up to [S10, M20, L30] minutes drawing a solvable maze and send a photo of it to the seekers. You cannot use the internet to research maze designs. The seekers must solve the maze before asking another question.",
+      "rulebookGuidanceText": "A solvable maze has an unbroken route from start to finish. The timer starts when drawing the first line, not while gathering materials. The hider may restart the drawing but not the timer, and may not consult the internet or other materials while designing it.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -3186,6 +3289,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Labyrinth",
           "rawValue": "Draw a maze"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 56",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -3198,6 +3306,7 @@
       "name": "Curse Of The Bird Guide",
       "shortName": "Curse Of The Bird Guide",
       "description": "You have one chance to film a bird for as long as possible. Up to [S5 M10 L15] minutes straight, if at any point the bird leaves the frame your timer is stopped. The seekers must then film a bird for the same amount of time or longer",
+      "rulebookGuidanceText": "The bird must be in frame when recording starts. Any recognizable part of it counts as in frame. Seekers have unlimited attempts to record their matching video.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -3259,6 +3368,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Bird Guide",
           "rawValue": "Film a bird"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 53",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -3271,6 +3385,7 @@
       "name": "Curse Of Spotty Memory",
       "shortName": "Curse Of Spotty Memory",
       "description": "For the rest of the run, one random category of questions will be disabled at all times. After this curse is played seeker(s) must roll a die to determine the category of questions to be disabled. The category remains disabled until the next question is asked at which point a die is rolled again to choose a category. The same category can be disabled multiple times in a row",
+      "rulebookGuidanceText": "Assign die numbers to question categories before the first roll. In small games, reroll a six because only five categories are available.",
       "automationLevel": "authoritative",
       "castingCost": [
         {
@@ -3333,6 +3448,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of Spotty Memory",
           "rawValue": "Discard a time bonus card"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 52",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -3345,6 +3465,7 @@
       "name": "Curse Of The Lemon Phylactery",
       "shortName": "Curse Of The Lemon Phylactery",
       "description": "Before asking another question the seeker(s) must each find a lemon and affix it to their outermost layer of their clothes or skin. If at any point one of these lemons is no longer touching a seeker you are awarded [S30, M45, L60] minutes. This curse cannot be played during the endgame.",
+      "rulebookGuidanceText": "Each lemon must be real and remain in constant contact with the seeker’s skin or clothes; any attachment method is allowed. Tell the hider immediately when one stops touching a seeker and award the scale bonus. This curse cannot be played during endgame.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -3406,6 +3527,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Lemon Phylactery",
           "rawValue": "Discard a powerup card"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 55",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -3418,6 +3544,7 @@
       "name": "Curse Of The Drained Brain",
       "shortName": "Curse Of The Drained Brain",
       "description": "Choose three questions in different categories. The seekers cannot ask those questions for the rest of the run.",
+      "rulebookGuidanceText": "This may be played and paid for between a question and its answer, but cannot remove the question already asked, even before it is answered. A question removed by this curse stays unavailable even at increased repeat cost.",
       "automationLevel": "authoritative",
       "castingCost": [
         {
@@ -3481,6 +3608,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Drained Brain",
           "rawValue": "Discard your hand"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 50",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -3493,6 +3625,7 @@
       "name": "Curse Of The Ransom Note",
       "shortName": "Curse Of The Ransom Note",
       "description": "The next question that the seekers ask must be composed of words and letters cut out of any printed material. The question must be coherent and include at least 5 words.",
+      "rulebookGuidanceText": "Do not begin paying the casting cost if the curse could not otherwise be played; once paid, cast it immediately. Seekers cannot produce the printed material themselves. The note must communicate the question without clarification, but additional question context may be supplied normally rather than cut from print.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -3554,6 +3687,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Ransom Note",
           "rawValue": "Spell out \"Ransom Note\" as a ransom note (without using this card)"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 52",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -3566,6 +3704,7 @@
       "name": "Curse Of The Gambler's Feet",
       "shortName": "Curse Of The Gambler's Feet",
       "description": "For the next [S20, M40, L60] minutes seekers must roll a die before they take any steps in any direction, they may take that many steps before rolling again",
+      "rulebookGuidanceText": "Use a six-sided die. With multiple seekers, each may roll separately or one roll may set the steps for everyone. If seekers accidentally take extra steps, stop and roll retroactively to account for them. Extra steps are allowed only when needed for safety.",
       "automationLevel": "manual",
       "castingCost": [
         {
@@ -3627,6 +3766,11 @@
           "columnName": "casting_cost",
           "rawLabel": "Curse Of The Gambler's Feet",
           "rawValue": "Roll a die if its even number this curse has no effect"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 55",
+          "notes": "Curse handling clarification paraphrased from the scanned base rulebook."
         }
       ]
     },

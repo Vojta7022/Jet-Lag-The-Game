@@ -17,6 +17,7 @@ import {
   buildCardRestrictionSummary,
   buildCardScaleNotes,
   buildCardTimingLines,
+  describeCardRulebookGuidance,
   formatCardKindLabel,
   formatZoneLabel
 } from './card-guidance.ts';
@@ -65,6 +66,7 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
   const scaleNotes = buildCardScaleNotes(card.definition);
   const activeScaleSummary = buildScaleAwareTimeBonusDescription(card.definition, props.selectedScale);
   const fallbackDescription = buildCardDescription(card.definition);
+  const rulebookGuidance = describeCardRulebookGuidance(card.definition);
   const purposeSummary = buildCardPurposeSummary(card.definition);
   const restrictionSummary = buildCardRestrictionSummary(card.definition);
   const accentStyle = resolveCardAccent(card.definition.kind);
@@ -86,6 +88,9 @@ export function CardDetailPanel(props: CardDetailPanelProps) {
         <Text style={styles.sectionTitle}>Purpose</Text>
         <Text style={styles.highlight}>{purposeSummary}</Text>
         <Text style={styles.copy}>{fallbackDescription}</Text>
+        {rulebookGuidance ? (
+          <Text style={styles.effect}>Rulebook clarification: {rulebookGuidance}</Text>
+        ) : null}
         <Text style={styles.effect}>{behavior.detail}</Text>
         <Text style={styles.effect}>{describeEffectSupport(card.definition)}</Text>
         {activeScaleSummary ? <Text style={styles.effectChip}>{activeScaleSummary}</Text> : null}

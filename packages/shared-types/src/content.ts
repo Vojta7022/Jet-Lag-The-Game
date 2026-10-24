@@ -136,6 +136,7 @@ export interface CardDefinition {
   name: string;
   shortName?: string;
   description: string;
+  rulebookGuidanceText?: string;
   automationLevel: AutomationLevel;
   timingWindow?: {
     allowedPhases?: string[];

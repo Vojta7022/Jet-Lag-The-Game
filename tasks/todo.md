@@ -167,6 +167,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Regenerate the draft content pack; verify all 292 tests, mobile typecheck, and `git diff --check` (2026-10-24).
 - [x] Make photo evidence visible to seeker and hider match projections so the seeking team can judge the submitted answer; verify both scope selection and projection redaction.
 
+### Current implementation slice: scanned curse clarifications
+
+- [x] Add scan-derived, source-attributed handling clarifications to every curse card in both workbook mapping paths.
+- [x] Show the clarification in the card detail view, separately from the workbook effect description.
+- [x] Regenerate the content pack; verify all 24 curse cards include scan-derived guidance and printed-page provenance. Full suite passes (293 tests), mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
+
 ### Current security slice: Supabase access lockdown
 
 - [x] Revoke direct anon/authenticated access to match, event, snapshot, projection, content-reference, membership, and idempotency tables; preserve service-role access for the authority Edge Function.

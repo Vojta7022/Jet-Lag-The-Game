@@ -187,6 +187,18 @@ test('the workbook importer creates a normalized draft content pack', () => {
   const firstCurse = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-zoologist');
   assert.ok(firstCurse);
   assert.equal(firstCurse.castingCost?.[0]?.description, 'A photo of an animal');
+  const curses = result.pack.cards.filter((card) => card.kind === 'curse');
+  assert.equal(curses.length, 24);
+  assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));
+  assert.ok(curses.every((card) => card.sourceProvenance.some((source) =>
+    source.sourceFileName.startsWith('Scanned base rulebook, printed p.')
+  )));
+  const bridgeTroll = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
+  assert.match(String(bridgeTroll?.rulebookGuidanceText), /elevated structure.*pedestrians, cars, or other vehicles/i);
+  const uTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-u-turn');
+  assert.match(String(uTurn?.rulebookGuidanceText), /ignore skipped stops/i);
+  const urbanExplorer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
+  assert.match(String(urbanExplorer?.rulebookGuidanceText), /questions already asked.*still need an answer/i);
 
   const hiderDeck = result.pack.decks.find((deck) => deck.deckId === 'hider-main');
   assert.ok(hiderDeck);
@@ -196,6 +208,9 @@ test('the workbook importer creates a normalized draft content pack', () => {
 test('the legacy workbook mapping also excludes the unprinted Measuring target', () => {
   const result = importContentPack({ inputPath: legacyWorkbookPath });
   assert.equal(result.pack.questionTemplates.length, 80);
+  const curses = result.pack.cards.filter((card) => card.kind === 'curse');
+  assert.equal(curses.length, 24);
+  assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));
   const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
   assert.equal(photoTemplates.length, 18);
   assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));

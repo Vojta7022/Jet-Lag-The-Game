@@ -1058,6 +1058,114 @@ function buildBlankCard(
   };
 }
 
+const CURSE_RULEBOOK_GUIDANCE: Record<string, { text: string; printedPage: number }> = {
+  'curse-of-the-zoologist': {
+    text: '“Wild” means not kept in human captivity, including farms and sanctuaries. “Bug” includes insects, arachnids, millipedes, centipedes, and animals commonly called bugs; crustaceans do not count. The image must show enough of the animal to identify its category. If classification is disputed, use Wikipedia.',
+    printedPage: 50
+  },
+  'curse-of-the-unguided-tourist': {
+    text: 'The pictured human-built structure cannot be part of a road, including a curb or sidewalk. Remove this card from decks in places with very limited Street View coverage.',
+    printedPage: 53
+  },
+  'curse-of-the-endless-tumble': {
+    text: 'Measure the 30 m roll parallel to the ground. The die must travel using only the initial throw and gravity, without assistance. If it hits someone, award the hider’s scale bonus immediately.',
+    printedPage: 56
+  },
+  'curse-of-the-hidden-hangman': {
+    text: 'The hider’s five-letter word must be a real dictionary word in the language the group is playing in.',
+    printedPage: 56
+  },
+  'curse-of-the-overflowing-chalice': {
+    text: 'The bonus is one additional card drawn, not kept, for each of the next three question rewards. The category-specific draw and keep counts otherwise remain in effect.',
+    printedPage: 56
+  },
+  'curse-of-the-mediocre-travel-agent': {
+    text: '“Publicly accessible” follows the hiding-spot rule. The destination may be an area rather than a point. The souvenir may be any physical object and need not stay with the seekers throughout the trip, but it must be with them when they are caught.',
+    printedPage: 53
+  },
+  'curse-of-the-luxury-car': {
+    text: 'The submitted photo must show enough of the car to identify it, and seekers must agree that it is the claimed car. Compare MSRP for the production year, ignoring paid upgrades and modifications. If model or year is uncertain, both sides agree which one to use.',
+    printedPage: 48
+  },
+  'curse-of-the-u-turn': {
+    text: 'Use the next station that the seekers’ current route will actually stop at; ignore skipped stops. If the route or stop is uncertain, ask the seekers and tell them which station you believe is next so they can confirm. A route that eventually moves toward the hider may still qualify when its next station is farther away.',
+    printedPage: 55
+  },
+  'curse-of-the-bridge-troll': {
+    text: 'A bridge is an elevated structure intended for pedestrians, cars, or other vehicles to cross as a path, road, or railway. When the next question is asked, every seeker must have some part of their body under the bridge. Remove this card if the playable map has no bridges.',
+    printedPage: 50
+  },
+  'curse-of-water-weight': {
+    text: 'Liquid already being carried when the curse is played does not count. It may be split between any number of containers and passed between seekers. Seekers may set it down while stationary or on transit; it is abandoned when it is no longer within 3 m of any seeker. Award the hider’s bonus immediately when that happens. A qualifying body of water need not be natural, but cannot be a pool and must be large enough to appear on the map.',
+    printedPage: 51
+  },
+  'curse-of-the-jammed-door': {
+    text: 'Roll only once the doorway is visible. Doors leading to another part of the same building do not need a check. If it is reasonably unclear whether something is a separate building, require the roll. When the curse expires, any doorway cooldown ends too.',
+    printedPage: 52
+  },
+  'curse-of-the-cairn': {
+    text: 'The rocks must be found in nature rather than purchased. After both teams build, each team disperses its rocks.',
+    printedPage: 54
+  },
+  'curse-of-the-urban-explorer': {
+    text: 'Questions already asked while seekers were on transit still need an answer. During the curse, seekers cannot ask from a platform or from a building associated with the transit station.',
+    printedPage: 56
+  },
+  'curse-of-the-impressionable-consumer': {
+    text: 'An advertisement is an object or display mainly intended to raise awareness of a product, service, or business. If it advertises a specific service, seekers must buy and receive that service; if it advertises a place, they must enter it. Public places such as parks do not count as private businesses. Remove this card if the group does not want possible spending.',
+    printedPage: 54
+  },
+  'curse-of-the-egg-partner': {
+    text: 'The egg must be real; a visible crack, however small, counts as killing it. Treat the egg as a seeker for other curses that apply to every seeker. Remove this card if the group objects to buying an egg or to the animal-welfare implications.',
+    printedPage: 50
+  },
+  'curse-of-the-distant-cuisine': {
+    text: 'The restaurant must explicitly name one country, or a region within one country, in its name or other public-facing material. A broad label such as “Asian” does not qualify. Measure country distance from the seeker’s exact location to the nearest point in that country.',
+    printedPage: 55
+  },
+  'curse-of-the-right-turn': {
+    text: 'This applies only at intersections of roads intended for cars, including their pedestrian sidewalks. It has no effect indoors or where there are no streets.',
+    printedPage: 57
+  },
+  'curse-of-the-labyrinth': {
+    text: 'A solvable maze has an unbroken route from start to finish. The timer starts when drawing the first line, not while gathering materials. The hider may restart the drawing but not the timer, and may not consult the internet or other materials while designing it.',
+    printedPage: 56
+  },
+  'curse-of-the-bird-guide': {
+    text: 'The bird must be in frame when recording starts. Any recognizable part of it counts as in frame. Seekers have unlimited attempts to record their matching video.',
+    printedPage: 53
+  },
+  'curse-of-spotty-memory': {
+    text: 'Assign die numbers to question categories before the first roll. In small games, reroll a six because only five categories are available.',
+    printedPage: 52
+  },
+  'curse-of-the-lemon-phylactery': {
+    text: 'Each lemon must be real and remain in constant contact with the seeker’s skin or clothes; any attachment method is allowed. Tell the hider immediately when one stops touching a seeker and award the scale bonus. This curse cannot be played during endgame.',
+    printedPage: 55
+  },
+  'curse-of-the-drained-brain': {
+    text: 'This may be played and paid for between a question and its answer, but cannot remove the question already asked, even before it is answered. A question removed by this curse stays unavailable even at increased repeat cost.',
+    printedPage: 50
+  },
+  'curse-of-the-ransom-note': {
+    text: 'Do not begin paying the casting cost if the curse could not otherwise be played; once paid, cast it immediately. Seekers cannot produce the printed material themselves. The note must communicate the question without clarification, but additional question context may be supplied normally rather than cut from print.',
+    printedPage: 52
+  },
+  'curse-of-the-gamblers-feet': {
+    text: 'Use a six-sided die. With multiple seekers, each may roll separately or one roll may set the steps for everyone. If seekers accidentally take extra steps, stop and roll retroactively to account for them. Extra steps are allowed only when needed for safety.',
+    printedPage: 55
+  }
+};
+
+function curseRulebookGuidance(cardSlug: string): { text: string; source: string } | undefined {
+  const guidance = CURSE_RULEBOOK_GUIDANCE[cardSlug];
+  if (!guidance) return undefined;
+  return {
+    text: guidance.text,
+    source: `Scanned base rulebook, printed p. ${guidance.printedPage}`
+  };
+}
+
 function buildCurseCards(
   sourceFileName: string,
   packId: string,
@@ -1093,6 +1201,7 @@ function buildCurseCards(
       const locksQuestionTemplates = normalizedName.slug === 'curse-of-the-drained-brain';
       const grantsExtraQuestionRewardDraws = normalizedName.slug === 'curse-of-the-overflowing-chalice';
       const randomizesQuestionCategory = normalizedName.slug === 'curse-of-spotty-memory';
+      const rulebookGuidance = curseRulebookGuidance(normalizedName.slug);
       buildNormalizationIssue(
         issues,
         sourceFileName,
@@ -1115,6 +1224,7 @@ function buildCurseCards(
         name: normalizedName.displayText,
         shortName: normalizedName.displayText,
         description: applyWorkbookCorrections(descriptionRaw),
+        ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
         automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : 'manual',
         castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
         effects: [
@@ -1146,7 +1256,8 @@ function buildCurseCards(
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'name', nameRaw, nameRaw),
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'description', descriptionRaw, nameRaw),
-          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'casting_cost', costRaw ?? null, nameRaw)
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'casting_cost', costRaw ?? null, nameRaw),
+          ...(rulebookGuidance ? [generatedProvenance(rulebookGuidance.source, 'Curse handling clarification paraphrased from the scanned base rulebook.')] : [])
         ]
       });
 
@@ -1214,6 +1325,7 @@ function buildCurseCards(
     const locksQuestionTemplates = normalizedName.slug === 'curse-of-the-drained-brain';
     const grantsExtraQuestionRewardDraws = normalizedName.slug === 'curse-of-the-overflowing-chalice';
     const randomizesQuestionCategory = normalizedName.slug === 'curse-of-spotty-memory';
+    const rulebookGuidance = curseRulebookGuidance(normalizedName.slug);
     buildNormalizationIssue(
       issues,
       sourceFileName,
@@ -1237,6 +1349,7 @@ function buildCurseCards(
       name: normalizedName.displayText,
       shortName: normalizedName.displayText,
       description: applyWorkbookCorrections(descriptionRaw),
+      ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
       automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : 'manual',
       castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
       effects: [
@@ -1268,7 +1381,8 @@ function buildCurseCards(
       sourceProvenance: [
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'B', nameRaw, orderRaw),
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'C', descriptionRaw, nameRaw),
-        sourceProvenance(sourceFileName, sheet.name, costRow.rowNumber, 'C', costRaw ?? null, 'Casting Cost')
+        sourceProvenance(sourceFileName, sheet.name, costRow.rowNumber, 'C', costRaw ?? null, 'Casting Cost'),
+        ...(rulebookGuidance ? [generatedProvenance(rulebookGuidance.source, 'Curse handling clarification paraphrased from the scanned base rulebook.')] : [])
       ]
     });
 

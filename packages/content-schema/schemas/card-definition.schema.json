@@ -47,6 +47,9 @@
     "description": {
       "type": "string"
     },
+    "rulebookGuidanceText": {
+      "type": "string"
+    },
     "automationLevel": {
       "type": "string",
       "enum": [
