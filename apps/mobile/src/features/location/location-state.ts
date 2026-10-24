@@ -62,6 +62,93 @@ export interface MovementTrackViewModel {
   recentSamples: VisibleLocationSampleProjection[];
 }
 
+export type LocationFreshness = 'fresh' | 'stale' | 'unknown';
+
+export function classifyLocationFreshness(
+  recordedAt: string | undefined,
+  nowMilliseconds: number,
+  maxAgeSeconds = 30
+): LocationFreshness {
+  if (!recordedAt) return 'unknown';
+  const recordedAtMilliseconds = Date.parse(recordedAt);
+  if (!Number.isFinite(recordedAtMilliseconds) || recordedAtMilliseconds > nowMilliseconds) return 'unknown';
+  const ageSeconds = (nowMilliseconds - recordedAtMilliseconds) / 1000;
+  return ageSeconds <= maxAgeSeconds ? 'fresh' : 'stale';
+}
+
+export function describeLocationSampleAge(
+  recordedAt: string | undefined,
+  nowMilliseconds: number
+): string {
+  if (!recordedAt) return 'No fix yet';
+  const recordedAtMilliseconds = Date.parse(recordedAt);
+  if (!Number.isFinite(recordedAtMilliseconds) || recordedAtMilliseconds > nowMilliseconds) {
+    return 'Fix time unavailable';
+  }
+  const ageSeconds = Math.max(0, Math.floor((nowMilliseconds - recordedAtMilliseconds) / 1000));
+  if (ageSeconds < 5) return 'Just updated';
+  if (ageSeconds < 60) return `${ageSeconds} sec ago`;
+  return `${Math.floor(ageSeconds / 60)} min ago`;
+}
+
+export interface LiveLocationStatusModel {
+  own: { label: 'Your GPS'; value: string; tone: 'default' | 'success' | 'warning' };
+  team: { label: string; value: string; tone: 'default' | 'success' | 'warning' };
+}
+
+export function buildLiveLocationStatusModel(args: {
+  locationState: LocationShellState;
+  visibleMovementTracks: VisibleMovementTrackProjection[];
+  viewerRole: MatchRole;
+  nowMilliseconds: number;
+  maxAgeSeconds?: number;
+}): LiveLocationStatusModel {
+  const maxAgeSeconds = args.maxAgeSeconds ?? 30;
+  const sample = args.locationState.lastDeviceSample;
+  const freshness = classifyLocationFreshness(sample?.recordedAt, args.nowMilliseconds, maxAgeSeconds);
+  const ownValue = args.locationState.permissionState === 'denied'
+    ? 'Permission needed'
+    : args.locationState.permissionState === 'unavailable'
+      ? 'Location unavailable'
+      : args.locationState.sharingState === 'error'
+        ? 'Sharing error'
+        : sample
+          ? `${freshness === 'fresh' ? 'Fresh' : freshness === 'stale' ? 'Stale' : 'Check fix'} · ${describeLocationSampleAge(sample.recordedAt, args.nowMilliseconds)}`
+          : args.locationState.sharingState === 'sharing'
+            ? 'Waiting for first fix'
+            : 'Sharing off';
+  const ownTone = freshness === 'fresh' && args.locationState.permissionState === 'granted'
+    ? 'success'
+    : freshness === 'stale' || args.locationState.permissionState === 'denied' || args.locationState.sharingState === 'error'
+      ? 'warning'
+      : 'default';
+  const samples = args.visibleMovementTracks
+    .map((track) => track.latestSample)
+    .filter((trackSample): trackSample is VisibleLocationSampleProjection => Boolean(trackSample));
+  const freshCount = samples.filter((trackSample) =>
+    classifyLocationFreshness(trackSample.recordedAt, args.nowMilliseconds, maxAgeSeconds) === 'fresh'
+  ).length;
+  const staleCount = samples.filter((trackSample) =>
+    classifyLocationFreshness(trackSample.recordedAt, args.nowMilliseconds, maxAgeSeconds) === 'stale'
+  ).length;
+  const unknownCount = samples.length - freshCount - staleCount;
+  const teamStatusParts = [
+    freshCount > 0 ? `${freshCount} fresh` : undefined,
+    staleCount > 0 ? `${staleCount} stale` : undefined,
+    unknownCount > 0 ? `${unknownCount} unknown` : undefined
+  ].filter((part): part is string => Boolean(part));
+  const teamValue = samples.length === 0 ? 'No visible team fixes' : teamStatusParts.join(' · ');
+
+  return {
+    own: { label: 'Your GPS', value: ownValue, tone: ownTone },
+    team: {
+      label: args.viewerRole === 'hider' ? 'Seeker GPS' : 'Team GPS',
+      value: teamValue,
+      tone: samples.length > 0 && staleCount === 0 && unknownCount === 0 ? 'success' : 'warning'
+    }
+  };
+}
+
 export function createInitialLocationShellState(): LocationShellState {
   return {
     permissionState: 'unknown',

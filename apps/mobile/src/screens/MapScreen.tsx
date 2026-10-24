@@ -60,6 +60,7 @@ import {
   useMatchTimingModel
 } from '../features/timers/index.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
+import { useLocationSharing } from '../providers/LocationSharingProvider.tsx';
 import type { AppShellState } from '../state/app-shell-state.ts';
 import { isSameMapSetupDraft } from '../state/app-shell-state.ts';
 import { hasRequiredRoleAssignments } from '../features/roles/role-assignment.ts';
@@ -70,6 +71,7 @@ import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors, fonts } from '../ui/theme.ts';
+import { buildLiveLocationStatusModel } from '../features/location/location-state.ts';
 
 function createMapRegionCommand(selectedRegion: PlayableRegionCatalogEntry): DomainCommand {
   return {
@@ -143,7 +145,9 @@ export function MapScreen() {
     saveMapSetupDraft,
     clearMapSetupDraft
   } = useAppShell();
+  const { state: locationState } = useLocationSharing();
   const [showLegend, setShowLegend] = useState(false);
+  const [freshnessNow, setFreshnessNow] = useState(() => Date.now());
   const activeMatch = state.activeMatch;
   const mapSetupDraft = activeMatch ? state.uiState.mapSetupDrafts[activeMatch.matchId] : undefined;
   const [selectedRegions, setSelectedRegions] = useState<PlayableRegionCatalogEntry[]>(
@@ -215,6 +219,11 @@ export function MapScreen() {
   );
   const previewRegion = compositePreviewRegion ?? regionSearch.selectedRegion;
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
+  useEffect(() => {
+    if (!liveGameplayState) return undefined;
+    const interval = setInterval(() => setFreshnessNow(Date.now()), 5_000);
+    return () => clearInterval(interval);
+  }, [liveGameplayState]);
   const canUseStationWorkbench = !liveGameplayState || isHostView || viewerRole === 'hider';
   const stationGeometry = liveGameplayState
     ? projection?.visibleMap?.playableBoundary.geometry
@@ -408,25 +417,45 @@ export function MapScreen() {
     [activeQuestionCategory, hiderDeck, projection, viewerRole]
   );
   const liveStatusItems = useMemo(
-    () =>
-      liveGameplayState
-        ? [
-            {
-              label: 'Clue status',
-              value: describeLiveClueStep(projection, activeQuestionTemplate?.name)
-            },
-            {
-              label: 'Search',
-              value: candidateSummary,
-              tone: resolvePrecisionTone(displayedVisibleMap?.remainingArea?.precision)
-            }
-          ]
-        : [],
+    () => {
+      if (!liveGameplayState) return [];
+      const selectedRuleset = defaultContentPack.rulesets.find(
+        (ruleset) => ruleset.rulesetId === projection?.selectedRulesetId
+      );
+      const configuredMaxAge = selectedRuleset?.locationPolicies.automaticQuestionMaxAgeSeconds;
+      const maxAgeSeconds = typeof configuredMaxAge === 'number' && Number.isFinite(configuredMaxAge)
+        ? configuredMaxAge
+        : 30;
+      const locationStatus = buildLiveLocationStatusModel({
+        locationState,
+        visibleMovementTracks: projection?.visibleMovementTracks ?? [],
+        viewerRole,
+        nowMilliseconds: freshnessNow,
+        maxAgeSeconds
+      });
+      return [
+        {
+          label: 'Clue status',
+          value: describeLiveClueStep(projection, activeQuestionTemplate?.name)
+        },
+        {
+          label: 'Search',
+          value: candidateSummary,
+          tone: resolvePrecisionTone(displayedVisibleMap?.remainingArea?.precision)
+        },
+        locationStatus.own,
+        locationStatus.team
+      ];
+    },
     [
       activeQuestionTemplate?.name,
       candidateSummary,
       displayedVisibleMap?.remainingArea?.precision,
+      freshnessNow,
       liveGameplayState,
+      locationState.lastDeviceSample,
+      locationState.permissionState,
+      locationState.sharingState,
       primaryLiveTimer?.label,
       primaryLiveTimer?.remainingLabel,
       projection,

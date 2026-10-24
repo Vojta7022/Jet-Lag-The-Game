@@ -196,6 +196,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Verify the phase/role/permission policy and full test suite; 275 tests pass and mobile typecheck passes (2026-10-24).
 - [ ] Add background location sharing if confirmed by the product owner; foreground tracking pauses when the app is backgrounded or locked.
 
+### Current implementation slice: live GPS freshness on the game map
+
+- [x] Show each player the age and freshness of their own device fix on the live map.
+- [x] Show freshness counts only for movement tracks already authorized in that player's projection; use the same age threshold as automatic clue resolution.
+- [x] Refresh freshness labels during live play and cover fresh/stale/unknown states; verify focused tests, full suite (283 passing), mobile typecheck, and `git diff --check` (2026-10-24).
+
 ### Current implementation slice: scanned hand-expansion power-up
 
 - [x] Add an engine integration test for Draw 1, Expand Maximum Hand Size by 1: draw one, increase hand capacity for the rest of the round, and reset the capacity on the next round.

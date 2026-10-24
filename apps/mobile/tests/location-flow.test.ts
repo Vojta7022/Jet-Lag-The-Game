@@ -9,6 +9,9 @@ import { mobileAppEnvironment } from '../src/config/env.ts';
 import { buildQuestionFlowBootstrapCommands } from '../src/features/questions/question-flow-bootstrap.ts';
 import {
   canStartContinuousSharing,
+  buildLiveLocationStatusModel,
+  classifyLocationFreshness,
+  describeLocationSampleAge,
   shouldAutomaticallyShareLocation,
   canSendSingleLocationUpdate,
   buildLocationUpdateCommand,
@@ -26,6 +29,64 @@ const generatedPackPath = fileURLToPath(
 function loadContentPack(): ContentPack {
   return JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack;
 }
+
+test('location freshness uses the same 30-second usable-fix boundary as automatic clue answers', () => {
+  const now = Date.parse('2026-10-24T12:00:30.000Z');
+  assert.equal(classifyLocationFreshness('2026-10-24T12:00:00.000Z', now), 'fresh');
+  assert.equal(classifyLocationFreshness('2026-10-24T11:59:59.000Z', now), 'stale');
+  assert.equal(classifyLocationFreshness(undefined, now), 'unknown');
+  assert.equal(classifyLocationFreshness('not-a-date', now), 'unknown');
+  assert.equal(classifyLocationFreshness('2026-10-24T12:00:31.000Z', now), 'unknown');
+});
+
+test('location sample age is formatted for live map status chips', () => {
+  const now = Date.parse('2026-10-24T12:03:05.000Z');
+  assert.equal(describeLocationSampleAge('2026-10-24T12:03:00.000Z', now), '5 sec ago');
+  assert.equal(describeLocationSampleAge('2026-10-24T12:00:00.000Z', now), '3 min ago');
+  assert.equal(describeLocationSampleAge(undefined, now), 'No fix yet');
+});
+
+test('live location status separates the player fix from role-visible team pings', () => {
+  const model = buildLiveLocationStatusModel({
+    locationState: {
+      ...createInitialLocationShellState(),
+      permissionState: 'granted',
+      sharingState: 'sharing',
+      lastDeviceSample: {
+        latitude: 50,
+        longitude: 14,
+        recordedAt: '2026-10-24T12:00:00.000Z',
+        source: 'device'
+      }
+    },
+    visibleMovementTracks: [
+      {
+        playerId: 'seeker-1',
+        displayName: 'Seeker 1',
+        role: 'seeker',
+        sampleCount: 1,
+        recentSamples: [],
+        latestSample: {
+          sampleId: 'sample-1',
+          playerId: 'seeker-1',
+          displayName: 'Seeker 1',
+          role: 'seeker',
+          latitude: 50,
+          longitude: 14,
+          source: 'device',
+          recordedAt: '2026-10-24T11:59:00.000Z'
+        }
+      }
+    ],
+    viewerRole: 'hider',
+    nowMilliseconds: Date.parse('2026-10-24T12:00:35.000Z'),
+    maxAgeSeconds: 30
+  });
+  assert.equal(model.own.value, 'Stale · 35 sec ago');
+  assert.equal(model.team.label, 'Seeker GPS');
+  assert.equal(model.team.value, '1 stale');
+  assert.equal(model.team.tone, 'warning');
+});
 
 test('location shell reducer makes denied and unavailable states explicit', () => {
   let state = createInitialLocationShellState();
