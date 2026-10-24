@@ -247,6 +247,7 @@ test('finding requires a visual confirmation and seeker coordinates within two m
     actorId: 'host-1', playerId: 'host-1', role: 'host'
   }, { type: 'resume_match', payload: {} }, 107), contentPack).aggregate;
   const heldTimeBonusCardId = moveCardToTeamHand(aggregate, 'time-bonus-red', 'team-hider');
+  moveCardToTeamHand(aggregate, 'power-up-duplicate', 'team-hider');
   const discardedTimeBonusCardId = moveCardToTeamHand(aggregate, 'time-bonus-blue', 'team-hider');
   aggregate.cardInstances[discardedTimeBonusCardId] = {
     ...aggregate.cardInstances[discardedTimeBonusCardId]!,
@@ -267,8 +268,8 @@ test('finding requires a visual confirmation and seeker coordinates within two m
   assert.equal(found.roundResults?.at(-1)?.survivalSeconds, expectedSurvival);
   const heldTimeBonus = contentPack.cards.find((card) => card.cardDefinitionId === aggregate.cardInstances[heldTimeBonusCardId]!.cardDefinitionId);
   const expectedBonusSeconds = Number((heldTimeBonus?.effects[0]?.payload as { minutesByScale?: Record<string, number> } | undefined)?.minutesByScale?.[aggregate.selectedScale ?? 'small'] ?? 0) * 60;
-  assert.equal(found.roundResults?.at(-1)?.timeBonusSeconds, expectedBonusSeconds);
-  assert.equal(found.roundResults?.at(-1)?.finalHidingTimeSeconds, expectedSurvival + expectedBonusSeconds);
+  assert.equal(found.roundResults?.at(-1)?.timeBonusSeconds, expectedBonusSeconds * 2);
+  assert.equal(found.roundResults?.at(-1)?.finalHidingTimeSeconds, expectedSurvival + expectedBonusSeconds * 2);
 });
 
 test('hiding-zone command rejects stations outside the map and rejects seeker access', () => {

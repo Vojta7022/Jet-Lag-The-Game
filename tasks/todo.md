@@ -29,7 +29,7 @@
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
 - The main remaining gap is a tested, reliable multi-phone end-to-end play path. An authenticated Edge Function gateway and atomic revision commit now exist with unit coverage; production deployment, authorization/privacy audit, and cellular field play still need verification. Nearby mode has no LAN transport.
-- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, 16 warnings, and 5 informational import findings. It remains draft content with no ruleset or map preset; remaining card warnings still need adjudication.
+- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, 15 warnings, and 5 informational import findings. It remains draft content with no ruleset or map preset; remaining card warnings still need adjudication.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
 - The initial implementation target was single-device referee; the 2026-10-24 product clarification made one authenticated phone per player the primary product, with referee mode retained as fallback/regression coverage.
@@ -91,6 +91,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Emit their discard/draw counts and scan-faithful descriptions as typed effect payloads; resolve engine behavior from typed data instead of card names.
 - [x] Update mobile card payment guidance to read the typed cost, regenerate the standard content pack/report, and verify full tests and mobile typecheck.
 - [x] Verify the imported Discard 2 Draw 3 effect through the engine payment and replacement draw flow. Full verification: 261 tests pass, mobile typecheck passes, `git diff --check` is clean (2026-10-24).
+
+### Current implementation slice: Duplicate's held time-bonus rule
+
+- [x] Import Duplicate with the scanned copy rule and accurately keep unsupported in-round target selection manual.
+- [x] Apply the rulebook's end-of-round copy of a held time bonus to capture scoring and player-facing score detail.
+- [x] Add importer and engine regression coverage and regenerate the pack. Full verification: 261 tests pass, mobile typecheck passes, `git diff --check` is clean (2026-10-24).
 
 ## Active: online multiplayer for one phone per player
 

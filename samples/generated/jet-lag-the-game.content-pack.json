@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T18:43:24.800Z",
+    "importedAt": "2026-10-24T18:47:31.398Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -1530,14 +1530,18 @@
       "kind": "power_up",
       "name": "Duplicate",
       "shortName": "Duplicate",
-      "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
+      "description": "Play as an exact copy of any other card currently in your hand, including curses, power-ups, and time bonuses; the original card stays in your hand and can be played later. If Duplicate remains in your hand at the end of the round, it copies a time bonus you still hold and doubles that bonus.",
       "automationLevel": "manual",
       "effects": [
         {
-          "effectType": "manual_power_up",
-          "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
+          "effectType": "duplicate_card",
+          "description": "Play as an exact copy of any other card currently in your hand, including curses, power-ups, and time bonuses; the original card stays in your hand and can be played later. If Duplicate remains in your hand at the end of the round, it copies a time bonus you still hold and doubles that bonus.",
           "automationLevel": "manual",
-          "rawText": "Duplicate"
+          "rawText": "Duplicate",
+          "payload": {
+            "preservesOriginal": true,
+            "copiesHeldTimeBonusAtCapture": true
+          }
         }
       ],
       "visibilityPolicy": {

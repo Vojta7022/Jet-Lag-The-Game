@@ -656,6 +656,20 @@ function buildPowerUpCards(
         effectType: 'randomize_question', description, automationLevel: 'authoritative', rawText: label
       } };
     }
+    if (normalized === 'duplicate') {
+      const description = 'Play as an exact copy of any other card currently in your hand, including curses, power-ups, and time bonuses; the original card stays in your hand and can be played later. If Duplicate remains in your hand at the end of the round, it copies a time bonus you still hold and doubles that bonus.';
+      return {
+        description,
+        automationLevel: 'manual',
+        effect: {
+          effectType: 'duplicate_card',
+          description,
+          automationLevel: 'manual',
+          rawText: label,
+          payload: { preservesOriginal: true, copiesHeldTimeBonusAtCapture: true }
+        }
+      };
+    }
     if (normalized === 'discard 1 draw 2' || normalized === 'discard 2 draw 3') {
       const discardCount = normalized === 'discard 1 draw 2' ? 1 : 2;
       const drawCount = discardCount + 1;

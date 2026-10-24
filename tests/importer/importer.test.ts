@@ -53,6 +53,14 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(veto.automationLevel, 'authoritative');
   assert.equal(veto.effects[0]?.effectType, 'veto_question');
 
+  const duplicate = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-duplicate');
+  assert.ok(duplicate);
+  assert.equal(duplicate.automationLevel, 'manual');
+  assert.equal(duplicate.effects[0]?.effectType, 'duplicate_card');
+  assert.deepEqual(duplicate.effects[0]?.payload, { preservesOriginal: true, copiesHeldTimeBonusAtCapture: true });
+  assert.match(duplicate.description, /exact copy of any other card currently in your hand/i);
+  assert.match(duplicate.description, /remains in your hand at the end of the round/i);
+
   const handExpansion = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-draw-1-expand-1');
   assert.ok(handExpansion);
   assert.equal(handExpansion.automationLevel, 'authoritative');

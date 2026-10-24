@@ -1,5 +1,5 @@
 {
-  "importJobId": "b551eebd-594f-4991-b25d-46b3cf471c57",
+  "importJobId": "4c75364e-4c9a-4cc9-96c9-98a856b085a0",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -8,19 +8,6 @@
   "status": "draft_output",
   "generatedPackId": "jet-lag-the-game-seed",
   "issues": [
-    {
-      "sheetName": "Hider Deck",
-      "rowNumber": 9,
-      "columnName": "card",
-      "fieldPath": "cards[power-up-duplicate].description",
-      "severity": "warning",
-      "code": "POWER_UP_EFFECT_UNSPECIFIED",
-      "message": "The workbook provides a power-up name but no detailed effect text.",
-      "rawValue": "Duplicate",
-      "normalizedValue": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "suggestedFix": "Keep the imported card name and add authored effect details later if fuller automation is needed.",
-      "sheetCell": "B9"
-    },
     {
       "sheetName": "Hider Deck",
       "rowNumber": 10,

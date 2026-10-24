@@ -772,23 +772,21 @@ function eventsForCommand(
         envelope.occurredAt
       );
       const hiderTeamId = hiderTeam?.teamId ?? 'team-hider';
-      const timeBonusSeconds = Object.values(aggregate!.cardInstances).reduce((total, card) => {
-        if (
-          card.zone !== 'hand' ||
-          card.holderType !== 'team' ||
-          card.holderId !== hiderTeamId
-        ) {
-          return total;
-        }
-
+      const heldHiderCards = Object.values(aggregate!.cardInstances).filter(
+        (card) => card.zone === 'hand' && card.holderType === 'team' && card.holderId === hiderTeamId
+      );
+      const heldTimeBonuses = heldHiderCards.flatMap((card) => {
         const definition = getCardDefinition(contentPack, card.cardDefinitionId);
-        if (!definition || definition.kind !== 'time_bonus') {
-          return total;
-        }
-
-        const bonusMinutes = buildCardResolutionPlan(definition, aggregate!.selectedScale).timeBonusMinutes ?? 0;
-        return total + bonusMinutes * 60;
-      }, 0);
+        if (!definition || definition.kind !== 'time_bonus') return [];
+        return [buildCardResolutionPlan(definition, aggregate!.selectedScale).timeBonusMinutes ?? 0];
+      });
+      const duplicateCount = heldHiderCards.filter((card) => {
+        const definition = getCardDefinition(contentPack, card.cardDefinitionId);
+        return definition?.effects.some((effect) => effect.effectType === 'duplicate_card') ?? false;
+      }).length;
+      const heldBonusMinutes = heldTimeBonuses.reduce((total, minutes) => total + minutes, 0);
+      const copiedBonusMinutes = duplicateCount > 0 ? Math.max(0, ...heldTimeBonuses) * duplicateCount : 0;
+      const timeBonusSeconds = (heldBonusMinutes + copiedBonusMinutes) * 60;
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
           type: 'hider_found',
