@@ -358,6 +358,7 @@ export function QuestionCenterScreen() {
             detail: activeQuestionEvidenceContext.detail,
             visibilityScope:
               activeQuestionEvidenceContext.suggestedVisibilityScope,
+            teamId: activeQuestionEvidenceContext.teamId,
             attachmentKind: 'photo_evidence',
             questionInstanceId: activeQuestionEvidenceContext.questionInstanceId
           }

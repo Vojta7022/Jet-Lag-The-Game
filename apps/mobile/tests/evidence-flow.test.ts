@@ -17,7 +17,8 @@ import {
 } from '../src/features/evidence/evidence-model.ts';
 import {
   buildSupabaseAttachmentMediaSource,
-  buildSupabaseAttachmentUploadCommand
+  buildSupabaseAttachmentUploadCommand,
+  buildSupabaseAttachmentObjectPath
 } from '../src/runtime/supabase-attachment-storage.ts';
 import { buildEvidenceContexts } from '../src/features/evidence/evidence-contexts.ts';
 import { describeUnavailablePicker } from '../src/features/evidence/media-picker.ts';
@@ -287,6 +288,7 @@ test('supabase attachment upload command stores durable storage metadata for onl
         title: 'Tree evidence',
         detail: 'Record a tree photo.',
         visibilityScope: 'team_private',
+        teamId: 'team-hider',
         attachmentKind: 'photo_evidence',
         questionInstanceId: 'question:tree-1'
       },
@@ -333,6 +335,32 @@ test('supabase attachment upload command stores durable storage metadata for onl
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('protected attachment object paths bind team and player media to their owner identity', () => {
+  assert.equal(buildSupabaseAttachmentObjectPath({
+    matchId: 'match-1',
+    attachmentId: 'attachment-1',
+    visibilityScope: 'team_private',
+    teamId: 'team-hider'
+  }), 'matches/match-1/team_private/team-hider/attachment-1');
+  assert.equal(buildSupabaseAttachmentObjectPath({
+    matchId: 'match-1',
+    attachmentId: 'attachment-2',
+    visibilityScope: 'player_private',
+    playerId: 'player-2'
+  }), 'matches/match-1/player_private/player-2/attachment-2');
+  assert.throws(() => buildSupabaseAttachmentObjectPath({
+    matchId: 'match-1',
+    attachmentId: 'attachment-3',
+    visibilityScope: 'team_private'
+  }), /team identity is required/i);
+  assert.equal(buildSupabaseAttachmentObjectPath({
+    matchId: 'match-1',
+    attachmentId: 'attachment-4',
+    visibilityScope: 'public_match',
+    fileName: 'photo.jpg/../../outside'
+  }), 'matches/match-1/public_match/attachment-4');
 });
 
 test('supabase attachment media source returns an authenticated remote preview when storage metadata is visible', () => {

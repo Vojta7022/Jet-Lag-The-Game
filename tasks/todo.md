@@ -121,12 +121,19 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Automatically resolve Radar from fresh seeker and hider GPS fixes, apply the bounded map deduction, and record fix provenance in the same authority command.
 - [x] Automatically resolve Thermometer from printed minimum travel distance and fresh GPS fixes; freeze the same seeker movement endpoints for the answer and map deduction.
 - [ ] Deploy and security-audit the online authority; verify it on real devices over cellular data.
-- [ ] Remove the legacy blanket anon/authenticated database and attachment-storage policies before any live deployment; current server-authority migration does not revoke the older development policies.
+- [x] Add a follow-up migration that removes the legacy blanket database policies and scopes storage objects to an active match membership plus their public/team/player/host scope. Static policy regression test passes; applying and executing it against a Supabase database is still pending.
 - [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
 - [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects.
 - [ ] Add foreground/background location behavior with clear freshness and permission status on both platforms.
 - [ ] Add content-pack selection/validation for the standard game and a versioned extension path for future variants.
 - [ ] Run a full mobile field round on multiple phones with native GPS and cellular connectivity.
+
+### Current security slice: Supabase access lockdown
+
+- [x] Revoke direct anon/authenticated access to match, event, snapshot, projection, content-reference, membership, and idempotency tables; preserve service-role access for the authority Edge Function.
+- [x] Scope private attachment paths by team or player identity and add membership/role-checked Storage policies; public-match attachments remain available to current members.
+- [x] Add regression checks for migration policy changes and protected object paths. Full suite passes 277 tests, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
+- [ ] Validate the migration on local Postgres/Supabase and perform live RLS adversarial checks; this checkout has no Supabase CLI or project configuration.
 
 ### Product-owner clarification — individual phones (2026-10-24)
 

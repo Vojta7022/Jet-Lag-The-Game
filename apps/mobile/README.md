@@ -167,7 +167,7 @@ Home offers **Start Referee Game** as the primary local play path. The referee s
 The mobile shell now supports two online paths:
 
 - fallback path: mocked in-memory persistence when Supabase env is not configured
-- Supabase-backed path: real PostgREST persistence, polling-based sync fanout, anonymous mobile auth, and durable attachment uploads when the required env is configured
+- Supabase-backed path: authenticated `game-authority` Edge Function commands and scoped projection reads, polling-based sync fanout, anonymous mobile auth, and durable attachment uploads when the required env and backend are configured
 
 Required Supabase env for the real online path:
 
@@ -178,18 +178,19 @@ Required Supabase env for the real online path:
 Current durability status:
 
 - real now:
-  - online match, event, snapshot, projection, and content-pack records can persist through Supabase REST
+  - online commands and projection reads can run through the authenticated Edge Function; it commits state atomically through server-side storage
   - mobile evidence flows can upload image binaries into Supabase Storage before recording the attachment in match state
   - visible attachments can open authenticated remote previews when the current session has access
 - still partial:
-  - the mobile client is still running the online authority flow directly in-app; this is not yet a server-side trusted command gateway
   - realtime fanout is currently polling-based rather than Supabase Realtime channels
-  - anonymous auth is suitable for local/dev testing, but production should move to a stronger auth and backend session model
+  - this checkout has not deployed or verified its Edge Function or migrations against a live Supabase project
+  - anonymous auth is suitable for local/dev play; production needs a deliberate account and recovery policy
 
 Deployment guidance:
 
-- local/dev use can point directly at a Supabase project
-- production should move command submission, projection access, and attachment URL brokering behind a backend or proxy without changing the current mobile screen APIs
+- follow [`docs/supabase-online-setup.md`](../../docs/supabase-online-setup.md) and apply every migration, including the final security migration
+- keep the service-role key exclusively in the Edge Function secret store; the mobile app must not directly access authoritative tables
+- run separate-account authorization checks and a cellular multi-phone playthrough before relying on online play
 
 ## Current Question Phase
 

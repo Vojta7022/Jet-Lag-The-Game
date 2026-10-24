@@ -18,6 +18,7 @@ export interface EvidenceContextViewModel {
   questionInstanceId?: string;
   cardInstanceId?: string;
   suggestedVisibilityScope: ProjectionScope;
+  teamId?: string;
   attachments: VisibleAttachmentProjection[];
 }
 
@@ -74,6 +75,7 @@ function resolveQuestionEvidenceContext(args: {
       role: args.role,
       teamId: question.targetTeamId
     }),
+    teamId: question.targetTeamId,
     attachments
   };
 }
@@ -129,6 +131,7 @@ function resolveCardEvidenceContext(args: {
       role: args.role,
       teamId: activeCard.holderType === 'team' ? activeCard.holderId : undefined
     }),
+    teamId: activeCard.holderType === 'team' ? activeCard.holderId : undefined,
     attachments
   };
 }

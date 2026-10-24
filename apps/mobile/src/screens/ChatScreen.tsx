@@ -65,6 +65,7 @@ export function ChatScreen() {
             title: `Attach Media To ${selectedChannel.channel.displayName}`,
             detail: 'Choose an image from the device or camera. The preview stays local until you send the message, then the match records attachment metadata honestly.',
             visibilityScope: selectedChannel.channel.visibilityScope,
+            teamId: selectedChannel.channel.teamId,
             attachmentKind: 'image',
             channelId: selectedChannel.channel.channelId
           }

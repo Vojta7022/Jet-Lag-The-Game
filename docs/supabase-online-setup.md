@@ -1,106 +1,58 @@
 # Supabase Online Setup
 
-This project's current mobile online mode expects a small fixed Supabase schema in the `public` schema plus one private Storage bucket.
+Online play uses Supabase Auth, an authenticated `game-authority` Edge Function, private match tables, and the `match-attachments` Storage bucket. Mobile clients submit commands through the function; the function validates the signed-in player's match membership and commits state with the server-only service-role key.
 
-## What the current code expects
+## Runtime configuration
 
-Required `public` tables:
+Set these values in `apps/mobile/.env`:
 
-- `matches`
-- `match_events`
-- `match_snapshots`
-- `match_projections`
-- `content_pack_references`
+- `EXPO_PUBLIC_ONLINE_PROJECT_URL`
+- `EXPO_PUBLIC_ONLINE_ANON_KEY`
+- `EXPO_PUBLIC_ONLINE_ATTACHMENT_BUCKET=match-attachments`
 
-Required Storage bucket:
+These are public client values. Never put the Supabase service-role key in the mobile app, an `EXPO_PUBLIC_*` variable, source control, or a shared client `.env` file. Configure `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` as secrets for the `game-authority` Edge Function only.
 
-- `match-attachments`
+The project currently depends on these tables: `matches`, `match_events`, `match_snapshots`, `match_projections`, `content_pack_references`, `match_memberships`, and `match_command_idempotency`. Storage uses one private bucket named `match-attachments`.
 
-Important runtime details:
+## Apply migrations
 
-- the current PostgREST table client uses the Supabase anon key, not the mobile user's access token, for table reads and writes
-- the current media upload path does use the authenticated mobile session for Storage uploads and authenticated object reads
-- attachment metadata is currently stored inside match aggregate/event/projection JSON, not in a separate attachment SQL table
+For a new project, apply every migration in order, including the security follow-up last:
 
-## Why the current error happens
+1. `supabase/migrations/202603160001_online_mode_schema.sql`
+2. `supabase/migrations/202603160002_online_mode_dev_rls_and_storage.sql`
+3. `supabase/migrations/202603160003_online_match_join_codes.sql`
+4. `supabase/migrations/202610240001_server_authority.sql`
+5. `supabase/migrations/202610240003_atomic_membership_removal.sql`
+6. `supabase/migrations/202610240004_secure_online_access.sql`
 
-If you see:
+The second migration is retained for migration history and creates the bucket, but it temporarily installs permissive development policies. The final migration removes those grants and policies. Do not stop after migration 2 or expose that intermediate state to players.
 
-```text
-Could not find the table public.match_snapshots in the schema cache
-```
+For a project that already has game data or uploaded attachments, inspect and back up its schema and bucket before applying migration 004. It replaces legacy attachment access policies and only permits the current scoped object paths. Existing objects stored under the older `matches/{matchId}/{visibilityScope}/{attachmentId}.{ext}` layout will not match the new player/team-specific policy; migrate those objects and their metadata before relying on them.
 
-your Supabase project is missing the online-mode tables that the runtime expects. Running the schema migration below creates that table and the other required tables.
+## Deploy the authority function
 
-## Files to run
+Deploy `supabase/functions/game-authority/index.ts` as the `game-authority` Edge Function. Require a valid user JWT (do not enable unauthenticated invocation) and configure the three server secrets listed above. The service-role key belongs only in the function's secret store. Confirm that a signed-in player can create/join a match and that a player outside the match cannot read or issue commands for it.
 
-Run these files in this order:
+The client uses the anon key for Supabase Auth and authenticated Storage requests. Match commands and scoped projection reads go through the Edge Function; mobile clients must not use direct PostgREST access for authoritative match tables. The Edge Function currently uses polling for projection refresh, not a push channel.
 
-1. [supabase/migrations/202603160001_online_mode_schema.sql](/Users/vojtechponrt/Documents/Jet%20Lag%20The%20Game/supabase/migrations/202603160001_online_mode_schema.sql)
-2. [supabase/migrations/202603160002_online_mode_dev_rls_and_storage.sql](/Users/vojtechponrt/Documents/Jet%20Lag%20The%20Game/supabase/migrations/202603160002_online_mode_dev_rls_and_storage.sql)
+## Storage visibility and paths
 
-## Step-by-step in Supabase
-
-1. Create or open your Supabase project.
-2. In `Authentication -> Providers`, enable `Anonymous` sign-ins for local/dev testing.
-3. Open `SQL Editor`.
-4. Run [supabase/migrations/202603160001_online_mode_schema.sql](/Users/vojtechponrt/Documents/Jet%20Lag%20The%20Game/supabase/migrations/202603160001_online_mode_schema.sql).
-5. Run [supabase/migrations/202603160002_online_mode_dev_rls_and_storage.sql](/Users/vojtechponrt/Documents/Jet%20Lag%20The%20Game/supabase/migrations/202603160002_online_mode_dev_rls_and_storage.sql).
-6. Confirm the following now exist:
-   - `public.matches`
-   - `public.match_events`
-   - `public.match_snapshots`
-   - `public.match_projections`
-   - `public.content_pack_references`
-   - storage bucket `match-attachments`
-7. In `apps/mobile/.env`, set:
-   - `EXPO_PUBLIC_ONLINE_PROJECT_URL`
-   - `EXPO_PUBLIC_ONLINE_ANON_KEY`
-   - `EXPO_PUBLIC_ONLINE_ATTACHMENT_BUCKET=match-attachments`
-8. Restart Expo after changing env.
-
-## Notes on the schema
-
-### CamelCase column names are intentional
-
-The current PostgREST client filters and upserts using field names like `matchId`, `projectionScope`, and `recipientId`.
-
-Because of that, the SQL migration creates quoted camelCase column names on purpose. Do not rewrite the schema to snake_case unless you also update the runtime code.
-
-### No foreign key from match_events to matches
-
-`create_match` currently appends to `match_events` before the runtime upserts the `matches` row.
-
-That means a strict foreign key from `match_events.matchId` to `matches.matchId` would break the first online command. The current migration intentionally avoids that foreign key.
-
-### Storage path shape
-
-The current mobile app uploads to object paths like:
+Evidence uploads are stored beneath a match and visibility scope:
 
 ```text
-matches/{matchId}/{visibilityScope}/{attachmentId}.{ext}
+matches/{matchId}/public_match/{attachmentId}.{ext}
+matches/{matchId}/team_private/{teamId}/{attachmentId}.{ext}
+matches/{matchId}/player_private/{playerId}/{attachmentId}.{ext}
+matches/{matchId}/host_admin/{playerId}/{attachmentId}.{ext}
 ```
 
-The bucket is private. Remote preview URLs are authenticated and require a signed-in session.
+The authenticated Storage policies check active membership and the viewer's scope against the latest match snapshot. `public_match` is available to active members; team and player paths are restricted to the assigned team or player; `host_admin` is restricted to the match creator. Do not construct custom paths outside these shapes.
 
-## Dev/test RLS policy tradeoff
+## Troubleshooting and deployment checks
 
-The dev/test migration grants very broad access on the online-mode tables to both:
+- `Could not find the table public.match_snapshots in the schema cache`: confirm migrations 1–6 completed and refresh the Supabase API schema cache.
+- `401` from `game-authority`: confirm Anonymous Auth is enabled for the current development login flow, the client URL/key are correct, and the function requires/receives a valid JWT.
+- `403` for a valid user: confirm that user has an active `match_memberships` row for the match and that the player is not removed.
+- Storage upload/read denied: confirm the player is an active match member and the object path uses their permitted visibility scope.
 
-- `anon`
-- `authenticated`
-
-This is necessary because the current PostgREST table client still uses the anon key for database access.
-
-That is acceptable for local/dev testing, but it is not the final production security model.
-
-## Future production hardening
-
-Before treating online mode as production-ready, tighten at least these areas:
-
-- move command submission and projection access behind a server-side gateway or Edge Function
-- stop giving `anon` direct full-table write access
-- move table access to user tokens or a trusted service-role/backend boundary
-- replace polling-only fanout with a stronger server-side push path where appropriate
-- add tighter storage policies based on path, match membership, and visibility scope
-- consider signed URL brokering or preview proxies instead of raw authenticated object reads from the client
+This checkout has static migration regression tests, but the migrations have not been executed against PostgreSQL and the function has not been deployed to a configured Supabase project. Before relying on online play, validate the migrations against a disposable Supabase database, test each attachment scope and removed-member denial with separate accounts, deploy the Edge Function, and complete a cellular multi-phone round.

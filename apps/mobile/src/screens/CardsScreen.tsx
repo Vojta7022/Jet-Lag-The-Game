@@ -367,6 +367,7 @@ export function CardsScreen() {
             title: activeCardEvidenceContext.title,
             detail: activeCardEvidenceContext.detail,
             visibilityScope: activeCardEvidenceContext.suggestedVisibilityScope,
+            teamId: activeCardEvidenceContext.teamId,
             attachmentKind: 'photo_evidence',
             cardInstanceId: activeCardEvidenceContext.cardInstanceId
           }

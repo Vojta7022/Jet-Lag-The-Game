@@ -25,6 +25,7 @@ export interface LocalEvidenceContextDescriptor {
   title: string;
   detail: string;
   visibilityScope: ProjectionScope;
+  teamId?: string;
   attachmentKind: AttachmentKind;
   channelId?: string;
   questionInstanceId?: string;
@@ -39,6 +40,7 @@ export interface LocalMediaAttachmentDraft {
   label: string;
   note: string;
   visibilityScope: ProjectionScope;
+  teamId?: string;
   channelId?: string;
   questionInstanceId?: string;
   cardInstanceId?: string;
@@ -76,6 +78,7 @@ export function createLocalMediaAttachmentDraft(args: {
     label: fallbackLabel,
     note: '',
     visibilityScope: args.context.visibilityScope,
+    teamId: args.context.teamId,
     channelId: args.context.channelId,
     questionInstanceId: args.context.questionInstanceId,
     cardInstanceId: args.context.cardInstanceId,
