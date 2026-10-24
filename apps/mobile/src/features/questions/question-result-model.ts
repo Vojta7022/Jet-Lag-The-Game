@@ -182,13 +182,16 @@ export function buildQuestionMapEffectModel(
   }
 
   const constraint = args.constraint;
-  const hasRandomizedNullAnswer = args.question.randomizedNullAnswerAllowed && args.question.answer?.value === null;
-  const mapEffect = hasRandomizedNullAnswer
+  const hasNullAnswer = args.question.answer?.value === null;
+  const hasRandomizedNullAnswer = hasNullAnswer && args.question.randomizedNullAnswerAllowed;
+  const mapEffect = hasNullAnswer
     ? {
         mapEffectModeLabel: 'No map change',
         mapEffectTone: 'info' as const,
         mapEffectTitle: 'No map change',
-        mapEffectDetail: 'The randomized question had a null answer because no valid answer was available. The search area stayed the same.',
+        mapEffectDetail: hasRandomizedNullAnswer
+          ? 'The randomized question had a null answer because no valid answer was available. The search area stayed the same.'
+          : 'The selected map region contains no matching feature for this question. The rulebook null answer resolved it, so the search area stayed the same.',
         geometryEffect: 'metadata_only' as const
       }
     : buildMapEffectDetails(constraint, args.visibleMap);
@@ -197,11 +200,17 @@ export function buildQuestionMapEffectModel(
   return {
     questionLabel: args.template?.name ?? 'Selected question',
     categoryLabel: args.category?.name ?? 'Question category',
-    answerSummary: hasRandomizedNullAnswer ? 'No valid answer was available' : summarizeAnswer(args.question.answer),
-    resolutionModeLabel: hasRandomizedNullAnswer ? 'Null answer' : formatResolutionMode(constraint?.resolutionMode),
+    answerSummary: hasRandomizedNullAnswer
+      ? 'No valid answer was available'
+      : hasNullAnswer
+        ? 'No matching feature exists in the selected map region'
+        : summarizeAnswer(args.question.answer),
+    resolutionModeLabel: hasNullAnswer ? 'Null answer' : formatResolutionMode(constraint?.resolutionMode),
     resolutionTone: buildResolutionTone(constraint?.resolutionMode),
-    resolutionDetail: hasRandomizedNullAnswer
-      ? 'The rulebook allows a randomized question to resolve with no answer when its answer does not exist in the selected map.'
+    resolutionDetail: hasNullAnswer
+      ? hasRandomizedNullAnswer
+        ? 'The rulebook allows a randomized question to resolve with no answer when its answer does not exist in the selected map.'
+        : 'The shared OpenStreetMap feature lookup found no matching feature inside the selected region, so this printed question resolved as a null answer.'
       : describeResolutionMode(constraint?.resolutionMode),
     mapEffectModeLabel: mapEffect.mapEffectModeLabel,
     mapEffectTone: mapEffect.mapEffectTone,

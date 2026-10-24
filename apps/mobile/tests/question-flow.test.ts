@@ -270,6 +270,7 @@ test('question support helper stays honest about approximate and metadata-only p
   const photosCategory = findQuestionCategory(contentPack, photosTemplate?.categoryId);
   const matchingTemplate = findQuestionTemplate(contentPack, 'matching-commercial-airport');
   const matchingCategory = findQuestionCategory(contentPack, matchingTemplate?.categoryId);
+  const adminTemplate = findQuestionTemplate(contentPack, 'matching-1st-admin-state');
 
   assert.equal(
     describeTemplateSupport({
@@ -293,6 +294,14 @@ test('question support helper stays honest about approximate and metadata-only p
       category: matchingCategory!,
       regionId: 'unknown-region'
     }),
-    'Will stay as recorded evidence until richer place data is available'
+    'The app can answer from fresh player locations and OpenStreetMap places in the selected region when connected'
+  );
+  assert.equal(
+    describeTemplateSupport({
+      template: adminTemplate!,
+      category: matchingCategory!,
+      regionId: 'unknown-region'
+    }),
+    'Will stay as recorded evidence until suitable place data is available'
   );
 });

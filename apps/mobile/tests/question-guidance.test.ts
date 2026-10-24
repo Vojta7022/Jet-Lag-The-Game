@@ -197,7 +197,7 @@ test('question guidance stays honest about metadata-only evidence flows', () => 
   assert.match(impact.detail, /should not be expected to change the map/i);
 });
 
-test('question guidance falls back to metadata-only when feature coverage is unavailable', () => {
+test('question guidance explains automatic regional feature answers for supported classes', () => {
   const category = createCategory({
     categoryId: 'matching',
     name: 'Matching',
@@ -226,5 +226,6 @@ test('question guidance falls back to metadata-only when feature coverage is una
   });
 
   assert.match(describeQuestionTemplateForPlayers(template, category), /commercial airport/i);
-  assert.equal(impact.label, 'Evidence only');
+  assert.equal(impact.label, 'Approximate map update');
+  assert.match(describeExpectedAnswerGuidance(template, category), /OpenStreetMap places in the selected region/i);
 });

@@ -1,5 +1,6 @@
 export * from './feature-layer.ts';
 export * from './features/query.ts';
+export * from './features/openstreetmap-question-feature-provider.ts';
 export {
   createMultiPolygonGeometry,
   createPolygonGeometry,

@@ -5,7 +5,8 @@ import type {
   CommandValidationError,
   ContentPack,
   DeckDefinition,
-  MatchAggregate
+  MatchAggregate,
+  QuestionFeatureDatasetModel
 } from '../../../shared-types/src/index.ts';
 import { circleWithinGeometry, distanceMeters, isPolygonBoundaryGeometry } from '../../../geo/src/index.ts';
 
@@ -399,7 +400,8 @@ function validateDiscardResolution(
 export function validateCommandEnvelope(
   aggregate: MatchAggregate | undefined,
   envelope: CommandEnvelope,
-  contentPack: ContentPack
+  contentPack: ContentPack,
+  questionFeatureDataset?: QuestionFeatureDatasetModel
 ): CommandValidationError[] {
   if (envelope.command.type === 'create_match') {
     if (aggregate) {
@@ -701,7 +703,8 @@ export function validateCommandEnvelope(
         template,
         askedByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId,
         targetTeamId: envelope.command.payload.targetTeamId,
-        occurredAt: envelope.occurredAt
+        occurredAt: envelope.occurredAt,
+        questionFeatureDataset
       });
       if (automaticAnswer.kind === 'blocked') {
         return [error(envelope.command.type, automaticAnswer.code, automaticAnswer.message)];

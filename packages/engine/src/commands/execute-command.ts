@@ -11,6 +11,7 @@ import type {
   LocationSampleModel,
   MatchAggregate,
   QuestionInstanceModel,
+  QuestionFeatureDatasetModel,
   RoleAssignmentModel,
   TeamModel,
   TimerModel
@@ -407,6 +408,16 @@ function buildConstraintAppliedEvent(args: {
     createdAt: envelope.occurredAt,
     resolutionMetadata: metadata
   });
+  const {
+    featureData: _featureData,
+    ...persistedRawMetadata
+  } = metadata;
+  const persistedDraft = {
+    ...resolvedConstraint,
+    metadata: resolvedConstraint.metadata
+      ? Object.fromEntries(Object.entries(resolvedConstraint.metadata).filter(([key]) => key !== 'featureData'))
+      : undefined
+  };
   const constraintRecord = materializeConstraintRecord({
     searchArea: aggregate.searchArea!,
     region: aggregate.mapRegion!,
@@ -414,8 +425,8 @@ function buildConstraintAppliedEvent(args: {
     constraintId,
     sourceQuestionInstanceId: question.questionInstanceId,
     createdAt: envelope.occurredAt,
-    draft: resolvedConstraint,
-    rawMetadata: metadata
+    draft: persistedDraft,
+    rawMetadata: persistedRawMetadata
   });
   const cooldownSeconds = getQuestionCooldownSeconds(
     contentPack,
@@ -431,7 +442,7 @@ function buildConstraintAppliedEvent(args: {
     payload: {
       questionInstanceId: question.questionInstanceId,
       constraintId,
-      metadata,
+      metadata: persistedRawMetadata,
       constraint: constraintRecord,
       lifecycleState: aggregate.lifecycleState,
       seekPhaseSubstate: args.openCardResolution
@@ -445,7 +456,8 @@ function buildConstraintAppliedEvent(args: {
 function eventsForCommand(
   aggregate: MatchAggregate | undefined,
   envelope: CommandEnvelope,
-  contentPack: ContentPack
+  contentPack: ContentPack,
+  questionFeatureDataset?: QuestionFeatureDatasetModel
 ): DomainEventEnvelope[] {
   switch (envelope.command.type) {
     case 'create_match': {
@@ -837,7 +849,8 @@ function eventsForCommand(
         template,
         askedByPlayerId,
         targetTeamId: envelope.command.payload.targetTeamId,
-        occurredAt: envelope.occurredAt
+        occurredAt: envelope.occurredAt,
+        questionFeatureDataset
       });
       const events: DomainEventEnvelope[] = [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
@@ -852,6 +865,20 @@ function eventsForCommand(
         })
       ];
       if (automaticAnswer.kind !== 'resolved') return events;
+
+      if (automaticAnswer.answer.value === null || !automaticAnswer.constraintId) {
+        events.push(makeEventEnvelope(aggregate, envelope, 1, 'public_match', {
+          type: 'question_null_answer_resolved',
+          payload: {
+            questionInstanceId: question.questionInstanceId,
+            answer: automaticAnswer.answer,
+            automaticResolution: automaticAnswer.automaticResolution,
+            lifecycleState: aggregate!.lifecycleState,
+            seekPhaseSubstate: 'ready'
+          }
+        }));
+        return events;
+      }
 
       const answeredQuestion: QuestionInstanceModel = {
         ...question,
@@ -876,7 +903,8 @@ function eventsForCommand(
         question: answeredQuestion,
         constraintId: automaticAnswer.constraintId,
         metadata: {
-          automaticResolution: automaticAnswer.automaticResolution
+          automaticResolution: automaticAnswer.automaticResolution,
+          ...(automaticAnswer.constraintMetadata ?? {})
         },
         index: 2
       }));
@@ -1162,6 +1190,19 @@ function eventsForCommand(
           occurredAt: envelope.occurredAt
         });
         if (automaticAnswer.kind === 'resolved') {
+          if (automaticAnswer.answer.value === null || !automaticAnswer.constraintId) {
+            events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+              type: 'question_null_answer_resolved',
+              payload: {
+                questionInstanceId: replacementQuestion.questionInstanceId,
+                answer: automaticAnswer.answer,
+                automaticResolution: automaticAnswer.automaticResolution,
+                lifecycleState: aggregate!.lifecycleState,
+                seekPhaseSubstate: 'ready'
+              }
+            }));
+            return events;
+          }
           const answeredQuestion: QuestionInstanceModel = {
             ...replacementQuestion, status: 'applying_constraints', answer: automaticAnswer.answer,
             automaticResolution: automaticAnswer.automaticResolution
@@ -1179,7 +1220,10 @@ function eventsForCommand(
           events.push(buildConstraintAppliedEvent({
             aggregate: aggregate!, envelope, contentPack, question: answeredQuestion,
             constraintId: automaticAnswer.constraintId,
-            metadata: { automaticResolution: automaticAnswer.automaticResolution }, index: events.length
+            metadata: {
+              automaticResolution: automaticAnswer.automaticResolution,
+              ...(automaticAnswer.constraintMetadata ?? {})
+            }, index: events.length
           }));
         }
         return events;
@@ -1368,14 +1412,15 @@ function eventsForCommand(
 export function executeCommand(
   aggregate: MatchAggregate | undefined,
   envelope: CommandEnvelope,
-  contentPack: ContentPack
+  contentPack: ContentPack,
+  questionFeatureDataset?: QuestionFeatureDatasetModel
 ): ExecuteCommandResult {
-  const issues = validateCommandEnvelope(aggregate, envelope, contentPack);
+  const issues = validateCommandEnvelope(aggregate, envelope, contentPack, questionFeatureDataset);
   if (issues.length > 0) {
     throw new EngineCommandError(issues[0]?.message ?? 'Command validation failed.', issues);
   }
 
-  const events = eventsForCommand(aggregate, envelope, contentPack);
+  const events = eventsForCommand(aggregate, envelope, contentPack, questionFeatureDataset);
   if (events.length === 0) {
     throw new EngineCommandError('Command produced no events.', [
       {

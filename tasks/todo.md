@@ -57,6 +57,22 @@
 - [x] Remove the unsupported “same” answer from the imported category, every template, and its constraint schema.
 - [x] Verify the engine rejects “same” and both workbook mappings expose only “closer”/“further”.
 
+### Active: trusted feature data for automatic Matching/Measuring
+
+- [x] Add a source-attributed OpenStreetMap feature query provider scoped to the selected playable region and question feature class.
+- [x] Inject provider results on the authority side only; never accept feature coordinates or computed answers from a player command.
+- [x] Resolve supported Matching and Measuring questions from fresh hider/seeker fixes, then apply the map constraint atomically from that same feature snapshot.
+- [x] Keep unsupported categories and unavailable feature providers on an explicit manual or blocked path; never guess from seed data.
+- [x] Verify provider filtering, answer precision, map geometry, role privacy, full suite, and mobile typecheck.
+
+### Completed implementation slice: authority-backed Matching/Measuring
+
+- [x] Query supported OpenStreetMap feature classes inside the selected map boundary, clip representatives to the exact polygon (including holes), attach OSM attribution, and cache short-lived query results.
+- [x] Resolve supported Matching/Measuring on the authority using fresh device fixes and trusted server-loaded regional features; answer and map deduction share one atomic command and snapshot provenance.
+- [x] Keep client-provided feature coordinates out of the resolver; strip bulky feature data before persisting public events while preserving source/version/time and constraint geometry.
+- [x] Keep unsupported question feature classes on manual answer flow and report the automatic regional path accurately in question guidance.
+- [x] Verify `npm test` (254 passing), `npm run mobile:typecheck`, and `git diff --check`.
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.

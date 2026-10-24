@@ -1,6 +1,6 @@
 import type { CommandEnvelope, CommandValidationError } from '../contracts/commands.ts';
 import type { ContentPack, ProjectionScope } from '../content.ts';
-import type { MatchAggregate, MatchRole } from '../domain/match.ts';
+import type { MatchAggregate, MatchRole, QuestionFeatureDatasetModel } from '../domain/match.ts';
 import type { DomainEvent, DomainEventEnvelope } from '../events/domain-events.ts';
 import type { MatchProjection } from '../projections/match-projection.ts';
 import type { SingleDeviceRevealFlowState } from './single-device.ts';
@@ -110,6 +110,7 @@ export interface CommandGatewayContext {
   aggregate?: MatchAggregate;
   contentPack: ContentPack;
   envelope: CommandEnvelope;
+  questionFeatureDataset?: QuestionFeatureDatasetModel;
 }
 
 export interface CommandGateway {

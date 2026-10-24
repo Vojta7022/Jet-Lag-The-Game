@@ -9,6 +9,7 @@ import type {
 } from '../../../../../packages/shared-types/src/index.ts';
 
 import { getSeedRegionFeatureData, hasSeedFeatureCoverage } from './seed-feature-data.ts';
+import { hasOpenStreetMapFeatureClass } from '../../../../../packages/geo/src/index.ts';
 
 export interface QuestionAnswerDraft {
   selectedValue: string;
@@ -172,12 +173,16 @@ export function describeTemplateSupport(args: {
     case 'nearest_feature_match':
     case 'comparative_distance':
     case 'nearest_candidate':
-      return hasSeedFeatureCoverage(
+      if (hasSeedFeatureCoverage(
         args.regionId,
         (args.template.featureClassRefs ?? []).map((feature) => feature.featureClassId)
-      )
-        ? 'Can update the map from the available place data in this region'
-        : 'Will stay as recorded evidence until richer place data is available';
+      )) return 'Can update the map from the available place data in this region';
+      if (
+        (args.category.resolverKind === 'nearest_feature_match' || args.category.resolverKind === 'comparative_distance') &&
+        (args.template.featureClassRefs ?? []).length > 0 &&
+        (args.template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
+      ) return 'The app can answer from fresh player locations and OpenStreetMap places in the selected region when connected';
+      return 'Will stay as recorded evidence until suitable place data is available';
     default:
       return 'Stays recorded without a map update for now';
   }

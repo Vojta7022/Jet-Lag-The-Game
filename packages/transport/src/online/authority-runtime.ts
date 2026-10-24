@@ -27,6 +27,8 @@ import { reduceMatchAggregate } from '../../../engine/src/index.ts';
 
 import { TransportRuntimeError } from '../errors.ts';
 import { EngineCommandGateway } from '../engine-command-gateway.ts';
+import { loadQuestionFeatureDataset } from '../question-feature-data.ts';
+import type { QuestionFeatureDataProvider } from '../../../geo/src/index.ts';
 import { reconcileRuntimeState } from '../reconcile-runtime-state.ts';
 import { buildSyncEnvelope, createMatchSnapshot } from '../sync.ts';
 
@@ -59,6 +61,7 @@ export interface OnlineAuthorityRuntimeOptions {
   authorityRepository?: OnlineAuthorityRepository;
   gateway?: CommandGateway;
   sessionBinder?: OnlineSessionBinder;
+  questionFeatureDataProvider?: QuestionFeatureDataProvider;
 }
 
 function toMatchRecord(aggregate: MatchAggregate) {
@@ -87,6 +90,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   private readonly repositories: OnlineRepositoryBundle;
   private readonly realtimeFanout: OnlineRealtimeFanout;
   private readonly authorityRepository?: OnlineAuthorityRepository;
+  private readonly questionFeatureDataProvider?: QuestionFeatureDataProvider;
   private readonly sessionBinder: OnlineSessionBinder;
   private readonly contentPacksById: Map<string, ContentPack>;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
@@ -98,6 +102,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     this.repositories = options.repositories;
     this.realtimeFanout = options.realtimeFanout;
     this.authorityRepository = options.authorityRepository;
+    this.questionFeatureDataProvider = options.questionFeatureDataProvider;
     this.sessionBinder = options.sessionBinder ?? new DefaultOnlineSessionBinder();
     this.contentPacksById = new Map(options.contentPacks.map((contentPack) => [contentPack.packId, contentPack]));
   }
@@ -254,10 +259,17 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       await this.throwForMissingAggregateState(envelope.matchId);
     }
     const contentPack = await this.resolveContentPack(aggregate, envelope);
+    const questionFeatureDataset = await loadQuestionFeatureDataset({
+      aggregate,
+      contentPack,
+      envelope,
+      provider: this.questionFeatureDataProvider
+    });
     const result = await this.gateway.submit({
       aggregate,
       contentPack,
-      envelope
+      envelope,
+      questionFeatureDataset
     });
 
     if (!result.accepted || !result.aggregate) {

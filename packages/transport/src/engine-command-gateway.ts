@@ -8,7 +8,7 @@ import { EngineCommandError, executeCommand } from '../../engine/src/index.ts';
 export class EngineCommandGateway implements CommandGateway {
   async submit(context: CommandGatewayContext): Promise<CommandSubmissionResult> {
     try {
-      const result = executeCommand(context.aggregate, context.envelope, context.contentPack);
+      const result = executeCommand(context.aggregate, context.envelope, context.contentPack, context.questionFeatureDataset);
 
       return {
         accepted: true,

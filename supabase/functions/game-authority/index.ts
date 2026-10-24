@@ -47,10 +47,11 @@ function errorResponse(error: unknown): Response {
   const status = code === 'PLAYER_ALREADY_JOINED' || code === 'PLAYER_ID_ALREADY_BOUND' || code === 'IDEMPOTENCY_KEY_REUSE' || code === 'MATCH_REVISION_CONFLICT' ? 409
     : code === 'MATCH_MEMBERSHIP_REQUIRED' || code === 'MEMBERSHIP_REMOVED' || code === 'PROJECTION_SCOPE_FORBIDDEN' ? 403
       : code === 'MATCH_NOT_FOUND' ? 404
+        : code === 'QUESTION_FEATURE_DATA_UNAVAILABLE' ? 503
         : code === 'REQUEST_TOO_LARGE' ? 413
           : code.startsWith('REQUEST_') || code === 'JSON_INVALID' || code === 'IDENTITY_CLAIMS_NOT_ALLOWED' || code === 'OPERATION_UNSUPPORTED' ? 400
             : 500;
-  const knownRequestError = status < 500 || code === 'MATCH_REVISION_CONFLICT';
+  const knownRequestError = status < 500 || code === 'MATCH_REVISION_CONFLICT' || code === 'QUESTION_FEATURE_DATA_UNAVAILABLE';
   const message = knownRequestError && error instanceof Error ? error.message : 'The game service could not complete this request.';
   const currentRevision = typeof error === 'object' && error && 'currentRevision' in error
     ? (error as { currentRevision?: number | null }).currentRevision

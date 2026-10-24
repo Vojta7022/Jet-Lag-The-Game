@@ -3,9 +3,10 @@ import type {
   LocationSampleModel,
   MatchAggregate,
   QuestionCategoryDefinition,
+  QuestionFeatureDatasetModel,
   QuestionTemplateDefinition
 } from '../../../shared-types/src/index.ts';
-import { distanceMeters } from '../../../geo/src/index.ts';
+import { distanceMeters, queryNearestFeature, type GeoFeatureRecord } from '../../../geo/src/index.ts';
 
 export const AUTOMATIC_QUESTION_RESOLVER_VERSION = 'jetlag-location-v1';
 const DEFAULT_MAX_FIX_AGE_SECONDS = 30;
@@ -17,17 +18,22 @@ export type AutomaticQuestionAnswerResult =
   | {
       kind: 'resolved';
       answer: Record<string, unknown>;
-      constraintId: string;
+      constraintId?: string;
       automaticResolution: {
         resolverVersion: string;
-        method: 'threshold_distance' | 'hotter_colder';
+        method: 'threshold_distance' | 'hotter_colder' | 'nearest_feature_match' | 'comparative_distance';
         sourceSampleIds: string[];
         sourceRecordedAt: string[];
         sourceAccuracyMeters: number[];
         thresholdMeters: number;
         movementStartSampleId?: string;
         movementEndSampleId?: string;
+        featureDatasetSource?: string;
+        featureDatasetVersion?: string;
+        featureDatasetRetrievedAt?: string;
+        referenceFeatureId?: string;
       };
+      constraintMetadata?: Record<string, unknown>;
     };
 
 function latestSample(samples: LocationSampleModel[], predicate: (sample: LocationSampleModel) => boolean) {
@@ -38,6 +44,42 @@ function numericPolicy(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function toGeoFeatureRecords(dataset: QuestionFeatureDatasetModel): GeoFeatureRecord[] {
+  return dataset.features.map((feature) => ({
+    featureId: feature.featureId,
+    featureClassId: feature.featureClassId,
+    label: feature.label,
+    representativePoint: { latitude: feature.latitude, longitude: feature.longitude },
+    geometrySupport: feature.geometrySupport,
+    coverage: feature.coverage,
+    properties: feature.properties
+  }));
+}
+
+function nearestFeatureHasConfidentMargin(args: {
+  features: GeoFeatureRecord[];
+  featureClassIds: string[];
+  point: [number, number];
+  accuracyMeters: number;
+}): { feature?: GeoFeatureRecord; ambiguous: boolean } {
+  const ranked = args.features
+    .filter((feature) => args.featureClassIds.includes(feature.featureClassId) && feature.representativePoint)
+    .map((feature) => ({
+      feature,
+      distance: distanceMeters(
+        args.point,
+        [feature.representativePoint!.longitude, feature.representativePoint!.latitude]
+      )
+    }))
+    .sort((left, right) => left.distance - right.distance);
+  const nearest = ranked[0];
+  const second = ranked[1];
+  return {
+    feature: nearest?.feature,
+    ambiguous: Boolean(nearest && second && second.distance - nearest.distance <= args.accuracyMeters * 2)
+  };
+}
+
 export function resolveAutomaticQuestionAnswer(args: {
   aggregate: MatchAggregate;
   contentPack: ContentPack;
@@ -46,10 +88,18 @@ export function resolveAutomaticQuestionAnswer(args: {
   askedByPlayerId: string;
   targetTeamId?: string;
   occurredAt: string;
+  questionFeatureDataset?: QuestionFeatureDatasetModel;
 }): AutomaticQuestionAnswerResult {
   const { aggregate, contentPack, category, template } = args;
   if (category.answerPolicy === 'manual') return { kind: 'manual' };
-  if (category.resolverKind !== 'threshold_distance' && category.resolverKind !== 'hotter_colder') return { kind: 'manual' };
+  if (!['threshold_distance', 'hotter_colder', 'nearest_feature_match', 'comparative_distance'].includes(category.resolverKind)) return { kind: 'manual' };
+  if (
+    (category.resolverKind === 'nearest_feature_match' || category.resolverKind === 'comparative_distance') &&
+    (!args.questionFeatureDataset ||
+      (template.featureClassRefs ?? []).length === 0 ||
+      !args.questionFeatureDataset.features.some((feature) =>
+        (template.featureClassRefs ?? []).some((reference) => reference.featureClassId === feature.featureClassId)))
+  ) return { kind: 'manual' };
 
   const seeker = latestSample(aggregate.locationSamples, (sample) =>
     sample.playerId === args.askedByPlayerId && sample.role === 'seeker' &&
@@ -82,6 +132,141 @@ export function resolveAutomaticQuestionAnswer(args: {
       kind: 'blocked',
       code: 'LOCATION_FIX_REQUIRED',
       message: `A fresh and accurate location fix is required from the seeker and hider (within ${maxAgeSeconds} seconds and ${maxAccuracyMeters} meters accuracy).`
+    };
+  }
+
+  if (category.resolverKind === 'nearest_feature_match' || category.resolverKind === 'comparative_distance') {
+    const dataset = args.questionFeatureDataset;
+    const featureClassIds = (template.featureClassRefs ?? []).map((feature) => feature.featureClassId);
+    if (!dataset || featureClassIds.length === 0) return { kind: 'manual' };
+    const features = toGeoFeatureRecords(dataset);
+    const classFeatures = features.filter((feature) => featureClassIds.includes(feature.featureClassId));
+    const constraintRefs = new Set([...(template.constraintRefs ?? []), ...(category.defaultConstraintRefs ?? [])]);
+    const constraint = contentPack.constraints.find((candidate) => constraintRefs.has(candidate.constraintId) &&
+      candidate.kind === (category.resolverKind === 'nearest_feature_match' ? 'nearest_feature_match' : 'comparative_distance'));
+    if (!constraint) return { kind: 'manual' };
+    const datasetProvenance = {
+      featureDatasetSource: dataset.source,
+      featureDatasetVersion: dataset.sourceVersion,
+      featureDatasetRetrievedAt: dataset.retrievedAt
+    };
+
+    if (category.resolverKind === 'nearest_feature_match') {
+      const seekerNearest = nearestFeatureHasConfidentMargin({
+        features,
+        featureClassIds,
+        point: [seeker.longitude, seeker.latitude],
+        accuracyMeters: seeker.accuracyMeters!
+      });
+      const hiderNearest = nearestFeatureHasConfidentMargin({
+        features,
+        featureClassIds,
+        point: [hider.longitude, hider.latitude],
+        accuracyMeters: hider.accuracyMeters!
+      });
+      if (seekerNearest.ambiguous || hiderNearest.ambiguous) {
+        return {
+          kind: 'blocked',
+          code: 'LOCATION_ANSWER_AMBIGUOUS',
+          message: 'GPS uncertainty overlaps the nearest matching feature boundary. Refresh both locations before asking this question.'
+        };
+      }
+      if (!seekerNearest.feature || !hiderNearest.feature) {
+        return {
+          kind: 'resolved',
+          answer: { value: null },
+          automaticResolution: {
+            resolverVersion: AUTOMATIC_QUESTION_RESOLVER_VERSION,
+            method: category.resolverKind,
+            sourceSampleIds: [seeker.sampleId, hider.sampleId],
+            sourceRecordedAt: [seeker.recordedAt, hider.recordedAt],
+            sourceAccuracyMeters: [seeker.accuracyMeters!, hider.accuracyMeters!],
+            thresholdMeters: 0,
+            ...datasetProvenance
+          }
+        };
+      }
+      const compareValue = template.featureClassRefs?.[0]?.featureClassId === 'stations-name-length'
+        ? seekerNearest.feature.label.trim().length === hiderNearest.feature.label.trim().length
+        : seekerNearest.feature.featureId === hiderNearest.feature.featureId;
+      return {
+        kind: 'resolved',
+        answer: { value: compareValue ? 'yes' : 'no' },
+        constraintId: constraint.constraintId,
+        automaticResolution: {
+          resolverVersion: AUTOMATIC_QUESTION_RESOLVER_VERSION,
+          method: category.resolverKind,
+          sourceSampleIds: [seeker.sampleId, hider.sampleId],
+          sourceRecordedAt: [seeker.recordedAt, hider.recordedAt],
+          sourceAccuracyMeters: [seeker.accuracyMeters!, hider.accuracyMeters!],
+          thresholdMeters: 0,
+          referenceFeatureId: seekerNearest.feature.featureId,
+          ...datasetProvenance
+        },
+        constraintMetadata: {
+          featureData: features,
+          featureDatasetSource: dataset.source,
+          featureDatasetVersion: dataset.sourceVersion,
+          featureDatasetRetrievedAt: dataset.retrievedAt,
+          featureDataCoverage: dataset.coverage,
+          gridResolutionMeters: 250
+        }
+      };
+    }
+
+    const seekerNearest = queryNearestFeature({ features, featureClassIds, point: [seeker.longitude, seeker.latitude] });
+    if (!seekerNearest.feature || typeof seekerNearest.distanceMeters !== 'number') {
+      return {
+        kind: 'resolved',
+        answer: { value: null },
+        automaticResolution: {
+          resolverVersion: AUTOMATIC_QUESTION_RESOLVER_VERSION,
+          method: category.resolverKind,
+          sourceSampleIds: [seeker.sampleId, hider.sampleId],
+          sourceRecordedAt: [seeker.recordedAt, hider.recordedAt],
+          sourceAccuracyMeters: [seeker.accuracyMeters!, hider.accuracyMeters!],
+          thresholdMeters: 0,
+          ...datasetProvenance
+        }
+      };
+    }
+    const reference = seekerNearest.feature.representativePoint
+      ? [seekerNearest.feature.representativePoint.longitude, seekerNearest.feature.representativePoint.latitude] as [number, number]
+      : undefined;
+    if (!reference) return { kind: 'manual' };
+    const seekerDistance = distanceMeters([seeker.longitude, seeker.latitude], reference);
+    const hiderDistance = distanceMeters([hider.longitude, hider.latitude], reference);
+    const distanceDelta = hiderDistance - seekerDistance;
+    const uncertaintyMeters = seeker.accuracyMeters! + hider.accuracyMeters!;
+    if (Math.abs(distanceDelta) <= uncertaintyMeters) {
+      return {
+        kind: 'blocked',
+        code: 'LOCATION_ANSWER_AMBIGUOUS',
+        message: 'GPS uncertainty cannot distinguish closer from further for this feature. Refresh both locations and try again.'
+      };
+    }
+    return {
+      kind: 'resolved',
+      answer: { value: distanceDelta < 0 ? 'closer' : 'further' },
+      constraintId: constraint.constraintId,
+      automaticResolution: {
+        resolverVersion: AUTOMATIC_QUESTION_RESOLVER_VERSION,
+        method: category.resolverKind,
+        sourceSampleIds: [seeker.sampleId, hider.sampleId],
+        sourceRecordedAt: [seeker.recordedAt, hider.recordedAt],
+        sourceAccuracyMeters: [seeker.accuracyMeters!, hider.accuracyMeters!],
+        thresholdMeters: uncertaintyMeters,
+        referenceFeatureId: seekerNearest.feature.featureId,
+        ...datasetProvenance
+      },
+      constraintMetadata: {
+        featureData: features,
+        featureDatasetSource: dataset.source,
+        featureDatasetVersion: dataset.sourceVersion,
+        featureDatasetRetrievedAt: dataset.retrievedAt,
+        featureDataCoverage: dataset.coverage,
+        gridResolutionMeters: 250
+      }
     };
   }
 

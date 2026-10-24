@@ -171,6 +171,10 @@ export interface AutomaticQuestionResolutionModel {
   thresholdMeters?: number;
   movementStartSampleId?: string;
   movementEndSampleId?: string;
+  featureDatasetSource?: string;
+  featureDatasetVersion?: string;
+  featureDatasetRetrievedAt?: string;
+  referenceFeatureId?: string;
 }
 
 export interface QuestionCardRewardSetModel {
@@ -257,6 +261,26 @@ export interface LocationSampleModel {
   source: LocationSourceKind;
   onTransit?: boolean;
   recordedAt: string;
+}
+
+export interface QuestionFeatureRecordModel {
+  featureId: string;
+  featureClassId: string;
+  label: string;
+  latitude: number;
+  longitude: number;
+  geometrySupport: 'point' | 'line' | 'polygon' | 'mixed' | 'metadata_only';
+  coverage: 'exact' | 'approximate' | 'metadata_only';
+  properties?: Record<string, unknown>;
+}
+
+export interface QuestionFeatureDatasetModel {
+  source: 'OpenStreetMap';
+  sourceUrl: string;
+  sourceVersion: string;
+  retrievedAt: string;
+  coverage: 'exact' | 'approximate' | 'metadata_only';
+  features: QuestionFeatureRecordModel[];
 }
 
 export interface FinalHidingSpotModel {

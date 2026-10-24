@@ -2,6 +2,7 @@ export * from './errors.ts';
 export * from './engine-command-gateway.ts';
 export * from './in-memory-authority-runtime.ts';
 export * from './in-memory-persistence.ts';
+export * from './question-feature-data.ts';
 export * from './in-memory-transport-adapter.ts';
 export * from './local-nearby/authority-runtime.ts';
 export * from './local-nearby/contracts.ts';

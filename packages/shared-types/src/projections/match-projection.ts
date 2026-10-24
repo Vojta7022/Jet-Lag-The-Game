@@ -137,6 +137,10 @@ export interface VisibleQuestionProjection {
     thresholdMeters?: number;
     movementStartSampleId?: string;
     movementEndSampleId?: string;
+    featureDatasetSource?: string;
+    featureDatasetVersion?: string;
+    featureDatasetRetrievedAt?: string;
+    referenceFeatureId?: string;
   };
   randomizedFromQuestionInstanceId?: string;
   randomizedNullAnswerAllowed?: boolean;

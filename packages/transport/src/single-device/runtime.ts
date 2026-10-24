@@ -17,6 +17,7 @@ import type {
   TransportSubscription,
   LocalRuntimePersistence
 } from '../../../shared-types/src/index.ts';
+import type { QuestionFeatureDataProvider } from '../../../geo/src/index.ts';
 
 import { InMemoryAuthorityRuntime } from '../in-memory-authority-runtime.ts';
 import { InMemoryRuntimePersistence } from '../in-memory-persistence.ts';
@@ -39,6 +40,7 @@ export interface SingleDeviceRefereeRuntimeOptions {
   contentPacks: ContentPack[];
   persistence?: LocalRuntimePersistence;
   now?: () => Date;
+  questionFeatureDataProvider?: QuestionFeatureDataProvider;
 }
 
 export class SingleDeviceRefereeRuntime implements AuthorityRuntime, ProtectedRevealFlowController {
@@ -53,7 +55,8 @@ export class SingleDeviceRefereeRuntime implements AuthorityRuntime, ProtectedRe
     this.innerRuntime = new InMemoryAuthorityRuntime({
       mode: 'single_device_referee',
       contentPacks: options.contentPacks,
-      persistence
+      persistence,
+      questionFeatureDataProvider: options.questionFeatureDataProvider
     });
     this.revealFlow = new SingleDeviceRevealFlowManager(options.now, persistence);
     this.gateway = this.innerRuntime.gateway;

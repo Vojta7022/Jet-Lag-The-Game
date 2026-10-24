@@ -316,6 +316,7 @@ export interface QuestionNullAnswerResolvedEvent {
   payload: {
     questionInstanceId: string;
     answer: Record<string, unknown>;
+    automaticResolution?: import('../domain/match.ts').AutomaticQuestionResolutionModel;
     lifecycleState: MatchLifecycleState;
     seekPhaseSubstate: SeekPhaseSubstate;
   };

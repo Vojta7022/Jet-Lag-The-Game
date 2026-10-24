@@ -40,6 +40,7 @@ import {
   SupabaseSnapshotRepository
 } from '../../../../packages/transport/src/index.ts';
 import type { OnlineRepositoryBundle, OnlineTransportService } from '../../../../packages/transport/src/index.ts';
+import { OpenStreetMapQuestionFeatureProvider } from '../../../../packages/geo/src/index.ts';
 
 import type { MobileAppEnvironment, MobileRuntimeKind } from '../config/env.ts';
 import {
@@ -814,7 +815,8 @@ export class MobileRuntimeOrchestrator {
 
     const runtime = new SingleDeviceRefereeRuntime({
       contentPacks: [this.contentPack],
-      persistence: this.singleDevicePersistence
+      persistence: this.singleDevicePersistence,
+      questionFeatureDataProvider: new OpenStreetMapQuestionFeatureProvider()
     });
     this.singleDeviceRuntimes.set(matchId, runtime);
     return runtime;
@@ -838,7 +840,8 @@ export class MobileRuntimeOrchestrator {
     const runtime = repositories ? new OnlineAuthorityRuntime({
       contentPacks: [this.contentPack],
       repositories,
-      realtimeFanout: realtime
+      realtimeFanout: realtime,
+      questionFeatureDataProvider: new OpenStreetMapQuestionFeatureProvider()
     }) : undefined;
     const sessionManager = this.onlineSessionManagerOverride
       ?? (usingRealSupabase ? new SupabaseMobileSessionManager(this.environment) : undefined);

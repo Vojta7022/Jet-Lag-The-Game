@@ -532,6 +532,7 @@ export function reduceMatchAggregate(
             ...question,
             status: 'resolved',
             answer: eventEnvelope.event.payload.answer,
+            automaticResolution: eventEnvelope.event.payload.automaticResolution,
             resolvedAt: eventEnvelope.occurredAt
           }
         },

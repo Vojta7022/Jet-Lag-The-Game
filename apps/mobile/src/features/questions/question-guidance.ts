@@ -7,6 +7,7 @@ import type {
 import type { ResolutionTone } from './question-result-model.ts';
 
 import { describeTemplateSupport } from './question-flow-state.ts';
+import { hasOpenStreetMapFeatureClass } from '../../../../../packages/geo/src/index.ts';
 
 function joinList(values: string[]): string {
   if (values.length === 0) {
@@ -254,6 +255,14 @@ export function describeExpectedAnswerGuidance(
 ): string {
   if (category?.resolverKind === 'threshold_distance' && category.answerPolicy !== 'manual') {
     return 'The app calculates Yes or No from fresh GPS locations for the hider and asking seeker.';
+  }
+  if (
+    category && category.answerPolicy !== 'manual' &&
+    (category.resolverKind === 'nearest_feature_match' || category.resolverKind === 'comparative_distance') &&
+    (template.featureClassRefs ?? []).length > 0 &&
+    (template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
+  ) {
+    return 'When connected, the app answers from fresh GPS locations for both players and OpenStreetMap places in the selected region.';
   }
 
   const answerKind = String(template.answerSchema.kind ?? 'manual');

@@ -57,6 +57,118 @@ test('Radar automatically answers from fresh hider and seeker fixes and applies 
   assert.equal('longitude' in answerEvent.event.payload, false);
 });
 
+test('Matching automatically compares the nearest same-class features and narrows from the trusted feature snapshot', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.1, longitude: 103.82,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test-feature-snapshot-v1',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [
+      { featureId: 'osm:node/1', featureClassId: 'hospital', label: 'West Hospital', longitude: 103.799, latitude: 1.1, geometrySupport: 'point' as const, coverage: 'approximate' as const },
+      { featureId: 'osm:node/2', featureClassId: 'hospital', label: 'East Hospital', longitude: 103.821, latitude: 1.1, geometrySupport: 'point' as const, coverage: 'approximate' as const }
+    ]
+  };
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-matching', templateId: 'matching-hospital', targetTeamId: 'team-hider' }
+    }, 16), contentPack, dataset);
+
+  assert.equal(result.aggregate.questionInstances['question:auto-matching']?.status, 'resolved');
+  assert.equal(result.aggregate.questionInstances['question:auto-matching']?.answer?.value, 'no');
+  assert.equal(result.aggregate.questionInstances['question:auto-matching']?.automaticResolution?.referenceFeatureId, 'osm:node/1');
+  const constraint = Object.values(result.aggregate.constraints).find((item) => item.sourceQuestionInstanceId === 'question:auto-matching');
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.equal('featureData' in (constraint?.metadata ?? {}), false);
+  assert.equal(result.aggregate.searchArea?.history.at(-1)?.summary.includes('Matching'), true);
+});
+
+test('Matching leaves an empty approximate feature dataset to the hider instead of guessing null', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.101, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-matching-null', templateId: 'matching-hospital', targetTeamId: 'team-hider' }
+    }, 16), contentPack, {
+      source: 'OpenStreetMap',
+      sourceUrl: 'https://www.openstreetmap.org/copyright',
+      sourceVersion: 'test-feature-snapshot-v1',
+      retrievedAt: new Date(16_000).toISOString(),
+      coverage: 'approximate',
+      features: []
+    });
+
+  assert.equal(result.aggregate.questionInstances['question:auto-matching-null']?.status, 'awaiting_answer');
+  assert.equal(result.aggregate.questionInstances['question:auto-matching-null']?.answer, undefined);
+  assert.equal(Object.values(result.aggregate.constraints).some((item) => item.sourceQuestionInstanceId === 'question:auto-matching-null'), false);
+  assert.equal(result.events.some((event) => event.event.type === 'question_null_answer_resolved'), false);
+});
+
+test('Measuring automatically compares fresh player locations to the seeker selected feature and clips from that snapshot', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.1, longitude: 103.81,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test-feature-snapshot-v1',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [
+      { featureId: 'osm:way/9', featureClassId: 'a-commercial-airport', label: 'Changi Airport', longitude: 103.82, latitude: 1.1, geometrySupport: 'mixed' as const, coverage: 'approximate' as const }
+    ]
+  };
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-measuring', templateId: 'measuring-a-commercial-airport', targetTeamId: 'team-hider' }
+    }, 16), contentPack, dataset);
+
+  assert.equal(result.aggregate.questionInstances['question:auto-measuring']?.status, 'resolved');
+  assert.equal(result.aggregate.questionInstances['question:auto-measuring']?.answer?.value, 'closer');
+  const constraint = Object.values(result.aggregate.constraints).find((item) => item.sourceQuestionInstanceId === 'question:auto-measuring');
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.equal((constraint?.metadata.automaticResolution as { referenceFeatureId?: string }).referenceFeatureId, 'osm:way/9');
+  assert.equal('featureData' in (constraint?.metadata ?? {}), false);
+  assert.equal(result.aggregate.searchArea?.history.at(-1)?.summary.includes('Measuring'), true);
+});
+
 test('Thermometer automatically compares the seekers previous and current locations with the hider', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);

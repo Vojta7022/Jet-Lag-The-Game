@@ -20,10 +20,12 @@ import type {
   SyncEnvelope,
   TransportSubscription
 } from '../../shared-types/src/index.ts';
+import type { QuestionFeatureDataProvider } from '../../geo/src/index.ts';
 import { reduceMatchAggregate } from '../../engine/src/index.ts';
 
 import { TransportRuntimeError } from './errors.ts';
 import { EngineCommandGateway } from './engine-command-gateway.ts';
+import { loadQuestionFeatureDataset } from './question-feature-data.ts';
 import { reconcileRuntimeState } from './reconcile-runtime-state.ts';
 import { buildSyncEnvelope, createMatchSnapshot } from './sync.ts';
 
@@ -39,6 +41,7 @@ export interface InMemoryAuthorityRuntimeOptions {
   contentPacks: ContentPack[];
   persistence: LocalRuntimePersistence;
   gateway?: CommandGateway;
+  questionFeatureDataProvider?: QuestionFeatureDataProvider;
 }
 
 export class InMemoryAuthorityRuntime implements AuthorityRuntime {
@@ -47,6 +50,7 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
 
   private readonly contentPacksById: Map<string, ContentPack>;
   private readonly persistence: LocalRuntimePersistence;
+  private readonly questionFeatureDataProvider?: QuestionFeatureDataProvider;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
   private readonly subscriptionsByMatchId = new Map<string, Map<string, RuntimeSubscriptionRecord>>();
 
@@ -54,6 +58,7 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
     this.mode = options.mode;
     this.gateway = options.gateway ?? new EngineCommandGateway();
     this.persistence = options.persistence;
+    this.questionFeatureDataProvider = options.questionFeatureDataProvider;
     this.contentPacksById = new Map(options.contentPacks.map((contentPack) => [contentPack.packId, contentPack]));
   }
 
@@ -61,10 +66,17 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
     const reconciled = await this.reconcileAggregate(envelope.matchId, envelope.occurredAt);
     const aggregate = reconciled?.aggregate;
     const contentPack = this.resolveContentPack(aggregate, envelope);
+    const questionFeatureDataset = await loadQuestionFeatureDataset({
+      aggregate,
+      contentPack,
+      envelope,
+      provider: this.questionFeatureDataProvider
+    });
     const result = await this.gateway.submit({
       aggregate,
       contentPack,
-      envelope
+      envelope,
+      questionFeatureDataset
     });
 
     if (!result.accepted || !result.aggregate) {
