@@ -158,6 +158,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Let the hider resolve their own card window in online play while preserving host referee control; show the picker in Cards and broadcast the selected prompts.
 - [x] Verify invalid selections, question blocking, per-run reset, role permissions, full tests, and mobile typecheck after correcting the earlier category-wide interpretation. Full verification: 271 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
+### Current implementation slice: Curse of the Overflowing Chalice
+
+- [x] Import the printed effect as typed data and add an engine test for its three reward opportunities, optional extra draw, unchanged keep count, and hider-run reset.
+- [x] Add a hider-facing choice when dealing a question reward; prevent using the bonus after its opportunities expire and keep the bonus private to the hider side.
+- [x] Verify importer, engine, role projections, full suite, and mobile typecheck. Full verification: 272 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
+
 ### Current implementation slice: scanned hand-expansion power-up
 
 - [x] Add an engine integration test for Draw 1, Expand Maximum Hand Size by 1: draw one, increase hand capacity for the rest of the round, and reset the capacity on the next round.

@@ -92,6 +92,7 @@ export type DomainEvent =
   | CardDrawnEvent
   | QuestionRewardDealtEvent
   | QuestionRewardChosenEvent
+  | QuestionRewardDrawBonusGrantedEvent
   | CardPlayedEvent
   | TimerAdjustedEvent
   | CardDiscardedEvent
@@ -379,6 +380,15 @@ export interface QuestionRewardChosenEvent {
   };
 }
 
+export interface QuestionRewardDrawBonusGrantedEvent {
+  type: 'question_reward_draw_bonus_granted';
+  payload: {
+    questionCount: number;
+    extraDrawCount: number;
+    sourceCardInstanceId: string;
+  };
+}
+
 export interface CardPlayedEvent {
   type: 'card_played';
   payload: PlayCardCommand['payload'] & {
@@ -408,7 +418,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates';
+    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'extra_question_reward_draws';
     discardRequirement?: {
       requiredCards?: number;
       requiredKind?: CardKind;
@@ -418,6 +428,8 @@ export interface CardResolutionOpenedEvent {
     timeBonusMinutes?: number;
     questionTemplateCount?: number;
     requireDistinctQuestionCategories?: boolean;
+    questionRewardCount?: number;
+    extraQuestionRewardDrawCount?: number;
     sourceDeckId?: string;
     holderType?: CardInstanceModel['holderType'];
     holderId?: string;

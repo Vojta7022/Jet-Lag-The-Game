@@ -324,6 +324,7 @@ export function reduceMatchAggregate(
         activeQuestionInstanceId: undefined,
         activeCardResolution: undefined,
         disabledQuestionTemplateIds: [],
+        questionRewardDrawBonus: undefined,
         constraints: {},
         locationSamples: [],
         hiddenState: {},
@@ -646,8 +647,13 @@ export function reduceMatchAggregate(
       };
     case 'question_reward_dealt': {
       const questionInstanceId = eventEnvelope.event.payload.pendingReward.questionInstanceId;
+      const bonus = base.questionRewardDrawBonus;
+      const opportunitiesRemaining = bonus ? Math.max(0, bonus.opportunitiesRemaining - 1) : 0;
       return {
         ...base,
+        questionRewardDrawBonus: bonus && opportunitiesRemaining > 0
+          ? { ...bonus, opportunitiesRemaining }
+          : undefined,
         pendingQuestionReward: eventEnvelope.event.payload.pendingReward,
         questionInstances: {
           ...base.questionInstances,
@@ -659,6 +665,16 @@ export function reduceMatchAggregate(
         cardInstances: {
           ...base.cardInstances,
           ...Object.fromEntries(eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card]))
+        }
+      };
+    }
+    case 'question_reward_draw_bonus_granted': {
+      const current = base.questionRewardDrawBonus;
+      return {
+        ...base,
+        questionRewardDrawBonus: {
+          opportunitiesRemaining: (current?.opportunitiesRemaining ?? 0) + eventEnvelope.event.payload.questionCount,
+          extraDrawCount: (current?.extraDrawCount ?? 0) + eventEnvelope.event.payload.extraDrawCount
         }
       };
     }
@@ -710,6 +726,8 @@ export function reduceMatchAggregate(
           timeBonusMinutes: eventEnvelope.event.payload.timeBonusMinutes,
           questionTemplateCount: eventEnvelope.event.payload.questionTemplateCount,
           requireDistinctQuestionCategories: eventEnvelope.event.payload.requireDistinctQuestionCategories,
+          questionRewardCount: eventEnvelope.event.payload.questionRewardCount,
+          extraQuestionRewardDrawCount: eventEnvelope.event.payload.extraQuestionRewardDrawCount,
           sourceDeckId: eventEnvelope.event.payload.sourceDeckId,
           holderType: eventEnvelope.event.payload.holderType,
           holderId: eventEnvelope.event.payload.holderId,

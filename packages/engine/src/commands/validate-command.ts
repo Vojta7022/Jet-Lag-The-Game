@@ -758,7 +758,12 @@ export function validateCommandEnvelope(
       if (!deck) {
         return [error(envelope.command.type, 'DECK_NOT_FOUND', 'The hider reward deck is missing from this content pack.')];
       }
-      const requiredCards = category.drawRule.drawCount * multiplier;
+      const requestedBonusDraw = envelope.command.payload.useQuestionRewardDrawBonus === true;
+      const availableBonus = aggregate.questionRewardDrawBonus;
+      if (requestedBonusDraw && (!availableBonus || availableBonus.opportunitiesRemaining < 1 || availableBonus.extraDrawCount < 1)) {
+        return [error(envelope.command.type, 'QUESTION_REWARD_DRAW_BONUS_UNAVAILABLE', 'There is no extra question reward draw available.')];
+      }
+      const requiredCards = category.drawRule.drawCount * multiplier + (requestedBonusDraw ? availableBonus!.extraDrawCount : 0);
       const availableCards = Object.values(aggregate.cardInstances).filter(
         (card) => card.holderType === 'deck' && card.holderId === deck.deckId && card.zone === 'draw_pile'
       ).length;

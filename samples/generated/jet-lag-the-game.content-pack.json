@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T19:34:07.600Z",
+    "importedAt": "2026-10-24T19:42:44.355Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2080,7 +2080,7 @@
       "name": "Curse Of The Overflowing Chalice",
       "shortName": "Curse Of The Overflowing Chalice",
       "description": "For the next three questions, you may draw (not keep) an additional card when drawing from the hider deck",
-      "automationLevel": "manual",
+      "automationLevel": "authoritative",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -2090,18 +2090,20 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "extra_question_reward_draws",
           "description": "For the next three questions, you may draw (not keep) an additional card when drawing from the hider deck",
-          "automationLevel": "manual",
+          "automationLevel": "authoritative",
           "rawText": "For the next three questions, you may draw (not keep) an additional card when drawing from the hider deck",
           "payload": {
-            "workbookName": "Curse Of The Overflowing Chalice"
+            "questionCount": 3,
+            "extraDrawCount": 1,
+            "duration": "next_question_rewards"
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2112,7 +2114,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "authoritative-effect"
       ],
       "sourceProvenance": [
         {

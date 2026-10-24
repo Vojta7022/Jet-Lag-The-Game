@@ -994,10 +994,16 @@ function eventsForCommand(
       const holder = resolveDeckHolderForDefinition(aggregate!, contentPack, deck.deckId, envelope.actor.playerId, envelope.actor.role);
       const baseDrawCount = category.drawRule.drawCount;
       const basePickCount = category.drawRule.pickCount;
-      const allCards = findTopCardsInDeck(aggregate!, deck.deckId, baseDrawCount * multiplier);
+      const bonusDrawCount = envelope.command.payload.useQuestionRewardDrawBonus
+        ? aggregate!.questionRewardDrawBonus?.extraDrawCount ?? 0
+        : 0;
+      const allCards = findTopCardsInDeck(aggregate!, deck.deckId, baseDrawCount * multiplier + bonusDrawCount);
       const cardInstances: CardInstanceModel[] = [];
+      let cardOffset = 0;
       const sets = Array.from({ length: multiplier }, (_, setIndex) => {
-        const sourceCards = allCards.slice(setIndex * baseDrawCount, (setIndex + 1) * baseDrawCount);
+        const setDrawCount = baseDrawCount + (setIndex === 0 ? bonusDrawCount : 0);
+        const sourceCards = allCards.slice(cardOffset, cardOffset + setDrawCount);
+        cardOffset += setDrawCount;
         const selected = sourceCards.map((source) => {
           const card = {
             ...source,
@@ -1018,6 +1024,7 @@ function eventsForCommand(
         deckId: deck.deckId,
         holderType: holder.holderType,
         holderId: holder.holderId,
+        bonusDrawCount: bonusDrawCount > 0 ? bonusDrawCount : undefined,
         sets,
         dealtAt: envelope.occurredAt
       };
@@ -1299,6 +1306,8 @@ function eventsForCommand(
               timeBonusMinutes: resolutionPlan.timeBonusMinutes,
               questionTemplateCount: resolutionPlan.questionTemplateCount,
               requireDistinctQuestionCategories: resolutionPlan.requireDistinctQuestionCategories,
+              questionRewardCount: resolutionPlan.questionRewardCount,
+              extraQuestionRewardDrawCount: resolutionPlan.extraQuestionRewardDrawCount,
               copiedCardInstanceId,
               sourceDeckId: cardDefinition.deckId,
               holderType: currentCard.holderType,
@@ -1381,6 +1390,17 @@ function eventsForCommand(
           type: 'question_templates_disabled',
           payload: {
             questionTemplateIds: envelope.command.payload.questionTemplateIds ?? [],
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId
+          }
+        }));
+      }
+
+      if (activeResolution?.resolutionKind === 'extra_question_reward_draws') {
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {
+          type: 'question_reward_draw_bonus_granted',
+          payload: {
+            questionCount: activeResolution.questionRewardCount ?? 0,
+            extraDrawCount: activeResolution.extraQuestionRewardDrawCount ?? 0,
             sourceCardInstanceId: activeResolution.sourceCardInstanceId
           }
         }));

@@ -283,7 +283,7 @@ export interface DrawCardCommand {
 
 export interface DealQuestionRewardCommand {
   type: 'deal_question_reward';
-  payload: { questionInstanceId: string };
+  payload: { questionInstanceId: string; useQuestionRewardDrawBonus?: boolean };
 }
 
 export interface ChooseQuestionRewardCommand {

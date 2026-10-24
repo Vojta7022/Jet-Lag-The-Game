@@ -85,6 +85,12 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(drainedBrain.effects[0]?.effectType, 'disable_question_templates');
   assert.deepEqual(drainedBrain.effects[0]?.payload, { questionCount: 3, requireDistinctCategories: true, duration: 'hider_run' });
   assert.equal(drainedBrain.requirements?.requiresManualApproval, false);
+  const overflowingChalice = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-overflowing-chalice');
+  assert.ok(overflowingChalice);
+  assert.equal(overflowingChalice.automationLevel, 'authoritative');
+  assert.equal(overflowingChalice.effects[0]?.effectType, 'extra_question_reward_draws');
+  assert.deepEqual(overflowingChalice.effects[0]?.payload, { questionCount: 3, extraDrawCount: 1, duration: 'next_question_rewards' });
+  assert.equal(overflowingChalice.requirements?.requiresManualApproval, false);
   assert.deepEqual(discardDrawThree.effects[0]?.payload, { discardCount: 2, drawCount: 3 });
   assert.match(discardDrawThree.description, /discard 2 cards from your hand, then draw and keep 3 replacement cards/i);
 

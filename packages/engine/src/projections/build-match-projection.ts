@@ -460,7 +460,9 @@ export function buildMatchProjection(
             drawCountOnResolve: aggregate.activeCardResolution.drawCountOnResolve,
             timeBonusMinutes: aggregate.activeCardResolution.timeBonusMinutes,
             questionTemplateCount: aggregate.activeCardResolution.questionTemplateCount,
-            requireDistinctQuestionCategories: aggregate.activeCardResolution.requireDistinctQuestionCategories
+            requireDistinctQuestionCategories: aggregate.activeCardResolution.requireDistinctQuestionCategories,
+            questionRewardCount: aggregate.activeCardResolution.questionRewardCount,
+            extraQuestionRewardDrawCount: aggregate.activeCardResolution.extraQuestionRewardDrawCount
           }
         : undefined;
 
@@ -486,6 +488,10 @@ export function buildMatchProjection(
     visibleTimers,
     activeCardResolution,
     disabledQuestionTemplateIds: aggregate.disabledQuestionTemplateIds ?? [],
+    questionRewardDrawBonus:
+      viewer.scope === 'authority' || viewer.scope === 'host_admin' || viewerRole === 'hider'
+        ? aggregate.questionRewardDrawBonus
+        : undefined,
     hiderHandLimit:
       viewer.scope === 'authority' || viewer.scope === 'host_admin' || viewerRole === 'hider'
         ? 6 + (aggregate.hiderHandLimitBonus ?? 0)
@@ -498,6 +504,7 @@ export function buildMatchProjection(
               templateId: aggregate.pendingQuestionReward.templateId,
               categoryId: aggregate.pendingQuestionReward.categoryId,
               drawCount: aggregate.pendingQuestionReward.sets.reduce((total, set) => total + set.cardInstanceIds.length, 0),
+              bonusDrawCount: aggregate.pendingQuestionReward.bonusDrawCount,
               sets: aggregate.pendingQuestionReward.sets
             }
           : undefined

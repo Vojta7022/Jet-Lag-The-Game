@@ -192,6 +192,7 @@ export interface PendingQuestionCardRewardModel {
   deckId: string;
   holderType: CardHolderType;
   holderId: string;
+  bonusDrawCount?: number;
   sets: QuestionCardRewardSetModel[];
   dealtAt: string;
 }
@@ -379,7 +380,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates';
+  resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'extra_question_reward_draws';
   discardRequirement?: {
     requiredCards?: number;
     requiredKind?: CardKind;
@@ -389,6 +390,8 @@ export interface CardResolutionWindow {
   timeBonusMinutes?: number;
   questionTemplateCount?: number;
   requireDistinctQuestionCategories?: boolean;
+  questionRewardCount?: number;
+  extraQuestionRewardDrawCount?: number;
   sourceDeckId?: string;
   holderType?: CardHolderType;
   holderId?: string;
@@ -425,6 +428,10 @@ export interface MatchAggregate {
   activeCardResolution?: CardResolutionWindow;
   hiderHandLimitBonus?: number;
   disabledQuestionTemplateIds?: string[];
+  questionRewardDrawBonus?: {
+    opportunitiesRemaining: number;
+    extraDrawCount: number;
+  };
   pendingQuestionReward?: PendingQuestionCardRewardModel;
   mapRegion?: PlayableRegionModel;
   searchArea?: SearchAreaModel;

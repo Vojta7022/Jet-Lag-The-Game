@@ -12,13 +12,15 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates';
+  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'extra_question_reward_draws';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
   timeBonusMinutes?: number;
   questionTemplateCount?: number;
   requireDistinctQuestionCategories?: boolean;
+  questionRewardCount?: number;
+  extraQuestionRewardDrawCount?: number;
 }
 
 function normalizedCardName(cardDefinition: CardDefinition): string {
@@ -192,6 +194,25 @@ export function buildCardResolutionPlan(
         discardRequirement: getCardDiscardRequirement(cardDefinition),
         questionTemplateCount,
         requireDistinctQuestionCategories: payload?.requireDistinctCategories === true
+      };
+    }
+  }
+
+  const extraQuestionRewardDrawsEffect = cardDefinition.effects.find((effect) => effect.effectType === 'extra_question_reward_draws');
+  if (extraQuestionRewardDrawsEffect) {
+    const payload = extraQuestionRewardDrawsEffect.payload as { questionCount?: unknown; extraDrawCount?: unknown } | undefined;
+    const questionRewardCount = typeof payload?.questionCount === 'number' && Number.isInteger(payload.questionCount) && payload.questionCount > 0
+      ? payload.questionCount
+      : undefined;
+    const extraQuestionRewardDrawCount = typeof payload?.extraDrawCount === 'number' && Number.isInteger(payload.extraDrawCount) && payload.extraDrawCount > 0
+      ? payload.extraDrawCount
+      : undefined;
+    if (questionRewardCount !== undefined && extraQuestionRewardDrawCount !== undefined) {
+      return {
+        kind: 'extra_question_reward_draws',
+        discardRequirement: getCardDiscardRequirement(cardDefinition),
+        questionRewardCount,
+        extraQuestionRewardDrawCount
       };
     }
   }

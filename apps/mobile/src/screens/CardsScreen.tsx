@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
@@ -133,6 +133,7 @@ export function CardsScreen() {
     string[]
   >([]);
   const [selectedRewardCardIdsBySet, setSelectedRewardCardIdsBySet] = useState<string[][]>([]);
+  const [useQuestionRewardDrawBonus, setUseQuestionRewardDrawBonus] = useState(false);
   const [drawTrayCardIds, setDrawTrayCardIds] = useState<string[]>([]);
   const previousHandIdsRef = useRef<string[]>([]);
   const selectedCard = findResolvedVisibleCard(
@@ -195,6 +196,10 @@ export function CardsScreen() {
       );
     });
   }, [pendingQuestionReward?.questionInstanceId, pendingQuestionReward?.sets]);
+
+  useEffect(() => {
+    setUseQuestionRewardDrawBonus(false);
+  }, [latestResolvedQuestion?.questionInstanceId]);
 
   const handCardIds = useMemo(
     () =>
@@ -463,11 +468,23 @@ export function CardsScreen() {
       !latestResolvedQuestion.cardRewardStatus && !pendingQuestionReward && viewerRole === 'hider' ? (
         <Panel title="Your clue reward" subtitle="The answer is locked in. Draw the printed cards, then choose what to keep." tone="accent">
           <Text style={styles.copy}>The seekers have their map update. Claim your card reward to unlock the next question.</Text>
+          {projection?.questionRewardDrawBonus?.opportunitiesRemaining ? (
+            <View style={styles.rewardBonusChoice}>
+              <View style={styles.rewardBonusCopy}>
+                <Text style={styles.rewardBonusTitle}>Overflowing Chalice</Text>
+                <Text style={styles.copy}>Use one of {projection.questionRewardDrawBonus.opportunitiesRemaining} bonus draws? You keep the same number of cards.</Text>
+              </View>
+              <Switch value={useQuestionRewardDrawBonus} onValueChange={setUseQuestionRewardDrawBonus} />
+            </View>
+          ) : null}
           <AppButton
             label="Draw clue reward"
             onPress={() => void submitCommand({
               type: 'deal_question_reward',
-              payload: { questionInstanceId: latestResolvedQuestion.questionInstanceId }
+              payload: {
+                questionInstanceId: latestResolvedQuestion.questionInstanceId,
+                ...(useQuestionRewardDrawBonus ? { useQuestionRewardDrawBonus: true } : {})
+              }
             })}
             disabled={state.loadState === 'loading'}
           />
@@ -476,6 +493,9 @@ export function CardsScreen() {
 
       {pendingQuestionReward && (viewerRole === 'hider' || viewerRole === 'host') ? (
         <Panel title="Pick your clue reward" subtitle="Choose the required number from each separate draw." tone="accent">
+          {pendingQuestionReward.bonusDrawCount ? (
+            <Text style={styles.copy}>The Chalice added {pendingQuestionReward.bonusDrawCount} card to the draw. Your keep count stays the same.</Text>
+          ) : null}
           {pendingQuestionReward.sets.map((set, index) => {
             const selectedIds = selectedRewardCardIdsBySet[index] ?? [];
             const cards = deckViewModels.flatMap((deck) => deck.visibleCards)
@@ -995,6 +1015,23 @@ export function CardsScreen() {
 }
 
 const styles = StyleSheet.create({
+  rewardBonusChoice: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    padding: 12
+  },
+  rewardBonusCopy: { flex: 1, gap: 4 },
+  rewardBonusTitle: {
+    color: colors.accentStrong,
+    fontSize: 13,
+    fontWeight: '800'
+  },
   rewardSet: {
     borderColor: colors.border,
     borderTopWidth: 1,
