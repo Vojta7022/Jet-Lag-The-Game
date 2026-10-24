@@ -89,6 +89,27 @@ test('OpenStreetMap provider loads only named stations for the station-name-leng
   assert.deepEqual(dataset.features.map((feature) => feature.label), ["St. John's Rd"]);
 });
 
+test('OpenStreetMap provider loads consulate locations for Matching and Measuring', async () => {
+  const submittedQueries: string[] = [];
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQueries.push(decodeURIComponent(String(init?.body).replace(/^data=/, '')));
+      return new Response(JSON.stringify({ elements: [
+        { type: 'node', id: 31, lat: 50.08, lon: 14.43, tags: { name: 'Consulate A', diplomatic: 'consulate' } }
+      ] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['foreign-consulate'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[14.3, 50], [14.6, 50], [14.6, 50.2], [14.3, 50.2], [14.3, 50]]] }
+  });
+
+  assert.ok(dataset);
+  assert.match(submittedQueries[0]!, /office.*diplomatic.*diplomatic.*consulate/);
+  assert.deepEqual(dataset.features.map((feature) => feature.label), ['Consulate A']);
+});
+
 test('OpenStreetMap feature lookups reuse a short-lived region and class cache', async () => {
   let requestCount = 0;
   const provider = new OpenStreetMapQuestionFeatureProvider({

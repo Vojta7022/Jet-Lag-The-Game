@@ -51,6 +51,7 @@ const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
   'a-library': [{ tags: { amenity: 'library' } }],
   library: [{ tags: { amenity: 'library' } }],
   libraries: [{ tags: { amenity: 'library' } }],
+  'foreign-consulate': [{ tags: { office: 'diplomatic', diplomatic: 'consulate' } }],
   'a-hospital': [{ tags: { amenity: 'hospital' } }],
   hospital: [{ tags: { amenity: 'hospital' } }],
   hospitals: [{ tags: { amenity: 'hospital' } }],

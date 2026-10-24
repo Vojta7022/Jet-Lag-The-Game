@@ -145,6 +145,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Timestamp online commands on the game authority so phone clocks cannot backdate late answers.
 - [x] Verify the printed 10-minute small-game photo deadline through online snapshot reconciliation, exact late interval score accounting, no reward, server-authoritative timestamps, and the full suite/typecheck. Full verification: 269 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
+### Completed implementation slice: automatic consulate feature data
+
+- [x] Map the Investigation Book's foreign-consulate Matching/Measuring feature class to the documented OSM `office=diplomatic` + `diplomatic=consulate` tag pair.
+- [x] Verify the provider builds a bounded region query and normalizes the result for the existing authority-side location resolver.
+- [x] Run the full suite and mobile typecheck. Full verification: 270 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
+
 ### Current implementation slice: scanned hand-expansion power-up
 
 - [x] Add an engine integration test for Draw 1, Expand Maximum Hand Size by 1: draw one, increase hand capacity for the rest of the round, and reset the capacity on the next round.
