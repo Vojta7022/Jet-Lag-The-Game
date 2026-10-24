@@ -68,9 +68,14 @@ export function QuestionResolutionPanel(props: QuestionResolutionPanelProps) {
               <Text style={styles.value}>{model?.categoryLabel}</Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>Recorded Answer</Text>
+              <Text style={styles.label}>{question.automaticResolution ? 'Automatic answer' : 'Recorded Answer'}</Text>
               <Text style={styles.value}>{model?.answerSummary}</Text>
             </View>
+            {question.automaticResolution ? (
+              <Text style={styles.copy}>
+                Calculated by the game from fresh GPS fixes. The hider’s exact location stays private.
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.sectionCard}>

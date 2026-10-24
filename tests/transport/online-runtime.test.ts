@@ -493,6 +493,21 @@ test('online runtime automatically completes overdue cooldown before serving the
   });
   assert.equal(readySnapshot.projectionDelivery.projection.seekPhaseSubstate, 'ready');
 
+  await runtime.submitAuthenticatedCommand(
+    setup.hiderSession,
+    makeOnlineCommandRequest(setup.hiderSession, setup.matchId, 12, {
+      type: 'update_location',
+      payload: { latitude: 50.08, longitude: 14.43, accuracyMeters: 5, source: 'device' }
+    })
+  );
+  await runtime.submitAuthenticatedCommand(
+    setup.seekerSession,
+    makeOnlineCommandRequest(setup.seekerSession, setup.matchId, 13, {
+      type: 'update_location',
+      payload: { latitude: 50.081, longitude: 14.43, accuracyMeters: 5, source: 'device' }
+    })
+  );
+
   const radarCategory = contentPack.questionCategories.find((entry) => entry.categoryId === 'radar');
   assert.ok(radarCategory);
   const radarSelection = buildQuestionSelectionState({
@@ -504,14 +519,14 @@ test('online runtime automatically completes overdue cooldown before serving the
 
   await runtime.submitAuthenticatedCommand(
     setup.seekerSession,
-    makeOnlineCommandRequest(setup.seekerSession, setup.matchId, 12, {
+    makeOnlineCommandRequest(setup.seekerSession, setup.matchId, 14, {
       type: 'begin_question_prompt',
       payload: {}
     })
   );
-  await runtime.submitAuthenticatedCommand(
+  const applied = await runtime.submitAuthenticatedCommand(
     setup.seekerSession,
-    makeOnlineCommandRequest(setup.seekerSession, setup.matchId, 13, {
+    makeOnlineCommandRequest(setup.seekerSession, setup.matchId, 15, {
       type: 'ask_question',
       payload: {
         questionInstanceId: 'question:auto-cooldown',
@@ -520,29 +535,6 @@ test('online runtime automatically completes overdue cooldown before serving the
       }
     })
   );
-  await runtime.submitAuthenticatedCommand(
-    setup.hiderSession,
-    makeOnlineCommandRequest(setup.hiderSession, setup.matchId, 14, {
-      type: 'answer_question',
-      payload: {
-        questionInstanceId: 'question:auto-cooldown',
-        answer: {
-          value: 'yes'
-        }
-      }
-    })
-  );
-  const applied = await runtime.submitAuthenticatedCommand(
-    setup.hostSession,
-    makeOnlineCommandRequest(setup.hostSession, setup.matchId, 15, {
-      type: 'apply_constraint',
-      payload: {
-        questionInstanceId: 'question:auto-cooldown',
-        constraintId: 'within-radius'
-      }
-    })
-  );
-
   assert.equal(applied.accepted, true);
   assert.equal(applied.snapshot?.aggregate.seekPhaseSubstate, 'cooldown');
 

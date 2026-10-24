@@ -162,6 +162,7 @@ export interface QuestionCategoryDefinition {
   packId: string;
   name: string;
   resolverKind: QuestionResolverKind;
+  answerPolicy?: 'automatic_when_available' | 'manual';
   promptTemplate: string;
   drawRule: {
     drawCount: number;

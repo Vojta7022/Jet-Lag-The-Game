@@ -428,7 +428,7 @@ export function LiveMapInlineActionPanel() {
           <StateBanner tone={impact.tone} title={impact.label} detail={impact.detail} />
           <LiveMapInfoChips
             items={[
-              { label: 'How to answer', value: describeExpectedAnswerGuidance(readyTemplate) },
+              { label: 'How to answer', value: describeExpectedAnswerGuidance(readyTemplate, selectedCategory) },
               { label: 'Game sizes', value: formatQuestionScaleSet(readyTemplate.scaleSet.appliesTo) },
               {
                 label: 'Support today',
@@ -491,7 +491,7 @@ export function LiveMapInlineActionPanel() {
           <Text style={styles.highlight}>{activeQuestionTemplate.name}</Text>
           <Text style={styles.copy}>{describeQuestionTemplateForPlayers(activeQuestionTemplate, activeQuestionCategory)}</Text>
           <Text style={styles.helper}>
-            {describeExpectedAnswerGuidance(activeQuestionTemplate)}
+            {describeExpectedAnswerGuidance(activeQuestionTemplate, activeQuestionCategory)}
           </Text>
         </View>
         {hiderDeck ? (

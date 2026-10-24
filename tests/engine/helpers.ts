@@ -400,6 +400,18 @@ export function openAnsweredQuestion(
     startStep: number;
   }
 ): MatchAggregate {
+  // This fixture explicitly creates a manually answered question for constraint
+  // unit tests. Production Radar commands are automatically resolved from GPS.
+  const template = contentPack.questionTemplates.find((candidate) => candidate.templateId === args.templateId);
+  const category = template && contentPack.questionCategories.find((candidate) => candidate.categoryId === template.categoryId);
+  const fixturePack = category?.resolverKind === 'threshold_distance'
+    ? {
+        ...contentPack,
+        questionCategories: contentPack.questionCategories.map((candidate) => candidate.categoryId === category.categoryId
+          ? { ...candidate, answerPolicy: 'manual' as const }
+          : candidate)
+      }
+    : contentPack;
   let next = executeCommand(
     aggregate,
     makeEnvelope(
@@ -408,7 +420,7 @@ export function openAnsweredQuestion(
       { type: 'begin_question_prompt', payload: {} },
       args.startStep
     ),
-    contentPack
+    fixturePack
   ).aggregate;
 
   next = executeCommand(
@@ -426,7 +438,7 @@ export function openAnsweredQuestion(
       },
       args.startStep + 1
     ),
-    contentPack
+    fixturePack
   ).aggregate;
 
   const attachmentIds = Array.isArray(args.answer.attachmentIds)
@@ -455,7 +467,7 @@ export function openAnsweredQuestion(
         },
         args.startStep + 2 + index
       ),
-      contentPack
+      fixturePack
     ).aggregate;
   }
 
@@ -473,6 +485,6 @@ export function openAnsweredQuestion(
       },
       args.startStep + 2 + attachmentIds.length
     ),
-    contentPack
+    fixturePack
   ).aggregate;
 }

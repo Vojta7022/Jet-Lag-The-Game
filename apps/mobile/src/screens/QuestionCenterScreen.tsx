@@ -895,7 +895,7 @@ export function QuestionCenterScreen() {
               items={[
                 {
                   label: 'How to answer',
-                  value: describeExpectedAnswerGuidance(previewTemplate)
+                  value: describeExpectedAnswerGuidance(previewTemplate, selectedCategory)
                 },
                 {
                   label: 'Best for',

@@ -34,6 +34,7 @@ import {
   getHidingZoneRadiusMeters
 } from '../helpers/content-pack.ts';
 import { validateStateForCommand } from '../state-machine/guards.ts';
+import { resolveAutomaticQuestionAnswer } from '../questions/automatic-question-answer.ts';
 
 function error(
   commandType: CommandEnvelope['command']['type'],
@@ -672,6 +673,10 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'QUESTION_CATEGORY_NOT_FOUND', 'The selected question category does not exist.')];
       }
 
+      if (envelope.command.payload.targetTeamId && aggregate.teams[envelope.command.payload.targetTeamId]?.side !== 'hider') {
+        return [error(envelope.command.type, 'INVALID_QUESTION_TARGET', 'Investigation Book questions must target the active hider team.')];
+      }
+
       const selectionState = buildQuestionSelectionState({
         contentPack,
         category,
@@ -687,6 +692,19 @@ export function validateCommandEnvelope(
             'This question is not available in the selected game scale.'
           )
         ];
+      }
+
+      const automaticAnswer = resolveAutomaticQuestionAnswer({
+        aggregate,
+        contentPack,
+        category,
+        template,
+        askedByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId,
+        targetTeamId: envelope.command.payload.targetTeamId,
+        occurredAt: envelope.occurredAt
+      });
+      if (automaticAnswer.kind === 'blocked') {
+        return [error(envelope.command.type, automaticAnswer.code, automaticAnswer.message)];
       }
 
       return [];

@@ -69,7 +69,7 @@ export function QuestionTemplateList(props: QuestionTemplateListProps) {
             <ResolutionModePill label={impact.label} tone={impact.tone} />
             <Text style={styles.copy}>{describeQuestionTemplateForPlayers(template, props.category)}</Text>
             <Text style={styles.meta}>Workbook rule: {workbookRule}</Text>
-            <Text style={styles.meta}>How to answer: {describeExpectedAnswerGuidance(template)}</Text>
+            <Text style={styles.meta}>How to answer: {describeExpectedAnswerGuidance(template, props.category)}</Text>
             <Text style={styles.meta}>What usually happens: {impact.detail}</Text>
             {workbookRequirement ? <Text style={styles.meta}>Workbook requirement: {workbookRequirement}</Text> : null}
             {featureLabels ? <Text style={styles.support}>Places involved: {featureLabels}</Text> : null}

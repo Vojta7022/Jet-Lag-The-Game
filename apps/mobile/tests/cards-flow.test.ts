@@ -80,10 +80,18 @@ test('cards flow can bootstrap gameplay, draw, play, and discard through the rea
   );
 
   let firstHandCard = findPlayableSmokeCard(contentPack, drawn.projectionDelivery.projection);
-  while (
-    !firstHandCard &&
-    drawn.projectionDelivery.projection.visibleCards.filter((card) => card.zone === 'hand').length < 6
-  ) {
+  while (!firstHandCard) {
+    const handCards = drawn.projectionDelivery.projection.visibleCards.filter((card) => card.zone === 'hand');
+    const drawPileCount = drawn.projectionDelivery.projection.visibleCards.filter((card) => card.zone === 'draw_pile').length;
+    if (handCards.length >= 6) {
+      if (handCards.length === 0) break;
+      drawn = await orchestrator.submitCommands(
+        created.connection,
+        { actorId: hostProfile.playerId, playerId: hostProfile.playerId, role: 'host' },
+        [{ type: 'discard_card', payload: { cardInstanceId: handCards[0]!.cardInstanceId } }]
+      );
+    }
+    if (drawPileCount === 0) break;
     drawn = await orchestrator.submitCommands(
       created.connection,
       { actorId: hostProfile.playerId, playerId: hostProfile.playerId, role: 'host' },

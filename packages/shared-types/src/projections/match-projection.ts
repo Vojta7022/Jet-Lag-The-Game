@@ -128,6 +128,14 @@ export interface VisibleQuestionProjection {
   answer?: Record<string, unknown>;
   askedAt?: string;
   resolvedAt?: string;
+  automaticResolution?: {
+    resolverVersion: string;
+    method: string;
+    sourceSampleIds: string[];
+    sourceRecordedAt: string[];
+    sourceAccuracyMeters: number[];
+    thresholdMeters?: number;
+  };
 }
 
 export interface VisibleConstraintProjection {

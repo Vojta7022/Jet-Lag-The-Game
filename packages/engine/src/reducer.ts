@@ -465,7 +465,8 @@ export function reduceMatchAggregate(
           [questionInstanceId]: {
             ...question,
             status: 'applying_constraints',
-            answer: eventEnvelope.event.payload.answer
+            answer: eventEnvelope.event.payload.answer,
+            automaticResolution: eventEnvelope.event.payload.automaticResolution
           }
         },
         timers: mapTimers(base.timers, (timer) =>

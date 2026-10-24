@@ -283,6 +283,7 @@ export interface QuestionAnsweredEvent {
   payload: AnswerQuestionCommand['payload'] & {
     lifecycleState: MatchLifecycleState;
     seekPhaseSubstate: SeekPhaseSubstate;
+    automaticResolution?: MatchAggregate['questionInstances'][string]['automaticResolution'];
   };
 }
 

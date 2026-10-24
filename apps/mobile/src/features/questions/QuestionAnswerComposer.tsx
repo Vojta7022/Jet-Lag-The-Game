@@ -60,7 +60,7 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
       <Text style={styles.copy}>Question: {describeQuestionTemplateForPlayers(props.template, props.category)}</Text>
       <View style={styles.guidanceCard}>
         <Text style={styles.guidanceTitle}>How to answer honestly</Text>
-        <Text style={styles.copy}>{describeExpectedAnswerGuidance(props.template)}</Text>
+        <Text style={styles.copy}>{describeExpectedAnswerGuidance(props.template, props.category)}</Text>
       </View>
       <View style={styles.guidanceCard}>
         <Text style={styles.guidanceTitle}>Workbook rule</Text>

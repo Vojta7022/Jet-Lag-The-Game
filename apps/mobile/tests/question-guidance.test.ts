@@ -92,6 +92,8 @@ test('question guidance explains approximate map updates plainly for radar templ
 
   assert.match(describeQuestionTemplateForPlayers(template, category), /within 402m/i);
   assert.equal(describeExpectedAnswerGuidance(template), 'Reply with a simple Yes or No.');
+  assert.match(describeExpectedAnswerGuidance(template, category), /fresh GPS locations/i);
+  assert.equal(describeExpectedAnswerGuidance(template, { ...category, answerPolicy: 'manual' }), 'Reply with a simple Yes or No.');
   assert.equal(impact.label, 'Approximate map update');
   assert.match(impact.detail, /narrow/i);
   assert.equal(formatQuestionScaleSet(template.scaleSet.appliesTo), 'Small, medium, and large games');

@@ -112,8 +112,14 @@ test('question flow bootstrap reaches seek phase ready with a bounded playable r
   await orchestrator.disconnect(created.connection);
 });
 
-test('question flow ask, answer, and resolve path updates the authoritative bounded map', async () => {
-  const contentPack = loadContentPack();
+test('manual answer policy preserves the assisted answer and spatial constraint flow', async () => {
+  const sourcePack = loadContentPack();
+  const contentPack = {
+    ...sourcePack,
+    questionCategories: sourcePack.questionCategories.map((category) => category.categoryId === 'radar'
+      ? { ...category, answerPolicy: 'manual' as const }
+      : category)
+  };
   const orchestrator = new MobileRuntimeOrchestrator({
     contentPack,
     environment: mobileAppEnvironment

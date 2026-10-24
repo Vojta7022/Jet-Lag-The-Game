@@ -248,7 +248,14 @@ export function describeQuestionTemplateForPlayers(
   }
 }
 
-export function describeExpectedAnswerGuidance(template: QuestionTemplateDefinition): string {
+export function describeExpectedAnswerGuidance(
+  template: QuestionTemplateDefinition,
+  category?: QuestionCategoryDefinition
+): string {
+  if (category?.resolverKind === 'threshold_distance' && category.answerPolicy !== 'manual') {
+    return 'The app calculates Yes or No from fresh GPS locations for the hider and asking seeker.';
+  }
+
   const answerKind = String(template.answerSchema.kind ?? 'manual');
   const allowedValues = Array.isArray(template.answerSchema.allowedValues)
     ? template.answerSchema.allowedValues.filter((value): value is string => typeof value === 'string')

@@ -156,6 +156,16 @@ export interface QuestionInstanceModel {
   askedAt: string;
   resolvedAt?: string;
   cardRewardStatus?: 'pending' | 'complete';
+  automaticResolution?: AutomaticQuestionResolutionModel;
+}
+
+export interface AutomaticQuestionResolutionModel {
+  resolverVersion: string;
+  method: string;
+  sourceSampleIds: string[];
+  sourceRecordedAt: string[];
+  sourceAccuracyMeters: number[];
+  thresholdMeters?: number;
 }
 
 export interface QuestionCardRewardSetModel {

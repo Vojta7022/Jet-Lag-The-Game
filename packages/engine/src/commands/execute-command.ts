@@ -10,6 +10,7 @@ import type {
   DomainEventEnvelope,
   LocationSampleModel,
   MatchAggregate,
+  QuestionInstanceModel,
   RoleAssignmentModel,
   TeamModel,
   TimerModel
@@ -35,6 +36,7 @@ import {
 } from '../helpers/content-pack.ts';
 import { reduceMatchAggregate } from '../reducer.ts';
 import { validateCommandEnvelope } from './validate-command.ts';
+import { resolveAutomaticQuestionAnswer } from '../questions/automatic-question-answer.ts';
 
 export class EngineCommandError extends Error {
   readonly issues: ReturnType<typeof validateCommandEnvelope>;
@@ -378,6 +380,66 @@ function buildAttachmentPlaceholder(
     captureMetadata: envelope.command.payload.captureMetadata ?? {},
     createdAt: envelope.occurredAt
   };
+}
+
+function buildConstraintAppliedEvent(args: {
+  aggregate: MatchAggregate;
+  envelope: CommandEnvelope;
+  contentPack: ContentPack;
+  question: QuestionInstanceModel;
+  constraintId: string;
+  metadata: Record<string, unknown>;
+  index: number;
+  openCardResolution?: boolean;
+}): DomainEventEnvelope {
+  const { aggregate, envelope, contentPack, question, constraintId, metadata, index } = args;
+  const template = getQuestionTemplate(contentPack, question.templateId)!;
+  const category = getQuestionCategory(contentPack, template.categoryId)!;
+  const constraintDefinition = getConstraintDefinition(contentPack, constraintId)!;
+  const constraintRecordId = `constraint:${createRandomUuid()}`;
+  const resolvedConstraint = resolveQuestionConstraint({
+    aggregate,
+    contentPack,
+    question,
+    category,
+    template,
+    constraint: constraintDefinition,
+    createdAt: envelope.occurredAt,
+    resolutionMetadata: metadata
+  });
+  const constraintRecord = materializeConstraintRecord({
+    searchArea: aggregate.searchArea!,
+    region: aggregate.mapRegion!,
+    constraintRecordId,
+    constraintId,
+    sourceQuestionInstanceId: question.questionInstanceId,
+    createdAt: envelope.occurredAt,
+    draft: resolvedConstraint,
+    rawMetadata: metadata
+  });
+  const cooldownSeconds = getQuestionCooldownSeconds(
+    contentPack,
+    aggregate.selectedRulesetId,
+    question.templateId
+  );
+  const cooldownTimer = args.openCardResolution || cooldownSeconds === 0
+    ? undefined
+    : buildCooldownTimer(aggregate, contentPack, question.templateId, envelope.occurredAt);
+
+  return makeEventEnvelope(aggregate, envelope, index, 'public_match', {
+    type: 'constraint_applied',
+    payload: {
+      questionInstanceId: question.questionInstanceId,
+      constraintId,
+      metadata,
+      constraint: constraintRecord,
+      lifecycleState: aggregate.lifecycleState,
+      seekPhaseSubstate: args.openCardResolution
+        ? 'awaiting_card_resolution'
+        : cooldownTimer ? 'cooldown' : 'ready',
+      cooldownTimer
+    }
+  });
 }
 
 function eventsForCommand(
@@ -750,6 +812,8 @@ function eventsForCommand(
       ];
     case 'ask_question': {
       const template = getQuestionTemplate(contentPack, envelope.command.payload.templateId)!;
+      const category = getQuestionCategory(contentPack, template.categoryId)!;
+      const askedByPlayerId = envelope.actor.playerId ?? envelope.actor.actorId;
       const questionTimer = buildQuestionTimer(
         aggregate!,
         contentPack,
@@ -757,26 +821,66 @@ function eventsForCommand(
         template.templateId,
         envelope.occurredAt
       );
-      return [
+      const question: QuestionInstanceModel = {
+        questionInstanceId: envelope.command.payload.questionInstanceId,
+        templateId: template.templateId,
+        categoryId: template.categoryId,
+        askedByPlayerId,
+        targetTeamId: envelope.command.payload.targetTeamId,
+        status: 'awaiting_answer',
+        askedAt: envelope.occurredAt
+      };
+      const automaticAnswer = resolveAutomaticQuestionAnswer({
+        aggregate: aggregate!,
+        contentPack,
+        category,
+        template,
+        askedByPlayerId,
+        targetTeamId: envelope.command.payload.targetTeamId,
+        occurredAt: envelope.occurredAt
+      });
+      const events: DomainEventEnvelope[] = [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
           type: 'question_asked',
           payload: {
             ...envelope.command.payload,
-            question: {
-              questionInstanceId: envelope.command.payload.questionInstanceId,
-              templateId: template.templateId,
-              categoryId: template.categoryId,
-              askedByPlayerId: envelope.actor.playerId ?? envelope.actor.actorId,
-              targetTeamId: envelope.command.payload.targetTeamId,
-              status: 'awaiting_answer',
-              askedAt: envelope.occurredAt
-            },
+            question,
             lifecycleState: aggregate!.lifecycleState,
             seekPhaseSubstate: 'awaiting_question_answer',
             questionTimer
           }
         })
       ];
+      if (automaticAnswer.kind !== 'resolved') return events;
+
+      const answeredQuestion: QuestionInstanceModel = {
+        ...question,
+        status: 'applying_constraints',
+        answer: automaticAnswer.answer,
+        automaticResolution: automaticAnswer.automaticResolution
+      };
+      events.push(makeEventEnvelope(aggregate, envelope, 1, 'public_match', {
+        type: 'question_answered',
+        payload: {
+          questionInstanceId: question.questionInstanceId,
+          answer: automaticAnswer.answer,
+          automaticResolution: automaticAnswer.automaticResolution,
+          lifecycleState: aggregate!.lifecycleState,
+          seekPhaseSubstate: 'applying_constraints'
+        }
+      }));
+      events.push(buildConstraintAppliedEvent({
+        aggregate: aggregate!,
+        envelope,
+        contentPack,
+        question: answeredQuestion,
+        constraintId: automaticAnswer.constraintId,
+        metadata: {
+          automaticResolution: automaticAnswer.automaticResolution
+        },
+        index: 2
+      }));
+      return events;
     }
     case 'answer_question':
       return [
@@ -791,53 +895,16 @@ function eventsForCommand(
       ];
     case 'apply_constraint': {
       const question = aggregate!.questionInstances[envelope.command.payload.questionInstanceId];
-      const template = getQuestionTemplate(contentPack, question.templateId)!;
-      const category = getQuestionCategory(contentPack, template.categoryId)!;
-      const constraintDefinition = getConstraintDefinition(contentPack, envelope.command.payload.constraintId)!;
-      const constraintRecordId = `constraint:${createRandomUuid()}`;
-      const resolvedConstraint = resolveQuestionConstraint({
+      return [buildConstraintAppliedEvent({
         aggregate: aggregate!,
+        envelope,
         contentPack,
         question,
-        category,
-        template,
-        constraint: constraintDefinition,
-        createdAt: envelope.occurredAt,
-        resolutionMetadata: envelope.command.payload.metadata
-      });
-      const constraintRecord = materializeConstraintRecord({
-        searchArea: aggregate!.searchArea!,
-        region: aggregate!.mapRegion!,
-        constraintRecordId,
         constraintId: envelope.command.payload.constraintId,
-        sourceQuestionInstanceId: envelope.command.payload.questionInstanceId,
-        createdAt: envelope.occurredAt,
-        draft: resolvedConstraint,
-        rawMetadata: envelope.command.payload.metadata
-      });
-      const cooldownSeconds = getQuestionCooldownSeconds(
-        contentPack,
-        aggregate!.selectedRulesetId,
-        question.templateId
-      );
-      const cooldownTimer = envelope.command.payload.openCardResolution || cooldownSeconds === 0
-        ? undefined
-        : buildCooldownTimer(aggregate!, contentPack, question.templateId, envelope.occurredAt);
-
-      return [
-        makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
-          type: 'constraint_applied',
-          payload: {
-            ...envelope.command.payload,
-            constraint: constraintRecord,
-            lifecycleState: aggregate!.lifecycleState,
-            seekPhaseSubstate: envelope.command.payload.openCardResolution
-              ? 'awaiting_card_resolution'
-              : cooldownTimer ? 'cooldown' : 'ready',
-            cooldownTimer
-          }
-        })
-      ];
+        metadata: envelope.command.payload.metadata ?? {},
+        index: 0,
+        openCardResolution: envelope.command.payload.openCardResolution
+      })];
     }
     case 'deal_question_reward': {
       const question = aggregate!.questionInstances[envelope.command.payload.questionInstanceId];
