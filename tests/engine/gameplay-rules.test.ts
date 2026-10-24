@@ -688,3 +688,80 @@ test('the hider can lock three distinct questions for the current run and seeker
   ), contentPack).aggregate;
   assert.equal(aggregate.activeQuestionInstanceId, 'question:allowed-matching');
 });
+
+test('Spotty Memory randomly blocks a public question category and rerolls after an accepted question', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const sourceCardId = moveCardToTeamHand(aggregate, 'curse-curse-of-spotty-memory', 'team-hider');
+  const paidCardId = moveCardToTeamHand(aggregate, 'time-bonus-red', 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: sourceCardId } },
+    70
+  ), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'discard_card', payload: { cardInstanceId: paidCardId } },
+    71
+  ), contentPack).aggregate;
+
+  const originalRandom = Math.random;
+  try {
+    Math.random = () => 0;
+    aggregate = executeCommand(aggregate, makeEnvelope(
+      aggregate.matchId,
+      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+      { type: 'resolve_card_window', payload: { sourceCardInstanceId: sourceCardId } },
+      72
+    ), contentPack).aggregate;
+  } finally {
+    Math.random = originalRandom;
+  }
+
+  assert.equal(aggregate.disabledQuestionCategoryId, 'matching');
+  const seekerView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'player_private', viewerPlayerId: 'seeker-1', viewerRole: 'seeker', viewerTeamId: 'team-seeker'
+  });
+  assert.equal(seekerView.disabledQuestionCategoryId, 'matching');
+  const hiderView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'player_private', viewerPlayerId: 'hider-1', viewerRole: 'hider', viewerTeamId: 'team-hider'
+  });
+  assert.equal(hiderView.disabledQuestionCategoryId, 'matching');
+  aggregate = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} },
+    74
+  ), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:blocked-matching',
+      templateId: 'matching-commercial-airport',
+      targetTeamId: 'team-hider'
+    } },
+    74.5
+  ), contentPack), /question category is disabled/i);
+  const rerollRandom = Math.random;
+  try {
+    Math.random = () => 0.4;
+    aggregate = executeCommand(aggregate, makeEnvelope(
+      aggregate.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'ask_question', payload: {
+        questionInstanceId: 'question:spotty-memory-reroll',
+        templateId: 'photos-a-tree',
+        targetTeamId: 'team-hider'
+      } },
+      76
+    ), contentPack).aggregate;
+  } finally {
+    Math.random = rerollRandom;
+  }
+
+  assert.equal(aggregate.disabledQuestionCategoryId, 'thermometer');
+  assert.equal(aggregate.disabledQuestionCategorySourceCardInstanceId, sourceCardId);
+});

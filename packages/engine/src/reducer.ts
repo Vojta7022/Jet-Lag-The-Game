@@ -324,6 +324,8 @@ export function reduceMatchAggregate(
         activeQuestionInstanceId: undefined,
         activeCardResolution: undefined,
         disabledQuestionTemplateIds: [],
+        disabledQuestionCategoryId: undefined,
+        disabledQuestionCategorySourceCardInstanceId: undefined,
         questionRewardDrawBonus: undefined,
         constraints: {},
         locationSamples: [],
@@ -782,6 +784,12 @@ export function reduceMatchAggregate(
           ...(base.disabledQuestionTemplateIds ?? []),
           ...eventEnvelope.event.payload.questionTemplateIds
         ])]
+      };
+    case 'question_category_disabled':
+      return {
+        ...base,
+        disabledQuestionCategoryId: eventEnvelope.event.payload.categoryId,
+        disabledQuestionCategorySourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId
       };
     case 'hider_hand_limit_expanded':
       return {

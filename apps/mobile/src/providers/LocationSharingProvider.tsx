@@ -5,6 +5,7 @@ import {
   buildLocationUpdateCommand,
   canSendSingleLocationUpdate,
   canStartContinuousSharing,
+  shouldAutomaticallyShareLocation,
   createInitialLocationShellState,
   locationShellReducer,
   resolveLocationViewerRole,
@@ -36,6 +37,8 @@ export function LocationSharingProvider(props: {
   const [state, dispatch] = useReducer(locationShellReducer, createInitialLocationShellState());
   const sourceRef = useRef<MobileLocationSource>(props.source ?? createExpoLocationSource());
   const watchRef = useRef<LocationWatchHandle | undefined>(undefined);
+  const activeMatch = appShellState.activeMatch;
+  const activeRole = resolveLocationViewerRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
 
   const submitSample = useCallback(async (sample: DeviceLocationSample) => {
     dispatch({ type: 'sample_recorded', sample });
@@ -146,6 +149,19 @@ export function LocationSharingProvider(props: {
   useEffect(() => {
     void refreshPermissionState();
   }, [refreshPermissionState]);
+
+  useEffect(() => {
+    const shouldShare = shouldAutomaticallyShareLocation(
+      activeMatch?.projection.lifecycleState,
+      activeRole,
+      state
+    );
+    if (shouldShare && state.sharingState !== 'sharing') {
+      void startSharing();
+    } else if (!shouldShare && state.sharingState === 'sharing') {
+      void stopSharing();
+    }
+  }, [activeMatch?.projection.lifecycleState, activeRole, startSharing, state, stopSharing]);
 
   useEffect(() => {
     return () => {

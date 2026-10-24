@@ -99,6 +99,7 @@ export type DomainEvent =
   | CardResolutionOpenedEvent
   | CardResolutionClosedEvent
   | QuestionTemplatesDisabledEvent
+  | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
   | CooldownCompletedEvent
   | MatchPausedEvent
@@ -418,7 +419,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'extra_question_reward_draws';
+    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws';
     discardRequirement?: {
       requiredCards?: number;
       requiredKind?: CardKind;
@@ -428,6 +429,7 @@ export interface CardResolutionOpenedEvent {
     timeBonusMinutes?: number;
     questionTemplateCount?: number;
     requireDistinctQuestionCategories?: boolean;
+    rerollAfterQuestion?: boolean;
     questionRewardCount?: number;
     extraQuestionRewardDrawCount?: number;
     sourceDeckId?: string;
@@ -442,6 +444,15 @@ export interface QuestionTemplatesDisabledEvent {
   payload: {
     questionTemplateIds: string[];
     sourceCardInstanceId: string;
+  };
+}
+
+export interface QuestionCategoryDisabledEvent {
+  type: 'question_category_disabled';
+  payload: {
+    categoryId: string;
+    sourceCardInstanceId: string;
+    reason: 'initial_roll' | 'question_reroll';
   };
 }
 

@@ -164,6 +164,19 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add a hider-facing choice when dealing a question reward; prevent using the bonus after its opportunities expire and keep the bonus private to the hider side.
 - [x] Verify importer, engine, role projections, full suite, and mobile typecheck. Full verification: 272 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
+### Current implementation slice: Curse of Spotty Memory
+
+- [x] Import its category reroll as a typed authoritative card effect and add failing tests for the initial random lock, rejection of that category, reroll after an accepted question, and round reset.
+- [x] Publish the authority-selected category lock to every player and show/disable that category in the question picker.
+- [x] Verify importer, role projections, full suite, and mobile typecheck. Full verification: 275 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
+
+### Current implementation slice: automatic foreground location sharing
+
+- [x] Start a player's GPS watch automatically during hide, seek, and endgame once foreground permission is granted; stop sharing outside active play phases.
+- [x] Keep manual single-fix mode and a clear denied/unavailable state for permission and device-service failures.
+- [x] Verify the phase/role/permission policy and full test suite; 275 tests pass and mobile typecheck passes (2026-10-24).
+- [ ] Add background location sharing if confirmed by the product owner; foreground tracking pauses when the app is backgrounded or locked.
+
 ### Current implementation slice: scanned hand-expansion power-up
 
 - [x] Add an engine integration test for Draw 1, Expand Maximum Hand Size by 1: draw one, increase hand capacity for the rest of the round, and reset the capacity on the next round.

@@ -900,10 +900,24 @@ function eventsForCommand(
           }
         })
       ];
+      if (aggregate!.disabledQuestionCategoryId && aggregate!.disabledQuestionCategorySourceCardInstanceId) {
+        const categories = contentPack.questionCategories;
+        const nextCategory = categories[Math.floor(Math.random() * categories.length)];
+        if (nextCategory) {
+          events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+            type: 'question_category_disabled',
+            payload: {
+              categoryId: nextCategory.categoryId,
+              sourceCardInstanceId: aggregate!.disabledQuestionCategorySourceCardInstanceId,
+              reason: 'question_reroll'
+            }
+          }));
+        }
+      }
       if (automaticAnswer.kind !== 'resolved') return events;
 
       if (automaticAnswer.answer.value === null || !automaticAnswer.constraintId) {
-        events.push(makeEventEnvelope(aggregate, envelope, 1, 'public_match', {
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
           type: 'question_null_answer_resolved',
           payload: {
             questionInstanceId: question.questionInstanceId,
@@ -922,7 +936,7 @@ function eventsForCommand(
         answer: automaticAnswer.answer,
         automaticResolution: automaticAnswer.automaticResolution
       };
-      events.push(makeEventEnvelope(aggregate, envelope, 1, 'public_match', {
+      events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
         type: 'question_answered',
         payload: {
           questionInstanceId: question.questionInstanceId,
@@ -942,7 +956,7 @@ function eventsForCommand(
           automaticResolution: automaticAnswer.automaticResolution,
           ...(automaticAnswer.constraintMetadata ?? {})
         },
-        index: 2
+        index: events.length
       }));
       return events;
     }
@@ -1306,6 +1320,7 @@ function eventsForCommand(
               timeBonusMinutes: resolutionPlan.timeBonusMinutes,
               questionTemplateCount: resolutionPlan.questionTemplateCount,
               requireDistinctQuestionCategories: resolutionPlan.requireDistinctQuestionCategories,
+              rerollAfterQuestion: resolutionPlan.rerollAfterQuestion,
               questionRewardCount: resolutionPlan.questionRewardCount,
               extraQuestionRewardDrawCount: resolutionPlan.extraQuestionRewardDrawCount,
               copiedCardInstanceId,
@@ -1393,6 +1408,21 @@ function eventsForCommand(
             sourceCardInstanceId: activeResolution.sourceCardInstanceId
           }
         }));
+      }
+
+      if (activeResolution?.resolutionKind === 'random_question_category_lock') {
+        const categories = contentPack.questionCategories;
+        const selectedCategory = categories[Math.floor(Math.random() * categories.length)];
+        if (selectedCategory) {
+          events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+            type: 'question_category_disabled',
+            payload: {
+              categoryId: selectedCategory.categoryId,
+              sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+              reason: 'initial_roll'
+            }
+          }));
+        }
       }
 
       if (activeResolution?.resolutionKind === 'extra_question_reward_draws') {

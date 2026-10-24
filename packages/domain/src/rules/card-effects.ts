@@ -12,13 +12,14 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'extra_question_reward_draws';
+  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
   timeBonusMinutes?: number;
   questionTemplateCount?: number;
   requireDistinctQuestionCategories?: boolean;
+  rerollAfterQuestion?: boolean;
   questionRewardCount?: number;
   extraQuestionRewardDrawCount?: number;
 }
@@ -196,6 +197,16 @@ export function buildCardResolutionPlan(
         requireDistinctQuestionCategories: payload?.requireDistinctCategories === true
       };
     }
+  }
+
+  const randomCategoryEffect = cardDefinition.effects.find((effect) => effect.effectType === 'random_question_category_lock');
+  if (randomCategoryEffect) {
+    const payload = randomCategoryEffect.payload as { rerollAfterQuestion?: unknown } | undefined;
+    return {
+      kind: 'random_question_category_lock',
+      discardRequirement: getCardDiscardRequirement(cardDefinition),
+      rerollAfterQuestion: payload?.rerollAfterQuestion === true
+    };
   }
 
   const extraQuestionRewardDrawsEffect = cardDefinition.effects.find((effect) => effect.effectType === 'extra_question_reward_draws');

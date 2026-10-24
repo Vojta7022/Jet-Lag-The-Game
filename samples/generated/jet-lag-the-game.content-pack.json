@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T19:42:44.355Z",
+    "importedAt": "2026-10-24T19:51:18.598Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3171,7 +3171,7 @@
       "name": "Curse Of Spotty Memory",
       "shortName": "Curse Of Spotty Memory",
       "description": "For the rest of the run, one random category of questions will be disabled at all times. After this curse is played seeker(s) must roll a die to determine the category of questions to be disabled. The category remains disabled until the next question is asked at which point a die is rolled again to choose a category. The same category can be disabled multiple times in a row",
-      "automationLevel": "manual",
+      "automationLevel": "authoritative",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3181,18 +3181,19 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "random_question_category_lock",
           "description": "For the rest of the run, one random category of questions will be disabled at all times. After this curse is played seeker(s) must roll a die to determine the category of questions to be disabled. The category remains disabled until the next question is asked at which point a die is rolled again to choose a category. The same category can be disabled multiple times in a row",
-          "automationLevel": "manual",
+          "automationLevel": "authoritative",
           "rawText": "For the rest of the run, one random category of questions will be disabled at all times. After this curse is played seeker(s) must roll a die to determine the category of questions to be disabled. The catergy remain disabled until the next question is asked at which point a die is rolled again to choose an e category. The same category can be disabled multiple times in a row",
           "payload": {
-            "workbookName": "Curse Of Spotty Memory"
+            "duration": "hider_run",
+            "rerollAfterQuestion": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3203,7 +3204,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "authoritative-effect"
       ],
       "sourceProvenance": [
         {

@@ -461,6 +461,7 @@ export function buildMatchProjection(
             timeBonusMinutes: aggregate.activeCardResolution.timeBonusMinutes,
             questionTemplateCount: aggregate.activeCardResolution.questionTemplateCount,
             requireDistinctQuestionCategories: aggregate.activeCardResolution.requireDistinctQuestionCategories,
+            rerollAfterQuestion: aggregate.activeCardResolution.rerollAfterQuestion,
             questionRewardCount: aggregate.activeCardResolution.questionRewardCount,
             extraQuestionRewardDrawCount: aggregate.activeCardResolution.extraQuestionRewardDrawCount
           }
@@ -488,6 +489,7 @@ export function buildMatchProjection(
     visibleTimers,
     activeCardResolution,
     disabledQuestionTemplateIds: aggregate.disabledQuestionTemplateIds ?? [],
+    disabledQuestionCategoryId: aggregate.disabledQuestionCategoryId,
     questionRewardDrawBonus:
       viewer.scope === 'authority' || viewer.scope === 'host_admin' || viewerRole === 'hider'
         ? aggregate.questionRewardDrawBonus

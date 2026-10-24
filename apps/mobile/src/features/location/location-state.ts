@@ -1,5 +1,6 @@
 import type {
   DomainCommand,
+  MatchLifecycleState,
   MatchProjection,
   MatchRole,
   VisibleLocationSampleProjection,
@@ -181,6 +182,17 @@ export function canStartContinuousSharing(
     state.permissionState === 'granted' &&
     state.availabilityState !== 'unavailable' &&
     state.frequencyMode !== 'manual';
+}
+
+export function shouldAutomaticallyShareLocation(
+  lifecycleState: MatchLifecycleState | undefined,
+  role: MatchRole,
+  state: LocationShellState
+): boolean {
+  const activePlayPhase = lifecycleState === 'hide_phase' ||
+    lifecycleState === 'seek_phase' ||
+    lifecycleState === 'endgame';
+  return activePlayPhase && canStartContinuousSharing(role, state);
 }
 
 export function canSendSingleLocationUpdate(

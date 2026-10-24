@@ -9,6 +9,7 @@ import { mobileAppEnvironment } from '../src/config/env.ts';
 import { buildQuestionFlowBootstrapCommands } from '../src/features/questions/question-flow-bootstrap.ts';
 import {
   canStartContinuousSharing,
+  shouldAutomaticallyShareLocation,
   canSendSingleLocationUpdate,
   buildLocationUpdateCommand,
   buildMovementTrackViewModels,
@@ -51,6 +52,21 @@ test('hiders can share their live location while seekers remain eligible', () =>
   };
   assert.equal(canStartContinuousSharing('hider', ready), true);
   assert.equal(canSendSingleLocationUpdate('hider', ready), true);
+});
+
+test('live location sharing starts automatically for active player rounds and stops outside play phases', () => {
+  const ready = {
+    ...createInitialLocationShellState(),
+    permissionState: 'granted' as const,
+    availabilityState: 'available' as const
+  };
+  assert.equal(shouldAutomaticallyShareLocation('hide_phase', 'hider', ready), true);
+  assert.equal(shouldAutomaticallyShareLocation('seek_phase', 'seeker', ready), true);
+  assert.equal(shouldAutomaticallyShareLocation('endgame', 'hider', ready), true);
+  assert.equal(shouldAutomaticallyShareLocation('lobby', 'seeker', ready), false);
+  assert.equal(shouldAutomaticallyShareLocation('seek_phase', 'spectator', ready), false);
+  assert.equal(shouldAutomaticallyShareLocation('seek_phase', 'seeker', { ...ready, frequencyMode: 'manual' }), false);
+  assert.equal(shouldAutomaticallyShareLocation('seek_phase', 'seeker', { ...ready, permissionState: 'denied' }), false);
 });
 
 test('movement flow preserves visible seeker breadcrumbs and map overlays through the runtime projection', async () => {

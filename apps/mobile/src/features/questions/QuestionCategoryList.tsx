@@ -15,6 +15,7 @@ interface QuestionCategoryListProps {
   categories: QuestionCategoryViewModel[];
   selectedCategoryId?: string;
   selectedScale?: ScaleKey;
+  disabledCategoryId?: string;
   onSelect: (categoryId: string) => void;
 }
 
@@ -23,13 +24,15 @@ export function QuestionCategoryList(props: QuestionCategoryListProps) {
     <View style={styles.list}>
       {props.categories.map((entry, index) => {
         const selected = entry.category.categoryId === props.selectedCategoryId;
+        const disabled = entry.category.categoryId === props.disabledCategoryId;
         return (
           <Pressable
             key={entry.category.categoryId}
             accessibilityRole="button"
-            accessibilityState={{ selected }}
+            accessibilityState={{ selected, disabled }}
+            disabled={disabled}
             onPress={() => props.onSelect(entry.category.categoryId)}
-            style={[styles.item, selected ? styles.itemSelected : null]}
+            style={[styles.item, selected ? styles.itemSelected : null, disabled ? styles.itemDisabled : null]}
           >
             <View style={styles.categoryHead}>
               <GameIcon name="questions" color={colors.accentStrong} />
@@ -38,6 +41,7 @@ export function QuestionCategoryList(props: QuestionCategoryListProps) {
               </Text>
             </View>
             <Text style={styles.title}>{entry.category.name}</Text>
+            {disabled ? <Text style={styles.disabledBadge}>BLOCKED THIS ROLL</Text> : null}
             <Text style={styles.copy}>
               {describeQuestionCategoryForPlayers(entry.category)}
             </Text>
@@ -94,6 +98,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accentMuted,
     borderColor: colors.accent,
     borderWidth: 2
+  },
+  itemDisabled: {
+    opacity: 0.5
+  },
+  disabledBadge: {
+    alignSelf: 'flex-start',
+    color: colors.warning,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.7
   },
   title: {
     color: colors.text,

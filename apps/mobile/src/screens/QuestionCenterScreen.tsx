@@ -269,6 +269,16 @@ export function QuestionCenterScreen() {
   }, [categoryViewModels, selectedCategoryId]);
 
   useEffect(() => {
+    const lockedCategoryId = projection?.disabledQuestionCategoryId;
+    if (lockedCategoryId && selectedCategoryId === lockedCategoryId) {
+      const nextCategory = categoryViewModels.find(
+        (entry) => entry.category.categoryId !== lockedCategoryId
+      );
+      if (nextCategory) setSelectedCategoryId(nextCategory.category.categoryId);
+    }
+  }, [categoryViewModels, projection?.disabledQuestionCategoryId, selectedCategoryId]);
+
+  useEffect(() => {
     const selectableTemplateIds =
       activeSelectionRound?.availableTemplateIds ?? [];
     if (
@@ -810,8 +820,16 @@ export function QuestionCenterScreen() {
           categories={categoryViewModels}
           selectedCategoryId={selectedCategoryId}
           selectedScale={selectedScale}
+          disabledCategoryId={projection?.disabledQuestionCategoryId}
           onSelect={setSelectedCategoryId}
         />
+        {projection?.disabledQuestionCategoryId ? (
+          <StateBanner
+            tone="warning"
+            title={`${findQuestionCategory(defaultContentPack, projection.disabledQuestionCategoryId)?.name ?? 'A clue category'} is blocked`}
+            detail="Curse of Spotty Memory rerolls the blocked category after the next accepted question."
+          />
+        ) : null}
       </Panel>
 
       <Panel

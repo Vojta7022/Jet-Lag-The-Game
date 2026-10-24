@@ -975,6 +975,7 @@ function buildCurseCards(
       const normalizedName = normalizeLabel(nameRaw);
       const locksQuestionTemplates = normalizedName.slug === 'curse-of-the-drained-brain';
       const grantsExtraQuestionRewardDraws = normalizedName.slug === 'curse-of-the-overflowing-chalice';
+      const randomizesQuestionCategory = normalizedName.slug === 'curse-of-spotty-memory';
       buildNormalizationIssue(
         issues,
         sourceFileName,
@@ -997,31 +998,34 @@ function buildCurseCards(
         name: normalizedName.displayText,
         shortName: normalizedName.displayText,
         description: applyWorkbookCorrections(descriptionRaw),
-        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws ? 'authoritative' : 'manual',
+        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : 'manual',
         castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
         effects: [
           {
             effectType: locksQuestionTemplates
               ? 'disable_question_templates'
-              : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws' : 'curse_challenge',
+              : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
+                : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
             description: applyWorkbookCorrections(descriptionRaw),
-            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws ? 'authoritative' : 'manual',
+            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : 'manual',
             rawText: descriptionRaw,
             payload: {
               ...(locksQuestionTemplates
                 ? { questionCount: 3, requireDistinctCategories: true, duration: 'hider_run' }
                 : grantsExtraQuestionRewardDraws
                   ? { questionCount: 3, extraDrawCount: 1, duration: 'next_question_rewards' }
-                  : { workbookName: normalizedName.displayText })
+                  : randomizesQuestionCategory
+                    ? { duration: 'hider_run', rerollAfterQuestion: true }
+                    : { workbookName: normalizedName.displayText })
             }
           }
         ],
         rewardsOrPenalties: [],
         requirements: {
-          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws
+          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory
         },
         visibilityPolicy: HIDER_DECK_VISIBILITY,
-        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws ? ['curse', 'authoritative-effect'] : ['curse', 'manual-resolution'],
+        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : ['curse', 'manual-resolution'],
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'name', nameRaw, nameRaw),
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'description', descriptionRaw, nameRaw),
@@ -1092,6 +1096,7 @@ function buildCurseCards(
     const normalizedName = normalizeLabel(nameRaw);
     const locksQuestionTemplates = normalizedName.slug === 'curse-of-the-drained-brain';
     const grantsExtraQuestionRewardDraws = normalizedName.slug === 'curse-of-the-overflowing-chalice';
+    const randomizesQuestionCategory = normalizedName.slug === 'curse-of-spotty-memory';
     buildNormalizationIssue(
       issues,
       sourceFileName,
@@ -1115,31 +1120,34 @@ function buildCurseCards(
       name: normalizedName.displayText,
       shortName: normalizedName.displayText,
       description: applyWorkbookCorrections(descriptionRaw),
-      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws ? 'authoritative' : 'manual',
+      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : 'manual',
       castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
       effects: [
         {
           effectType: locksQuestionTemplates
             ? 'disable_question_templates'
-            : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws' : 'curse_challenge',
+            : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
+              : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
           description: applyWorkbookCorrections(descriptionRaw),
-          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws ? 'authoritative' : 'manual',
+          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : 'manual',
           rawText: descriptionRaw,
           payload: {
             ...(locksQuestionTemplates
               ? { questionCount: 3, requireDistinctCategories: true, duration: 'hider_run' }
               : grantsExtraQuestionRewardDraws
                 ? { questionCount: 3, extraDrawCount: 1, duration: 'next_question_rewards' }
-                : { order: collapseLineBreaks(orderRaw) })
+                : randomizesQuestionCategory
+                  ? { duration: 'hider_run', rerollAfterQuestion: true }
+                  : { order: collapseLineBreaks(orderRaw) })
           }
         }
       ],
       rewardsOrPenalties: [],
       requirements: {
-        requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws
+        requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory
       },
       visibilityPolicy: HIDER_DECK_VISIBILITY,
-      tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws ? ['curse', 'authoritative-effect'] : ['curse', 'manual-resolution'],
+      tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : ['curse', 'manual-resolution'],
       sourceProvenance: [
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'B', nameRaw, orderRaw),
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'C', descriptionRaw, nameRaw),

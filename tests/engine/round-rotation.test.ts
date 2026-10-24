@@ -73,6 +73,8 @@ test('starting the next round rotates the hider, resets round state and deck, an
   found.hiderHandLimitBonus = 2;
   found.disabledQuestionTemplateIds = ['matching-commercial-airport', 'photos-a-tree', 'radar-402'];
   found.questionRewardDrawBonus = { opportunitiesRemaining: 2, extraDrawCount: 1 };
+  found.disabledQuestionCategoryId = 'matching';
+  found.disabledQuestionCategorySourceCardInstanceId = 'spotty-memory-instance';
   const started = executeCommand(found, makeEnvelope(found.matchId,
     { actorId: 'host-1', playerId: 'host-1', role: 'host' },
     { type: 'start_next_round', payload: { nextHiderPlayerId: 'seeker-1' } },
@@ -85,6 +87,8 @@ test('starting the next round rotates the hider, resets round state and deck, an
   assert.equal(next.hiderHandLimitBonus, 0);
   assert.deepEqual(next.disabledQuestionTemplateIds, []);
   assert.equal(next.questionRewardDrawBonus, undefined);
+  assert.equal(next.disabledQuestionCategoryId, undefined);
+  assert.equal(next.disabledQuestionCategorySourceCardInstanceId, undefined);
   assert.equal(next.roleAssignments['seeker-1']?.role, 'hider');
   assert.equal(next.roleAssignments['hider-1']?.role, 'seeker');
   assert.deepEqual(next.teams['team-hider']?.memberPlayerIds, ['seeker-1']);

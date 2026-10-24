@@ -226,7 +226,7 @@ export interface MatchProjection {
   activeCardResolution?: {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
-    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'extra_question_reward_draws';
+    resolutionKind?: 'manual_only' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws';
     discardRequirement?: {
       requiredCards?: number;
       requiredKind?: CardKind;
@@ -236,10 +236,12 @@ export interface MatchProjection {
     timeBonusMinutes?: number;
     questionTemplateCount?: number;
     requireDistinctQuestionCategories?: boolean;
+    rerollAfterQuestion?: boolean;
     questionRewardCount?: number;
     extraQuestionRewardDrawCount?: number;
   };
   disabledQuestionTemplateIds?: string[];
+  disabledQuestionCategoryId?: string;
   questionRewardDrawBonus?: {
     opportunitiesRemaining: number;
     extraDrawCount: number;

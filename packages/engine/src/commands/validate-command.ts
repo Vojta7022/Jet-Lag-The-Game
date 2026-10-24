@@ -672,6 +672,9 @@ export function validateCommandEnvelope(
       if ((aggregate.disabledQuestionTemplateIds ?? []).includes(template.templateId)) {
         return [error(envelope.command.type, 'QUESTION_TEMPLATE_DISABLED', 'This question is locked for the rest of the hider run.')];
       }
+      if (aggregate.disabledQuestionCategoryId === template.categoryId) {
+        return [error(envelope.command.type, 'QUESTION_CATEGORY_DISABLED', 'This question category is disabled for the current roll.')];
+      }
 
       const category = getQuestionCategory(contentPack, template.categoryId);
       if (!category) {
