@@ -1,4 +1,5 @@
 import type { DomainCommand } from '../contracts/commands.ts';
+import type { DomainEventEnvelope } from '../events/domain-events.ts';
 import type { ContentPack, ProjectionScope, ScaleKey } from '../content.ts';
 import type {
   MatchLifecycleState,
@@ -7,7 +8,7 @@ import type {
 } from '../domain/match.ts';
 import type { MatchProjection } from '../projections/match-projection.ts';
 
-import type { MatchRuntimeSnapshot, SyncCursor, TransportSessionConfig } from './contracts.ts';
+import type { CommandSubmissionResult, MatchRuntimeSnapshot, SyncCursor, TransportSessionConfig } from './contracts.ts';
 
 export interface OnlineMatchMembership {
   matchId: string;
@@ -16,6 +17,39 @@ export interface OnlineMatchMembership {
   role?: MatchRole;
   allowedScopes?: ProjectionScope[];
 }
+
+export type MatchMembershipStatus = 'active' | 'removed';
+
+export interface MatchMembershipRecord {
+  matchId: string;
+  authUserId: string;
+  playerId: string;
+  joinedAt: string;
+  status: MatchMembershipStatus;
+}
+
+export interface OnlineCommandCommit {
+  matchId: string;
+  expectedRevision: number | null;
+  commandId: string;
+  idempotencyKey: string;
+  match: MatchRecord;
+  events: DomainEventEnvelope[];
+  snapshot: SnapshotRecord;
+  projections: ProjectionRecord[];
+  result: CommandSubmissionResult;
+}
+
+export type OnlineCommandCommitResult =
+  | {
+      status: 'committed' | 'duplicate';
+      committedRevision: number;
+      result: CommandSubmissionResult;
+    }
+  | {
+      status: 'revision_conflict';
+      currentRevision: number | null;
+    };
 
 export interface OnlineAuthSession {
   authProvider: 'supabase';

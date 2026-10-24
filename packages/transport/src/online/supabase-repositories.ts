@@ -1,7 +1,10 @@
 import type {
   ContentPackReferenceRecord,
   DomainEventEnvelope,
+  MatchMembershipRecord,
   MatchRecord,
+  OnlineCommandCommit,
+  OnlineCommandCommitResult,
   ProjectionRecord,
   SnapshotRecord
 } from '../../../shared-types/src/index.ts';
@@ -10,17 +13,20 @@ import type {
   ContentPackReferenceRepository,
   EventRepository,
   MatchRepository,
+  OnlineAuthorityRepository,
   ProjectionLookupQuery,
   ProjectionRepository,
   SnapshotRepository,
   SupabaseTableClient
 } from './contracts.ts';
+import { TransportRuntimeError } from '../errors.ts';
 
 const MATCHES_TABLE = 'matches';
 const EVENTS_TABLE = 'match_events';
 const SNAPSHOTS_TABLE = 'match_snapshots';
 const PROJECTIONS_TABLE = 'match_projections';
 const CONTENT_PACK_REFS_TABLE = 'content_pack_references';
+const MEMBERSHIPS_TABLE = 'match_memberships';
 
 export class SupabaseMatchRepository implements MatchRepository {
   private readonly client: SupabaseTableClient;
@@ -136,5 +142,66 @@ export class SupabaseContentPackReferenceRepository implements ContentPackRefere
 
   async getByPackId(packId: string): Promise<ContentPackReferenceRecord | undefined> {
     return this.client.selectOne<ContentPackReferenceRecord>(CONTENT_PACK_REFS_TABLE, { packId });
+  }
+}
+
+export class SupabaseOnlineAuthorityRepository implements OnlineAuthorityRepository {
+  private readonly client: SupabaseTableClient;
+
+  constructor(client: SupabaseTableClient) {
+    this.client = client;
+  }
+
+  async commit(input: OnlineCommandCommit): Promise<OnlineCommandCommitResult> {
+    return this.client.rpc<OnlineCommandCommitResult>('commit_match_revision', { p_payload: input });
+  }
+
+  async findMembership(matchId: string, authUserId: string): Promise<MatchMembershipRecord | undefined> {
+    return this.client.selectOne<MatchMembershipRecord>(MEMBERSHIPS_TABLE, {
+      matchId,
+      authUserId
+    });
+  }
+
+  async bindMembership(record: MatchMembershipRecord): Promise<void> {
+    const existingByAuth = await this.findMembership(record.matchId, record.authUserId);
+    if (existingByAuth) {
+      if (existingByAuth.playerId === record.playerId && existingByAuth.status === 'active') return;
+      throw new TransportRuntimeError(
+        existingByAuth.status === 'removed' ? 'MEMBERSHIP_REMOVED' : 'PLAYER_ALREADY_JOINED',
+        'This authenticated user is already bound to a player in the match.'
+      );
+    }
+
+    const existingByPlayer = await this.client.selectOne<MatchMembershipRecord>(MEMBERSHIPS_TABLE, {
+      matchId: record.matchId,
+      playerId: record.playerId,
+      status: 'active'
+    });
+    if (existingByPlayer) {
+      throw new TransportRuntimeError(
+        'PLAYER_ID_ALREADY_BOUND',
+        'This player identity is already bound to another authenticated user in the match.'
+      );
+    }
+
+    try {
+      await this.client.insert(MEMBERSHIPS_TABLE, [record]);
+    } catch (error) {
+      const racedMembership = await this.findMembership(record.matchId, record.authUserId);
+      if (racedMembership?.playerId === record.playerId && racedMembership.status === 'active') return;
+      const racedPlayer = await this.client.selectOne<MatchMembershipRecord>(MEMBERSHIPS_TABLE, {
+        matchId: record.matchId,
+        playerId: record.playerId,
+        status: 'active'
+      });
+      if (racedPlayer) {
+        throw new TransportRuntimeError(
+          'PLAYER_ID_ALREADY_BOUND',
+          'This player identity is already bound to another authenticated user in the match.'
+        );
+      }
+      throw error;
+    }
   }
 }

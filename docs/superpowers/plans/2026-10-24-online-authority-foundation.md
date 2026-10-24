@@ -57,7 +57,7 @@
 - `GameAuthorityRequest`: discriminated operation `create_match | join_match | command | snapshot | catch_up`, plus only the fields required by that operation. Identity comes from the verified JWT, never the request body.
 - `GameAuthorityResponse`: accepted `CommandSubmissionResult`, a scoped `SyncEnvelope`, or a typed error with `code`, `message`, and optional `currentRevision`.
 - `MembershipRecord`: `{ matchId, authUserId, playerId, joinedAt, status }`; role and team are derived from authoritative match state, not copied as authorization truth.
-- `public.commit_match_revision(p_payload jsonb) returns jsonb`: service-role-only database transaction. Its payload contains the match ID, expected revision, event rows, snapshot, match record, projection rows, command idempotency key, and original command result. It returns `committed`, `duplicate`, or `revision_conflict` and writes all state for a committed command atomically.
+- `public.commit_match_revision(p_payload jsonb) returns jsonb`: service-role-only database transaction. Its payload contains the match ID, expected revision, event envelopes, snapshot, match record, projection rows, command idempotency key, and a client-safe command result. It returns `committed`, `duplicate`, or `revision_conflict` and writes all state for a committed command atomically.
 - `EdgeFunctionOnlineService implements OnlineTransportService`: receives `OnlineAuthSession` locally only to obtain the bearer token; it sends no trusted player/role claims to the server.
 
 ## Task 1: Add identity-bound match membership and atomic commit storage
@@ -66,15 +66,15 @@
 - Create: `supabase/migrations/202610240001_server_authority.sql`; preserve already-applied migration history.
 - Modify: `packages/shared-types/src/transport/online.ts`.
 - Modify: `packages/transport/src/online/contracts.ts` and `supabase-repositories.ts`.
-- Test: `tests/transport/online-atomic-commit.test.ts` and migration policy assertions in `tests/transport/online-edge-function.test.ts`.
+- Test: `tests/transport/online-atomic-commit.test.ts`, `tests/transport/supabase-http.test.ts`, and a local PostgreSQL migration smoke check. Policy assertions are tracked under Task 5.
 
 **Interfaces:**
 - Consumes: existing `MatchAggregate`, event envelopes, `SnapshotRecord`, `ProjectionRecord`, match revision, and Supabase Auth user ID.
 - Produces: a server-only membership repository plus a transactional commit API with stale-revision and idempotency outcomes.
 
-- [ ] **Step 1: Write failing storage tests** for a first commit, a second commit using the updated revision, a stale concurrent revision, and a repeated idempotency key.
-- [ ] **Step 2: Run `npm run test:transport`** and confirm the new cases fail because the current repositories append events and save snapshots/projections separately.
-- [ ] **Step 3: Add membership/idempotency tables and `public.commit_match_revision(p_payload jsonb)`**. The function locks the match row, compares expected revision, checks the idempotency key, appends contiguous events, and stores snapshot/match/projections atomically.
+- [x] **Step 1: Write failing storage tests** for a first commit, a second commit using the updated revision, a stale concurrent revision, a repeated idempotency key, and ensuring idempotent results omit the aggregate and event payloads.
+- [x] **Step 2: Run `npm run test:transport`** and confirm the new cases fail because the current repositories append events and save snapshots/projections separately.
+- [x] **Step 3: Add membership/idempotency tables and `public.commit_match_revision(p_payload jsonb)`**. The function locks the match row, compares expected revision, checks the idempotency key, appends contiguous events, and stores snapshot/match/projections atomically.
 
 ```sql
 perform pg_advisory_xact_lock(hashtextextended(p_payload->>'matchId', 0));
@@ -93,9 +93,9 @@ end if;
 -- upsert the scoped projections, and store the command result.
 ```
 
-- [ ] **Step 4: Add typed repository methods** for membership lookup/creation/removal and transactional commit; keep current in-memory repositories implementing the same contract for tests.
-- [ ] **Step 5: Make the new tests pass**, then run all transport tests and `git diff --check`.
-- [ ] **Step 6: Commit** the migration, repository, contracts, and tests as `feat: add atomic online match commits`.
+- [x] **Step 4: Add typed repository methods** for membership lookup/binding and transactional commit; membership removal remains a domain command in Task 4.
+- [x] **Step 5: Make the new tests pass**, then run all transport tests and `git diff --check`.
+- [x] **Step 6: Commit** the migration, repository, contracts, and tests as `feat: add atomic online match commits`.
 
 ## Task 2: Move online command and projection authority to an Edge Function
 

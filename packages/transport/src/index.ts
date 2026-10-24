@@ -11,6 +11,7 @@ export * from './local-nearby/persistence.ts';
 export * from './online/auth.ts';
 export * from './online/authority-runtime.ts';
 export * from './online/contracts.ts';
+export * from './online/in-memory-online-authority-repository.ts';
 export * from './online/projection-targets.ts';
 export * from './online/realtime.ts';
 export * from './online/repositories.ts';

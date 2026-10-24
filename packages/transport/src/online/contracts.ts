@@ -12,7 +12,10 @@ import type {
   MatchRecord,
   OnlineAuthSession,
   OnlineCatchUpAccessRequest,
+  OnlineCommandCommit,
+  OnlineCommandCommitResult,
   OnlineCommandRequest,
+  MatchMembershipRecord,
   OnlineProjectionAccessRequest,
   OnlineReconnectAccessRequest,
   ProjectionFanoutNotice,
@@ -53,6 +56,12 @@ export interface ContentPackReferenceRepository {
   getByPackId(packId: string): Promise<ContentPackReferenceRecord | undefined>;
 }
 
+export interface OnlineAuthorityRepository {
+  commit(input: OnlineCommandCommit): Promise<OnlineCommandCommitResult>;
+  findMembership(matchId: string, authUserId: string): Promise<MatchMembershipRecord | undefined>;
+  bindMembership(record: MatchMembershipRecord): Promise<void>;
+}
+
 export interface OnlineRepositoryBundle {
   matches: MatchRepository;
   events: EventRepository;
@@ -72,6 +81,7 @@ export interface SupabaseRequestAuthContext {
 export interface SupabaseTableClient {
   insert(table: string, rows: unknown[]): Promise<void>;
   upsert(table: string, row: Record<string, unknown>, keyFields: string[]): Promise<void>;
+  rpc<TResponse>(functionName: string, args: Record<string, unknown>): Promise<TResponse>;
   selectMany<TRecord>(table: string, filters?: SupabaseTableFilters): Promise<TRecord[]>;
   selectOne<TRecord>(table: string, filters?: SupabaseTableFilters): Promise<TRecord | undefined>;
 }

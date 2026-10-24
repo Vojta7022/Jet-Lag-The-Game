@@ -47,8 +47,8 @@
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.
 - [x] Draft and push the proposed server-authoritative design and acceptance criteria in `docs/superpowers/specs/2026-10-24-online-player-game-design.md`.
-- [ ] Product owner reviews and approves the written design before implementation planning.
-- [ ] Write the phased implementation plan after spec approval.
+- [x] Product owner approves the written design and implementation choices (2026-10-24).
+- [x] Write the phased implementation plan.
 - [ ] Implement and verify secure online authority, separate-device joining/reconnect, role-specific live locations, automatic question/map resolution, and standard card coverage.
 - [ ] Run a full mobile field round on multiple phones with native GPS and cellular connectivity.
 

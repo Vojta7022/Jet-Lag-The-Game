@@ -8,6 +8,7 @@ import type {
   SupabaseTableClient,
   SupabaseTableFilters
 } from './contracts.ts';
+import { TransportRuntimeError } from '../errors.ts';
 
 function matchesFilters(record: Record<string, unknown>, filters: SupabaseTableFilters = {}): boolean {
   return Object.entries(filters).every(([key, value]) => {
@@ -41,6 +42,13 @@ export class InMemorySupabaseTableClient implements SupabaseTableClient {
     }
 
     this.tables.set(table, next);
+  }
+
+  async rpc<TResponse>(functionName: string, _args: Record<string, unknown>): Promise<TResponse> {
+    throw new TransportRuntimeError(
+      'IN_MEMORY_RPC_UNSUPPORTED',
+      'The in-memory table client does not execute the "' + functionName + '" SQL function.'
+    );
   }
 
   async selectMany<TRecord>(table: string, filters: SupabaseTableFilters = {}): Promise<TRecord[]> {

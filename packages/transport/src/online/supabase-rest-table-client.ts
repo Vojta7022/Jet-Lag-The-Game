@@ -63,6 +63,18 @@ export class SupabaseRestTableClient implements SupabaseTableClient {
     });
   }
 
+  async rpc<TResponse>(functionName: string, args: Record<string, unknown>): Promise<TResponse> {
+    if (!/^[a-z][a-z0-9_]*$/i.test(functionName)) {
+      throw new TransportRuntimeError('SUPABASE_RPC_NAME_INVALID', 'Supabase RPC names must be simple SQL function names.');
+    }
+    const response = await this.request(`rpc/${functionName}`, {
+      method: 'POST',
+      body: JSON.stringify(args),
+      headers: { Prefer: 'return=representation' }
+    });
+    return (await response.json()) as TResponse;
+  }
+
   async selectMany<TRecord>(table: string, filters: SupabaseTableFilters = {}): Promise<TRecord[]> {
     const response = await this.request(table, {
       method: 'GET',
