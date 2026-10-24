@@ -79,6 +79,23 @@ test('the workbook importer creates a normalized draft content pack', () => {
   );
   assert.ok(photosTree);
   assert.equal(photosTree.parameters?.workbookRequirementsText, 'Must include the entire tree');
+  const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
+  assert.ok(photoTemplates.length > 0);
+  assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));
+  assert.ok(photoTemplates.every((template) => template.sourceProvenance.some((source) =>
+    source.sourceFileName === 'Scanned base rulebook, printed pp. 32–35'
+  )));
+  assert.match(String(photosTree.parameters?.rulebookGuidanceText), /normal aspect ratio/i);
+  assert.match(String(photosTree.parameters?.rulebookGuidanceText), /entire tree/i);
+  const traceStreets = result.pack.questionTemplates.find((template) => template.templateId === 'photos-1-2-mile-of-streets-traced');
+  assert.match(String(traceStreets?.parameters?.rulebookGuidanceText), /1 km/i);
+  assert.match(String(traceStreets?.parameters?.rulebookGuidanceText), /five turns/i);
+  assert.match(String(traceStreets?.parameters?.rulebookGuidanceText), /doubling back/i);
+  const parkPhoto = result.pack.questionTemplates.find((template) => template.templateId === 'photos-park');
+  assert.match(String(parkPhoto?.parameters?.rulebookGuidanceText), /2 m from any obstruction/i);
+  assert.match(String(parkPhoto?.requirements?.find((requirement) => requirement.requirementType === 'manual_approval')?.description), /scanned photo specification/i);
+  const mountainPhoto = result.pack.questionTemplates.find((template) => template.templateId === 'photos-tallest-mountain-visible-from-station');
+  assert.match(String(mountainPhoto?.parameters?.rulebookGuidanceText), /at most 3× zoom/i);
 
   const randomize = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-randomize');
   assert.ok(randomize);
@@ -179,6 +196,11 @@ test('the workbook importer creates a normalized draft content pack', () => {
 test('the legacy workbook mapping also excludes the unprinted Measuring target', () => {
   const result = importContentPack({ inputPath: legacyWorkbookPath });
   assert.equal(result.pack.questionTemplates.length, 80);
+  const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
+  assert.equal(photoTemplates.length, 18);
+  assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));
+  const tracedStreets = photoTemplates.find((template) => template.templateId === 'photos-1-2-mile-of-streets-traced');
+  assert.match(String(tracedStreets?.parameters?.rulebookGuidanceText), /1 km/);
   assert.equal(result.pack.questionTemplates.some((template) => template.templateId === 'measuring-4th-admin-borough'), false);
   assert.equal(result.pack.questionTemplates.some((template) => template.templateId === 'matching-4th-admin-borough'), true);
 });

@@ -2517,6 +2517,38 @@ function buildTentaclesTemplates(
   return { category, templates };
 }
 
+const PHOTO_COMMON_RULEBOOK_GUIDANCE = 'Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely.';
+
+const PHOTO_RULEBOOK_SPECIFICATIONS: Record<string, string> = {
+  'photos-a-tree': 'Include the entire tree.',
+  'photos-the-sky': 'Place the phone on the ground and shoot straight up using the default lens with no zoom.',
+  'photos-you': 'Use selfie mode. Hold the phone perpendicular to the ground, with your arm fully extended; use the default lens with no zoom.',
+  'photos-widest-street': 'Include both sides of the street; the background is not required.',
+  'photos-tallest-structure-in-your-sightline': 'Choose the tallest structure from the hider’s current perspective and sightline, not the objectively tallest one. Include the top and both sides, with the top in the upper third of the frame.',
+  'photos-any-building-visible-from-station': 'Stand directly outside a transit-station entrance (choose an entrance if there are several). Include the building’s roof and both sides, with its top in the upper third of the frame.',
+  'photos-tallest-building-visible-from-station': 'Choose the tallest building from the hider’s perspective and sightline, not the objectively tallest one. Stand directly outside a transit-station entrance (choose an entrance if there are several), and include the roof and both sides with the top in the upper third. The station itself does not count unless a separate tall building with a non-transit purpose sits above it, such as the MetLife building above Grand Central.',
+  'photos-trace-nearest-street-path': 'Trace the nearest street or path from intersection to intersection, and make sure it appears in the mapping app. You may screenshot the map and black out everything else with the phone’s drawing tools, or trace the map onto paper placed over the phone.',
+  'photos-two-buildings': 'Photograph two buildings, including the bottom of each and up to four stories.',
+  'photos-restaurant-interior': 'Stand outside and take the photo through the restaurant window. Do not zoom.',
+  'photos-train-platform': 'Show a 2 m × 2 m area with three distinct elements. The elements should let someone at that place confidently identify this location and distinguish it from elsewhere.',
+  'photos-park': 'Do not zoom. Hold the phone perpendicular to the ground and stand at least 2 m from any obstruction.',
+  'photos-grocery-store-aisle': 'Do not zoom. Stand at the end of the aisle and shoot straight down it.',
+  'photos-place-of-worship': 'Show a 2 m × 2 m area with three distinct elements. The elements should let someone at that place confidently identify this location and distinguish it from elsewhere.',
+  'photos-1-2-mile-of-streets-traced': 'Trace 1 km of streets continuously, including five turns, without doubling back. Orient the trace north–south and use streets shown in the mapping app.',
+  'photos-tallest-mountain-visible-from-station': 'Choose the tallest mountain from the hider’s current perspective and sightline. Use at most 3× zoom and place the mountain top in the upper third of the frame.',
+  'photos-biggest-body-of-water-in-your-zone': 'Use at most 3× zoom. Include either both sides of the body of water or the horizon.',
+  'photos-five-buildings': 'Photograph five buildings, including the bottom of each and up to four stories.'
+};
+
+function photoRulebookGuidance(templateId: string): { text: string; source: string } | undefined {
+  const specification = PHOTO_RULEBOOK_SPECIFICATIONS[templateId];
+  if (!specification) return undefined;
+  return {
+    text: `${PHOTO_COMMON_RULEBOOK_GUIDANCE} ${specification}`,
+    source: 'Scanned base rulebook, printed pp. 32–35'
+  };
+}
+
 function buildPhotosTemplates(
   sourceFileName: string,
   packId: string,
@@ -2577,6 +2609,7 @@ function buildPhotosTemplates(
       }
 
       const normalizedSubject = normalizeLabel(rawSubject);
+      const rulebookGuidance = photoRulebookGuidance(`photos-${normalizedSubject.slug}`);
       buildNormalizationIssue(
         issues,
         sourceFileName,
@@ -2596,7 +2629,9 @@ function buildPhotosTemplates(
         },
         {
           requirementType: 'manual_approval',
-          description: applyWorkbookCorrections(rawRequirements ?? 'Manual review required.'),
+          description: rulebookGuidance
+            ? 'Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.'
+            : applyWorkbookCorrections(rawRequirements ?? 'Manual review required.'),
           rawText: rawRequirements
         }
       ];
@@ -2609,16 +2644,19 @@ function buildPhotosTemplates(
         categoryId: category.categoryId,
         name: normalizedSubject.displayText,
         promptOverrides: questionRaw ? { promptTemplate: applyWorkbookCorrections(questionRaw) } : undefined,
-        parameters: workbookQuestionParameters({
-          question: questionRaw,
-          cost: costRaw,
-          time: timeRaw,
-          availability: availabilityRaw,
-          requirements: rawRequirements,
-          values: {
-            subject: normalizedSubject.displayText
-          }
-        }),
+        parameters: {
+          ...workbookQuestionParameters({
+            question: questionRaw,
+            cost: costRaw,
+            time: timeRaw,
+            availability: availabilityRaw,
+            requirements: rawRequirements,
+            values: {
+              subject: normalizedSubject.displayText
+            }
+          }),
+          ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {})
+        },
         answerSchema: {
           kind: 'attachment',
           minAttachments: 1
@@ -2633,7 +2671,8 @@ function buildPhotosTemplates(
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'subject', rawSubject, rawSubject),
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'requirements', rawRequirements, rawSubject),
-          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'availability', availabilityRaw, rawSubject)
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'availability', availabilityRaw, rawSubject),
+          ...(rulebookGuidance ? [generatedProvenance(rulebookGuidance.source, 'Photo challenge specifications paraphrased from the scanned base rulebook.')] : [])
         ]
       });
     }
@@ -2715,6 +2754,7 @@ function buildPhotosTemplates(
 
     const rawRequirements = cellText(row, 1);
     const normalizedSubject = normalizeLabel(rawSubject);
+    const rulebookGuidance = photoRulebookGuidance(`photos-${normalizedSubject.slug}`);
     buildNormalizationIssue(
       issues,
       sourceFileName,
@@ -2734,7 +2774,9 @@ function buildPhotosTemplates(
       },
       {
         requirementType: 'manual_approval',
-        description: applyWorkbookCorrections(rawRequirements ?? 'Manual review required.'),
+        description: rulebookGuidance
+          ? 'Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.'
+          : applyWorkbookCorrections(rawRequirements ?? 'Manual review required.'),
         rawText: rawRequirements
       }
     ];
@@ -2745,7 +2787,8 @@ function buildPhotosTemplates(
       categoryId: category.categoryId,
       name: normalizedSubject.displayText,
       parameters: {
-        subject: normalizedSubject.displayText
+        subject: normalizedSubject.displayText,
+        ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {})
       },
       answerSchema: {
         kind: 'attachment',
@@ -2760,7 +2803,8 @@ function buildPhotosTemplates(
       visibilityPolicy: PHOTO_VISIBILITY,
       sourceProvenance: [
         sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'A', rawSubject, rawSubject),
-        sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'B', rawRequirements, rawSubject)
+        sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'B', rawRequirements, rawSubject),
+        ...(rulebookGuidance ? [generatedProvenance(rulebookGuidance.source, 'Photo challenge specifications paraphrased from the scanned base rulebook.')] : [])
       ]
     });
   }

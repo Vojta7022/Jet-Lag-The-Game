@@ -159,6 +159,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Reuse the question picker and answer-form rulebook guidance surfaces; verify representative definitions and full template coverage in the generated pack.
 - [x] Verify the full suite (289 passing), mobile typecheck, and `git diff --check` (2026-10-24).
 
+### Completed implementation slice: scanned Photos question instructions
+
+- [x] Add failing importer and mobile-guidance tests for full printed photo coverage, source provenance, and suppression of conflicting workbook text.
+- [x] Add scan-derived instructions for all 18 photo prompts in cleaned and legacy workbook mappings, including shared photo rules and referee review guidance.
+- [x] Correct scan/workbook mismatches: 1 km street tracing, 2 m park clearance, building-story requirements, 2 m × 2 m identifying areas, and the mountain's maximum 3× zoom.
+- [x] Regenerate the draft content pack; verify all 292 tests, mobile typecheck, and `git diff --check` (2026-10-24).
+
 ### Current security slice: Supabase access lockdown
 
 - [x] Revoke direct anon/authenticated access to match, event, snapshot, projection, content-reference, membership, and idempotency tables; preserve service-role access for the authority Edge Function.
@@ -298,4 +305,5 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - Online game commands receive their timestamps from the authority server, preventing a modified or misconfigured phone clock from backdating a late answer. [tests/transport/online-edge-function.test.ts]
 - The web map fallback draws a bounded set of OSM tiles with attribution and now pans/zooms on touch with visible zoom/reset controls. It does not prefetch or offer offline tile downloads.
 - Visual comparison against the live reference confirms the app map shares the city-boundary, station-zone, and street-map concepts but is not visually identical: the reference is a Leaflet map workbench with editable layers and question controls; this app embeds a game-first map in its match workflow.
-- Photo questions now support the scanned ordinary-play case where the requested subject does not exist in the hiding zone: the hider may submit a null answer, resolve without a map deduction, and still take the card reward. The control is available in both Question Center and the inline live-map answer flow; non-photo questions reject it. [base rulebook scan p. 31; `tests/engine/endgame-questions.test.ts`]
+- Photo questions now support the scanned ordinary-play case where the requested subject does not exist in the hiding zone: the hider may submit a null answer, resolve without a map deduction, and still take the card reward. The control is available in both Question Center and the inline live-map answer flow; non-photo questions reject it. [base rulebook scan p. 32; `tests/engine/endgame-questions.test.ts`]
+- All 18 Photos prompts now show the relevant scan-derived specification in question selection and answer entry, with source pages in generated provenance; conflicting workbook requirement text is omitted from the player view. Several wrong workbook units/conditions were corrected from the printed pages. [base rulebook scan, printed pp. 32–35; `tests/importer/importer.test.ts`; `apps/mobile/tests/question-guidance.test.ts`]

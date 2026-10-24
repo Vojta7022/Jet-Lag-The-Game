@@ -171,6 +171,20 @@ test('question guidance exposes scan-derived clarifications separately from work
   assert.equal(describeWorkbookRequirementSummary(template), 'Send the current transit stop list.');
 });
 
+test('photo questions show scanned requirements without displaying conflicting workbook wording', () => {
+  const template = createTemplate({
+    templateId: 'photos-1-2-mile-of-streets-traced',
+    categoryId: 'photos',
+    parameters: {
+      workbookRequirementsText: 'Must trace 1/2 mile of streets.',
+      rulebookGuidanceText: 'Trace 1 km of streets continuously, including five turns, without doubling back.'
+    }
+  });
+
+  assert.match(String(describeQuestionRulebookGuidance(template)), /1 km/);
+  assert.equal(describeWorkbookRequirementSummary(template), undefined);
+});
+
 test('question guidance stays honest about metadata-only evidence flows', () => {
   const category = createCategory({
     categoryId: 'photos',

@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T21:18:38.191Z",
+    "importedAt": "2026-10-24T21:26:43.696Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -8701,7 +8701,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "All Games",
-        "workbookRequirementsText": "Must include the entire tree"
+        "workbookRequirementsText": "Must include the entire tree",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Include the entire tree."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -8722,7 +8723,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Must include the entire tree",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Must include the entire tree"
         }
       ],
@@ -8769,6 +8770,11 @@
           "columnName": "availability",
           "rawLabel": "A Tree",
           "rawValue": "All Games"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -8786,7 +8792,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "All Games",
-        "workbookRequirementsText": "Place phone on ground and shoot directly up"
+        "workbookRequirementsText": "Place phone on ground and shoot directly up",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Place the phone on the ground and shoot straight up using the default lens with no zoom."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -8807,7 +8814,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Place phone on ground and shoot directly up",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Place phone on ground and shoot directly up"
         }
       ],
@@ -8854,6 +8861,11 @@
           "columnName": "availability",
           "rawLabel": "The Sky",
           "rawValue": "All Games"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -8871,7 +8883,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "All Games",
-        "workbookRequirementsText": "Selfie mode, arm parallel to the ground, fully extended"
+        "workbookRequirementsText": "Selfie mode, arm parallel to the ground, fully extended",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Use selfie mode. Hold the phone perpendicular to the ground, with your arm fully extended; use the default lens with no zoom."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -8892,7 +8905,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Selfie mode, arm parallel to the ground, fully extended",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Selfie mode, arm parallel to the ground, fully extended"
         }
       ],
@@ -8939,6 +8952,11 @@
           "columnName": "availability",
           "rawLabel": "You",
           "rawValue": "All Games"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -8956,7 +8974,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "All Games",
-        "workbookRequirementsText": "Must include both sides of the street"
+        "workbookRequirementsText": "Must include both sides of the street",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Include both sides of the street; the background is not required."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -8977,7 +8996,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Must include both sides of the street",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Must include both sides of the street"
         }
       ],
@@ -9024,6 +9043,11 @@
           "columnName": "availability",
           "rawLabel": "Widest Street",
           "rawValue": "All Games"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9041,7 +9065,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "All Games",
-        "workbookRequirementsText": "Tallest from your current perspective / sightline. Must include top and both sides. The top must be in the top 1/3rd of frame"
+        "workbookRequirementsText": "Tallest from your current perspective / sightline. Must include top and both sides. The top must be in the top 1/3rd of frame",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Choose the tallest structure from the hider’s current perspective and sightline, not the objectively tallest one. Include the top and both sides, with the top in the upper third of the frame."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9062,7 +9087,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Tallest from your current perspective / sightline. Must include top and both sides. The top must be in the top 1/3rd of frame",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Tallest from your current perspective / sightline. Must include top and both sides. The top must be in the top 1/3rd of frame"
         }
       ],
@@ -9109,6 +9134,11 @@
           "columnName": "availability",
           "rawLabel": "Tallest structure in your sightline",
           "rawValue": "All Games"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9126,7 +9156,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "All Games",
-        "workbookRequirementsText": "Must stand directly outside transit station entrance. If multiple entrances you may choose. Must include roof, both sides, with the top of the building in the top 1/3rd of frame"
+        "workbookRequirementsText": "Must stand directly outside transit station entrance. If multiple entrances you may choose. Must include roof, both sides, with the top of the building in the top 1/3rd of frame",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Stand directly outside a transit-station entrance (choose an entrance if there are several). Include the building’s roof and both sides, with its top in the upper third of the frame."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9147,7 +9178,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Must stand directly outside transit station entrance. If multiple entrances you may choose. Must include roof, both sides, with the top of the building in the top 1/3rd of frame",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Must stand directly outside transit station entrance. If multipole entrance you may choose. Must include roof, boths sides, with the top of the building in the top 1/3rd of frame"
         }
       ],
@@ -9194,6 +9225,11 @@
           "columnName": "availability",
           "rawLabel": "Any building visible from station",
           "rawValue": "All Games"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9211,7 +9247,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Medium & Up",
-        "workbookRequirementsText": "Tallest from your perspective / sightline. Must stand directly outside transit station entrance. If multiple entrances you may choose. Must include roof, both sides, with the top of the building in the top 1/3rd of frame"
+        "workbookRequirementsText": "Tallest from your perspective / sightline. Must stand directly outside transit station entrance. If multiple entrances you may choose. Must include roof, both sides, with the top of the building in the top 1/3rd of frame",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Choose the tallest building from the hider’s perspective and sightline, not the objectively tallest one. Stand directly outside a transit-station entrance (choose an entrance if there are several), and include the roof and both sides with the top in the upper third. The station itself does not count unless a separate tall building with a non-transit purpose sits above it, such as the MetLife building above Grand Central."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9232,7 +9269,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Tallest from your perspective / sightline. Must stand directly outside transit station entrance. If multiple entrances you may choose. Must include roof, both sides, with the top of the building in the top 1/3rd of frame",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Tallest from your perspective / sightline. Must stand directly outside transit station entrance. If multipole entrance you may choose. Must include roof, boths sides, with the top of the building in the top 1/3rd of frame"
         }
       ],
@@ -9278,6 +9315,11 @@
           "columnName": "availability",
           "rawLabel": "Tallest building visible from station",
           "rawValue": "Medium & Up"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9295,7 +9337,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Medium & Up",
-        "workbookRequirementsText": "Street / Path must be visible on mapping app. Trace intersection to intersection"
+        "workbookRequirementsText": "Street / Path must be visible on mapping app. Trace intersection to intersection",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Trace the nearest street or path from intersection to intersection, and make sure it appears in the mapping app. You may screenshot the map and black out everything else with the phone’s drawing tools, or trace the map onto paper placed over the phone."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9316,7 +9359,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Street / Path must be visible on mapping app. Trace intersection to intersection",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Street / Path must be visible on mapping app. Trace intersection to intersection"
         }
       ],
@@ -9362,6 +9405,11 @@
           "columnName": "availability",
           "rawLabel": "Trace Nearest Street / Path",
           "rawValue": "Medium & Up"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9379,7 +9427,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Medium & Up",
-        "workbookRequirementsText": "Must include 5'x5' section with three distinct elements"
+        "workbookRequirementsText": "Must include 5'x5' section with three distinct elements",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Photograph two buildings, including the bottom of each and up to four stories."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9400,7 +9449,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Must include 5'x5' section with three distinct elements",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Must include 5'x5' section with three distinct elements"
         }
       ],
@@ -9446,6 +9495,11 @@
           "columnName": "availability",
           "rawLabel": "Two Buildings",
           "rawValue": "Medium & Up"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9463,7 +9517,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Medium & Up",
-        "workbookRequirementsText": "No zoom, must take photo from outside through window"
+        "workbookRequirementsText": "No zoom, must take photo from outside through window",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Stand outside and take the photo through the restaurant window. Do not zoom."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9484,7 +9539,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "No zoom, must take photo from outside through window",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "No zoom, must take photo from outside through window"
         }
       ],
@@ -9530,6 +9585,11 @@
           "columnName": "availability",
           "rawLabel": "Restaurant Interior",
           "rawValue": "Medium & Up"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9547,7 +9607,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Medium & Up",
-        "workbookRequirementsText": "Must include 5'x5' section with three distinct elements"
+        "workbookRequirementsText": "Must include 5'x5' section with three distinct elements",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Show a 2 m × 2 m area with three distinct elements. The elements should let someone at that place confidently identify this location and distinguish it from elsewhere."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9568,7 +9629,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Must include 5'x5' section with three distinct elements",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Must include 5'x5' section with three distinct elements"
         }
       ],
@@ -9614,6 +9675,11 @@
           "columnName": "availability",
           "rawLabel": "Train Platform",
           "rawValue": "Medium & Up"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9631,7 +9697,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Medium & Up",
-        "workbookRequirementsText": "No zoom, phone perpendicular to ground, must stand 5' away from any obstruction"
+        "workbookRequirementsText": "No zoom, phone perpendicular to ground, must stand 5' away from any obstruction",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Do not zoom. Hold the phone perpendicular to the ground and stand at least 2 m from any obstruction."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9652,7 +9719,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "No zoom, phone perpendicular to ground, must stand 5' away from any obstruction",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "No zoom, phone perpendicular to ground, must stand 5' away from any obstruction"
         }
       ],
@@ -9698,6 +9765,11 @@
           "columnName": "availability",
           "rawLabel": "Park",
           "rawValue": "Medium & Up"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9715,7 +9787,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Medium & Up",
-        "workbookRequirementsText": "No zoom, stand at the end of the aisle, shoot directly down aisle."
+        "workbookRequirementsText": "No zoom, stand at the end of the aisle, shoot directly down aisle.",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Do not zoom. Stand at the end of the aisle and shoot straight down it."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9736,7 +9809,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "No zoom, stand at the end of the aisle, shoot directly down aisle.",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "No zoom, stand at the end of the aisle, shoot directly down aisle."
         }
       ],
@@ -9782,6 +9855,11 @@
           "columnName": "availability",
           "rawLabel": "Grocery Store Aisle",
           "rawValue": "Medium & Up"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9799,7 +9877,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Medium & Up",
-        "workbookRequirementsText": "Must include 5'x5' section with three distinct elements"
+        "workbookRequirementsText": "Must include 5'x5' section with three distinct elements",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Show a 2 m × 2 m area with three distinct elements. The elements should let someone at that place confidently identify this location and distinguish it from elsewhere."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9820,7 +9899,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Must include 5'x5' section with three distinct elements",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Must include 5'x5' section with three distinct elements"
         }
       ],
@@ -9866,6 +9945,11 @@
           "columnName": "availability",
           "rawLabel": "Place of Worship",
           "rawValue": "Medium & Up"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9883,7 +9967,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Large Only",
-        "workbookRequirementsText": "Must be continuous, include 5 turns, no doubling back, send N-S Oriented, streets must appear on mapping app."
+        "workbookRequirementsText": "Must be continuous, include 5 turns, no doubling back, send N-S Oriented, streets must appear on mapping app.",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Trace 1 km of streets continuously, including five turns, without doubling back. Orient the trace north–south and use streets shown in the mapping app."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9904,7 +9989,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Must be continuous, include 5 turns, no doubling back, send N-S Oriented, streets must appear on mapping app.",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Must be continuous, include 5 turns, no doubling back, send N-S Oriented, streets must appear on mapping app."
         }
       ],
@@ -9949,6 +10034,11 @@
           "columnName": "availability",
           "rawLabel": "1/2 Mile of streets traced",
           "rawValue": "Large Only"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -9966,7 +10056,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Large Only",
-        "workbookRequirementsText": "Tallest from your perspective / sightline. Must be 3x zoom. Top of mountain must be in top 1/3rd of frame"
+        "workbookRequirementsText": "Tallest from your perspective / sightline. Must be 3x zoom. Top of mountain must be in top 1/3rd of frame",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Choose the tallest mountain from the hider’s current perspective and sightline. Use at most 3× zoom and place the mountain top in the upper third of the frame."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -9987,7 +10078,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Tallest from your perspective / sightline. Must be 3x zoom. Top of mountain must be in top 1/3rd of frame",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Tallest form you perspective / sightline. Must be 3x zoom. Top of mountain must be in top 1/3rd of frame"
         }
       ],
@@ -10032,6 +10123,11 @@
           "columnName": "availability",
           "rawLabel": "Tallest mountain visible from station",
           "rawValue": "Large Only"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -10049,7 +10145,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Large Only",
-        "workbookRequirementsText": "Max 3x zoom. Must include either both sides of water OR the horizon."
+        "workbookRequirementsText": "Max 3x zoom. Must include either both sides of water OR the horizon.",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Use at most 3× zoom. Include either both sides of the body of water or the horizon."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -10070,7 +10167,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Max 3x zoom. Must include either both sides of water OR the horizon.",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Max 3x zoom. Must include either both sides of water OR the horizon."
         }
       ],
@@ -10115,6 +10212,11 @@
           "columnName": "availability",
           "rawLabel": "Biggest body of water in your zone",
           "rawValue": "Large Only"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -10132,7 +10234,8 @@
         "workbookCostText": "Draw 1",
         "workbookTimeText": "S/M: 10 Minutes L: 20 Minutes",
         "workbookAvailabilityText": "Large Only",
-        "workbookRequirementsText": "Must include bottom, and up to four stories"
+        "workbookRequirementsText": "Must include bottom, and up to four stories",
+        "rulebookGuidanceText": "Submit a photo that follows the full specifications below. If the requested subject does not exist in the hiding zone, the hider may answer “I cannot answer” and still draw a card. Send photos in the phone’s normal aspect ratio. Do not use Google Street View to judge photos or verify stations remotely. Photograph five buildings, including the bottom of each and up to four stories."
       },
       "answerSchema": {
         "kind": "attachment",
@@ -10153,7 +10256,7 @@
         },
         {
           "requirementType": "manual_approval",
-          "description": "Must include bottom, and up to four stories",
+          "description": "Follow the scanned photo specification shown above; a referee confirms whether the photo meets it.",
           "rawText": "Must include bottom, and up to four stories"
         }
       ],
@@ -10198,6 +10301,11 @@
           "columnName": "availability",
           "rawLabel": "Five buildings",
           "rawValue": "Large Only"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 32–35",
+          "notes": "Photo challenge specifications paraphrased from the scanned base rulebook."
         }
       ]
     }

@@ -165,6 +165,9 @@ export function describeWorkbookRuleSummary(
 }
 
 export function describeWorkbookRequirementSummary(template: QuestionTemplateDefinition): string | undefined {
+  if (template.categoryId === 'photos' && describeQuestionRulebookGuidance(template)) {
+    return undefined;
+  }
   const workbookRequirement = readWorkbookParameterText(template, 'workbookRequirementsText');
   if (workbookRequirement) {
     return workbookRequirement;
