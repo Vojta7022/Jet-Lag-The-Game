@@ -29,18 +29,17 @@ import {
   type OnlineRealtimeFanout,
   OnlineAuthorityRuntime,
   SupabaseAttachmentStorageClient,
-  SupabaseProjectionPollingFanout,
   SingleDeviceRefereeRuntime,
   SingleDeviceRefereeTransportAdapter,
   SupabaseContentPackReferenceRepository,
+  EdgeFunctionOnlineService,
   SupabaseEventRepository,
   SupabaseMatchRepository,
   SupabaseOnlineTransportAdapter,
   SupabaseProjectionRepository,
-  SupabaseRestTableClient,
   SupabaseSnapshotRepository
 } from '../../../../packages/transport/src/index.ts';
-import type { OnlineRepositoryBundle } from '../../../../packages/transport/src/index.ts';
+import type { OnlineRepositoryBundle, OnlineTransportService } from '../../../../packages/transport/src/index.ts';
 
 import type { MobileAppEnvironment, MobileRuntimeKind } from '../config/env.ts';
 import {
@@ -65,11 +64,12 @@ import type {
 } from './types.ts';
 
 interface OnlineFoundationServices {
-  runtime: OnlineAuthorityRuntime;
-  repositories: OnlineRepositoryBundle;
+  runtime?: OnlineAuthorityRuntime;
+  repositories?: OnlineRepositoryBundle;
+  transportService: OnlineTransportService;
   realtime: OnlineRealtimeFanout;
   storageClient?: SupabaseAttachmentStorageClient;
-  sessionManager?: SupabaseMobileSessionManager;
+  sessionManager?: Pick<SupabaseMobileSessionManager, 'isConfigured' | 'createOnlineAuthSession'>;
   persistenceKind: 'mock_in_memory' | 'supabase_rest';
 }
 
@@ -148,6 +148,7 @@ export class MobileRuntimeOrchestrator {
   private readonly environment: MobileAppEnvironment;
   private readonly singleDevicePersistence: LocalRuntimePersistence;
   private readonly clock: () => Date;
+  private readonly onlineSessionManagerOverride?: Pick<SupabaseMobileSessionManager, 'isConfigured' | 'createOnlineAuthSession'>;
   private readonly commandSequences = new Map<string, number>();
   private readonly inMemoryRuntimes = new Map<string, InMemoryAuthorityRuntime>();
   private readonly nearbyRuntimes = new Map<string, NearbyAuthorityRuntime>();
@@ -160,11 +161,13 @@ export class MobileRuntimeOrchestrator {
     environment: MobileAppEnvironment;
     singleDevicePersistence?: LocalRuntimePersistence;
     clock?: () => Date;
+    onlineSessionManager?: Pick<SupabaseMobileSessionManager, 'isConfigured' | 'createOnlineAuthSession'>;
   }) {
     this.contentPack = options.contentPack;
     this.environment = options.environment;
     this.singleDevicePersistence = options.singleDevicePersistence ?? new InMemoryPersistence();
     this.clock = options.clock ?? (() => new Date());
+    this.onlineSessionManagerOverride = options.onlineSessionManager;
   }
 
   async createMatch(
@@ -482,11 +485,16 @@ export class MobileRuntimeOrchestrator {
     profile: SessionProfileDraft,
     input: CreateMatchInput
   ): Promise<ConnectedMatchResult> {
-    const { runtime, realtime } = this.getOrCreateOnlineFoundation();
+    const foundation = this.getOrCreateOnlineFoundation();
+    const runtimeMode = foundation.runtime?.mode ?? 'online_cloud';
     const authSession = await this.buildOnlineSession(profile);
     const boundProfile = buildBoundOnlineSessionProfile(profile, authSession);
     const recipient = buildHostRecipient(boundProfile);
-    const transport = new SupabaseOnlineTransportAdapter(runtime, realtime);
+    const transport = new SupabaseOnlineTransportAdapter(
+      foundation.transportService,
+      foundation.realtime,
+      { pollIntervalMs: foundation.sessionManager ? this.environment.onlineRealtimePollMs : 0 }
+    );
 
     await transport.connect({
       sessionId: `online-host:${boundProfile.playerId}`,
@@ -494,14 +502,15 @@ export class MobileRuntimeOrchestrator {
       authSession
     });
 
-    await this.submitCreateMatch(transport, input.matchId, 'online', boundProfile, input.initialScale);
+    const createResult = await this.submitCreateMatch(transport, input.matchId, 'online', boundProfile, input.initialScale);
     const initialSync = await transport.requestSnapshot({ matchId: input.matchId });
-    const joinCode = (await this.getOrCreateOnlineFoundation().repositories.matches.getByMatchId(input.matchId))?.joinCode;
+    const joinCode = createResult.joinCode
+      ?? (await foundation.repositories?.matches.getByMatchId(input.matchId))?.joinCode;
 
     return {
       connection: {
         runtimeKind: input.runtimeKind,
-        runtimeMode: runtime.mode,
+        runtimeMode,
         matchId: input.matchId,
         joinCode,
         matchMode: 'online',
@@ -521,50 +530,61 @@ export class MobileRuntimeOrchestrator {
   ): Promise<ConnectedMatchResult> {
     const foundation = this.getOrCreateOnlineFoundation();
     const normalizedJoinCode = normalizeJoinCode(input.joinCode);
-    const directMatchRecord = input.matchId
-      ? await foundation.repositories.matches.getByMatchId(input.matchId)
+    const isRemote = Boolean(foundation.sessionManager);
+    const directMatchRecord = !isRemote && input.matchId
+      ? await foundation.repositories?.matches.getByMatchId(input.matchId)
       : undefined;
-    const matchRecord = directMatchRecord ?? (
+    const matchRecord = !isRemote ? directMatchRecord ?? (
       normalizedJoinCode
-        ? await foundation.repositories.matches.getByJoinCode(normalizedJoinCode)
+        ? await foundation.repositories?.matches.getByJoinCode(normalizedJoinCode)
         : undefined
-    );
-    const matchId = matchRecord?.matchId;
-    if (input.matchId && !directMatchRecord) {
+    ) : undefined;
+    const requestedMatchId = isRemote
+      ? (input.matchId ?? `pending:${createUuid()}`)
+      : matchRecord?.matchId;
+    if (!isRemote && input.matchId && !directMatchRecord) {
       throw new Error(`No online match is available for match id "${input.matchId}".`);
     }
-    if (!matchId) {
+    if (!isRemote && !requestedMatchId) {
       throw new Error(
         normalizedJoinCode
           ? `No online match is available for join code "${normalizedJoinCode}".`
           : 'Enter a valid join code before joining the online match.'
       );
     }
-    if (!matchRecord?.contentPackId) {
+    if (isRemote && !normalizedJoinCode) {
+      throw new Error('Enter a valid join code before joining the online match.');
+    }
+    if (!isRemote && !matchRecord?.contentPackId) {
       throw new Error(
-        `Online match "${matchId}" is missing its content pack metadata. Ask the host to recreate the match or check the online matches table before joining again.`
+        `Online match "${requestedMatchId}" is missing its content pack metadata. Ask the host to recreate the match or check the online matches table before joining again.`
       );
     }
-    const { runtime, realtime } = foundation;
     const authSession = await this.buildOnlineSession(profile);
     const boundProfile = buildBoundOnlineSessionProfile(profile, authSession);
     const recipient = buildParticipantRecipient(boundProfile, input.requestedScope ?? 'player_private');
-    const transport = new SupabaseOnlineTransportAdapter(runtime, realtime);
+    const transport = new SupabaseOnlineTransportAdapter(
+      foundation.transportService,
+      foundation.realtime,
+      { pollIntervalMs: isRemote ? this.environment.onlineRealtimePollMs : 0 }
+    );
 
     await transport.connect({
       sessionId: `online-player:${boundProfile.playerId}`,
       recipient,
-      authSession
+      authSession,
+      joinCode: normalizedJoinCode
     });
 
-    await this.submitJoinMatch(transport, matchId, boundProfile);
+    const joinResult = await this.submitJoinMatch(transport, requestedMatchId!, boundProfile);
+    const matchId = isRemote ? joinResult.matchId : requestedMatchId!;
     const initialSync = await transport.requestSnapshot({ matchId });
     const projection = initialSync.projectionDelivery.projection;
 
     return {
       connection: {
         runtimeKind: input.runtimeKind,
-        runtimeMode: runtime.mode,
+        runtimeMode: foundation.runtime?.mode ?? 'online_cloud',
         matchId,
         joinCode: matchRecord?.joinCode ?? normalizedJoinCode,
         matchMode: 'online',
@@ -803,33 +823,33 @@ export class MobileRuntimeOrchestrator {
     }
 
     const usingRealSupabase = Boolean(this.environment.onlineProjectUrl && this.environment.onlineAnonKey);
-    const tableClient = usingRealSupabase
-      ? new SupabaseRestTableClient({
-          baseUrl: this.environment.onlineProjectUrl!,
-          anonKey: this.environment.onlineAnonKey!
-        })
-      : new InMemorySupabaseTableClient();
-    const repositories = {
+    const tableClient = usingRealSupabase ? undefined : new InMemorySupabaseTableClient();
+    const repositories: OnlineRepositoryBundle | undefined = tableClient ? {
       matches: new SupabaseMatchRepository(tableClient),
       events: new SupabaseEventRepository(tableClient),
       snapshots: new SupabaseSnapshotRepository(tableClient),
       projections: new SupabaseProjectionRepository(tableClient),
       contentPackReferences: new SupabaseContentPackReferenceRepository(tableClient)
-    };
-    const realtime = usingRealSupabase
-      ? new SupabaseProjectionPollingFanout({
-          projections: repositories.projections,
-          pollIntervalMs: this.environment.onlineRealtimePollMs
+    } : undefined;
+    const realtime: OnlineRealtimeFanout = new MockOnlineRealtimeFanout();
+    const runtime = repositories ? new OnlineAuthorityRuntime({
+      contentPacks: [this.contentPack],
+      repositories,
+      realtimeFanout: realtime
+    }) : undefined;
+    const sessionManager = this.onlineSessionManagerOverride
+      ?? (usingRealSupabase ? new SupabaseMobileSessionManager(this.environment) : undefined);
+    const transportService: OnlineTransportService = usingRealSupabase
+      ? new EdgeFunctionOnlineService({
+          projectUrl: this.environment.onlineProjectUrl!,
+          anonKey: this.environment.onlineAnonKey!
         })
-      : new MockOnlineRealtimeFanout();
+      : runtime!;
 
     this.onlineFoundation = {
-      runtime: new OnlineAuthorityRuntime({
-        contentPacks: [this.contentPack],
-        repositories,
-        realtimeFanout: realtime
-      }),
+      runtime,
       repositories,
+      transportService,
       realtime,
       storageClient: usingRealSupabase
         ? new SupabaseAttachmentStorageClient({
@@ -837,9 +857,7 @@ export class MobileRuntimeOrchestrator {
             anonKey: this.environment.onlineAnonKey!
           })
         : undefined,
-      sessionManager: usingRealSupabase
-        ? new SupabaseMobileSessionManager(this.environment)
-        : undefined,
+      sessionManager,
       persistenceKind: usingRealSupabase ? 'supabase_rest' : 'mock_in_memory'
     };
 
@@ -909,6 +927,7 @@ export class MobileRuntimeOrchestrator {
     if (!result.accepted) {
       throw new Error(result.rejection?.message ?? 'Create match command was rejected.');
     }
+    return result;
   }
 
   private async submitJoinMatch(
@@ -933,6 +952,7 @@ export class MobileRuntimeOrchestrator {
     if (!result.accepted) {
       throw new Error(result.rejection?.message ?? 'Join match command was rejected.');
     }
+    return result;
   }
 
   private resolveAuthorityRuntime(connection: RuntimeConnection): AuthorityRuntime | undefined {

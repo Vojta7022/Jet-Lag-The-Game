@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { SupabaseOnlineTransportAdapter } from '../../packages/transport/src/index.ts';
+import { MockOnlineRealtimeFanout, SupabaseOnlineTransportAdapter } from '../../packages/transport/src/index.ts';
+import type { SyncEnvelope } from '../../packages/shared-types/src/index.ts';
 import { makeRecipient } from './helpers.ts';
 import {
   createOnlineHarness,
@@ -125,4 +126,51 @@ test('supabase online transport adapter catches up from realtime fanout using au
 
   assert.equal(reconnect.kind, 'snapshot');
   assert.equal(reconnect.requiresResync, true);
+});
+
+test('Edge Function adapter polls authorized catch-up and stops delivering after unsubscribe', async () => {
+  let catchUpCalls = 0;
+  let latestSequence = 0;
+  const makeSync = (sequence: number): SyncEnvelope => ({
+    syncId: `sync-${sequence}`, kind: sequence ? 'delta' : 'snapshot', matchId: 'poll-match',
+    runtimeMode: 'online_cloud', projectionScope: 'public_match', snapshotVersion: sequence,
+    lastEventSequence: sequence, requiresResync: false,
+    projectionDelivery: {
+      deliveryId: `delivery-${sequence}`, matchId: 'poll-match', runtimeMode: 'online_cloud',
+      projectionScope: 'public_match', recipient: makeRecipient('public_match', { actorId: 'poll-user', scope: 'public_match' }), snapshotVersion: sequence,
+      lastEventSequence: sequence, projection: {} as never, generatedAt: '2026-10-24T12:00:00.000Z'
+    },
+    eventStream: { matchId: 'poll-match', projectionScope: 'public_match', fromSequence: sequence, toSequence: sequence, events: [] },
+    generatedAt: '2026-10-24T12:00:00.000Z'
+  });
+  const service = {
+    async submitAuthenticatedCommand() { throw new Error('not used'); },
+    async requestAuthenticatedSnapshot() { return makeSync(latestSequence); },
+    async catchUpAuthenticated() {
+      catchUpCalls += 1;
+      latestSequence = 1;
+      return makeSync(latestSequence);
+    },
+    async reconnectAuthenticated() { return makeSync(latestSequence); }
+  };
+  const adapter = new SupabaseOnlineTransportAdapter(service, new MockOnlineRealtimeFanout(), { pollIntervalMs: 5 });
+  await adapter.connect({
+    sessionId: 'poll-session',
+    authSession: makeOnlineSession('poll-user'),
+    recipient: makeRecipient('public_match', { actorId: 'poll-user', scope: 'public_match' })
+  });
+  const received: SyncEnvelope[] = [];
+  const subscription = await adapter.subscribe({
+    matchId: 'poll-match', deliverInitialSync: false,
+    cursor: { snapshotVersion: 0, lastEventSequence: 0 }
+  }, async (sync) => { received.push(sync); });
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  await subscription.unsubscribe();
+  const countAtUnsubscribe = catchUpCalls;
+  await new Promise((resolve) => setTimeout(resolve, 20));
+
+  assert.equal(received.length, 1);
+  assert.equal(received[0]?.lastEventSequence, 1);
+  assert.ok(catchUpCalls >= 1);
+  assert.equal(catchUpCalls, countAtUnsubscribe);
 });

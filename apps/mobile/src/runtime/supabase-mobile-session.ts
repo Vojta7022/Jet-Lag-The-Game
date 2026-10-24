@@ -1,4 +1,5 @@
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { OnlineAuthSession } from '../../../../packages/shared-types/src/index.ts';
 
@@ -12,6 +13,14 @@ interface SupabaseMobileSessionSnapshot {
   refreshToken?: string;
   expiresAt?: string;
 }
+
+const asyncStorageModule = AsyncStorage as unknown as {
+  getItem?: typeof AsyncStorage.getItem;
+  setItem?: typeof AsyncStorage.setItem;
+  removeItem?: typeof AsyncStorage.removeItem;
+  default?: typeof AsyncStorage;
+};
+const sessionStorage = asyncStorageModule.getItem ? AsyncStorage : asyncStorageModule.default;
 
 export class SupabaseMobileSessionManager {
   private readonly environment: MobileAppEnvironment;
@@ -38,6 +47,11 @@ export class SupabaseMobileSessionManager {
       authUserId: authenticated?.authUserId ?? profile.authUserId ?? profile.playerId,
       defaultPlayerId: profile.playerId,
       accessToken: authenticated?.accessToken,
+      accessTokenProvider: async () => {
+        const current = await this.getClient().auth.getSession();
+        if (current.error) throw current.error;
+        return current.data.session?.access_token;
+      },
       refreshToken: authenticated?.refreshToken,
       expiresAt: authenticated?.expiresAt,
       memberships: []
@@ -47,13 +61,28 @@ export class SupabaseMobileSessionManager {
   private async getOrCreateAnonymousSession(
     profile: SessionProfileDraft
   ): Promise<SupabaseMobileSessionSnapshot> {
-    const profileKey = `${profile.playerId}:${profile.authUserId ?? profile.playerId}:${profile.displayName}`;
+    const localAuthUserId = profile.authUserId ?? profile.playerId;
+    const profileKey = `${profile.playerId}:${localAuthUserId}`;
     if (this.cachedProfileKey === profileKey && this.cachedSession) {
       return this.cachedSession;
     }
 
     const client = this.getClient();
+    const stored = await client.auth.getSession();
+    const storedUserMetadata = stored.data.session?.user.user_metadata;
+    if (
+      stored.data.session
+      && storedUserMetadata?.requested_player_id === profile.playerId
+      && storedUserMetadata?.local_auth_user_id === localAuthUserId
+    ) {
+      this.cachedProfileKey = profileKey;
+      this.cachedSession = mapSession(stored.data.session);
+      return this.cachedSession;
+    }
+
     if (this.cachedProfileKey && this.cachedProfileKey !== profileKey) {
+      await client.auth.signOut().catch(() => undefined);
+    } else if (stored.data.session) {
       await client.auth.signOut().catch(() => undefined);
     }
 
@@ -62,7 +91,7 @@ export class SupabaseMobileSessionManager {
         data: {
           requested_player_id: profile.playerId,
           requested_display_name: profile.displayName,
-          local_auth_user_id: profile.authUserId ?? profile.playerId
+          local_auth_user_id: localAuthUserId
         }
       }
     });
@@ -92,7 +121,8 @@ export class SupabaseMobileSessionManager {
       this.client = createClient(this.environment.onlineProjectUrl, this.environment.onlineAnonKey, {
         auth: {
           autoRefreshToken: true,
-          persistSession: false,
+          persistSession: true,
+          storage: sessionStorage,
           detectSessionInUrl: false
         }
       });

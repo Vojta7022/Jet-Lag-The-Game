@@ -57,6 +57,7 @@ export interface OnlineAuthSession {
   authUserId: string;
   defaultPlayerId?: string;
   accessToken?: string;
+  accessTokenProvider?: () => Promise<string | undefined>;
   refreshToken?: string;
   expiresAt?: string;
   serviceRole?: boolean;
@@ -70,6 +71,7 @@ export interface OnlineCommandRequest {
   command: DomainCommand;
   idempotencyKey?: string;
   clientSequence?: number;
+  joinCode?: string;
 }
 
 export interface OnlineProjectionAccessRequest {
@@ -151,4 +153,5 @@ export interface ProjectionFanoutSubscriptionRequest extends ProjectionTargetKey
 
 export interface SupabaseOnlineTransportSessionConfig extends TransportSessionConfig {
   authSession: OnlineAuthSession;
+  joinCode?: string;
 }

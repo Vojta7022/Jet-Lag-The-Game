@@ -58,6 +58,7 @@ export interface ContentPackReferenceRepository {
 
 export interface OnlineAuthorityRepository {
   commit(input: OnlineCommandCommit): Promise<OnlineCommandCommitResult>;
+  findIdempotentResult(matchId: string, idempotencyKey: string, commandId: string): Promise<CommandSubmissionResult | undefined>;
   findMembership(matchId: string, authUserId: string): Promise<MatchMembershipRecord | undefined>;
   bindMembership(record: MatchMembershipRecord): Promise<void>;
 }

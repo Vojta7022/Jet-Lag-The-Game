@@ -239,6 +239,15 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   }
 
   private async submitBoundCommand(envelope: CommandEnvelope): Promise<CommandSubmissionResult> {
+    if (this.authorityRepository && envelope.idempotencyKey) {
+      const replay = await this.authorityRepository.findIdempotentResult(
+        envelope.matchId,
+        envelope.idempotencyKey,
+        envelope.commandId
+      );
+      if (replay) return replay;
+    }
+
     const reconciled = await this.reconcileAggregate(envelope.matchId, envelope.occurredAt);
     const aggregate = reconciled?.aggregate;
     if (!aggregate && envelope.command.type !== 'create_match') {
@@ -273,7 +282,8 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       if (committed.status === 'revision_conflict') {
         throw new TransportRuntimeError(
           'MATCH_REVISION_CONFLICT',
-          'Another player changed the match. Refresh the match and retry this action.'
+          'Another player changed the match. Refresh the match and retry this action.',
+          { currentRevision: committed.currentRevision }
         );
       }
       if (committed.status === 'duplicate') return committed.result;
@@ -434,7 +444,8 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       if (committed.status === 'revision_conflict') {
         throw new TransportRuntimeError(
           'MATCH_REVISION_CONFLICT',
-          'Another player changed the match while automatic rules were being applied. Refresh and retry.'
+          'Another player changed the match while automatic rules were being applied. Refresh and retry.',
+          { currentRevision: committed.currentRevision }
         );
       }
       await this.publishProjectionNotices(committed.projections);

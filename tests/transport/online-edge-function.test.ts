@@ -4,7 +4,7 @@ import test from 'node:test';
 import type { OnlineTransportService } from '../../packages/transport/src/online/contracts.ts';
 import type { CommandSubmissionResult, MatchMembershipRecord, OnlineAuthSession } from '../../packages/shared-types/src/index.ts';
 import { createGameAuthorityHandler } from '../../supabase/functions/game-authority/index.ts';
-import { loadEngineTestContentPack } from '../engine/helpers.ts';
+import { loadEngineTestContentPack, makeEnvelope } from '../engine/helpers.ts';
 import {
   InMemoryOnlineAuthorityRepository,
   InMemorySupabaseTableClient,
@@ -15,6 +15,7 @@ import {
   SupabaseProjectionRepository,
   SupabaseSnapshotRepository
 } from '../../packages/transport/src/index.ts';
+import { EdgeFunctionOnlineService, MockOnlineRealtimeFanout, SupabaseOnlineTransportAdapter } from '../../packages/transport/src/index.ts';
 
 function dependencies() {
   const calls: Array<{ operation: string; session: OnlineAuthSession; payload: unknown }> = [];
@@ -213,4 +214,90 @@ test('the handler reads a server-built projection and denies non-members without
   assert.equal((await snapshot.json()).sync.projectionDelivery.projectionScope, 'host_admin');
   assert.equal(denied.status, 403);
   assert.equal(authority.commitCount, 1);
+});
+
+test('two authenticated phone adapters create and join online and receive separate scoped projections', async () => {
+  const contentPack = loadEngineTestContentPack();
+  const tableClient = new InMemorySupabaseTableClient();
+  const repositories = {
+    matches: new SupabaseMatchRepository(tableClient),
+    events: new SupabaseEventRepository(tableClient),
+    snapshots: new SupabaseSnapshotRepository(tableClient),
+    projections: new SupabaseProjectionRepository(tableClient),
+    contentPackReferences: new SupabaseContentPackReferenceRepository(tableClient)
+  };
+  const authority = new class extends InMemoryOnlineAuthorityRepository {
+    override async commit(input: Parameters<InMemoryOnlineAuthorityRepository['commit']>[0]) {
+      const result = await super.commit(input);
+      if (result.status === 'committed') {
+        await repositories.matches.save(input.match);
+        await repositories.events.append(input.matchId, input.events);
+        await repositories.snapshots.save(input.snapshot);
+        await repositories.projections.saveMany(input.projections);
+      }
+      return result;
+    }
+  }();
+  const runtime = new OnlineAuthorityRuntime({
+    contentPacks: [contentPack], repositories, authorityRepository: authority,
+    realtimeFanout: new MockOnlineRealtimeFanout()
+  });
+  const memberships = new Map<string, MatchMembershipRecord>();
+  const handler = createGameAuthorityHandler({
+    auth: { async getUser(token) { return token === 'host-jwt' ? { id: 'auth-host' } : token === 'seeker-jwt' ? { id: 'auth-seeker' } : undefined; } },
+    memberships: {
+      async find(matchId, authUserId) { return memberships.get(`${matchId}:${authUserId}`); },
+      async bind(record) { memberships.set(`${record.matchId}:${record.authUserId}`, record); }
+    },
+    matches: {
+      async findByJoinCode(joinCode) { return (await repositories.matches.getByJoinCode(joinCode))?.matchId; },
+      async findJoinCodeByMatchId(matchId) { return (await repositories.matches.getByMatchId(matchId))?.joinCode; }
+    },
+    service: runtime
+  });
+  const edgeFetch: typeof fetch = async (input, init) => handler(new Request(String(input), init));
+  const service = new EdgeFunctionOnlineService({ projectUrl: 'https://unit.test', anonKey: 'publishable', fetch: edgeFetch });
+  const hostTransport = new SupabaseOnlineTransportAdapter(service, new MockOnlineRealtimeFanout());
+  const matchId = 'two-phone-match';
+  const hostRecipient = { recipientId: 'host_admin:host-1', actorId: 'auth-host', playerId: 'host-1', role: 'host' as const, scope: 'host_admin' as const };
+  const hostSession: OnlineAuthSession = {
+    authProvider: 'supabase', authSessionId: 'host-session', authUserId: 'auth-host',
+    defaultPlayerId: 'host-1', accessToken: 'host-jwt', memberships: []
+  };
+  await hostTransport.connect({ sessionId: 'host-phone', recipient: hostRecipient, authSession: hostSession });
+  const created = await hostTransport.submit(makeEnvelope(matchId, {
+    actorId: 'auth-host', playerId: 'host-1', role: 'host'
+  }, {
+    type: 'create_match', payload: {
+      mode: 'online', contentPackId: contentPack.packId, hostPlayerId: 'host-1',
+      hostDisplayName: 'Host', initialScale: 'small'
+    }
+  }, 1));
+  const hostSync = await hostTransport.requestSnapshot({ matchId });
+
+  const seekerSession: OnlineAuthSession = {
+    authProvider: 'supabase', authSessionId: 'seeker-session', authUserId: 'auth-seeker',
+    defaultPlayerId: 'seeker-1', accessToken: 'seeker-jwt', memberships: []
+  };
+  const seekerTransport = new SupabaseOnlineTransportAdapter(service, new MockOnlineRealtimeFanout());
+  await seekerTransport.connect({
+    sessionId: 'seeker-phone',
+    recipient: { recipientId: 'player_private:seeker-1', actorId: 'auth-seeker', playerId: 'seeker-1', role: 'spectator', scope: 'player_private' },
+    authSession: seekerSession,
+    joinCode: created.joinCode
+  });
+  const joined = await seekerTransport.submit(makeEnvelope('join-request-placeholder', {
+    actorId: 'auth-seeker', playerId: 'seeker-1', role: 'spectator'
+  }, { type: 'join_match', payload: { playerId: 'seeker-1', displayName: 'Seeker' } }, 1));
+  const seekerSync = await seekerTransport.requestSnapshot({ matchId: joined.matchId });
+
+  assert.equal(created.accepted, true);
+  assert.match(created.joinCode ?? '', /^[A-Z0-9]{6}$/);
+  assert.equal(joined.matchId, matchId);
+  assert.equal(hostSync.projectionScope, 'host_admin');
+  assert.equal(hostSync.projectionDelivery.recipient.playerId, 'host-1');
+  assert.equal(seekerSync.projectionScope, 'player_private');
+  assert.equal(seekerSync.projectionDelivery.recipient.playerId, 'seeker-1');
+  assert.equal('aggregate' in hostSync.projectionDelivery.projection, false);
+  assert.equal('aggregate' in seekerSync.projectionDelivery.projection, false);
 });

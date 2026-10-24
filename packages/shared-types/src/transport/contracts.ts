@@ -103,6 +103,7 @@ export interface CommandSubmissionResult {
   events: DomainEventEnvelope[];
   snapshot?: MatchRuntimeSnapshot;
   rejection?: CommandRejection;
+  joinCode?: string;
 }
 
 export interface CommandGatewayContext {

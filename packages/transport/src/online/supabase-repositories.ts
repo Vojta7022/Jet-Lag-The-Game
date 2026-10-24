@@ -156,6 +156,21 @@ export class SupabaseOnlineAuthorityRepository implements OnlineAuthorityReposit
     return this.client.rpc<OnlineCommandCommitResult>('commit_match_revision', { p_payload: input });
   }
 
+  async findIdempotentResult(matchId: string, idempotencyKey: string, commandId: string) {
+    const existing = await this.client.selectOne<{
+      commandId: string;
+      commandResult: import('../../../shared-types/src/index.ts').CommandSubmissionResult;
+    }>('match_command_idempotency', { matchId, idempotencyKey });
+    if (!existing) return undefined;
+    if (existing.commandId !== commandId) {
+      throw new TransportRuntimeError(
+        'IDEMPOTENCY_KEY_REUSE',
+        'An idempotency key cannot be reused for a different online command.'
+      );
+    }
+    return existing.commandResult;
+  }
+
   async findMembership(matchId: string, authUserId: string): Promise<MatchMembershipRecord | undefined> {
     return this.client.selectOne<MatchMembershipRecord>(MEMBERSHIPS_TABLE, {
       matchId,

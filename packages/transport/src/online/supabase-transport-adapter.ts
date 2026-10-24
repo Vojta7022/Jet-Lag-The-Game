@@ -21,13 +21,14 @@ import type {
 } from './contracts.ts';
 import { buildProjectionChannelName } from './projection-targets.ts';
 
-function toOnlineCommandRequest(envelope: CommandEnvelope): OnlineCommandRequest {
+function toOnlineCommandRequest(envelope: CommandEnvelope, joinCode?: string): OnlineCommandRequest {
   return {
     matchId: envelope.matchId,
     commandId: envelope.commandId,
     occurredAt: envelope.occurredAt,
     idempotencyKey: envelope.idempotencyKey,
     clientSequence: envelope.clientSequence,
+    joinCode: envelope.command.type === 'join_match' ? joinCode : undefined,
     command: envelope.command
   };
 }
@@ -47,13 +48,16 @@ export class SupabaseOnlineTransportAdapter implements TransportAdapter {
   private readonly realtimeSubscriber: OnlineRealtimeFanoutSubscriber;
   private connectionState: TransportConnectionState = 'disconnected';
   private sessionConfig?: SupabaseOnlineTransportSessionConfig;
+  private readonly pollIntervalMs: number;
 
   constructor(
     service: OnlineTransportService,
-    realtimeSubscriber: OnlineRealtimeFanoutSubscriber
+    realtimeSubscriber: OnlineRealtimeFanoutSubscriber,
+    options: { pollIntervalMs?: number } = {}
   ) {
     this.service = service;
     this.realtimeSubscriber = realtimeSubscriber;
+    this.pollIntervalMs = options.pollIntervalMs ?? 0;
   }
 
   async connect(sessionConfig: SupabaseOnlineTransportSessionConfig): Promise<void> {
@@ -72,7 +76,10 @@ export class SupabaseOnlineTransportAdapter implements TransportAdapter {
 
   async submit(commandEnvelope: CommandEnvelope): Promise<CommandSubmissionResult> {
     const session = this.requireSession();
-    return this.service.submitAuthenticatedCommand(session.authSession, toOnlineCommandRequest(commandEnvelope));
+    return this.service.submitAuthenticatedCommand(
+      session.authSession,
+      toOnlineCommandRequest(commandEnvelope, session.joinCode)
+    );
   }
 
   async requestSnapshot(request: { matchId: string }): Promise<SyncEnvelope> {
@@ -118,6 +125,29 @@ export class SupabaseOnlineTransportAdapter implements TransportAdapter {
         lastEventSequence: initialSync.lastEventSequence
       };
       await listener(initialSync);
+    }
+
+    if (this.pollIntervalMs > 0) {
+      let polling = false;
+      const timerId = setInterval(() => {
+        if (polling) return;
+        polling = true;
+        void this.catchUp({ matchId: request.matchId, cursor: cursor ?? { snapshotVersion: 0, lastEventSequence: 0 } })
+          .then(async (envelope) => {
+            const changed = envelope.requiresResync
+              || envelope.lastEventSequence > (cursor?.lastEventSequence ?? 0)
+              || envelope.snapshotVersion > (cursor?.snapshotVersion ?? 0);
+            if (!changed) return;
+            cursor = { snapshotVersion: envelope.snapshotVersion, lastEventSequence: envelope.lastEventSequence };
+            await listener(envelope);
+          })
+          .catch(() => undefined)
+          .finally(() => { polling = false; });
+      }, this.pollIntervalMs);
+      return {
+        subscriptionId: `edge-poll:${request.matchId}:${session.recipient.recipientId}`,
+        unsubscribe: async () => clearInterval(timerId)
+      };
     }
 
     return this.realtimeSubscriber.subscribe(

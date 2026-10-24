@@ -123,6 +123,22 @@ export class InMemoryOnlineAuthorityRepository implements OnlineAuthorityReposit
     return this.memberships.get(membershipKey(matchId, authUserId));
   }
 
+  async findIdempotentResult(
+    matchId: string,
+    commandKey: string,
+    commandId: string
+  ): Promise<CommandSubmissionResult | undefined> {
+    const replay = this.commitsByIdempotencyKey.get(idempotencyKey(matchId, commandKey));
+    if (!replay) return undefined;
+    if (replay.commandId !== commandId) {
+      throw new TransportRuntimeError(
+        'IDEMPOTENCY_KEY_REUSE',
+        'An idempotency key cannot be reused for a different online command.'
+      );
+    }
+    return replay.result;
+  }
+
   async bindMembership(record: MatchMembershipRecord): Promise<void> {
     const existingByAuth = this.memberships.get(membershipKey(record.matchId, record.authUserId));
     if (existingByAuth) {

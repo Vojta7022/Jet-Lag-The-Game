@@ -57,6 +57,9 @@ export function createOnlineAuthorityDependencies(env: (name: string) => string 
     matches: {
       async findByJoinCode(joinCode: string) {
         return (await matches.getByJoinCode(joinCode))?.matchId;
+      },
+      async findJoinCodeByMatchId(matchId: string) {
+        return (await matches.getByMatchId(matchId))?.joinCode;
       }
     },
     service

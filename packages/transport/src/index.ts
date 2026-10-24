@@ -10,6 +10,7 @@ export * from './local-nearby/heartbeat.ts';
 export * from './local-nearby/persistence.ts';
 export * from './online/auth.ts';
 export * from './online/authority-runtime.ts';
+export * from './online/edge-function-service.ts';
 export * from './online/contracts.ts';
 export * from './online/in-memory-online-authority-repository.ts';
 export * from './online/projection-targets.ts';

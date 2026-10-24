@@ -40,13 +40,15 @@ test('online runtime commits authoritative changes atomically when configured fo
   const hostSession = makeOnlineSession('atomic-host', { defaultPlayerId: 'host-atomic' });
   const matchId = 'atomic-runtime-match';
 
-  const created = await runtime.submitAuthenticatedCommand(hostSession, makeOnlineCommandRequest(hostSession, matchId, 1, {
+  const createRequest = makeOnlineCommandRequest(hostSession, matchId, 1, {
     type: 'create_match',
     payload: {
       mode: 'online', contentPackId: contentPack.packId, hostPlayerId: 'host-atomic',
       hostDisplayName: 'Atomic Host', initialScale: 'small'
     }
-  }));
+  });
+  const created = await runtime.submitAuthenticatedCommand(hostSession, createRequest);
+  const retry = await runtime.submitAuthenticatedCommand(hostSession, createRequest);
   const joined = await runtime.submitAuthenticatedCommand(hostSession, makeOnlineCommandRequest(hostSession, matchId, 2, {
     type: 'join_match', payload: { playerId: 'setup-player', displayName: 'Setup Player' }
   }));
@@ -54,6 +56,8 @@ test('online runtime commits authoritative changes atomically when configured fo
   assert.equal(created.accepted, true);
   assert.equal(created.aggregate, undefined);
   assert.deepEqual(created.events, []);
+  assert.equal(retry.accepted, true);
+  assert.equal(retry.commandId, created.commandId);
   assert.equal(joined.accepted, true);
   assert.deepEqual(commits.map((commit) => commit.expectedRevision), [null, 1]);
   assert.ok(commits.every((commit) => commit.projections.length > 0));

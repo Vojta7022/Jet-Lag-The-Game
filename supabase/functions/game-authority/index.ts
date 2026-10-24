@@ -16,7 +16,10 @@ const JSON_HEADERS = {
   'access-control-allow-methods': 'POST, OPTIONS',
   'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info'
 };
-const CLIENT_IDENTITY_FIELDS = ['actor', 'actorId', 'playerId', 'role', 'teamId', 'authUserId'];
+const CLIENT_IDENTITY_FIELDS = [
+  'actor', 'actorId', 'playerId', 'role', 'teamId', 'authUserId',
+  'authSessionId', 'defaultPlayerId', 'memberships', 'serviceRole', 'allowedScopes'
+];
 
 export interface GameAuthorityDependencies {
   auth: { getUser(accessToken: string): Promise<{ id: string } | undefined> };
@@ -24,7 +27,10 @@ export interface GameAuthorityDependencies {
     find(matchId: string, authUserId: string): Promise<MatchMembershipRecord | undefined>;
     bind(record: MatchMembershipRecord): Promise<void>;
   };
-  matches: { findByJoinCode(joinCode: string): Promise<string | undefined> };
+  matches: {
+    findByJoinCode(joinCode: string): Promise<string | undefined>;
+    findJoinCodeByMatchId?(matchId: string): Promise<string | undefined>;
+  };
   service: OnlineTransportService;
   now?: () => string;
 }
@@ -45,7 +51,10 @@ function errorResponse(error: unknown): Response {
             : 500;
   const knownRequestError = status < 500 || code === 'MATCH_REVISION_CONFLICT';
   const message = knownRequestError && error instanceof Error ? error.message : 'The game service could not complete this request.';
-  return json(status, { error: message, code });
+  const currentRevision = typeof error === 'object' && error && 'currentRevision' in error
+    ? (error as { currentRevision?: number | null }).currentRevision
+    : undefined;
+  return json(status, { error: message, code, ...(currentRevision !== undefined ? { currentRevision } : {}) });
 }
 
 function isRecord(value: unknown): value is JsonObject {
@@ -54,6 +63,13 @@ function isRecord(value: unknown): value is JsonObject {
 
 function hasIdentityClaims(request: JsonObject): boolean {
   return CLIENT_IDENTITY_FIELDS.some((field) => field in request);
+}
+
+function assertAllowedKeys(request: JsonObject, allowed: string[]): void {
+  const unknown = Object.keys(request).find((key) => !allowed.includes(key));
+  if (unknown) {
+    throw Object.assign(new Error(`Unsupported request field "${unknown}".`), { code: 'REQUEST_INVALID' });
+  }
 }
 
 function requiredString(value: unknown, field: string, maxLength = 160): string {
@@ -165,6 +181,7 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
       const body = await readBody(request);
       const operation = requiredString(body.operation, 'operation', 32);
       if (operation === 'create_match') {
+        assertAllowedKeys(body, ['operation', 'matchId', 'commandId', 'occurredAt', 'idempotencyKey', 'payload']);
         const payload = isRecord(body.payload) ? body.payload : undefined;
         if (!payload) throw Object.assign(new Error('Match setup payload is required.'), { code: 'REQUEST_INVALID' });
         const playerId = requiredString(payload.hostPlayerId, 'payload.hostPlayerId');
@@ -180,10 +197,12 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
         const session = makeSession(user.id, matchId, undefined, playerId);
         const result = await dependencies.service.submitAuthenticatedCommand(session, onlineRequest);
         if (result.accepted) await dependencies.memberships.bind(membershipRecord(matchId, user.id, playerId, now()));
-        return json(200, { matchId, result });
+        const joinCode = result.accepted ? await dependencies.matches.findJoinCodeByMatchId?.(matchId) : undefined;
+        return json(200, { matchId, joinCode, result });
       }
 
       if (operation === 'join_match') {
+        assertAllowedKeys(body, ['operation', 'joinCode', 'commandId', 'occurredAt', 'idempotencyKey', 'payload']);
         const joinCode = requiredString(body.joinCode, 'joinCode', 16).toUpperCase();
         const matchId = await dependencies.matches.findByJoinCode(joinCode);
         if (!matchId) throw Object.assign(new Error('No match uses that join code.'), { code: 'MATCH_NOT_FOUND' });
@@ -215,6 +234,7 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
       const session = makeSession(user.id, matchId, membership);
 
       if (operation === 'command') {
+        assertAllowedKeys(body, ['operation', 'matchId', 'commandId', 'occurredAt', 'idempotencyKey', 'clientSequence', 'command']);
         const onlineRequest: OnlineCommandRequest = {
           matchId,
           commandId: requiredString(body.commandId, 'commandId'),
@@ -227,13 +247,16 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
       }
 
       if (operation === 'snapshot') {
+        assertAllowedKeys(body, ['operation', 'matchId', 'requestedScope']);
         const requestedScope = projectionScope(body.requestedScope);
         return json(200, { sync: await dependencies.service.requestAuthenticatedSnapshot(session, { matchId, requestedScope }) });
       }
       if (operation === 'catch_up') {
+        assertAllowedKeys(body, ['operation', 'matchId', 'requestedScope', 'cursor']);
         return json(200, { sync: await dependencies.service.catchUpAuthenticated(session, { matchId, requestedScope: projectionScope(body.requestedScope), cursor: syncCursor(body.cursor) }) });
       }
       if (operation === 'reconnect') {
+        assertAllowedKeys(body, ['operation', 'matchId', 'requestedScope', 'cursor']);
         return json(200, { sync: await dependencies.service.reconnectAuthenticated(session, { matchId, requestedScope: projectionScope(body.requestedScope), cursor: body.cursor === undefined ? undefined : syncCursor(body.cursor) }) });
       }
       throw Object.assign(new Error(`Unsupported operation "${operation}".`), { code: 'OPERATION_UNSUPPORTED' });

@@ -141,9 +141,9 @@ The `join_match` branch validates the join code, dispatches the existing engine 
 - Consumes: the existing `TransportAdapter`/`OnlineTransportService`, Auth access token, Supabase project URL, and Task 2 operation contract.
 - Produces: mobile online commands/snapshots/catch-up/reconnect through the authenticated Edge Function; no client-side `OnlineAuthorityRuntime` for configured cloud matches.
 
-- [ ] **Step 1: Write failing service tests** checking `Authorization: Bearer <user JWT>`, anon/publishable API key placement, operation payloads, typed authorization errors, and stale-revision conflict decoding.
-- [ ] **Step 2: Run the focused transport tests** and confirm no Edge Function service implementation exists.
-- [ ] **Step 3: Implement the fetch-based service** with timeout, JSON validation, retry only for safe snapshot/catch-up reads, and no automatic retry for non-idempotent writes without the original idempotency key.
+- [x] **Step 1: Write failing service tests** checking `Authorization: Bearer <user JWT>`, anon/publishable API key placement, operation payloads, typed authorization errors, and stale-revision conflict decoding.
+- [x] **Step 2: Run the focused transport tests** and confirm no Edge Function service implementation exists.
+- [x] **Step 3: Implement the fetch-based service** with timeout, JSON validation, retry only for safe snapshot/catch-up reads, and no automatic retry for non-idempotent writes without the original idempotency key.
 
 ```ts
 const response = await fetch(`${projectUrl}/functions/v1/game-authority`, {
@@ -157,9 +157,9 @@ const response = await fetch(`${projectUrl}/functions/v1/game-authority`, {
 });
 ```
 
-- [ ] **Step 4: Inject the remote service for configured online mode** while preserving in-memory online mocks for tests and local development without backend credentials.
-- [ ] **Step 5: Add an adapter integration test** that creates on one client, joins on a distinct Auth identity, sends commands from both, and verifies each receives only its scoped projection.
-- [ ] **Step 6: Run `npm run test:transport`, `npm run mobile:typecheck`, and `git diff --check`; commit as `feat: route online play through server authority`.
+- [x] **Step 4: Inject the remote service for configured online mode** while preserving in-memory online mocks for tests and local development without backend credentials.
+- [x] **Step 5: Add an adapter integration test** that creates on one client, joins on a distinct Auth identity, sends commands from both, and verifies each receives only its scoped projection.
+- [x] **Step 6: Run `npm run test:transport`, `npm run mobile:typecheck`, and `git diff --check`; commit as `feat: route online play through server authority`.
 
 ## Task 4: Complete server-backed lobby membership controls
 
