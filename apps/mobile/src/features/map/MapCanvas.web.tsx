@@ -21,7 +21,7 @@ export function MapCanvas(props: MapCanvasProps) {
           hidingRadiusMeters={props.hidingRadiusMeters}
           height={props.height}
           maxWidth={Math.min(props.maxWidth ?? frameWidth, frameWidth)}
-          notice="Boundary preview · Street tiles are available in the mobile app."
+          notice="© OpenStreetMap contributors · Street tiles load for the visible map."
         />
       ) : null}
     </View>

@@ -74,6 +74,8 @@ Round completion now adds scale-adjusted values from time bonus cards still in t
 
 The full round now has an integration test through the real single-device runtime: it covers randomized roles, station-centered zone, arrival/location lock, hide timer expiry, seeker endgame trigger, visual find confirmation, and scoring with a controlled clock. A physical phone/GPS walk and any remaining scan discrepancy review are still open. The content-pack distribution/licensing decision remains open; do not add the scans or a full-text transcription to the public repository until that is settled.
 
+The web map fallback now renders OpenStreetMap tiles for the visible play boundary with persistent on-map attribution. Tile selection stays bounded to the current map view and does not prefetch or support offline downloads. The implementation follows the [OSM tile usage policy](https://operations.osmfoundation.org/policies/tiles/) for the standard tile URL, browser referrer, cache behavior, visible attribution, and no bulk/offline downloads (checked 2026-10-24). The web canvas remains non-pannable, so reference-map interaction parity is still incomplete.
+
 Remaining product decision: whether the project should stay a generic reusable rules engine or prioritize a personal Jet Lag Home Game ruleset.
 
 ## Sources

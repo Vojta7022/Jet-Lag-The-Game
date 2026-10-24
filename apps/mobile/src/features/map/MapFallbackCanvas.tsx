@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, Image as SvgImage, Path, Rect } from 'react-native-svg';
 
 import type {
   RoundStartLocationModel,
@@ -19,6 +19,7 @@ import {
   projectGeometryPoints
 } from './map-geometry.ts';
 import { buildMapOverlayModel } from './map-overlays.ts';
+import { buildOsmTileLayout } from './map-tiles.ts';
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
 
 interface MapFallbackCanvasProps {
@@ -59,6 +60,20 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
     () => mergeBounds(overlayModel.overlays.map((overlay) => getGeometryBounds(overlay.geometry ?? referenceGeometry))),
     [overlayModel.overlays, referenceGeometry]
   );
+  const tileViewport = { width, height, padding: 18 };
+  const tileLayout = useMemo(
+    () => buildOsmTileLayout(bounds ?? {
+      minLongitude: 0,
+      maxLongitude: 0,
+      minLatitude: 0,
+      maxLatitude: 0
+    }, tileViewport),
+    [bounds, height, width]
+  );
+  const boundaryPaths = useMemo(
+    () => geometryToSvgPolygonPaths(referenceGeometry, bounds, tileViewport),
+    [bounds, height, referenceGeometry, width]
+  );
 
   if (!referenceGeometry || !bounds) {
     return (
@@ -75,6 +90,28 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
     <View style={[styles.frame, { width, height }]}>
       <Svg width={width} height={height}>
         <Rect x={0} y={0} width={width} height={height} fill={colors.surface} />
+        {boundaryPaths.length > 0 ? (
+          <Defs>
+            <ClipPath id="osm-map-boundary">
+              <Path d={boundaryPaths.join(' ')} fillRule="evenodd" />
+            </ClipPath>
+          </Defs>
+        ) : null}
+        {boundaryPaths.length > 0 ? (
+          <G clipPath="url(#osm-map-boundary)">
+            {tileLayout.tiles.map((tile) => (
+              <SvgImage
+                key={`${tile.zoom}/${tile.xTile}/${tile.yTile}`}
+                href={tile.url}
+                x={tile.x}
+                y={tile.y}
+                width={tile.width}
+                height={tile.height}
+                preserveAspectRatio="none"
+              />
+            ))}
+          </G>
+        ) : null}
         {overlayModel.overlays.map((overlay) => {
           if (overlay.renderMode === 'point') {
             const points = projectGeometryPoints(overlay.geometry, bounds, {
@@ -141,9 +178,9 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
           );
         })}
       </Svg>
-      {props.notice ? (
+      {props.notice || tileLayout.tiles.length > 0 ? (
         <View style={styles.notice}>
-          <Text style={styles.noticeText}>{props.notice}</Text>
+          <Text style={styles.noticeText}>{props.notice ?? tileLayout.attribution}</Text>
         </View>
       ) : null}
     </View>
