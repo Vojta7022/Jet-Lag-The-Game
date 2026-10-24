@@ -14,12 +14,12 @@ The implementation should preserve the existing rules engine, role-scoped projec
 
 ## Current evidence and constraints
 
-- The current suite passes 199 tests with the project's `.venv` on `PATH`; mobile TypeScript typecheck passes. A real-runtime test completes a full single-device round.
+- The suite passes 230 tests with the project's `.venv` on `PATH`; mobile TypeScript typecheck passes. A real-runtime test completes a full single-device round.
 - The app already has Supabase Auth, tables, snapshot/event persistence, polling fanout, role projections, attachment storage, and an `OnlineAuthorityRuntime` TypeScript class.
 - `OnlineAuthorityRuntime` is currently instantiated by the mobile app. The Supabase REST data client uses the anon key and the development migration grants broad table access. This is a prototype, not a trusted shared authority.
 - Seeker location sharing and map tracks exist for seeker-side views. Hider devices cannot currently publish location, and hider views do not receive seeker tracks.
 - The hider's exact location is intentionally omitted from seeker projections. Preserve this invariant.
-- The pack contains 81 question templates and 37 card definitions (125 card instances); importer warnings remain and many card effects are not authoritative. The generated pack is draft and should be reconciled against the local scanned books before claiming physical-game parity.
+- The pack contains 80 question templates reconciled to the scanned Investigation Book and 37 card definitions (125 card instances); 21 importer warnings remain and many card effects are not authoritative. The generated pack is draft and should be reconciled against the local scanned books before claiming physical-game parity.
 - Existing map tools support region composition, station discovery, saved local scenarios, compressed link sharing, and question overlays. A complete searchable administrative-boundary workflow, content-pack selector, physical-device GPS test, and reliable multi-device field test remain open.
 
 ## Product behavior
@@ -137,4 +137,4 @@ The existing transport interfaces and command/event model remain the client boun
 - Default location answer policy: freeze the latest fresh, sufficiently accurate hider and relevant seeker/team fixes at question acceptance. If a fix is stale, request a refresh rather than calculate from stale data.
 - Default visibility policy: hiders see seeker locations; seekers never see the hider's exact location; seekers see their own team's positions.
 - Recommended hosting: authenticated Supabase Edge Function as gateway plus Postgres as durable authority, with PostGIS/dedicated worker available if geometry exceeds Edge Function limits.
-- The codebase audit verified the existing single-device round and 199/199 repository tests, plus mobile typecheck. It did not verify native GPS or multi-device field play.
+- The initial codebase audit verified the existing single-device round and 199 tests, plus mobile typecheck. The current worktree passes 230/230 tests. Neither check verifies native GPS or multi-device field play.

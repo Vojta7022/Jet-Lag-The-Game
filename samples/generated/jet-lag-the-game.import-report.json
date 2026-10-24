@@ -1,5 +1,5 @@
 {
-  "importJobId": "4944382c-f575-498f-8f6a-4c2d698d4a14",
+  "importJobId": "aff7cc8d-fcf2-458b-953d-eb613c5e9af1",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -137,6 +137,18 @@
       "normalizedValue": "Foreign Consulate",
       "suggestedFix": "Review the canonical label and keep the raw text in provenance metadata.",
       "sheetCell": "subject21"
+    },
+    {
+      "sheetName": "Measuring",
+      "rowNumber": 8,
+      "columnName": "target",
+      "fieldPath": "questionTemplates",
+      "severity": "info",
+      "code": "QUESTION_NOT_IN_PRINTED_BOOK",
+      "message": "4th Admin (Borough) appears in the workbook but not in the scanned Investigation Book's Measuring list, so it was excluded from the base-game pack.",
+      "rawValue": "4th Admin (Borough)",
+      "normalizedValue": null,
+      "suggestedFix": "Keep this question only in a separate variant pack if it is intentionally part of that variant."
     },
     {
       "sheetName": "Measuring",

@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-03-16T03:31:39.085Z",
+    "importedAt": "2026-10-24T16:44:46.132Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -5801,77 +5801,6 @@
           "rowNumber": 7,
           "columnName": "question",
           "rawLabel": "A 2nd Admin Border (County)",
-          "rawValue": "Compared to me, are you closer to or further from _____?"
-        }
-      ]
-    },
-    {
-      "templateId": "measuring-4th-admin-borough",
-      "packId": "jet-lag-the-game-seed",
-      "categoryId": "measuring",
-      "name": "4th Admin (Borough)",
-      "promptOverrides": {
-        "promptTemplate": "Compared to me, are you closer to or further from _____?"
-      },
-      "featureClassRefs": [
-        {
-          "featureClassId": "4th-admin-borough",
-          "label": "4th Admin (Borough)",
-          "rawLabel": "4th Admin (Borough)"
-        }
-      ],
-      "parameters": {
-        "targetLabel": "4th Admin (Borough)",
-        "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
-        "workbookCostText": "Draw 3, Pick 1",
-        "workbookTimeText": "5 Minutes"
-      },
-      "answerSchema": {
-        "kind": "enum",
-        "allowedValues": [
-          "closer",
-          "further",
-          "same"
-        ]
-      },
-      "resolverConfig": {
-        "comparisonTarget": "4th-admin-borough"
-      },
-      "constraintRefs": [
-        "comparative-distance"
-      ],
-      "scaleSet": {
-        "appliesTo": [
-          "small",
-          "medium",
-          "large"
-        ],
-        "rawLabel": "All Games"
-      },
-      "visibilityPolicy": {
-        "visibleTo": [
-          "authority",
-          "host_admin",
-          "public_match"
-        ]
-      },
-      "sourceProvenance": [
-        {
-          "sourceType": "xlsx",
-          "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-          "sheetName": "Measuring",
-          "rowNumber": 8,
-          "columnName": "target",
-          "rawLabel": "4th Admin (Borough)",
-          "rawValue": "4th Admin (Borough)"
-        },
-        {
-          "sourceType": "xlsx",
-          "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-          "sheetName": "Measuring",
-          "rowNumber": 8,
-          "columnName": "question",
-          "rawLabel": "4th Admin (Borough)",
           "rawValue": "Compared to me, are you closer to or further from _____?"
         }
       ]

@@ -72,6 +72,39 @@ const HIDER_DECK_VISIBILITY: VisibilityPolicyRef = {
   visibleTo: ['authority', 'host_admin', 'team_private']
 };
 
+// The workbook includes this extra Measuring target, but the scanned base
+// Investigation Book lists only international, 1st-division, and 2nd-division
+// borders. Keep it out of the standard pack and report the source discrepancy.
+const NON_BASE_BOOK_MEASURING_TARGETS = new Set(['4th-admin-borough']);
+
+function reportExcludedMeasuringTarget(args: {
+  normalizedSlug: string;
+  displayText: string;
+  rawLabel: string;
+  sheetName: string;
+  rowNumber: number;
+  columnName: string;
+  issues: ImportIssue[];
+}): boolean {
+  if (!NON_BASE_BOOK_MEASURING_TARGETS.has(args.normalizedSlug)) {
+    return false;
+  }
+
+  args.issues.push(createIssue({
+    sheetName: args.sheetName,
+    rowNumber: args.rowNumber,
+    columnName: args.columnName,
+    fieldPath: 'questionTemplates',
+    severity: 'info',
+    code: 'QUESTION_NOT_IN_PRINTED_BOOK',
+    message: `${args.displayText} appears in the workbook but not in the scanned Investigation Book's Measuring list, so it was excluded from the base-game pack.`,
+    rawValue: args.rawLabel,
+    normalizedValue: null,
+    suggestedFix: 'Keep this question only in a separate variant pack if it is intentionally part of that variant.'
+  }));
+  return true;
+}
+
 const PHOTO_VISIBILITY: VisibilityPolicyRef = {
   visibleTo: ['authority', 'host_admin', 'team_private', 'player_private']
 };
@@ -1362,6 +1395,18 @@ function buildMeasuringTemplates(
       }
 
       const normalized = normalizeLabel(rawLabel);
+      if (reportExcludedMeasuringTarget({
+        normalizedSlug: normalized.slug,
+        displayText: normalized.displayText,
+        rawLabel,
+        sheetName: sheet.name,
+        rowNumber: row.rowNumber,
+        columnName: 'target',
+        issues
+      })) {
+        continue;
+      }
+
       const featureClassId = registerFeatureTaxonomy(taxonomyById, rawLabel, sourceFileName, sheet.name, row.rowNumber);
       buildNormalizationIssue(
         issues,
@@ -1442,6 +1487,18 @@ function buildMeasuringTemplates(
     }
 
     const normalized = normalizeLabel(rawLabel);
+    if (reportExcludedMeasuringTarget({
+      normalizedSlug: normalized.slug,
+      displayText: normalized.displayText,
+      rawLabel,
+      sheetName: sheet.name,
+      rowNumber: row.rowNumber,
+      columnName: 'A',
+      issues
+    })) {
+      continue;
+    }
+
     const featureClassId = registerFeatureTaxonomy(taxonomyById, rawLabel, sourceFileName, sheet.name, row.rowNumber);
     buildNormalizationIssue(
       issues,

@@ -29,7 +29,7 @@
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
 - The first material gap is a tested, reliable end-to-end play path. Nearby mode has no LAN transport; online mode has no trusted server-side command gateway.
-- The generated workbook pack has six question categories, 81 question templates, 37 card definitions / 125 card instances, and 10 importer warnings. It remains draft content with no ruleset or map preset.
+- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, and 21 importer warnings. It remains draft content with no ruleset or map preset; card warnings still need adjudication.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
 - Implementation direction: single-device referee is the first playable target because its authority, map, and gameplay flows already exist in-process.
@@ -40,8 +40,9 @@
 - The Transit Field Kit is now implemented: warm timetable paper, route-ink navy, signal yellow and orange, compact station navigation, illustrated Home, named team spaces, larger bounded map, and redesigned clue/card/chat surfaces. Browser screenshots are in `deliverables/ui-preview/`.
 - Browser review at 1440px desktop and 390px/320px phone widths found no horizontal overflow. A local referee game was resumed, a crew member added, the Prague boundary selected, the match started, and a six-card hand drawn. The roster and city returned after a browser reconnect.
 - Web `accessible={false}` SVG props caused the reported React warning; decorative game SVGs now use `aria-hidden={true}`. Measured map width also prevents the map surface from extending beyond its card.
-- The current full suite passes 199/199 with the project `.venv` on `PATH`; mobile TypeScript typecheck passes.
+- The current full suite passes 230/230 with the project `.venv` on `PATH`; mobile TypeScript typecheck passes.
 - The scan-confirmed standard round flow is implemented. Imported workbook card text remains draft and may need manual adjudication; it is kept for personal/private play until distribution rights and importer warnings are reviewed.
+- Reconciled the workbook's extra “4th Admin (Borough)” Measuring row against the scanned Investigation Book: it is not listed there, so the base-game importer now excludes it and reports the source discrepancy. The 4th Admin Matching prompt remains. The regenerated pack has 80 templates and the full importer report records 21 warnings plus one informational exclusion.
 
 ## Active: online multiplayer for one phone per player
 
@@ -55,6 +56,7 @@
 ## Active: rules-faithful game and reference-map workflows
 
 - [x] OCR the scanned base rulebook and Investigation Book locally; inspect the reference map implementation.
+- [x] Reconcile the workbook question inventory to the 80 prompts printed in the Investigation Book; report workbook-only rows and keep the printed 4th Admin Matching option.
 - [x] Replace the incorrect randomized question draw with the printed investigation-book question list and repeat-cost rules.
 - [x] Make the default referee ruleset use official scale timers and location rules; remove the invented answer cooldown.
 - [x] Fix timer authority and pause/resume accounting so synced projections cannot reset a live clock.
@@ -84,7 +86,7 @@
 - The hider now marks a final pin during seek phase and explicitly attests that it is publicly accessible and within 3 m of a marked path. An off-transit seeker location report inside the zone starts endgame and freezes that pin. The pin is not sent in the public endgame event or seeker projection. Found requires a seeker/referee confirmation, visual identification, and coordinates within 2 m; the match records a survival-time result and displays it on the live map. Mobile actions capture a one-time GPS fix only after the player taps; continuous sharing is not used for the hider.
 - Endgame completes a scored round. Captured-round score includes real survival time plus scale-adjusted time bonuses still held. All registered participants are shuffled into a persisted hider order at match start, and roles update to match the first draw. Next rounds enforce that order, reset and shuffle cards, begin at the last found spot, and must start within 10 minutes. The final screen ranks each hider by final hiding time and names tied winners. The OSM-selected station itself is not independently verified by the engine.
 - Running timers now carry original start/duration anchors into visible projections; injected mobile commands use the real wall clock; pause records current remaining time and resume shifts the anchor to preserve it. Timer and rules flows have focused passing coverage.
-- Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" npm test` (199 tests), `npm run mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
+- Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" npm test` (230 tests), `npm run mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
 
 ### Review — 2026-10-24
 
