@@ -10,6 +10,8 @@ import { makeSquarePolygon } from '../../../tests/engine/helpers.ts';
 
 import { mobileAppEnvironment } from '../src/config/env.ts';
 import { buildMapSetupBootstrapCommands } from '../src/features/map/map-setup-flow.ts';
+import { findActiveQuestion, findQuestionCategory, findQuestionTemplate } from '../src/features/questions/question-catalog.ts';
+import { buildConstraintResolutionMetadata, chooseConstraintIdForQuestion } from '../src/features/questions/question-flow-state.ts';
 import { ensureMobileShellContentPack } from '../src/runtime/augment-content-pack.ts';
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 
@@ -77,6 +79,52 @@ test('single-device referee can complete a rule-based round through found and sc
   now = new Date(Date.parse(hideTimer.startedAt) + hideTimer.durationSeconds * 1000);
   const seekPhase = await orchestrator.refresh(created.connection);
   assert.equal(seekPhase.projectionDelivery.projection.lifecycleState, 'seek_phase');
+
+  await orchestrator.submitCommands(created.connection,
+    { actorId: seeker.playerId, playerId: seeker.playerId, role: 'seeker' },
+    [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], source: 'manual', onTransit: true } }]
+  );
+  const radar = contentPack.questionTemplates.find((template) => template.templateId === 'radar-402');
+  assert.ok(radar, 'the small-scale Investigation Book includes the 500 m Radar question');
+
+  const asked = await orchestrator.submitCommands(created.connection,
+    { actorId: seeker.playerId, playerId: seeker.playerId, role: 'seeker' },
+    [
+      { type: 'begin_question_prompt', payload: {} },
+      { type: 'ask_question', payload: { questionInstanceId: 'question:round-radar', templateId: radar.templateId, targetTeamId: 'team-hider' } }
+    ]
+  );
+  assert.equal(asked.projectionDelivery.projection.seekPhaseSubstate, 'awaiting_question_answer');
+
+  const answered = await orchestrator.submitCommands(created.connection,
+    { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
+    [{ type: 'answer_question', payload: { questionInstanceId: 'question:round-radar', answer: { value: 'yes' } } }]
+  );
+  const activeQuestion = findActiveQuestion(answered.projectionDelivery.projection);
+  assert.ok(activeQuestion);
+  const template = findQuestionTemplate(contentPack, activeQuestion!.templateId);
+  const category = findQuestionCategory(contentPack, activeQuestion!.categoryId);
+  assert.ok(template && category);
+  const constraintId = chooseConstraintIdForQuestion({ category: category!, template: template!, question: activeQuestion! });
+  assert.ok(constraintId);
+
+  const resolved = await orchestrator.submitCommands(created.connection,
+    host,
+    [{ type: 'apply_constraint', payload: {
+      questionInstanceId: activeQuestion!.questionInstanceId,
+      constraintId: constraintId!,
+      metadata: buildConstraintResolutionMetadata({
+        contentPack,
+        visibleMap: answered.projectionDelivery.projection.visibleMap,
+        template: template!,
+        question: activeQuestion!
+      })
+    } }]
+  );
+  assert.equal(resolved.projectionDelivery.projection.seekPhaseSubstate, 'ready');
+  assert.equal(resolved.projectionDelivery.projection.visibleMap?.history.length, 1);
+  assert.equal(resolved.projectionDelivery.projection.visibleConstraints[0]?.sourceQuestionInstanceId, 'question:round-radar');
+
   await orchestrator.submitCommands(created.connection,
     { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
     [{ type: 'set_final_hiding_spot', payload: { latitude: point[1], longitude: point[0], publiclyAccessible: true, within3mOfMarkedPath: true } }]
