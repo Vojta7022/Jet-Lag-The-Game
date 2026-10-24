@@ -49,12 +49,13 @@ export class SingleDeviceRefereeRuntime implements AuthorityRuntime, ProtectedRe
   private readonly revealFlow: SingleDeviceRevealFlowManager;
 
   constructor(options: SingleDeviceRefereeRuntimeOptions) {
+    const persistence = options.persistence ?? new InMemoryRuntimePersistence();
     this.innerRuntime = new InMemoryAuthorityRuntime({
       mode: 'single_device_referee',
       contentPacks: options.contentPacks,
-      persistence: options.persistence ?? new InMemoryRuntimePersistence()
+      persistence
     });
-    this.revealFlow = new SingleDeviceRevealFlowManager(options.now);
+    this.revealFlow = new SingleDeviceRevealFlowManager(options.now, persistence);
     this.gateway = this.innerRuntime.gateway;
   }
 

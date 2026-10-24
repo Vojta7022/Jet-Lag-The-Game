@@ -4,13 +4,15 @@ import type {
   DomainEventEnvelope,
   EventReadOptions,
   LocalRuntimePersistence,
-  MatchRuntimeSnapshot
+  MatchRuntimeSnapshot,
+  SingleDeviceRevealFlowState
 } from '../../../../packages/shared-types/src/index.ts';
 
 import type { SessionProfileDraft } from './types.ts';
 
 const STORAGE_PREFIX = 'jet-lag-game:v1';
 const ACTIVE_SESSION_KEY = `${STORAGE_PREFIX}:active-session`;
+const REVEAL_FLOW_KEY = `${STORAGE_PREFIX}:reveal-flow`;
 
 export interface SavedSingleDeviceSession {
   version: 1;
@@ -78,6 +80,18 @@ export class AsyncStorageRuntimePersistence implements LocalRuntimePersistence {
     const key = snapshotKey(matchId);
     await this.waitForWrite(key);
     return parseStoredJson<MatchRuntimeSnapshot>(await AsyncStorage.getItem(key), key);
+  }
+
+  async loadRevealFlowState(): Promise<SingleDeviceRevealFlowState> {
+    await this.waitForWrite(REVEAL_FLOW_KEY);
+    const state = parseStoredJson<SingleDeviceRevealFlowState>(await AsyncStorage.getItem(REVEAL_FLOW_KEY), REVEAL_FLOW_KEY);
+    return state ?? { tokens: [], checkpoints: [] };
+  }
+
+  async saveRevealFlowState(state: SingleDeviceRevealFlowState): Promise<void> {
+    await this.enqueueWrite(REVEAL_FLOW_KEY, async () => {
+      await AsyncStorage.setItem(REVEAL_FLOW_KEY, JSON.stringify(state));
+    });
   }
 
   private async enqueueWrite(key: string, operation: () => Promise<void>): Promise<void> {

@@ -10,6 +10,9 @@ import type {
   OnlineAuthSession,
   ProjectionRecipient,
   ProjectionScope,
+  ProjectionViewer,
+  SingleDeviceRevealResult,
+  SingleDeviceRevealToken,
   SyncEnvelope,
   TransportAdapter,
   VisibleAttachmentProjection
@@ -238,6 +241,42 @@ export class MobileRuntimeOrchestrator {
 
   async recover(connection: RuntimeConnection): Promise<MatchRuntimeSnapshot | undefined> {
     return this.resolveAuthorityRuntime(connection)?.recoverMatch(connection.matchId);
+  }
+
+  async armProtectedReveal(
+    connection: RuntimeConnection,
+    viewer: ProjectionViewer,
+    reason: string
+  ): Promise<SingleDeviceRevealToken> {
+    const runtime = this.singleDeviceRuntimes.get(connection.matchId);
+    if (connection.runtimeKind !== 'single_device_referee' || !runtime) {
+      throw new Error('Protected role handoffs are available only in the single-device referee game.');
+    }
+    return runtime.armReveal({ matchId: connection.matchId, viewer, reason });
+  }
+
+  async openProtectedReveal(connection: RuntimeConnection, tokenId: string): Promise<SingleDeviceRevealResult> {
+    const runtime = this.singleDeviceRuntimes.get(connection.matchId);
+    if (connection.runtimeKind !== 'single_device_referee' || !runtime) {
+      throw new Error('Protected role handoffs are available only in the single-device referee game.');
+    }
+    return runtime.openReveal(tokenId);
+  }
+
+  async hideProtectedReveal(connection: RuntimeConnection, tokenId: string): Promise<SingleDeviceRevealToken> {
+    const runtime = this.singleDeviceRuntimes.get(connection.matchId);
+    if (connection.runtimeKind !== 'single_device_referee' || !runtime) {
+      throw new Error('Protected role handoffs are available only in the single-device referee game.');
+    }
+    return runtime.hideReveal(tokenId);
+  }
+
+  async listProtectedReveals(connection: RuntimeConnection, matchId = connection.matchId): Promise<SingleDeviceRevealToken[]> {
+    const runtime = this.singleDeviceRuntimes.get(connection.matchId);
+    if (connection.runtimeKind !== 'single_device_referee' || !runtime) {
+      return [];
+    }
+    return runtime.listRevealTokens(matchId);
   }
 
   async submitCommands(

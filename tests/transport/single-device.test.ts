@@ -3,12 +3,49 @@ import test from 'node:test';
 
 import type { ContentPack } from '../../packages/shared-types/src/index.ts';
 import {
+  InMemoryRuntimePersistence,
   SingleDeviceRefereeRuntime,
   SingleDeviceRefereeTransportAdapter
 } from '../../packages/transport/src/index.ts';
 import { makeEnvelope } from '../engine/helpers.ts';
 import { loadEngineTestContentPack } from '../engine/helpers.ts';
 import { makeRecipient, setupRuntimeToHidePhase } from './helpers.ts';
+
+test('single-device reveal handoffs recover after the runtime is recreated', async () => {
+  const contentPack = loadEngineTestContentPack();
+  const persistence = new InMemoryRuntimePersistence();
+  const request = {
+    matchId: 'durable-reveal-match',
+    viewer: { scope: 'team_private' as const, viewerPlayerId: 'hider-1', viewerTeamId: 'team-hider', viewerRole: 'hider' as const },
+    reason: 'Pass device to hider'
+  };
+  const firstRuntime = new SingleDeviceRefereeRuntime({ contentPacks: [contentPack], persistence });
+  const token = await firstRuntime.armReveal(request);
+
+  const recoveredRuntime = new SingleDeviceRefereeRuntime({ contentPacks: [contentPack], persistence });
+  assert.deepEqual(await recoveredRuntime.listRevealTokens(request.matchId), [token]);
+  await assert.rejects(recoveredRuntime.armReveal(request), /only one protected reveal/i);
+});
+
+test('private views left open are hidden before a recovered handoff can continue', async () => {
+  const contentPack = loadEngineTestContentPack();
+  const persistence = new InMemoryRuntimePersistence();
+  const runtime = new SingleDeviceRefereeRuntime({ contentPacks: [contentPack], persistence });
+  const matchId = await setupRuntimeToHidePhase(runtime, contentPack, 'crashed-reveal-match');
+  const request = {
+    matchId,
+    viewer: { scope: 'team_private' as const, viewerPlayerId: 'hider-1', viewerTeamId: 'team-hider', viewerRole: 'hider' as const },
+    reason: 'Pass device to hider'
+  };
+  const token = await runtime.armReveal(request);
+  await runtime.openReveal(token.tokenId);
+
+  const recoveredRuntime = new SingleDeviceRefereeRuntime({ contentPacks: [contentPack], persistence });
+  const recoveredToken = (await recoveredRuntime.listRevealTokens(matchId))[0];
+
+  assert.equal(recoveredToken?.state, 'hidden');
+  assert.equal((await recoveredRuntime.armReveal(request)).state, 'armed');
+});
 
 function createSingleDeviceHarness(): {
   contentPack: ContentPack;

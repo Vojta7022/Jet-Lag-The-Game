@@ -28,6 +28,11 @@ export interface SingleDeviceRevealCheckpoint {
   occurredAt: string;
 }
 
+export interface SingleDeviceRevealFlowState {
+  tokens: SingleDeviceRevealToken[];
+  checkpoints: SingleDeviceRevealCheckpoint[];
+}
+
 export interface SingleDeviceRevealResult {
   token: SingleDeviceRevealToken;
   projection: MatchProjection;

@@ -2,12 +2,14 @@ import type {
   DomainEventEnvelope,
   EventReadOptions,
   LocalRuntimePersistence,
-  MatchRuntimeSnapshot
+  MatchRuntimeSnapshot,
+  SingleDeviceRevealFlowState
 } from '../../shared-types/src/index.ts';
 
 export class InMemoryRuntimePersistence implements LocalRuntimePersistence {
   private readonly eventsByMatchId = new Map<string, DomainEventEnvelope[]>();
   private readonly snapshotsByMatchId = new Map<string, MatchRuntimeSnapshot[]>();
+  private revealFlowState: SingleDeviceRevealFlowState = { tokens: [], checkpoints: [] };
 
   async appendEvents(matchId: string, events: DomainEventEnvelope[]): Promise<void> {
     const current = this.eventsByMatchId.get(matchId) ?? [];
@@ -33,5 +35,19 @@ export class InMemoryRuntimePersistence implements LocalRuntimePersistence {
 
   async loadLatestSnapshot(matchId: string): Promise<MatchRuntimeSnapshot | undefined> {
     return this.snapshotsByMatchId.get(matchId)?.at(-1);
+  }
+
+  async loadRevealFlowState(): Promise<SingleDeviceRevealFlowState> {
+    return {
+      tokens: this.revealFlowState.tokens.map((token) => ({ ...token, viewer: { ...token.viewer } })),
+      checkpoints: this.revealFlowState.checkpoints.map((checkpoint) => ({ ...checkpoint }))
+    };
+  }
+
+  async saveRevealFlowState(state: SingleDeviceRevealFlowState): Promise<void> {
+    this.revealFlowState = {
+      tokens: state.tokens.map((token) => ({ ...token, viewer: { ...token.viewer } })),
+      checkpoints: state.checkpoints.map((checkpoint) => ({ ...checkpoint }))
+    };
   }
 }

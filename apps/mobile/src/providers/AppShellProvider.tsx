@@ -3,6 +3,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useReducer,
 import type {
   DomainCommand,
   MatchRole,
+  ProjectionViewer,
+  SingleDeviceRevealResult,
+  SingleDeviceRevealToken,
   SyncEnvelope,
   TransportSubscription,
   VisibleAttachmentProjection
@@ -42,6 +45,10 @@ interface AppShellContextValue {
   submitCommands: (commands: DomainCommand[]) => Promise<boolean>;
   prepareAttachmentUploadCommands: (drafts: LocalMediaAttachmentDraft[]) => Promise<DomainCommand[] | undefined>;
   getAttachmentMediaSource: (attachment: VisibleAttachmentProjection) => RemoteAttachmentMediaSource | undefined;
+  armProtectedReveal: (viewer: ProjectionViewer, reason: string) => Promise<SingleDeviceRevealToken | undefined>;
+  openProtectedReveal: (tokenId: string) => Promise<SingleDeviceRevealResult | undefined>;
+  hideProtectedReveal: (tokenId: string) => Promise<boolean>;
+  listProtectedReveals: () => Promise<SingleDeviceRevealToken[]>;
   saveMapSetupDraft: (draft: MapSetupDraftState) => void;
   clearMapSetupDraft: (matchId: string) => void;
   disconnectActiveMatch: () => Promise<void>;
@@ -437,6 +444,51 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     return runtimeClient.getAttachmentMediaSource(connectionRef.current, attachment);
   }, [runtimeClient]);
 
+  const armProtectedReveal = useCallback(async (viewer: ProjectionViewer, reason: string) => {
+    const connection = connectionRef.current;
+    if (!connection) return undefined;
+    try {
+      return await runtimeClient.armProtectedReveal(connection, viewer, reason);
+    } catch (error) {
+      handleFailure(error);
+      return undefined;
+    }
+  }, [handleFailure, runtimeClient]);
+
+  const openProtectedReveal = useCallback(async (tokenId: string) => {
+    const connection = connectionRef.current;
+    if (!connection) return undefined;
+    try {
+      return await runtimeClient.openProtectedReveal(connection, tokenId);
+    } catch (error) {
+      handleFailure(error);
+      return undefined;
+    }
+  }, [handleFailure, runtimeClient]);
+
+  const hideProtectedReveal = useCallback(async (tokenId: string) => {
+    const connection = connectionRef.current;
+    if (!connection) return false;
+    try {
+      await runtimeClient.hideProtectedReveal(connection, tokenId);
+      return true;
+    } catch (error) {
+      handleFailure(error);
+      return false;
+    }
+  }, [handleFailure, runtimeClient]);
+
+  const listProtectedReveals = useCallback(async () => {
+    const connection = connectionRef.current;
+    if (!connection) return [];
+    try {
+      return await runtimeClient.listProtectedReveals(connection);
+    } catch (error) {
+      handleFailure(error);
+      return [];
+    }
+  }, [handleFailure, runtimeClient]);
+
   useEffect(() => {
     return () => {
       void subscriptionRef.current?.unsubscribe();
@@ -456,6 +508,10 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     submitCommands,
     prepareAttachmentUploadCommands,
     getAttachmentMediaSource,
+    armProtectedReveal,
+    openProtectedReveal,
+    hideProtectedReveal,
+    listProtectedReveals,
     saveMapSetupDraft,
     clearMapSetupDraft,
     disconnectActiveMatch,
@@ -466,6 +522,10 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     createMatch,
     disconnectActiveMatch,
     getAttachmentMediaSource,
+    armProtectedReveal,
+    openProtectedReveal,
+    hideProtectedReveal,
+    listProtectedReveals,
     joinMatch,
     prepareAttachmentUploadCommands,
     refreshActiveMatch,

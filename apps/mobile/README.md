@@ -160,7 +160,7 @@ Home offers **Start Referee Game** as the primary local play path. The referee s
 
 - AsyncStorage supports iOS, Android, and web; it stores local data without encryption.
 - Disconnecting a referee match clears its automatic resume pointer. The event log and snapshot remain on the device; there is not yet a match archive or delete screen.
-- Protected reveal handoffs are not yet connected to the mobile UI and are not restored after a process restart.
+- The live map offers single-device referee handoffs to a player's private team view. Handoff tokens/checkpoints persist across restart, and a private view left open by a crash is hidden during recovery.
 
 ## Online Runtime And Storage
 

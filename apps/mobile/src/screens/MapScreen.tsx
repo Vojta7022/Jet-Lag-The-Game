@@ -12,6 +12,7 @@ import {
 } from '../features/cards/index.ts';
 import { MapCanvas } from '../features/map/MapCanvas';
 import { LiveEndgameControls } from '../features/map/LiveEndgameControls.tsx';
+import { ProtectedRoleHandoffPanel } from '../features/map/ProtectedRoleHandoffPanel.tsx';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 
@@ -1083,6 +1084,7 @@ export function MapScreen() {
               </View>
 
               <LiveEndgameControls />
+              <ProtectedRoleHandoffPanel />
 
               {showLegend ? (
                 <View style={styles.liveLegendSheet}>

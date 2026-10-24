@@ -11,7 +11,7 @@
 - [ ] Decide the content-pack distribution approach.
 - [x] Make referee mode a first-class Home-screen start path and clarify its setup instructions.
 - [x] Add durable event/snapshot storage and automatic referee-session reattachment after app restart.
-- [ ] Connect protected reveal handoffs to the mobile UI and persist their state across restart.
+- [x] Connect protected reveal handoffs to the mobile UI and persist their state across restart.
 - [ ] Complete a full round walkthrough and close remaining rules/content gaps.
 
 ## UI: make the player experience feel like a game
@@ -34,7 +34,7 @@
 - Implementation direction: single-device referee is the first playable target because its authority, map, and gameplay flows already exist in-process.
 - Home now starts referee setup directly; online create/join remain available as secondary paths.
 - Referee event logs and latest snapshots now use persistent AsyncStorage, and the app stores a resume pointer/profile and reconnects to the recovered host session at startup. Home then offers the existing Continue action.
-- Protected reveal handoffs are still not connected to app UI; that manager remains process-local. A full round walkthrough and rules/content reconciliation remain open.
+- At the initial UI review, protected reveal handoffs were not connected to app UI and their manager was process-local. A later implementation now wires the referee's handoff panel into live map play and persists token/checkpoint state across restarts. A full UI round walkthrough and rules/content reconciliation remain open.
 - The current UI's repeated admin-style header/panel/banner hierarchy and the proposed game-first direction are documented in `knowledge/game-ui-redesign-research.md`.
 - The Transit Field Kit is now implemented: warm timetable paper, route-ink navy, signal yellow and orange, compact station navigation, illustrated Home, named team spaces, larger bounded map, and redesigned clue/card/chat surfaces. Browser screenshots are in `deliverables/ui-preview/`.
 - Browser review at 1440px desktop and 390px/320px phone widths found no horizontal overflow. A local referee game was resumed, a crew member added, the Prague boundary selected, the match started, and a six-card hand drawn. The roster and city returned after a browser reconnect.
@@ -72,7 +72,7 @@
 - The hider now marks a final pin during seek phase and explicitly attests that it is publicly accessible and within 3 m of a marked path. An off-transit seeker location report inside the zone starts endgame and freezes that pin. The pin is not sent in the public endgame event or seeker projection. Found requires a seeker/referee confirmation, visual identification, and coordinates within 2 m; the match records a survival-time result and displays it on the live map. Mobile actions capture a one-time GPS fix only after the player taps; continuous sharing is not used for the hider.
 - Endgame completes a scored round. Captured-round score includes real survival time plus scale-adjusted time bonuses still held. All registered participants are shuffled into a persisted hider order at match start, and roles update to match the first draw. Next rounds enforce that order, reset and shuffle cards, begin at the last found spot, and must start within 10 minutes. The final screen ranks each hider by final hiding time and names tied winners. The OSM-selected station itself is not independently verified by the engine.
 - Running timers now carry original start/duration anchors into visible projections; injected mobile commands use the real wall clock; pause records current remaining time and resume shifts the anchor to preserve it. Timer and rules flows have focused passing coverage.
-- Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" pnpm test` (190 tests), `pnpm mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
+- Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" pnpm test` (192 tests), `pnpm mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
 
 ### Review — 2026-10-24
 
@@ -85,3 +85,4 @@
 - Starting a match stores the shuffled remaining hider order and the first shuffled deck order in the authority event. Each round transition validates the predetermined next hider, preserves cumulative results, clears round-only clues and map constraints, resets/shuffles every card to its deck, and exposes the previous found spot on the map.
 - The host can start the next round from the score screen, up to 10 minutes after capture. The chosen player becomes hider and the former hider joins seekers. The opening hider is now drawn randomly from all registered participants; each completed round records its hider for a final ranked leaderboard, including ties.
 - Full final-screen UI walkthrough, map scenario save/load/share, and remaining scan discrepancies still need review.
+- Single-device referee play now includes a private team handoff panel on the live map. The host arms a role-scoped reveal, the player explicitly opens it after receiving the device, and the view can be hidden on passback. Reveal tokens/checkpoints persist with local runtime storage; process recovery closes any previously open private projection before another player can take over. The underlying AsyncStorage store remains unencrypted.

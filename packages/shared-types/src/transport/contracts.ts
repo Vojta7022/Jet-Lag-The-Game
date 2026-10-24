@@ -3,6 +3,7 @@ import type { ContentPack, ProjectionScope } from '../content.ts';
 import type { MatchAggregate, MatchRole } from '../domain/match.ts';
 import type { DomainEvent, DomainEventEnvelope } from '../events/domain-events.ts';
 import type { MatchProjection } from '../projections/match-projection.ts';
+import type { SingleDeviceRevealFlowState } from './single-device.ts';
 
 export type AuthorityRuntimeMode = 'online_cloud' | 'lan_host_authority' | 'single_device_referee';
 
@@ -124,6 +125,8 @@ export interface LocalRuntimePersistence {
   readEvents(matchId: string, options?: EventReadOptions): Promise<DomainEventEnvelope[]>;
   saveSnapshot(snapshot: MatchRuntimeSnapshot): Promise<void>;
   loadLatestSnapshot(matchId: string): Promise<MatchRuntimeSnapshot | undefined>;
+  loadRevealFlowState?(): Promise<SingleDeviceRevealFlowState>;
+  saveRevealFlowState?(state: SingleDeviceRevealFlowState): Promise<void>;
 }
 
 export interface SnapshotRequest {
