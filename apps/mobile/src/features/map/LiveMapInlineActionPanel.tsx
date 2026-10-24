@@ -333,6 +333,21 @@ export function LiveMapInlineActionPanel() {
     });
   };
 
+  const handlePhotoSubjectAbsent = () => {
+    if (!activeQuestion || activeQuestionCategory?.resolverKind !== 'photo_challenge') return;
+    void submitCommand({
+      type: 'answer_question',
+      payload: {
+        questionInstanceId: activeQuestion.questionInstanceId,
+        answer: {
+          value: null,
+          cannotAnswerBecauseSubjectAbsent: true,
+          note: 'The requested photo subject does not exist in the hiding zone.'
+        }
+      }
+    });
+  };
+
   const handleApplyQuestion = () => {
     if (!activeQuestion || !activeQuestionTemplate || !activeQuestionCategory) {
       return;
@@ -619,11 +634,13 @@ export function LiveMapInlineActionPanel() {
             onPress={handleAnswerQuestion}
             disabled={!canAnswerQuestion || state.loadState === 'loading'}
           />
-          {projection?.lifecycleState === 'endgame' && activeQuestionCategory.resolverKind === 'photo_challenge' ? (
+          {activeQuestionCategory.resolverKind === 'photo_challenge' ? (
             <AppButton
-              label="I cannot do this from the final spot"
+              label={projection?.lifecycleState === 'endgame'
+                ? 'I cannot do this from the final spot'
+                : 'The subject is not in my hiding zone'}
               tone="secondary"
-              onPress={handleCannotAnswerDuringEndgame}
+              onPress={projection?.lifecycleState === 'endgame' ? handleCannotAnswerDuringEndgame : handlePhotoSubjectAbsent}
               disabled={!canAnswerQuestion || state.loadState === 'loading'}
             />
           ) : null}

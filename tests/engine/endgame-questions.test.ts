@@ -247,3 +247,63 @@ test('an impossible endgame photo is a valid answer and the hider can still draw
     }
   }, 38), contentPack), /only valid for a photo challenge/);
 });
+
+test('a photo subject absent from the hiding zone resolves without a map deduction and earns its reward', () => {
+  const contentPack = loadEngineTestContentPack();
+  contentPack.rulesets[0]!.questionPolicies = { cooldownSeconds: 0 };
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const originalSearchArea = structuredClone(aggregate.searchArea?.remainingArea.geometry);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
+  }, { type: 'begin_question_prompt', payload: {} }, 800), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
+  }, {
+    type: 'ask_question',
+    payload: { questionInstanceId: 'question:photo-subject-absent', templateId: 'photos-a-tree', targetTeamId: 'team-hider' }
+  }, 801), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, {
+    type: 'answer_question',
+    payload: {
+      questionInstanceId: 'question:photo-subject-absent',
+      answer: { value: null, cannotAnswerBecauseSubjectAbsent: true }
+    }
+  }, 802), contentPack).aggregate;
+
+  assert.equal(aggregate.questionInstances['question:photo-subject-absent']?.status, 'resolved');
+  assert.deepEqual(aggregate.questionInstances['question:photo-subject-absent']?.answer?.value, null);
+  assert.deepEqual(aggregate.searchArea?.remainingArea.geometry, originalSearchArea);
+  assert.equal(aggregate.seekPhaseSubstate, 'ready');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, { type: 'deal_question_reward', payload: { questionInstanceId: 'question:photo-subject-absent' } }, 803), contentPack).aggregate;
+  assert.equal(aggregate.pendingQuestionReward?.questionInstanceId, 'question:photo-subject-absent');
+});
+
+test('the absent-subject photo answer is rejected for non-photo questions', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
+  }, { type: 'begin_question_prompt', payload: {} }, 900), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
+  }, {
+    type: 'ask_question',
+    payload: { questionInstanceId: 'question:not-photo-absent', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider' }
+  }, 901), contentPack).aggregate;
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, {
+    type: 'answer_question',
+    payload: {
+      questionInstanceId: 'question:not-photo-absent',
+      answer: { value: null, cannotAnswerBecauseSubjectAbsent: true }
+    }
+  }, 902), contentPack), /only valid for a photo challenge/i);
+});

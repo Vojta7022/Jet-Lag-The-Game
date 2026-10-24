@@ -1006,7 +1006,11 @@ function eventsForCommand(
     }
     case 'answer_question': {
       const activeQuestion = aggregate!.questionInstances[envelope.command.payload.questionInstanceId];
-      if (activeQuestion?.randomizedNullAnswerAllowed && envelope.command.payload.answer.value === null) {
+      if (
+        activeQuestion &&
+        (activeQuestion.randomizedNullAnswerAllowed || envelope.command.payload.answer.cannotAnswerBecauseSubjectAbsent === true) &&
+        envelope.command.payload.answer.value === null
+      ) {
         return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
           type: 'question_null_answer_resolved',
           payload: {

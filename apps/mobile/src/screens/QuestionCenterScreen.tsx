@@ -546,6 +546,21 @@ export function QuestionCenterScreen() {
     });
   };
 
+  const handlePhotoSubjectAbsent = () => {
+    if (!activeQuestion || activeQuestionCategory?.resolverKind !== 'photo_challenge') return;
+    void submitCommand({
+      type: 'answer_question',
+      payload: {
+        questionInstanceId: activeQuestion.questionInstanceId,
+        answer: {
+          value: null,
+          cannotAnswerBecauseSubjectAbsent: true,
+          note: 'The requested photo subject does not exist in the hiding zone.'
+        }
+      }
+    });
+  };
+
   const handleRecordQuestionEvidence = async () => {
     if (!questionAttachmentContext) {
       return;
@@ -1129,11 +1144,13 @@ export function QuestionCenterScreen() {
               onPress={handleAnswerQuestion}
               disabled={!canAnswerQuestion || state.loadState === 'loading'}
             />
-            {isEndgameQuestionState && activeQuestionCategory?.resolverKind === 'photo_challenge' ? (
+            {activeQuestionCategory?.resolverKind === 'photo_challenge' ? (
               <AppButton
-                label="Impossible from the final spot — answer and earn reward"
+                label={isEndgameQuestionState
+                  ? 'Impossible from the final spot — answer and earn reward'
+                  : 'The subject is not in my hiding zone'}
                 tone="secondary"
-                onPress={handleCannotAnswerDuringEndgame}
+                onPress={isEndgameQuestionState ? handleCannotAnswerDuringEndgame : handlePhotoSubjectAbsent}
                 disabled={!canAnswerQuestion || state.loadState === 'loading'}
               />
             ) : null}

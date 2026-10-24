@@ -844,6 +844,13 @@ export function validateCommandEnvelope(
         return [];
       }
 
+      if (envelope.command.payload.answer.cannotAnswerBecauseSubjectAbsent === true) {
+        if (category.resolverKind !== 'photo_challenge' || envelope.command.payload.answer.value !== null) {
+          return [error(envelope.command.type, 'PHOTO_SUBJECT_ABSENT_NOT_ALLOWED', 'This unable-to-answer option is only valid for a photo challenge when its subject is absent from the hiding zone.')];
+        }
+        return [];
+      }
+
       if (activeQuestion.randomizedNullAnswerAllowed && envelope.command.payload.answer.value === null) {
         return [];
       }
