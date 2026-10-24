@@ -8,12 +8,12 @@
 - [x] Compare imported content with the booklet and base rules.
 - [x] Record current-state findings and staged completion plan.
 - [x] Choose the first target play mode: single-device referee.
-- [ ] Decide the content-pack distribution approach.
+- [x] Decide the content-pack distribution approach: treat the current pack as personal/private-use content; keep the scans and full-page transcription local, and review source rights before any public content-pack release.
 - [x] Make referee mode a first-class Home-screen start path and clarify its setup instructions.
 - [x] Add durable event/snapshot storage and automatic referee-session reattachment after app restart.
 - [x] Connect protected reveal handoffs to the mobile UI and persist their state across restart.
 - [x] Verify a complete referee round through the real single-device runtime with rule-timed hide, endgame, found confirmation, and scoring.
-- [ ] Run a physical-device/GPS walkthrough and reconcile any remaining scan discrepancies.
+- [ ] Run a physical-device/GPS walkthrough. No iOS simulator (`simctl`/Xcode) or Android emulator/ADB is installed, and no phone is connected; the browser and real-runtime integration paths are verified instead.
 
 ## UI: make the player experience feel like a game
 
@@ -29,19 +29,19 @@
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
 - The first material gap is a tested, reliable end-to-end play path. Nearby mode has no LAN transport; online mode has no trusted server-side command gateway.
-- The generated workbook pack has 81 question templates and 125 card instances, but remains draft output with 21 warnings, no ruleset, and no map preset.
+- The generated workbook pack has six question categories, 81 question templates, 37 card definitions / 125 card instances, and 10 importer warnings. It remains draft content with no ruleset or map preset.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
 - Implementation direction: single-device referee is the first playable target because its authority, map, and gameplay flows already exist in-process.
 - Home now starts referee setup directly; online create/join remain available as secondary paths.
 - Referee event logs and latest snapshots now use persistent AsyncStorage, and the app stores a resume pointer/profile and reconnects to the recovered host session at startup. Home then offers the existing Continue action.
-- At the initial UI review, protected reveal handoffs were not connected to app UI and their manager was process-local. A later implementation now wires the referee's handoff panel into live map play and persists token/checkpoint state across restarts. A full UI round walkthrough and rules/content reconciliation remain open.
+- At the initial UI review, protected reveal handoffs were not connected to app UI and their manager was process-local. The referee handoff panel is now part of live map play, and token/checkpoint state survives restarts. A controlled full-round runtime walkthrough passes.
 - The current UI's repeated admin-style header/panel/banner hierarchy and the proposed game-first direction are documented in `knowledge/game-ui-redesign-research.md`.
 - The Transit Field Kit is now implemented: warm timetable paper, route-ink navy, signal yellow and orange, compact station navigation, illustrated Home, named team spaces, larger bounded map, and redesigned clue/card/chat surfaces. Browser screenshots are in `deliverables/ui-preview/`.
 - Browser review at 1440px desktop and 390px/320px phone widths found no horizontal overflow. A local referee game was resumed, a crew member added, the Prague boundary selected, the match started, and a six-card hand drawn. The roster and city returned after a browser reconnect.
 - Web `accessible={false}` SVG props caused the reported React warning; decorative game SVGs now use `aria-hidden={true}`. Measured map width also prevents the map surface from extending beyond its card.
-- Existing full suite passes 159/159 after decoupling the orchestrator's default in-memory persistence from native AsyncStorage and explicitly injecting AsyncStorage in the app provider. TypeScript typecheck passes.
-- Remaining playability gaps at the time of the UI review: imported draft content reconciliation, protected reveal handoffs, and street tiles for the web map. Timer authority was fixed in a later slice; endgame and remaining rules work is tracked below.
+- The current full suite passes 199/199 with the project `.venv` on `PATH`; mobile TypeScript typecheck passes.
+- The scan-confirmed standard round flow is implemented. Imported workbook card text remains draft and may need manual adjudication; it is kept for personal/private play until distribution rights and importer warnings are reviewed.
 
 ## Active: rules-faithful game and reference-map workflows
 
@@ -60,22 +60,22 @@
 - [x] Add a multi-round handoff: randomize the remaining hider order at match start, enforce it between rounds, reshuffle the deck, allow up to 10 minutes to prepare, and start from the previous found spot.
 - [x] Randomly choose the first hider before play and show final match standings after everyone completes a round.
 - [x] Allow Investigation Book questions during endgame, preserve the endgame lifecycle through resolution, and support impossible photo challenges from the fixed spot.
-- [ ] Port the map workbench's useful save/load/share and overlay workflows into the existing match/map architecture.
+- [x] Port the useful map scenario workflows into the match/map architecture: save and reload named local scenarios, share compressed deep links, open standalone scenario previews, restore region geometry and hiding-zone overlays, and pan/zoom/reset the web map.
 - [x] Add a full single-device referee runtime walkthrough through hiding-zone selection, automatic timer expiry, endgame, found, and score.
-- [ ] Walk the same path on a physical phone with GPS and reconcile any remaining scan discrepancies.
+- [ ] Walk the same path on a physical phone with GPS. The runtime integration covers the full round and the mobile web screen was rendered at 390 px; native GPS still needs an attached device or simulator.
 
 ### Findings for this pass
 
 - The Investigation Book's “Draw N, Pick M” is the hider's card reward after an answer. A prior build incorrectly used those numbers to deal a random subset of available questions; the current flow shows all scale-allowed printed questions and repeats their reward separately.
 - A prior app-injected ruleset used a 120-second hide phase and 45-second post-answer cooldown. These were replaced with the scanned 30/60/180-minute hide periods by scale and no extra answer cooldown.
 - The scan sets hiding-zone radii to 500 m for small/medium and 1 km for large, endgame when seekers enter the zone and disembark transit, and found when they have both spotted the hider and come within 2 m.
-- The reference app can find/plot eligible stations, visualize each station's hiding-zone circle, customize station sources, and save/load/share a map scenario. This app now searches/selects stations and persists the chosen round zone; reusable scenario save/load/share remains open.
+- The reference app exposes Save File, Load File, Share, Tutorial, and Options alongside editable map layers and hiding-zone controls. This app now saves/loads named map scenarios in local storage, shares deflate-compressed app links, opens shared previews without a match, and restores play-area and station-radius overlays. The map canvas supports drag, pinch zoom, plus/minus zoom, and reset; native maps retain native pan/zoom. File-picker JSON import/export, custom station-source editing, and editable arbitrary map layers are not part of this implementation slice.
 - Station search uses bounded Overpass requests, filters returned candidates back against the selected polygon (including polygon holes), and renders selectable station markers with a geodesic 500 m/1 km preview. The chosen station is persisted in authoritative round state.
 - The hider can set the round's station-centered zone during hide phase. The engine derives its 500 m/1 km radius from the selected ruleset, checks sampled interior/circumference points so the full circle fits in the map, persists it in match events, and projects it only to the hider and referee. Engine station identity still comes from the client-selected OSM result.
 - The hider now marks a final pin during seek phase and explicitly attests that it is publicly accessible and within 3 m of a marked path. An off-transit seeker location report inside the zone starts endgame and freezes that pin. The pin is not sent in the public endgame event or seeker projection. Found requires a seeker/referee confirmation, visual identification, and coordinates within 2 m; the match records a survival-time result and displays it on the live map. Mobile actions capture a one-time GPS fix only after the player taps; continuous sharing is not used for the hider.
 - Endgame completes a scored round. Captured-round score includes real survival time plus scale-adjusted time bonuses still held. All registered participants are shuffled into a persisted hider order at match start, and roles update to match the first draw. Next rounds enforce that order, reset and shuffle cards, begin at the last found spot, and must start within 10 minutes. The final screen ranks each hider by final hiding time and names tied winners. The OSM-selected station itself is not independently verified by the engine.
 - Running timers now carry original start/duration anchors into visible projections; injected mobile commands use the real wall clock; pause records current remaining time and resume shifts the anchor to preserve it. Timer and rules flows have focused passing coverage.
-- Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" pnpm test` (195 tests), `pnpm mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
+- Full verification now passes: `env PATH="$PWD/.venv/bin:$PATH" npm test` (199 tests), `npm run mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
 
 ### Review — 2026-10-24
 
@@ -87,7 +87,8 @@
 - Role reassignment now removes the player from their former team membership before adding the new assignment; a regression test exposed the previous duplicate-team membership.
 - Starting a match stores the shuffled remaining hider order and the first shuffled deck order in the authority event. Each round transition validates the predetermined next hider, preserves cumulative results, clears round-only clues and map constraints, resets/shuffles every card to its deck, and exposes the previous found spot on the map.
 - The host can start the next round from the score screen, up to 10 minutes after capture. The chosen player becomes hider and the former hider joins seekers. The opening hider is now drawn randomly from all registered participants; each completed round records its hider for a final ranked leaderboard, including ties.
-- Full final-screen UI walkthrough, map scenario save/load/share, and remaining scan discrepancies still need review.
+- The final score screen was covered by the round integration flow. Standard rule values and behaviors were checked against both scans; workbook card descriptions remain draft/reference material and require human adjudication where they do not map to an automated action.
 - Single-device referee play now includes a private team handoff panel on the live map. The host arms a role-scoped reveal, the player explicitly opens it after receiving the device, and the view can be hidden on passback. Reveal tokens/checkpoints persist with local runtime storage; process recovery closes any previously open private projection before another player can take over. The underlying AsyncStorage store remains unencrypted.
 - An integration test now runs a complete single-device referee round through the real mobile orchestrator and transport: map setup, randomized roles, station-centered hiding zone, location lock, automatic timer expiry, private final spot, seeker endgame trigger, visual found confirmation, and round score. It advances a controlled clock to the scanned hide duration and expects the survival score to match.
-- The web map fallback now draws only the OSM raster tiles intersecting the current map bounds, caps the layout to a small number of tiles, and keeps attribution visible. It does not prefetch or offer offline tile downloads; the web workbench is still static rather than pannable like the reference.
+- The web map fallback draws a bounded set of OSM tiles with attribution and now pans/zooms on touch with visible zoom/reset controls. It does not prefetch or offer offline tile downloads.
+- Visual comparison against the live reference confirms the app map shares the city-boundary, station-zone, and street-map concepts but is not visually identical: the reference is a Leaflet map workbench with editable layers and question controls; this app embeds a game-first map in its match workflow.

@@ -11,6 +11,7 @@ Cross-platform mobile app and rules engine for running a configurable transit-ba
 - Import Jet Lag-style content.
 - Provide engine, geo, transport, shared types, and test-kit packages.
 - Play locally as a referee through a game-first UI for Home, lobby, map, clues, cards, and team radio.
+- Plan maps with OpenStreetMap street context, transit-station hiding zones, saved local scenarios, and compressed share links; the web map supports drag and pinch zoom.
 
 ## User workflows
 

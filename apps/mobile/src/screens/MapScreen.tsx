@@ -1,6 +1,7 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import * as ExpoLinking from 'expo-linking';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Linking, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
@@ -14,6 +15,8 @@ import { MapCanvas } from '../features/map/MapCanvas';
 import { LiveEndgameControls } from '../features/map/LiveEndgameControls.tsx';
 import { ProtectedRoleHandoffPanel } from '../features/map/ProtectedRoleHandoffPanel.tsx';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
+import { createMapScenario, decodeMapScenario, encodeMapScenario, type MapScenario } from '../features/map/map-scenarios.ts';
+import { loadSavedMapScenarios, saveMapScenario } from '../features/map/map-scenario-storage.ts';
 import { defaultContentPack } from '../runtime/default-content-pack.ts';
 
 import {
@@ -130,6 +133,7 @@ function hasOnlineIdentityMismatch(
 }
 
 export function MapScreen() {
+  const routeParams = useLocalSearchParams<{ scenario?: string | string[] }>();
   const dimensions = useWindowDimensions();
   const {
     state,
@@ -147,9 +151,15 @@ export function MapScreen() {
   );
   const [transitStations, setTransitStations] = useState<TransitStationCandidate[]>([]);
   const [selectedStationId, setSelectedStationId] = useState<string>();
+  const [scenarioStation, setScenarioStation] = useState<TransitStationCandidate>();
+  const [scenarioHidingRadius, setScenarioHidingRadius] = useState<number>();
+  const [savedScenarios, setSavedScenarios] = useState<MapScenario[]>([]);
+  const [loadedScenario, setLoadedScenario] = useState<MapScenario>();
+  const [scenarioNotice, setScenarioNotice] = useState<string>();
   const [stationSearchLoading, setStationSearchLoading] = useState(false);
   const [stationSearchError, setStationSearchError] = useState<string>();
   const autoHideRefreshRequestedForMatch = useRef<string | undefined>(undefined);
+  const loadedScenarioToken = useRef<string | undefined>(undefined);
   const regionSearch = useRegionSearch({
     source: mobileRegionDataSource,
     initialQuery: mapSetupDraft?.query,
@@ -216,7 +226,7 @@ export function MapScreen() {
     latitude: savedHidingZone.latitude,
     longitude: savedHidingZone.longitude
   } : undefined;
-  const activeZoneStation = selectedStation ?? savedZoneStation;
+  const activeZoneStation = selectedStation ?? scenarioStation ?? savedZoneStation;
   const hiderLocationLocked = Boolean(
     projection?.hiddenState?.hiderLocationLocked ||
     (isHostView && projection?.hiddenState?.hiderLocation)
@@ -244,9 +254,9 @@ export function MapScreen() {
     savedHidingZone
   ]);
   const mapSelectedStation = canUseStationWorkbench
-    ? selectedStation ?? savedZoneStation
+    ? selectedStation ?? scenarioStation ?? savedZoneStation
     : undefined;
-  const mapHidingRadius = savedHidingZone?.radiusMeters ??
+  const mapHidingRadius = savedHidingZone?.radiusMeters ?? scenarioHidingRadius ??
     (selectedScale ? getHidingRadiusMeters(selectedScale) : undefined);
   const displayedVisibleMap = useMemo(
     () => liveGameplayState ? buildLiveMapDisplayProjection(projection?.visibleMap) : projection?.visibleMap,
@@ -454,6 +464,32 @@ export function MapScreen() {
   }, [activeMatch?.matchId, mapSetupDraft?.selectedRegions]);
 
   useEffect(() => {
+    void loadSavedMapScenarios().then(setSavedScenarios);
+  }, []);
+
+  useEffect(() => {
+    const token = Array.isArray(routeParams.scenario) ? routeParams.scenario[0] : routeParams.scenario;
+    if (!token || loadedScenarioToken.current === token) return;
+    loadedScenarioToken.current = token;
+    try {
+      const scenario = decodeMapScenario(token);
+      setLoadedScenario(scenario);
+      setSelectedRegions(scenario.selectedRegions);
+      regionSearch.setQuery(scenario.query);
+      if (scenario.selectedPreviewRegionId) void regionSearch.selectRegion(scenario.selectedPreviewRegionId);
+      setScenarioStation(scenario.selectedStation ? {
+        ...scenario.selectedStation,
+        kind: 'transit'
+      } : undefined);
+      setScenarioHidingRadius(scenario.hidingRadiusMeters);
+      setSelectedStationId(scenario.selectedStation?.stationId);
+      setScenarioNotice(`Loaded shared map: ${scenario.name}`);
+    } catch (error) {
+      setScenarioNotice(error instanceof Error ? error.message : 'Could not load this map scenario.');
+    }
+  }, [routeParams.scenario]);
+
+  useEffect(() => {
     if (!activeMatch || liveGameplayState) {
       return;
     }
@@ -531,6 +567,48 @@ export function MapScreen() {
     if (activeMatch) {
       clearMapSetupDraft(activeMatch.matchId);
     }
+  };
+
+  const makeScenario = (name: string) => createMapScenario({
+    name,
+    query: regionSearch.query || loadedScenario?.query || '',
+    selectedPreviewRegionId: regionSearch.selectedRegionId ?? loadedScenario?.selectedPreviewRegionId,
+    selectedRegions: selectedRegions.length ? selectedRegions : loadedScenario?.selectedRegions ?? (appliedRegion ? [appliedRegion] : []),
+    selectedStation: selectedStation ?? scenarioStation ?? savedZoneStation ?? loadedScenario?.selectedStation,
+    hidingRadiusMeters: savedHidingZone?.radiusMeters ?? scenarioHidingRadius ?? loadedScenario?.hidingRadiusMeters ?? (selectedScale ? getHidingRadiusMeters(selectedScale) : undefined)
+  });
+
+  const handleSaveScenario = async () => {
+    if (selectedRegions.length === 0 && !appliedRegion && !loadedScenario) {
+      setScenarioNotice('Choose a playable region before saving a map.');
+      return;
+    }
+    const title = (compositePreviewRegion?.displayName ?? loadedScenario?.name ?? appliedRegion?.displayName ?? 'Map')
+      .replace(/[^\p{L}\p{N} -]/gu, '').slice(0, 36);
+    const scenario = makeScenario(`${title} · ${new Date().toLocaleDateString()}`);
+    setSavedScenarios(await saveMapScenario(scenario));
+    setScenarioNotice(`Saved ${scenario.name}`);
+  };
+
+  const handleShareScenario = async () => {
+    if (selectedRegions.length === 0 && !appliedRegion && !loadedScenario) {
+      setScenarioNotice('Choose a playable region before sharing a map.');
+      return;
+    }
+    const scenario = makeScenario(compositePreviewRegion?.displayName ?? loadedScenario?.name ?? appliedRegion?.displayName ?? 'Shared map');
+    const url = ExpoLinking.createURL('map', { queryParams: { scenario: encodeMapScenario(scenario) } });
+    await Share.share({ message: `Open this map scenario in Transit Hide and Seek:\n${url}`, url });
+  };
+
+  const handleLoadScenario = (scenario: MapScenario) => {
+    setLoadedScenario(scenario);
+    setSelectedRegions(scenario.selectedRegions);
+    regionSearch.setQuery(scenario.query);
+    if (scenario.selectedPreviewRegionId) void regionSearch.selectRegion(scenario.selectedPreviewRegionId);
+    setScenarioStation(scenario.selectedStation ? { ...scenario.selectedStation, kind: 'transit' } : undefined);
+    setScenarioHidingRadius(scenario.hidingRadiusMeters);
+    setSelectedStationId(scenario.selectedStation?.stationId);
+    setScenarioNotice(`Loaded ${scenario.name}`);
   };
 
   const handlePrepareMapSetup = () => {
@@ -706,6 +784,25 @@ export function MapScreen() {
           />
         ) : null}
 
+        {loadedScenario ? (
+          <Panel
+            title={loadedScenario.name}
+            subtitle="Shared map scenario preview. It includes the selected play area and any hiding-zone station marker."
+            tone="soft"
+          >
+            <MapCanvas
+              height={Math.max(300, Math.min(Math.round(dimensions.height * 0.58), 620))}
+              maxWidth={dimensions.width - 32}
+              previewRegion={buildCompositePlayableRegion(loadedScenario.selectedRegions) ?? loadedScenario.selectedRegions[0]}
+              selectedStation={scenarioStation}
+              hidingRadiusMeters={scenarioHidingRadius}
+            />
+            <AppButton label="Save Map On This Device" tone="secondary" onPress={() => void handleSaveScenario()} />
+            <AppButton label="Share This Map" tone="secondary" onPress={() => void handleShareScenario()} />
+            {!activeMatch ? <AppButton label="Start a Game With This Map" onPress={() => router.push('/create-match')} /> : null}
+          </Panel>
+        ) : null}
+
         {state.loadState === 'error' && state.errorMessage ? (
           <StateBanner
             tone="error"
@@ -788,6 +885,37 @@ export function MapScreen() {
                 />
               ) : null}
             </View>
+
+            <Panel
+              title="Map Scenarios"
+              subtitle="Save a map for later or share its boundary and station-zone overlays with your crew."
+              tone="soft"
+            >
+              <View style={styles.scenarioActions}>
+                <AppButton label="Save Map" tone="secondary" onPress={() => void handleSaveScenario()} />
+                <AppButton label="Share Map" tone="secondary" onPress={() => void handleShareScenario()} />
+              </View>
+              {scenarioNotice ? <Text style={styles.helperCopy}>{scenarioNotice}</Text> : null}
+              {savedScenarios.length ? (
+                <View style={styles.scenarioList}>
+                  <Text style={styles.supportEyebrow}>Saved maps · tap to load</Text>
+                  {savedScenarios.map((scenario) => (
+                    <Pressable
+                      key={`${scenario.name}:${scenario.savedAt}`}
+                      accessibilityRole="button"
+                      onPress={() => handleLoadScenario(scenario)}
+                      style={({ pressed }) => [styles.scenarioChoice, pressed ? styles.legendTogglePressed : null]}
+                    >
+                      <Text style={styles.stationChoiceName}>{scenario.name}</Text>
+                      <Text style={styles.stationChoiceKind}>
+                        {scenario.selectedRegions.length} region{scenario.selectedRegions.length === 1 ? '' : 's'}
+                        {scenario.selectedStation ? ` · ${scenario.selectedStation.name} zone` : ''}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : <Text style={styles.helperCopy}>No saved maps yet. Save this map setup to keep it on this device.</Text>}
+            </Panel>
 
             {canShowSetupBuilder ? (
               <Panel
@@ -1132,6 +1260,16 @@ export function MapScreen() {
 }
 
 const styles = StyleSheet.create({
+  scenarioActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  scenarioList: { gap: 8 },
+  scenarioChoice: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 3,
+    padding: 10
+  },
   title: {
     color: colors.text,
     fontSize: 18,
