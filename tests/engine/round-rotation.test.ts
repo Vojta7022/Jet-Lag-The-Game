@@ -5,11 +5,12 @@ import { executeCommand } from '../../packages/engine/src/index.ts';
 import { representativePointFromGeometry } from '../../packages/geo/src/index.ts';
 import { loadEngineTestContentPack, makeEnvelope, moveCardToTeamHand, setupMatchToHidePhase } from './helpers.ts';
 
-test('match start fixes the first hider, randomizes the remaining order, and shuffles the deck', () => {
-  const aggregate = setupMatchToHidePhase(loadEngineTestContentPack());
+test('match start randomly chooses the first hider and shuffles the full rotation and deck', () => {
+  const aggregate = setupMatchToHidePhase(loadEngineTestContentPack(), 'small', 0);
 
-  assert.equal(aggregate.hiderRotationOrder?.[0], 'hider-1');
-  assert.equal(aggregate.roleAssignments['hider-1']?.role, 'hider');
+  assert.deepEqual(aggregate.hiderRotationOrder, ['seeker-1', 'hider-1']);
+  assert.equal(aggregate.roleAssignments['seeker-1']?.role, 'hider');
+  assert.equal(aggregate.roleAssignments['hider-1']?.role, 'seeker');
   assert.ok(Object.values(aggregate.cardInstances).every((card) => Number.isInteger(card.drawOrder)));
   for (const deckId of new Set(Object.values(aggregate.cardInstances).map((card) => card.holderId))) {
     const orders = Object.values(aggregate.cardInstances)

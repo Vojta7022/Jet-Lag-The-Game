@@ -110,7 +110,10 @@ export async function setupOnlineMatchToHidePhase(
   const hiderSession = makeOnlineSession('auth-hider-1', { defaultPlayerId: 'hider-1' });
   const seekerSession = makeOnlineSession('auth-seeker-1', { defaultPlayerId: 'seeker-1' });
 
-  await submitOnlineSequence(runtime, [
+  const originalRandom = Math.random;
+  Math.random = () => 0.999999;
+  try {
+    await submitOnlineSequence(runtime, [
     {
       session: hostSession,
       request: makeOnlineCommandRequest(hostSession, matchId, 1, {
@@ -209,7 +212,10 @@ export async function setupOnlineMatchToHidePhase(
         payload: {}
       })
     }
-  ]);
+    ]);
+  } finally {
+    Math.random = originalRandom;
+  }
 
   return {
     matchId,

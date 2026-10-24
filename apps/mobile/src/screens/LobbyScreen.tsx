@@ -77,8 +77,8 @@ export function LobbyScreen() {
       ? 'Setup is complete. The normal player path now continues on the live map.'
       : !rolesReady
         ? canManageRoles
-          ? 'Pick one hider and at least one seeker, then continue into map setup.'
-          : 'The host is still choosing the hider and seeker sides for this match.'
+          ? 'Choose at least two players for the rotation. The opening hider is drawn at random when the match starts.'
+          : 'The host is adding players to the hider rotation.'
         : projection.visibleMap
           ? 'Teams are locked in and the playable area is applied. The host can finish setup from map setup.'
           : 'Teams are ready. The next step is choosing and applying the playable area.';
@@ -211,7 +211,7 @@ export function LobbyScreen() {
       {projection && canManageRoles ? (
         <Panel
           title="Who’s playing which side?"
-          subtitle="Assign one hider and at least one seeker before moving into map setup. The host can also join either side."
+          subtitle="Choose at least two players for the hider rotation. The opening hider is drawn at random when the match starts, then the role rotates each round."
         >
           {state.activeMatch?.runtimeKind === 'single_device_referee' ? (
             <View style={styles.addCrew}>
@@ -244,7 +244,7 @@ export function LobbyScreen() {
             <StateBanner
               tone="warning"
               title="Players still need to join"
-              detail="Wait for players to join the room, then place one player on the hider side and the others on the seeker side."
+              detail="Wait for players to join the room, then add at least two players to the rotation."
             />
           ) : (
             <>
@@ -304,8 +304,8 @@ export function LobbyScreen() {
               {!rolesReady ? (
                 <StateBanner
                   tone="warning"
-                  title="Teams still need one hider and one seeker"
-                  detail="Choose exactly who will hide, then make sure at least one joined player stays on the seeker side."
+                  title="The rotation needs at least two players"
+                  detail="Add one player to each setup side. The app will draw the first hider from everyone in the rotation."
                 />
               ) : null}
               <AppButton

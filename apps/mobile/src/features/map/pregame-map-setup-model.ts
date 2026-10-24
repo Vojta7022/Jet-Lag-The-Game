@@ -35,7 +35,7 @@ export function buildPregameMapSetupFlowModel(
       return {
         badge: 'Step 1 of 3',
         title: 'Waiting for teams',
-        detail: 'The host still needs to choose one hider and at least one seeker before map setup can begin.',
+        detail: 'The host is adding at least two players to the hider rotation before map setup can begin.',
         primaryAction: {
           kind: 'open_match_room',
           label: 'Back To Match Room'
@@ -66,7 +66,7 @@ export function buildPregameMapSetupFlowModel(
     return {
       badge: 'Step 1 of 3',
       title: 'Choose teams first',
-      detail: 'Pick one hider and at least one seeker before opening map setup.',
+      detail: 'Add at least two players to the hider rotation before opening map setup. The first hider is drawn at random when the game starts.',
       primaryAction: {
         kind: 'open_match_room',
         label: 'Choose Teams'

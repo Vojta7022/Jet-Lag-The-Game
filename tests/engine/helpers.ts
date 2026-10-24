@@ -111,11 +111,12 @@ export function dispatchSequence(
 
 export function setupMatchToHidePhase(
   contentPack: ContentPack,
-  initialScale: 'small' | 'medium' | 'large' = 'small'
+  initialScale: 'small' | 'medium' | 'large' = 'small',
+  randomValue = 0.999999
 ): MatchAggregate {
   const matchId = 'match-1';
   const originalRandom = Math.random;
-  Math.random = () => 0.999999;
+  Math.random = () => randomValue;
   try {
     return dispatchSequence(contentPack, [
     makeEnvelope(

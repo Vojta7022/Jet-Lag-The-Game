@@ -118,6 +118,9 @@ test('transport submits commands and propagates scoped sync envelopes without by
 test('transport snapshot delivery preserves projection redaction boundaries', async () => {
   const { contentPack, runtime } = createTransportHarness();
   const matchId = await setupRuntimeToHidePhase(runtime, contentPack, 'transport-redaction-match');
+  const aggregate = (await runtime.recoverMatch(matchId))?.aggregate;
+  const hiderPlayerId = Object.values(aggregate?.roleAssignments ?? {}).find((assignment) => assignment.role === 'hider')?.playerId;
+  assert.ok(hiderPlayerId);
   const hostAdapter = new InMemoryTransportAdapter(runtime);
   const hiderTeamAdapter = new InMemoryTransportAdapter(runtime);
   const publicAdapter = new InMemoryTransportAdapter(runtime);
@@ -125,7 +128,7 @@ test('transport snapshot delivery preserves projection redaction boundaries', as
   await runtime.submitCommand(
     makeEnvelope(
       matchId,
-      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+      { actorId: hiderPlayerId, playerId: hiderPlayerId, role: 'hider' },
       {
         type: 'draw_card',
         payload: {
@@ -138,7 +141,7 @@ test('transport snapshot delivery preserves projection redaction boundaries', as
   await runtime.submitCommand(
     makeEnvelope(
       matchId,
-      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+      { actorId: hiderPlayerId, playerId: hiderPlayerId, role: 'hider' },
       {
         type: 'lock_hider_location',
         payload: {
@@ -163,8 +166,8 @@ test('transport snapshot delivery preserves projection redaction boundaries', as
   await hiderTeamAdapter.connect({
     sessionId: 'hider-team-session',
     recipient: makeRecipient('hider-team-session', {
-      actorId: 'hider-1',
-      playerId: 'hider-1',
+      actorId: hiderPlayerId,
+      playerId: hiderPlayerId,
       role: 'hider',
       scope: 'team_private'
     })

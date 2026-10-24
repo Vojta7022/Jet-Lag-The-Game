@@ -520,16 +520,14 @@ function eventsForCommand(
       ];
     case 'start_match':
       {
-        const initialHiderPlayerId = Object.values(aggregate!.roleAssignments)
-          .find((assignment) => assignment.role === 'hider')?.playerId;
-        const seekerPlayerIds = Object.values(aggregate!.roleAssignments)
-          .filter((assignment) => assignment.role === 'seeker')
+        const hiderRotationOrder = shuffleValues(Object.values(aggregate!.roleAssignments)
+          .filter((assignment) => assignment.role === 'hider' || assignment.role === 'seeker')
           .map((assignment) => assignment.playerId)
-          .sort((left, right) => left.localeCompare(right));
-        const hiderRotationOrder = initialHiderPlayerId
-          ? [initialHiderPlayerId, ...shuffleValues(seekerPlayerIds)]
-          : shuffleValues(seekerPlayerIds);
-        const initialRoles = buildRoundRoles(aggregate!, hiderRotationOrder[0]!);
+          .sort((left, right) => left.localeCompare(right)));
+        const initialHiderPlayerId = hiderRotationOrder[0];
+        const initialRoles = initialHiderPlayerId
+          ? buildRoundRoles(aggregate!, initialHiderPlayerId)
+          : { roleAssignments: Object.values(aggregate!.roleAssignments), teams: Object.values(aggregate!.teams) };
         return [
         makeEventEnvelope(aggregate, envelope, 0, 'authority', {
           type: 'match_started',

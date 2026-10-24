@@ -6,6 +6,7 @@ import { useLocationSharing } from '../../providers/LocationSharingProvider.tsx'
 import { AppButton } from '../../ui/AppButton.tsx';
 import { Panel } from '../../ui/Panel.tsx';
 import { colors } from '../../ui/theme.ts';
+import { buildMatchStandings, hasFinishedHiderRotation } from './match-standings.ts';
 
 function formatSurvivalTime(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
@@ -114,16 +115,25 @@ export function LiveEndgameControls() {
   if (projection.lifecycleState === 'game_complete') {
     const result = projection.visibleRoundResults?.at(-1);
     const eligibleNextHiders = projection.players.filter((player) => player.role === 'seeker');
-    const completedRoundCount = projection.visibleRoundResults?.length ?? 0;
+    const roundResults = projection.visibleRoundResults ?? [];
+    const completedRoundCount = roundResults.length;
+    const rotationOrder = projection.hiderRotationOrder ?? [];
+    const matchFinished = hasFinishedHiderRotation(rotationOrder, roundResults);
     const nextHiderPlayerId = projection.hiderRotationOrder
       ? projection.hiderRotationOrder[completedRoundCount]
       : eligibleNextHiders[0]?.playerId;
     const nextHider = eligibleNextHiders.find((player) => player.playerId === nextHiderPlayerId);
+    const standings = buildMatchStandings(projection.players, roundResults, rotationOrder);
+    const winners = standings.filter((standing) => standing.place === 1).map((standing) => standing.displayName);
     const rotationPlayers = (projection.hiderRotationOrder ?? [])
       .map((playerId) => projection.players.find((player) => player.playerId === playerId))
       .filter((player) => Boolean(player));
     return (
-      <Panel title="Round secured" subtitle="The hider was found. The next round can begin here, within 10 minutes." tone="accent">
+      <Panel
+        title={matchFinished ? 'Match complete' : 'Round secured'}
+        subtitle={matchFinished ? 'Every player has hidden. Here are the final scores.' : 'The hider was found. The next round can begin here, within 10 minutes.'}
+        tone="accent"
+      >
         <View style={styles.resultStamp}>
           <Text style={styles.resultTime}>{formatSurvivalTime(result?.finalHidingTimeSeconds ?? result?.survivalSeconds ?? 0)}</Text>
           <Text style={styles.resultCaption}>FINAL HIDING TIME</Text>
@@ -131,7 +141,24 @@ export function LiveEndgameControls() {
         {result?.timeBonusSeconds ? (
           <Text style={styles.helper}>Includes {formatSurvivalTime(result.timeBonusSeconds)} from time bonuses held at capture.</Text>
         ) : null}
-        {isHost ? (
+        {matchFinished ? (
+          <View style={styles.actionGroup}>
+            <Text style={styles.actionTitle}>Final standings</Text>
+            <View style={styles.rotationList}>
+              {standings.map((standing) => (
+                <View key={standing.playerId} style={styles.standingRow}>
+                  <Text style={styles.standingPlayer}>{standing.place}.  {standing.displayName}</Text>
+                  <Text style={styles.standingScore}>{formatSurvivalTime(standing.scoreSeconds)}</Text>
+                </View>
+              ))}
+            </View>
+            {winners.length > 0 ? (
+              <Text style={styles.helper}>
+                🏆 {winners.join(' & ')} {winners.length === 1 ? 'wins' : 'tie for the win'} with the longest final hiding time.
+              </Text>
+            ) : null}
+          </View>
+        ) : isHost ? (
           <View style={styles.actionGroup}>
             <Text style={styles.actionTitle}>{nextHider ? `Next up: ${nextHider.displayName}` : 'All hiding rounds complete'}</Text>
             <Text style={styles.helper}>The remaining hiding order was randomized when the match started. Each round begins where the previous hider was found; you have up to 10 minutes to prepare.</Text>
@@ -257,6 +284,9 @@ const styles = StyleSheet.create({
   resultTime: { color: colors.ink, fontSize: 28, fontVariant: ['tabular-nums'], fontWeight: '900' },
   resultCaption: { color: colors.ink, fontSize: 10, fontWeight: '900', letterSpacing: 1.3 },
   rotationList: { backgroundColor: colors.surface, borderRadius: 14, gap: 8, padding: 12 },
+  standingRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  standingPlayer: { color: colors.ink, flex: 1, fontSize: 14, fontWeight: '800' },
+  standingScore: { color: colors.ink, fontSize: 14, fontVariant: ['tabular-nums'], fontWeight: '900' },
   rotationPlayer: { color: colors.textMuted, fontSize: 14, fontWeight: '700' },
   rotationNext: { color: colors.ink, fontSize: 14, fontWeight: '900' },
   status: { color: colors.textMuted, fontSize: 13, fontWeight: '700' },

@@ -79,7 +79,10 @@ export async function setupRuntimeToHidePhase(
   matchId = 'transport-match',
   matchMode: MatchMode = 'single_device_referee'
 ): Promise<string> {
-  await submitSequence(runtime, [
+  const originalRandom = Math.random;
+  Math.random = () => 0.999999;
+  try {
+    await submitSequence(runtime, [
     makeEnvelope(
       matchId,
       { actorId: 'host-1', playerId: 'host-1', role: 'host' },
@@ -198,7 +201,10 @@ export async function setupRuntimeToHidePhase(
       },
       10
     )
-  ]);
+    ]);
+  } finally {
+    Math.random = originalRandom;
+  }
 
   return matchId;
 }
