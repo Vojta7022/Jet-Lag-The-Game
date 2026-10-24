@@ -153,6 +153,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Show rulebook guidance separately from workbook requirements in question selection and answer entry.
 - [x] Verify generated pack values and source pages, focused importer/UI guidance tests, full suite (289 passing), mobile typecheck, and `git diff --check` (2026-10-24).
 
+### Completed implementation slice: scanned Measuring definitions
+
+- [x] Add the shared closer/further, in-boundary null-answer reward rule and all scanned target definitions (airport, high-speed rail, stations, borders, altitude, water/coastline, map-icon places/utilities) to all 20 Measuring templates with page provenance.
+- [x] Reuse the question picker and answer-form rulebook guidance surfaces; verify representative definitions and full template coverage in the generated pack.
+- [x] Verify the full suite (289 passing), mobile typecheck, and `git diff --check` (2026-10-24).
+
 ### Current security slice: Supabase access lockdown
 
 - [x] Revoke direct anon/authenticated access to match, event, snapshot, projection, content-reference, membership, and idempotency tables; preserve service-role access for the authority Edge Function.

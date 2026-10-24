@@ -1596,6 +1596,38 @@ function buildMatchingTemplates(
   return { category, templates };
 }
 
+const MEASURING_RULEBOOK_GUIDANCE: Record<string, string> = {
+  'a-commercial-airport': 'If commercial status is unclear, count an airport if Google Flights shows flights to or from it.',
+  'a-high-speed-train-line': 'Use the locally applicable definition. If there is none, use the EU guide: at least 250 km/h on purpose-built high-speed lines or about 200 km/h on specially upgraded existing lines.',
+  'a-rail-station': 'Light and heavy rail both count; metros and subways count too.',
+  'an-international-border': 'Enclaves count.',
+  'a-1st-admin-border-state': 'This is a border between the country’s biggest formal administrative divisions, such as US states, Swiss cantons, or Japanese prefectures.',
+  'a-2nd-admin-border-county': 'This is a border between the next administrative level down, such as US counties, Swiss districts, or Japanese subprefectures.',
+  'sea-level': 'This means a player’s altitude. A phone compass can estimate it, but it may be inaccurate.',
+  'a-body-of-water': 'Count a named body of water shown in the agreed map app; pools do not count.',
+  'a-coastline': 'Count land meeting the ocean or a great lake, or a body of water that flows to either through a waterway at least 2 km wide. Coastlines can be ambiguous, so agree on edge cases.',
+  'a-mountain': 'Use what the agreed map app classifies as a mountain, and measure to its map icon.',
+  'a-park': 'Use the agreed map app’s park category and measure to the map icon, even when that puts you far from a large park’s center. Clarify unusual cases before asking.',
+  'amusement-park': 'Use the agreed map app’s amusement-park category and measure to its map icon.',
+  zoo: 'Use the agreed map app’s zoo category and measure to its map icon.',
+  aquarium: 'Use the agreed map app’s aquarium category and measure to its map icon.',
+  'golf-course': 'Only outdoor golf courses count; miniature golf and driving ranges do not. Measure to the map icon.',
+  museum: 'Use the agreed map app’s museum category and measure to its map icon.',
+  'movie-theatre': 'Use the agreed map app’s movie-theater category and measure to its map icon.',
+  hospital: 'Use the agreed map app’s hospital category and measure to its map icon.',
+  library: 'Use the agreed map app’s library category and measure to its map icon.',
+  'foreign-consulate': 'Use the agreed map app’s foreign-consulate category, exclude honorary consulates, and measure to the map icon.'
+};
+
+function measuringRulebookGuidance(featureClassId: string): { text: string; source: string } {
+  const featureGuidance = MEASURING_RULEBOOK_GUIDANCE[featureClassId];
+  const answerRule = 'Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward.';
+  return {
+    text: [answerRule, featureGuidance].filter(Boolean).join(' '),
+    source: 'Scanned base rulebook, printed pp. 22–26'
+  };
+}
+
 function buildMeasuringTemplates(
   sourceFileName: string,
   packId: string,
@@ -1651,6 +1683,7 @@ function buildMeasuringTemplates(
       }
 
       const featureClassId = registerFeatureTaxonomy(taxonomyById, rawLabel, sourceFileName, sheet.name, row.rowNumber);
+      const rulebookGuidance = measuringRulebookGuidance(featureClassId);
       buildNormalizationIssue(
         issues,
         sourceFileName,
@@ -1680,7 +1713,8 @@ function buildMeasuringTemplates(
           cost: costRaw,
           time: timeRaw,
           values: {
-            targetLabel: normalized.displayText
+            targetLabel: normalized.displayText,
+            rulebookGuidanceText: rulebookGuidance.text
           }
         }),
         answerSchema: {
@@ -1695,7 +1729,8 @@ function buildMeasuringTemplates(
         visibilityPolicy: PUBLIC_VISIBILITY,
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'target', rawLabel, rawLabel),
-          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'question', questionRaw, rawLabel)
+          sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'question', questionRaw, rawLabel),
+          generatedProvenance(rulebookGuidance.source, 'Measuring procedure and target definitions paraphrased from the scanned base rulebook.')
         ]
       });
     }
@@ -1743,6 +1778,7 @@ function buildMeasuringTemplates(
     }
 
     const featureClassId = registerFeatureTaxonomy(taxonomyById, rawLabel, sourceFileName, sheet.name, row.rowNumber);
+    const rulebookGuidance = measuringRulebookGuidance(featureClassId);
     buildNormalizationIssue(
       issues,
       sourceFileName,
@@ -1767,7 +1803,8 @@ function buildMeasuringTemplates(
         }
       ],
       parameters: {
-        subjectLabel: normalized.displayText
+        subjectLabel: normalized.displayText,
+        rulebookGuidanceText: rulebookGuidance.text
       },
       answerSchema: {
         kind: 'enum',
@@ -1780,7 +1817,8 @@ function buildMeasuringTemplates(
       scaleSet: allScales(),
       visibilityPolicy: PUBLIC_VISIBILITY,
       sourceProvenance: [
-        sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'A', rawLabel, rawLabel)
+        sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'A', rawLabel, rawLabel),
+        generatedProvenance(rulebookGuidance.source, 'Measuring procedure and target definitions paraphrased from the scanned base rulebook.')
       ]
     });
   }

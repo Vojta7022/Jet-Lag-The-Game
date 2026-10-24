@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T21:16:32.588Z",
+    "importedAt": "2026-10-24T21:18:38.191Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -5557,6 +5557,7 @@
       ],
       "parameters": {
         "targetLabel": "A Commercial Airport",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. If commercial status is unclear, count an airport if Google Flights shows flights to or from it.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -5607,6 +5608,11 @@
           "columnName": "question",
           "rawLabel": "A Commercial Airport",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -5627,6 +5633,7 @@
       ],
       "parameters": {
         "targetLabel": "A High Speed Train Line",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the locally applicable definition. If there is none, use the EU guide: at least 250 km/h on purpose-built high-speed lines or about 200 km/h on specially upgraded existing lines.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -5677,6 +5684,11 @@
           "columnName": "question",
           "rawLabel": "A High Speed Train Line",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -5697,6 +5709,7 @@
       ],
       "parameters": {
         "targetLabel": "A Rail Station",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Light and heavy rail both count; metros and subways count too.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -5747,6 +5760,11 @@
           "columnName": "question",
           "rawLabel": "A Rail Station",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -5767,6 +5785,7 @@
       ],
       "parameters": {
         "targetLabel": "An International Border",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Enclaves count.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -5817,6 +5836,11 @@
           "columnName": "question",
           "rawLabel": "An International Border",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -5837,6 +5861,7 @@
       ],
       "parameters": {
         "targetLabel": "A 1st Admin Border (State)",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. This is a border between the country’s biggest formal administrative divisions, such as US states, Swiss cantons, or Japanese prefectures.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -5887,6 +5912,11 @@
           "columnName": "question",
           "rawLabel": "A 1st Admin Border (State)",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -5907,6 +5937,7 @@
       ],
       "parameters": {
         "targetLabel": "A 2nd Admin Border (County)",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. This is a border between the next administrative level down, such as US counties, Swiss districts, or Japanese subprefectures.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -5957,6 +5988,11 @@
           "columnName": "question",
           "rawLabel": "A 2nd Admin Border (County)",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -5977,6 +6013,7 @@
       ],
       "parameters": {
         "targetLabel": "Sea Level",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. This means a player’s altitude. A phone compass can estimate it, but it may be inaccurate.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6027,6 +6064,11 @@
           "columnName": "question",
           "rawLabel": "Sea Level",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6047,6 +6089,7 @@
       ],
       "parameters": {
         "targetLabel": "A Body of Water",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Count a named body of water shown in the agreed map app; pools do not count.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6097,6 +6140,11 @@
           "columnName": "question",
           "rawLabel": "A Body of Water",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6117,6 +6165,7 @@
       ],
       "parameters": {
         "targetLabel": "A Coastline",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Count land meeting the ocean or a great lake, or a body of water that flows to either through a waterway at least 2 km wide. Coastlines can be ambiguous, so agree on edge cases.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6167,6 +6216,11 @@
           "columnName": "question",
           "rawLabel": "A Coastline",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6187,6 +6241,7 @@
       ],
       "parameters": {
         "targetLabel": "A Mountain",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use what the agreed map app classifies as a mountain, and measure to its map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6237,6 +6292,11 @@
           "columnName": "question",
           "rawLabel": "A Mountain",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6257,6 +6317,7 @@
       ],
       "parameters": {
         "targetLabel": "A Park",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the agreed map app’s park category and measure to the map icon, even when that puts you far from a large park’s center. Clarify unusual cases before asking.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6307,6 +6368,11 @@
           "columnName": "question",
           "rawLabel": "A Park",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6327,6 +6393,7 @@
       ],
       "parameters": {
         "targetLabel": "Amusement Park",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the agreed map app’s amusement-park category and measure to its map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6377,6 +6444,11 @@
           "columnName": "question",
           "rawLabel": "Amusment Park",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6397,6 +6469,7 @@
       ],
       "parameters": {
         "targetLabel": "Zoo",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the agreed map app’s zoo category and measure to its map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6447,6 +6520,11 @@
           "columnName": "question",
           "rawLabel": "Zoo",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6467,6 +6545,7 @@
       ],
       "parameters": {
         "targetLabel": "Aquarium",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the agreed map app’s aquarium category and measure to its map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6517,6 +6596,11 @@
           "columnName": "question",
           "rawLabel": "Aquarium",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6537,6 +6621,7 @@
       ],
       "parameters": {
         "targetLabel": "Golf Course",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Only outdoor golf courses count; miniature golf and driving ranges do not. Measure to the map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6587,6 +6672,11 @@
           "columnName": "question",
           "rawLabel": "Golf Course",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6607,6 +6697,7 @@
       ],
       "parameters": {
         "targetLabel": "Museum",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the agreed map app’s museum category and measure to its map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6657,6 +6748,11 @@
           "columnName": "question",
           "rawLabel": "Museam",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6677,6 +6773,7 @@
       ],
       "parameters": {
         "targetLabel": "Movie Theatre",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the agreed map app’s movie-theater category and measure to its map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6727,6 +6824,11 @@
           "columnName": "question",
           "rawLabel": "Movie Theatre",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6747,6 +6849,7 @@
       ],
       "parameters": {
         "targetLabel": "Hospital",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the agreed map app’s hospital category and measure to its map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6797,6 +6900,11 @@
           "columnName": "question",
           "rawLabel": "Hospital",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6817,6 +6925,7 @@
       ],
       "parameters": {
         "targetLabel": "Library",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the agreed map app’s library category and measure to its map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6867,6 +6976,11 @@
           "columnName": "question",
           "rawLabel": "Library",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },
@@ -6887,6 +7001,7 @@
       ],
       "parameters": {
         "targetLabel": "Foreign Consulate",
+        "rulebookGuidanceText": "Answer “closer” or “further” by comparing both players’ distance to the same target. If no target exists inside the playable map boundary, answer null; it still counts as answered and earns the card reward. Use the agreed map app’s foreign-consulate category, exclude honorary consulates, and measure to the map icon.",
         "workbookQuestionText": "Compared to me, are you closer to or further from _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -6937,6 +7052,11 @@
           "columnName": "question",
           "rawLabel": "Forign Conssulate",
           "rawValue": "Compared to me, are you closer to or further from _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed pp. 22–26",
+          "notes": "Measuring procedure and target definitions paraphrased from the scanned base rulebook."
         }
       ]
     },

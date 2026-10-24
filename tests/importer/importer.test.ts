@@ -46,6 +46,17 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.match(String(firstAdminQuestion?.parameters?.rulebookGuidanceText), /biggest formal administrative division/i);
   const thirdAdminQuestion = result.pack.questionTemplates.find((template) => template.templateId === 'matching-3rd-admin-municipality-city-town');
   assert.match(String(thirdAdminQuestion?.parameters?.rulebookGuidanceText), /if municipal borders are ambiguous, seekers should clarify/i);
+  const highSpeedLineQuestion = result.pack.questionTemplates.find((template) => template.templateId === 'measuring-a-high-speed-train-line');
+  assert.match(String(highSpeedLineQuestion?.parameters?.rulebookGuidanceText), /250 km\/h/i);
+  const waterQuestion = result.pack.questionTemplates.find((template) => template.templateId === 'measuring-a-body-of-water');
+  assert.match(String(waterQuestion?.parameters?.rulebookGuidanceText), /named body of water.*pools do not count/i);
+  const coastlineQuestion = result.pack.questionTemplates.find((template) => template.templateId === 'measuring-a-coastline');
+  assert.match(String(coastlineQuestion?.parameters?.rulebookGuidanceText), /2 km wide/i);
+  const borderQuestion = result.pack.questionTemplates.find((template) => template.templateId === 'measuring-an-international-border');
+  assert.match(String(borderQuestion?.parameters?.rulebookGuidanceText), /enclaves count/i);
+  const seaLevelQuestion = result.pack.questionTemplates.find((template) => template.templateId === 'measuring-sea-level');
+  assert.match(String(seaLevelQuestion?.parameters?.rulebookGuidanceText), /altitude.*phone.*compass/i);
+  assert.match(String(waterQuestion?.parameters?.rulebookGuidanceText), /null.*earns the card reward/i);
   const measuringTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'measuring');
   assert.deepEqual(result.pack.questionCategories.find((category) => category.categoryId === 'measuring')?.defaultAnswerSchema.allowedValues,
     ['closer', 'further']);
