@@ -21,6 +21,10 @@ export function LocationStatusPanel(props: {
         <Text style={styles.value}>{describeLocationPermissionState(props.state)}</Text>
       </View>
       <View style={styles.row}>
+        <Text style={styles.label}>Background GPS</Text>
+        <Text style={styles.value}>{props.state.backgroundPermissionState}</Text>
+      </View>
+      <View style={styles.row}>
         <Text style={styles.label}>Availability</Text>
         <Text style={styles.value}>{props.state.availabilityState}</Text>
       </View>

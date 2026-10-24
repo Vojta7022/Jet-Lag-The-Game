@@ -13,6 +13,7 @@ export function LocationControlsPanel(props: {
   canShare: boolean;
   onRefreshPermission: () => void;
   onRequestPermission: () => void;
+  onRequestBackgroundPermission: () => void;
   onSelectFrequencyMode: (mode: LocationUpdateFrequencyMode) => void;
   onSendSingleUpdate: () => void;
   onStartSharing: () => void;
@@ -51,6 +52,21 @@ export function LocationControlsPanel(props: {
         disabled={props.disabled}
       />
       <AppButton
+        label={props.state.backgroundPermissionState === 'granted'
+          ? 'Background GPS Enabled'
+          : props.state.backgroundPermissionState === 'unavailable'
+            ? 'Background GPS Unavailable'
+            : 'Enable Background GPS'}
+        onPress={props.onRequestBackgroundPermission}
+        tone="secondary"
+        disabled={
+          props.disabled ||
+          !props.canShare ||
+          props.state.backgroundPermissionState === 'granted' ||
+          props.state.backgroundPermissionState === 'unavailable'
+        }
+      />
+      <AppButton
         label="Send One Location Update"
         onPress={props.onSendSingleUpdate}
         disabled={props.disabled || !props.canShare || props.state.permissionState !== 'granted'}
@@ -76,7 +92,7 @@ export function LocationControlsPanel(props: {
         <AppButton label="Dismiss Location Error" onPress={props.onClearError} tone="secondary" disabled={props.disabled} />
       ) : null}
       <Text style={styles.copy}>
-        `manual` sends one-shot updates only. `balanced` and `frequent` attempt continuous foreground sharing when device support exists.
+        Background GPS can keep team positions fresh while you switch apps or lock your phone. It needs a separate permission and an installed development/production build; system battery rules or force closing can still interrupt it. Check the GPS freshness before relying on a clue. Without background permission, foreground sharing works while the app is open.
       </Text>
     </View>
   );

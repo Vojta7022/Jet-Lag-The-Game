@@ -4,6 +4,11 @@ import type {
   LocationPermissionState,
   LocationUpdateFrequencyMode
 } from './location-state.ts';
+import {
+  LOCATION_BACKGROUND_TASK_NAME,
+  registerBackgroundLocationSampleHandler,
+  setBackgroundLocationQueueScope
+} from './location-background-task.ts';
 
 type ExpoLocationModule = typeof import('expo-location');
 
@@ -24,11 +29,19 @@ export interface MobileLocationSource {
   checkAvailability: () => Promise<LocationAvailabilityState>;
   getPermissionState: () => Promise<LocationPermissionState>;
   requestPermission: () => Promise<LocationPermissionState>;
+  getBackgroundPermissionState: () => Promise<LocationPermissionState>;
+  requestBackgroundPermission: () => Promise<LocationPermissionState>;
   getCurrentPosition: (mode: LocationUpdateFrequencyMode) => Promise<DeviceLocationSample>;
   watchPosition: (
     mode: LocationUpdateFrequencyMode,
     onSample: (sample: DeviceLocationSample) => void | Promise<void>
   ) => Promise<LocationWatchHandle>;
+  watchPositionInBackground: (
+    mode: LocationUpdateFrequencyMode,
+    scopeKey: string,
+    onSample: (sample: DeviceLocationSample) => void | Promise<void>
+  ) => Promise<LocationWatchHandle>;
+  stopBackgroundPosition: () => Promise<void>;
 }
 
 interface ExpoPermissionResponse {
@@ -134,6 +147,28 @@ export function createExpoLocationSource(): MobileLocationSource {
         return 'unavailable';
       }
     },
+    async getBackgroundPermissionState() {
+      const expoLocation = await loadExpoLocationModule();
+      if (!expoLocation || typeof expoLocation.getBackgroundPermissionsAsync !== 'function') {
+        return 'unavailable';
+      }
+      try {
+        return mapPermissionResponse(await expoLocation.getBackgroundPermissionsAsync());
+      } catch {
+        return 'unavailable';
+      }
+    },
+    async requestBackgroundPermission() {
+      const expoLocation = await loadExpoLocationModule();
+      if (!expoLocation || typeof expoLocation.requestBackgroundPermissionsAsync !== 'function') {
+        return 'unavailable';
+      }
+      try {
+        return mapPermissionResponse(await expoLocation.requestBackgroundPermissionsAsync());
+      } catch {
+        return 'unavailable';
+      }
+    },
     async getCurrentPosition(mode) {
       const expoLocation = await loadExpoLocationModule();
       if (!expoLocation || typeof expoLocation.getCurrentPositionAsync !== 'function') {
@@ -182,6 +217,55 @@ export function createExpoLocationSource(): MobileLocationSource {
           await subscription.remove?.();
         }
       };
+    },
+    async watchPositionInBackground(mode, scopeKey, onSample) {
+      const expoLocation = await loadExpoLocationModule();
+      if (!expoLocation || typeof expoLocation.startLocationUpdatesAsync !== 'function') {
+        throw new Error('Background location is unavailable in this runtime.');
+      }
+      const taskManager = await import('expo-task-manager');
+      if (!taskManager.isTaskDefined(LOCATION_BACKGROUND_TASK_NAME)) {
+        throw new Error('Background location task was not registered by the app entry point.');
+      }
+      await setBackgroundLocationQueueScope(scopeKey);
+      const unregisterHandler = registerBackgroundLocationSampleHandler(onSample);
+      try {
+        if (!(await expoLocation.hasStartedLocationUpdatesAsync(LOCATION_BACKGROUND_TASK_NAME))) {
+          const accuracy = resolveExpoAccuracy(expoLocation, mode);
+          await expoLocation.startLocationUpdatesAsync(LOCATION_BACKGROUND_TASK_NAME, {
+            accuracy,
+            timeInterval: intervalForMode(mode) || undefined,
+            distanceInterval: distanceForMode(mode) || undefined,
+            pausesUpdatesAutomatically: false,
+            showsBackgroundLocationIndicator: true,
+            foregroundService: {
+              notificationTitle: 'Hide + Seek location sharing',
+              notificationBody: 'Your team can see your latest position during the active game.'
+            }
+          });
+        }
+      } catch (error) {
+        unregisterHandler();
+        throw error;
+      }
+
+      return {
+        async remove() {
+          unregisterHandler();
+          if (await expoLocation.hasStartedLocationUpdatesAsync(LOCATION_BACKGROUND_TASK_NAME)) {
+            await expoLocation.stopLocationUpdatesAsync(LOCATION_BACKGROUND_TASK_NAME);
+          }
+          await setBackgroundLocationQueueScope(undefined);
+        }
+      };
+    },
+    async stopBackgroundPosition() {
+      const expoLocation = await loadExpoLocationModule();
+      if (!expoLocation || typeof expoLocation.hasStartedLocationUpdatesAsync !== 'function') return;
+      if (await expoLocation.hasStartedLocationUpdatesAsync(LOCATION_BACKGROUND_TASK_NAME)) {
+        await expoLocation.stopLocationUpdatesAsync(LOCATION_BACKGROUND_TASK_NAME);
+      }
+      await setBackgroundLocationQueueScope(undefined);
     }
   };
 }

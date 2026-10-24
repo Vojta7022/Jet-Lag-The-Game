@@ -1,4 +1,5 @@
 import 'react-native-get-random-values';
+import '../src/features/location/location-background-task.ts';
 
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';

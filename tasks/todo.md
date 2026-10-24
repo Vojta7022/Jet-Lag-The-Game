@@ -137,7 +137,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Import the scan-backed Move procedure, reject its use after endgame begins, and source the missing scale durations (Small 10, Medium 20, Large 60 minutes) from the community card transcription; retain provenance in the generated pack.
 - [x] Implement Move's scan-backed round flow: pause seeker actions, reveal the original station, discard the rest of the hider hand, let only the hider relocate to a different in-boundary station, require arrival before closing, and exclude the Move interval from final survival scoring.
 - [x] Enforce the scale-specific Move duration as an authority-side minimum, show a live countdown, and require the hider to arrive at a different station before closing the window. The scan/workbook omit the duration values; the generated pack records the secondary transcription source.
-- [ ] Add foreground/background location behavior with clear freshness and permission status on both platforms.
+- [x] Implement foreground and opt-in background location updates, separate permission status, native iOS/Android location configuration, match-scoped recovery of background fixes, and cleanup outside an active round. Unit, typecheck, web-bundle, and native-config checks pass; physical-device GPS validation remains open below (2026-10-24).
 - [ ] Add content-pack selection/validation for the standard game and a versioned extension path for future variants.
 - [ ] Run a full mobile field round on multiple phones with native GPS and cellular connectivity.
 
@@ -229,7 +229,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Start a player's GPS watch automatically during hide, seek, and endgame once foreground permission is granted; stop sharing outside active play phases.
 - [x] Keep manual single-fix mode and a clear denied/unavailable state for permission and device-service failures.
 - [x] Verify the phase/role/permission policy and full test suite; 275 tests pass and mobile typecheck passes (2026-10-24).
-- [ ] Add background location sharing if confirmed by the product owner; foreground tracking pauses when the app is backgrounded or locked.
+- [x] Add opt-in background location sharing after the product owner confirmed individual-phone city play. Expo Task Manager delivers fixes while backgrounded; any locally queued fixes are scoped to the active match and recipient. Device-level behavior still requires the multi-phone field test below (2026-10-24).
 
 ### Current implementation slice: live GPS freshness on the game map
 

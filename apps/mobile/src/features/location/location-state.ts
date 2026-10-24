@@ -30,6 +30,7 @@ export interface DeviceLocationSample {
 
 export interface LocationShellState {
   permissionState: LocationPermissionState;
+  backgroundPermissionState: LocationPermissionState;
   availabilityState: LocationAvailabilityState;
   sharingState: LocationSharingState;
   frequencyMode: LocationUpdateFrequencyMode;
@@ -44,6 +45,9 @@ export type LocationShellAction =
   | { type: 'permission_checked'; permissionState: LocationPermissionState }
   | { type: 'permission_request_started' }
   | { type: 'permission_requested'; permissionState: LocationPermissionState }
+  | { type: 'background_permission_checked'; permissionState: LocationPermissionState }
+  | { type: 'background_permission_requested'; permissionState: LocationPermissionState }
+  | { type: 'background_tracking_error'; errorMessage: string }
   | { type: 'frequency_mode_selected'; frequencyMode: LocationUpdateFrequencyMode }
   | { type: 'sharing_started' }
   | { type: 'sharing_stopped' }
@@ -152,6 +156,7 @@ export function buildLiveLocationStatusModel(args: {
 export function createInitialLocationShellState(): LocationShellState {
   return {
     permissionState: 'unknown',
+    backgroundPermissionState: 'unknown',
     availabilityState: 'unknown',
     sharingState: 'idle',
     frequencyMode: 'balanced'
@@ -193,6 +198,19 @@ export function locationShellReducer(
               ? 'Location services are unavailable on this device or runtime.'
               : undefined
       };
+    case 'background_permission_checked':
+    case 'background_permission_requested':
+      return {
+        ...state,
+        backgroundPermissionState: action.permissionState,
+        errorMessage: action.permissionState === 'denied'
+          ? 'Background location is off. Your team will see your location update when you return to the app.'
+          : action.permissionState === 'unavailable'
+            ? 'Background location is unavailable on this device or runtime.'
+            : state.errorMessage
+      };
+    case 'background_tracking_error':
+      return { ...state, errorMessage: action.errorMessage };
     case 'frequency_mode_selected':
       return {
         ...state,
@@ -269,6 +287,15 @@ export function canStartContinuousSharing(
     state.permissionState === 'granted' &&
     state.availabilityState !== 'unavailable' &&
     state.frequencyMode !== 'manual';
+}
+
+export function canStartBackgroundSharing(
+  role: MatchRole,
+  state: LocationShellState
+): boolean {
+  return canViewerShareLiveLocation(role) &&
+    canStartContinuousSharing(role, state) &&
+    state.backgroundPermissionState === 'granted';
 }
 
 export function shouldAutomaticallyShareLocation(

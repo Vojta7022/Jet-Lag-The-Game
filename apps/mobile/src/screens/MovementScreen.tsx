@@ -36,6 +36,7 @@ export function MovementScreen() {
     clearError,
     refreshPermissionState,
     requestForegroundPermission,
+    requestBackgroundPermission,
     selectFrequencyMode,
     sendSingleUpdate,
     startSharing,
@@ -146,6 +147,9 @@ export function MovementScreen() {
           }}
           onRequestPermission={() => {
             void requestForegroundPermission();
+          }}
+          onRequestBackgroundPermission={() => {
+            void requestBackgroundPermission();
           }}
           onSelectFrequencyMode={selectFrequencyMode}
           onSendSingleUpdate={() => {

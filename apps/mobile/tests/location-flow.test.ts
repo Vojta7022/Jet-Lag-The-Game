@@ -9,6 +9,7 @@ import { mobileAppEnvironment } from '../src/config/env.ts';
 import { buildQuestionFlowBootstrapCommands } from '../src/features/questions/question-flow-bootstrap.ts';
 import {
   canStartContinuousSharing,
+  canStartBackgroundSharing,
   buildLiveLocationStatusModel,
   classifyLocationFreshness,
   describeLocationSampleAge,
@@ -102,6 +103,13 @@ test('location shell reducer makes denied and unavailable states explicit', () =
   });
   assert.equal(state.permissionState, 'denied');
   assert.equal(Boolean(state.errorMessage), true);
+
+  state = locationShellReducer(state, {
+    type: 'background_permission_requested',
+    permissionState: 'denied'
+  });
+  assert.equal(state.backgroundPermissionState, 'denied');
+  assert.match(state.errorMessage ?? '', /when you return to the app/i);
 });
 
 test('hiders can share their live location while seekers remain eligible', () => {
@@ -114,6 +122,20 @@ test('hiders can share their live location while seekers remain eligible', () =>
   assert.equal(canSendSingleLocationUpdate('hider', ready), true);
   assert.equal(canSendSingleLocationUpdate('seeker', ready, true), false);
   assert.equal(canSendSingleLocationUpdate('hider', ready, true), true);
+});
+
+test('background sharing requires an active player, non-manual tracking, and background permission', () => {
+  const ready = {
+    ...createInitialLocationShellState(),
+    permissionState: 'granted' as const,
+    backgroundPermissionState: 'granted' as const,
+    availabilityState: 'available' as const
+  };
+  assert.equal(canStartBackgroundSharing('hider', ready), true);
+  assert.equal(canStartBackgroundSharing('seeker', ready), true);
+  assert.equal(canStartBackgroundSharing('spectator', ready), false);
+  assert.equal(canStartBackgroundSharing('hider', { ...ready, backgroundPermissionState: 'denied' }), false);
+  assert.equal(canStartBackgroundSharing('hider', { ...ready, frequencyMode: 'manual' }), false);
 });
 
 test('live location sharing starts automatically for active player rounds and stops outside play phases', () => {

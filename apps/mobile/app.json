@@ -10,7 +10,17 @@
       "**/*"
     ],
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to share your position with your team during an active game.",
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to keep your team's positions up to date while you switch apps or lock your phone during an active game.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false
