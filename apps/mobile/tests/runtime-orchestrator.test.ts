@@ -71,8 +71,7 @@ test('runtime orchestrator binds a match to a selected installed content pack an
   const standardPack = loadContentPack();
   const alternatePack: ContentPack = {
     ...standardPack,
-    packId: 'extension-city-sprint',
-    packVersion: '1.0.0',
+    packVersion: '0.2.0',
     title: 'City Sprint Extension'
   };
   const orchestrator = new MobileRuntimeOrchestrator({
@@ -81,14 +80,26 @@ test('runtime orchestrator binds a match to a selected installed content pack an
   });
   const profile = { displayName: 'Host', playerId: 'pack-host' };
 
+  await assert.rejects(
+    () => orchestrator.createMatch(profile, {
+      runtimeKind: 'single_device_referee',
+      matchId: 'ambiguous-version-match',
+      initialScale: 'small',
+      contentPackId: standardPack.packId
+    }),
+    /choose an exact content pack version/i
+  );
+
   const created = await orchestrator.createMatch(profile, {
     runtimeKind: 'single_device_referee',
     matchId: 'extension-pack-match',
     initialScale: 'small',
-    contentPackId: alternatePack.packId
+    contentPackId: alternatePack.packId,
+    contentPackVersion: alternatePack.packVersion
   });
   assert.equal(created.initialSync.projectionDelivery.projection.contentPackId, alternatePack.packId);
   assert.equal(created.initialSync.projectionDelivery.projection.contentPackVersion, alternatePack.packVersion);
+  assert.equal(orchestrator.getContentPackByReference(alternatePack.packId, alternatePack.packVersion).title, alternatePack.title);
   assert.throws(() => orchestrator.summarize(created.connection, {
     ...created.initialSync,
     projectionDelivery: {
@@ -98,7 +109,7 @@ test('runtime orchestrator binds a match to a selected installed content pack an
         contentPackVersion: '9.9.9'
       }
     }
-  }), /extension-city-sprint@9\.9\.9.*matching pack version/);
+  }), /jet-lag-the-game-seed@9\.9\.9.*matching pack version/);
   await orchestrator.disconnect(created.connection);
 
   const invalidPack: ContentPack = {

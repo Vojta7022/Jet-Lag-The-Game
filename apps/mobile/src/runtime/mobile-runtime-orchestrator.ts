@@ -149,7 +149,7 @@ function getPlayerRoleFromProjection(
 export class MobileRuntimeOrchestrator {
   private readonly contentPack: ContentPack;
   private readonly contentPacks: ContentPack[];
-  private readonly contentPackIssuesById = new Map<string, ImportIssue[]>();
+  private readonly contentPackIssuesByReference = new Map<string, ImportIssue[]>();
   private readonly environment: MobileAppEnvironment;
   private readonly singleDevicePersistence: LocalRuntimePersistence;
   private readonly clock: () => Date;
@@ -173,11 +173,12 @@ export class MobileRuntimeOrchestrator {
     if (this.contentPacks.length === 0) {
       throw new Error('At least one content pack must be installed before creating a match.');
     }
-    const packIds = new Set<string>();
+    const packReferences = new Set<string>();
     for (const pack of this.contentPacks) {
-      if (packIds.has(pack.packId)) throw new Error(`Content pack ID "${pack.packId}" is installed more than once.`);
-      packIds.add(pack.packId);
-      this.contentPackIssuesById.set(pack.packId, validateContentPack(pack));
+      const key = `${pack.packId}@${pack.packVersion}`;
+      if (packReferences.has(key)) throw new Error(`Content pack "${key}" is installed more than once.`);
+      packReferences.add(key);
+      this.contentPackIssuesByReference.set(key, validateContentPack(pack));
     }
     this.contentPack = options.contentPack ?? this.contentPacks[0]!;
     this.environment = options.environment;
@@ -191,11 +192,8 @@ export class MobileRuntimeOrchestrator {
     input: CreateMatchInput
   ): Promise<ConnectedMatchResult> {
     const selectedPackId = input.contentPackId ?? this.contentPack.packId;
-    const selectedPack = this.contentPacks.find((pack) => pack.packId === selectedPackId);
-    if (!selectedPack) {
-      throw new Error(`Content pack "${selectedPackId}" is not installed on this device.`);
-    }
-    const blockingIssues = (this.contentPackIssuesById.get(selectedPack.packId) ?? [])
+    const selectedPack = this.getContentPackByReference(selectedPackId, input.contentPackVersion);
+    const blockingIssues = (this.contentPackIssuesByReference.get(`${selectedPack.packId}@${selectedPack.packVersion}`) ?? [])
       .filter((issue) => issue.blocking || issue.severity === 'error');
     if (blockingIssues.length > 0) {
       throw new Error(`Content pack "${selectedPack.title}" (${selectedPack.packId}) failed validation: ${blockingIssues.map((issue) => issue.message).join(' ')}`);
@@ -212,6 +210,26 @@ export class MobileRuntimeOrchestrator {
       default:
         return this.createInMemoryMatch(profile, input);
     }
+  }
+
+  getInstalledContentPacks(): ContentPack[] {
+    return [...this.contentPacks];
+  }
+
+  getContentPackByReference(packId?: string, packVersion?: string): ContentPack {
+    if (!packId) return this.contentPack;
+    const candidates = this.contentPacks.filter((candidate) => candidate.packId === packId);
+    const pack = packVersion
+      ? candidates.find((candidate) => candidate.packVersion === packVersion)
+      : candidates.length === 1 ? candidates[0] : undefined;
+    if (!pack) {
+      throw new Error(candidates.length > 1 && !packVersion
+        ? `Content pack "${packId}" has multiple installed versions; choose an exact content pack version.`
+        : candidates.length > 0
+          ? `Content pack "${packId}@${packVersion}" is not installed on this device. Install the matching pack version before joining this match.`
+        : `This match uses content pack "${packId}", which is not installed on this device.`);
+    }
+    return pack;
   }
 
   async joinMatch(
@@ -397,13 +415,8 @@ export class MobileRuntimeOrchestrator {
 
   summarize(connection: RuntimeConnection, syncEnvelope: SyncEnvelope): ConnectionSnapshotSummary {
     const projection = syncEnvelope.projectionDelivery.projection;
-    const projectionPack = this.contentPacks.find((pack) =>
-      pack.packId === projection.contentPackId && pack.packVersion === projection.contentPackVersion
-    );
-    if (!projectionPack) {
-      throw new Error(`Content pack "${projection.contentPackId}@${projection.contentPackVersion}" is not installed on this device. Install the matching pack version before joining this match.`);
-    }
-    const blockingIssues = (this.contentPackIssuesById.get(projectionPack.packId) ?? [])
+    const projectionPack = this.getContentPackByReference(projection.contentPackId, projection.contentPackVersion);
+    const blockingIssues = (this.contentPackIssuesByReference.get(`${projectionPack.packId}@${projectionPack.packVersion}`) ?? [])
       .filter((issue) => issue.blocking || issue.severity === 'error');
     if (blockingIssues.length > 0) {
       throw new Error(`This match's content pack failed validation: ${blockingIssues.map((issue) => issue.message).join(' ')}`);

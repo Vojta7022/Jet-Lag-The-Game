@@ -506,15 +506,20 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       );
     }
 
+    const installedPacks = [...this.contentPacksByIdAndVersion.values()].filter((candidate) => candidate.packId === packId);
     const contentPack = requestedVersion
       ? this.contentPacksByIdAndVersion.get(`${packId}@${requestedVersion}`)
-      : [...this.contentPacksByIdAndVersion.values()].find((candidate) => candidate.packId === packId);
+      : installedPacks.length === 1 ? installedPacks[0] : undefined;
     if (!contentPack) {
-      const versionInstalled = [...this.contentPacksByIdAndVersion.values()].some((candidate) => candidate.packId === packId);
+      const versionInstalled = installedPacks.length > 0;
       throw new TransportRuntimeError(
-        versionInstalled ? 'CONTENT_PACK_VERSION_MISMATCH' : 'CONTENT_PACK_NOT_FOUND',
         versionInstalled
-          ? `Content pack "${packId}@${requestedVersion}" is not registered with the online runtime.`
+          ? requestedVersion ? 'CONTENT_PACK_VERSION_MISMATCH' : 'CONTENT_PACK_VERSION_REQUIRED'
+          : 'CONTENT_PACK_NOT_FOUND',
+        versionInstalled
+          ? requestedVersion
+            ? `Content pack "${packId}@${requestedVersion}" is not registered with the online runtime.`
+            : `Content pack "${packId}" has multiple registered versions; choose an exact content pack version.`
           : `Content pack "${packId}" is not registered with the online runtime.`
       );
     }

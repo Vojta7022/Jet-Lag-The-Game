@@ -4,7 +4,6 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { buildQuestionSelectionState } from '../../../../../packages/domain/src/index.ts';
 
-import { getBundledContentPackById } from '../../runtime/default-content-pack.ts';
 import { createUuid } from '../../runtime/create-uuid.ts';
 import { useAppShell } from '../../providers/AppShellProvider.tsx';
 import {
@@ -65,11 +64,12 @@ export function LiveMapInlineActionPanel() {
     state,
     submitCommand,
     submitCommands,
-    prepareAttachmentUploadCommands
+    prepareAttachmentUploadCommands,
+    getContentPackByReference
   } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
-  const contentPack = getBundledContentPackById(projection?.contentPackId);
+  const contentPack = getContentPackByReference(projection?.contentPackId, projection?.contentPackVersion);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);

@@ -73,6 +73,19 @@ test('online authority pins and selects the exact requested content pack version
     realtimeFanout: realtime
   });
   const hostSession = makeOnlineSession('versioned-host', { defaultPlayerId: 'versioned-host' });
+  await assert.rejects(
+    () => runtime.submitAuthenticatedCommand(hostSession, makeOnlineCommandRequest(hostSession, 'ambiguous-online-match', 1, {
+      type: 'create_match',
+      payload: {
+        mode: 'online',
+        contentPackId: contentPack.packId,
+        hostPlayerId: 'versioned-host',
+        hostDisplayName: 'Versioned Host',
+        initialScale: 'small'
+      }
+    })),
+    /choose an exact content pack version/i
+  );
   const firstVersionResult = await runtime.submitAuthenticatedCommand(hostSession, makeOnlineCommandRequest(hostSession, 'version-pinned-match-v1', 1, {
     type: 'create_match',
     payload: {

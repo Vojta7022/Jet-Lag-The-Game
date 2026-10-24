@@ -7,7 +7,6 @@ import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
 import { canAccessHostControls } from '../navigation/player-flow.ts';
-import { getBundledContentPackById } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
@@ -160,11 +159,12 @@ export function QuestionCenterScreen() {
     submitCommand,
     submitCommands,
     refreshActiveMatch,
-    prepareAttachmentUploadCommands
+    prepareAttachmentUploadCommands,
+    getContentPackByReference
   } = useAppShell();
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
-  const contentPack = getBundledContentPackById(projection?.contentPackId);
+  const contentPack = getContentPackByReference(projection?.contentPackId, projection?.contentPackVersion);
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);
   const viewerRole = resolveCurrentRole(

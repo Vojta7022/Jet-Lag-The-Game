@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppShell } from '../providers/AppShellProvider.tsx';
+import { useRuntimeClient } from '../providers/RuntimeClientProvider.tsx';
 import { useRuntimeMode } from '../providers/RuntimeModeProvider.tsx';
 import { mobileAppEnvironment } from '../config/env.ts';
 import { AppButton } from '../ui/AppButton.tsx';
@@ -13,7 +14,6 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 import { GameArtwork } from '../ui/GameArtwork.tsx';
 import {
-  bundledContentPacks,
   defaultContentPack,
   getBundledContentPackValidationIssues
 } from '../runtime/default-content-pack.ts';
@@ -25,7 +25,8 @@ const SCALE_OPTIONS = [
 ] as const;
 
 export function CreateMatchScreen() {
-  const { state, createMatch } = useAppShell();
+  const { state, createMatch, getInstalledContentPacks } = useAppShell();
+  const runtimeClient = useRuntimeClient();
   const { runtimeKind } = useRuntimeMode();
   const [matchId, setMatchId] = useState(
     `${mobileAppEnvironment.defaultMatchPrefix}-${Date.now().toString(36)}`
@@ -33,7 +34,10 @@ export function CreateMatchScreen() {
   const [initialScale, setInitialScale] = useState<
     'small' | 'medium' | 'large'
   >('small');
-  const [contentPackId, setContentPackId] = useState(defaultContentPack.packId);
+  const [contentPackReference, setContentPackReference] = useState(`${defaultContentPack.packId}@${defaultContentPack.packVersion}`);
+  const contentPacks = getInstalledContentPacks();
+  const selectedPack = contentPacks.find((pack) => `${pack.packId}@${pack.packVersion}` === contentPackReference)
+    ?? runtimeClient.getContentPackByReference();
   const matchMode =
     runtimeKind === 'online_foundation'
       ? 'online'
@@ -147,8 +151,9 @@ export function CreateMatchScreen() {
         <View style={styles.choiceGroup}>
           <Text style={styles.choiceLabel}>Rules & Question Set</Text>
           <Text style={styles.packHint}>Everyone in the match uses this exact pack version.</Text>
-          {bundledContentPacks.map((pack) => {
-            const selected = pack.packId === contentPackId;
+          {contentPacks.map((pack) => {
+            const packReference = `${pack.packId}@${pack.packVersion}`;
+            const selected = packReference === contentPackReference;
             const issues = getBundledContentPackValidationIssues(pack);
             const blockingIssueCount = issues.filter((issue) => issue.blocking || issue.severity === 'error').length;
             return (
@@ -156,7 +161,7 @@ export function CreateMatchScreen() {
                 key={`${pack.packId}@${pack.packVersion}`}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                onPress={() => setContentPackId(pack.packId)}
+                onPress={() => setContentPackReference(packReference)}
                 disabled={blockingIssueCount > 0}
                 style={[styles.packOption, selected ? styles.packOptionSelected : null]}
               >
@@ -209,7 +214,8 @@ export function CreateMatchScreen() {
             void createMatch({
               matchId: matchId.trim(),
               initialScale,
-              contentPackId,
+              contentPackId: selectedPack.packId,
+              contentPackVersion: selectedPack.packVersion,
               matchMode
             }).then((accepted) => {
               if (accepted) {

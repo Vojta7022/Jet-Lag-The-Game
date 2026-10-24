@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 
 import type {
+  ContentPack,
   DomainCommand,
   MatchRole,
   ProjectionViewer,
@@ -38,6 +39,8 @@ interface AppShellContextValue {
   saveSessionProfile: (profile: SessionProfileDraft) => void;
   selectRuntimeKind: (runtimeKind: CreateMatchInput['runtimeKind']) => void;
   createMatch: (input: Omit<CreateMatchInput, 'runtimeKind'>) => Promise<boolean>;
+  getContentPackByReference: (packId?: string, packVersion?: string) => ContentPack;
+  getInstalledContentPacks: () => ContentPack[];
   joinMatch: (input: Omit<JoinMatchInput, 'runtimeKind'>) => Promise<boolean>;
   refreshActiveMatch: () => Promise<boolean>;
   recoverActiveMatch: () => Promise<boolean>;
@@ -444,6 +447,12 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     return runtimeClient.getAttachmentMediaSource(connectionRef.current, attachment);
   }, [runtimeClient]);
 
+  const getContentPackByReference = useCallback((packId?: string, packVersion?: string) => {
+    return runtimeClient.getContentPackByReference(packId, packVersion);
+  }, [runtimeClient]);
+
+  const getInstalledContentPacks = useCallback(() => runtimeClient.getInstalledContentPacks(), [runtimeClient]);
+
   const armProtectedReveal = useCallback(async (viewer: ProjectionViewer, reason: string) => {
     const connection = connectionRef.current;
     if (!connection) return undefined;
@@ -508,6 +517,8 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     submitCommands,
     prepareAttachmentUploadCommands,
     getAttachmentMediaSource,
+    getContentPackByReference,
+    getInstalledContentPacks,
     armProtectedReveal,
     openProtectedReveal,
     hideProtectedReveal,
@@ -522,6 +533,8 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     createMatch,
     disconnectActiveMatch,
     getAttachmentMediaSource,
+    getContentPackByReference,
+    getInstalledContentPacks,
     armProtectedReveal,
     openProtectedReveal,
     hideProtectedReveal,

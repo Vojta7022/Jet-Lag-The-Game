@@ -48,7 +48,7 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
   readonly mode: AuthorityRuntimeMode;
   readonly gateway: CommandGateway;
 
-  private readonly contentPacksById: Map<string, ContentPack>;
+  private readonly contentPacksByIdAndVersion: Map<string, ContentPack>;
   private readonly persistence: LocalRuntimePersistence;
   private readonly questionFeatureDataProvider?: QuestionFeatureDataProvider;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
@@ -59,7 +59,9 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
     this.gateway = options.gateway ?? new EngineCommandGateway();
     this.persistence = options.persistence;
     this.questionFeatureDataProvider = options.questionFeatureDataProvider;
-    this.contentPacksById = new Map(options.contentPacks.map((contentPack) => [contentPack.packId, contentPack]));
+    this.contentPacksByIdAndVersion = new Map(
+      options.contentPacks.map((contentPack) => [`${contentPack.packId}@${contentPack.packVersion}`, contentPack])
+    );
   }
 
   async submitCommand(envelope: CommandEnvelope): Promise<CommandSubmissionResult> {
@@ -297,6 +299,9 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
     const packId =
       aggregate?.contentPackId ??
       (envelope?.command.type === 'create_match' ? envelope.command.payload.contentPackId : undefined);
+    const packVersion =
+      aggregate?.contentPackVersion ??
+      (envelope?.command.type === 'create_match' ? envelope.command.payload.contentPackVersion : undefined);
 
     if (!packId) {
       throw new TransportRuntimeError(
@@ -305,11 +310,21 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
       );
     }
 
-    const contentPack = this.contentPacksById.get(packId);
+    const installedPacks = [...this.contentPacksByIdAndVersion.values()].filter((candidate) => candidate.packId === packId);
+    const contentPack = packVersion
+      ? this.contentPacksByIdAndVersion.get(`${packId}@${packVersion}`)
+      : installedPacks.length === 1 ? installedPacks[0] : undefined;
     if (!contentPack) {
+      const versionInstalled = installedPacks.length > 0;
       throw new TransportRuntimeError(
-        'CONTENT_PACK_NOT_FOUND',
-        `Content pack "${packId}" is not registered with the authority runtime.`
+        versionInstalled
+          ? packVersion ? 'CONTENT_PACK_VERSION_MISMATCH' : 'CONTENT_PACK_VERSION_REQUIRED'
+          : 'CONTENT_PACK_NOT_FOUND',
+        versionInstalled
+          ? packVersion
+            ? `Content pack "${packId}@${packVersion}" is not registered with the authority runtime.`
+            : `Content pack "${packId}" has multiple registered versions; choose an exact content pack version.`
+          : `Content pack "${packId}" is not registered with the authority runtime.`
       );
     }
 

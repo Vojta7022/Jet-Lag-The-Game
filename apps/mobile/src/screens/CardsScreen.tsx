@@ -5,7 +5,6 @@ import { StyleSheet, Switch, Text, View } from 'react-native';
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
-import { getBundledContentPackById } from '../runtime/default-content-pack.ts';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { useAppShell } from '../providers/AppShellProvider.tsx';
 import {
@@ -104,12 +103,13 @@ export function CardsScreen() {
     submitCommand,
     submitCommands,
     refreshActiveMatch,
-    prepareAttachmentUploadCommands
+    prepareAttachmentUploadCommands,
+    getContentPackByReference
   } = useAppShell();
   const [showPiles, setShowPiles] = useState(false);
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
-  const contentPack = getBundledContentPackById(projection?.contentPackId);
+  const contentPack = getContentPackByReference(projection?.contentPackId, projection?.contentPackVersion);
   const hiderHandLimit = projection?.hiderHandLimit ?? HIDER_HAND_TARGET;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const localMedia = useLocalMediaAttachments(createUuid);

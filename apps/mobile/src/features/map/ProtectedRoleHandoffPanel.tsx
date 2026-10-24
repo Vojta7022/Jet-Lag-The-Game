@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { MatchProjection, SingleDeviceRevealResult, SingleDeviceRevealToken, VisiblePlayerProjection } from '../../../../../packages/shared-types/src/index.ts';
 import { useAppShell } from '../../providers/AppShellProvider.tsx';
-import { getBundledContentPackById } from '../../runtime/default-content-pack.ts';
 import { AppButton } from '../../ui/AppButton.tsx';
 import { Panel } from '../../ui/Panel.tsx';
 import { colors } from '../../ui/theme.ts';
@@ -18,11 +17,12 @@ export function ProtectedRoleHandoffPanel() {
     armProtectedReveal,
     openProtectedReveal,
     hideProtectedReveal,
-    listProtectedReveals
+    listProtectedReveals,
+    getContentPackByReference
   } = useAppShell();
   const match = state.activeMatch;
   const projection = match?.projection;
-  const contentPack = getBundledContentPackById(projection?.contentPackId);
+  const contentPack = getContentPackByReference(projection?.contentPackId, projection?.contentPackVersion);
   const isReferee = match?.runtimeKind === 'single_device_referee' && match.recipient.scope === 'host_admin';
   const players = projection?.players.filter((player) => player.role === 'hider' || player.role === 'seeker') ?? [];
   const [token, setToken] = useState<SingleDeviceRevealToken>();

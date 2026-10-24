@@ -18,7 +18,6 @@ import { ProtectedRoleHandoffPanel } from '../features/map/ProtectedRoleHandoffP
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
 import { createMapScenario, decodeMapScenario, encodeMapScenario, type MapScenario } from '../features/map/map-scenarios.ts';
 import { loadSavedMapScenarios, saveMapScenario } from '../features/map/map-scenario-storage.ts';
-import { getBundledContentPackById } from '../runtime/default-content-pack.ts';
 
 import {
   LiveMapActionPanel,
@@ -144,7 +143,8 @@ export function MapScreen() {
     submitCommands,
     refreshActiveMatch,
     saveMapSetupDraft,
-    clearMapSetupDraft
+    clearMapSetupDraft,
+    getContentPackByReference
   } = useAppShell();
   const { state: locationState } = useLocationSharing();
   const [showLegend, setShowLegend] = useState(false);
@@ -171,7 +171,7 @@ export function MapScreen() {
     initialRegionId: mapSetupDraft?.selectedPreviewRegionId
   });
   const projection = activeMatch?.projection;
-  const contentPack = getBundledContentPackById(projection?.contentPackId);
+  const contentPack = getContentPackByReference(projection?.contentPackId, projection?.contentPackVersion);
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
