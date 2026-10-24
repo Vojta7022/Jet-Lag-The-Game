@@ -15,6 +15,7 @@ create table if not exists public.matches (
   "lifecycleState" text not null,
   "revision" bigint not null check ("revision" >= 0),
   "contentPackId" text not null,
+  "contentPackVersion" text,
   "createdByPlayerId" text not null,
   "selectedRulesetId" text,
   "selectedScale" text,
@@ -34,6 +35,7 @@ create table if not exists public.match_snapshots (
   "snapshotId" text primary key,
   "matchId" text not null,
   "contentPackId" text not null,
+  "contentPackVersion" text,
   "runtimeMode" text not null,
   "snapshotVersion" bigint not null check ("snapshotVersion" >= 0),
   "lastEventSequence" bigint not null check ("lastEventSequence" >= 0),
@@ -56,13 +58,14 @@ create table if not exists public.match_projections (
 );
 
 create table if not exists public.content_pack_references (
-  "packId" text primary key,
+  "packId" text not null,
   "packVersion" text not null,
   "title" text not null,
   "status" text not null,
   "sourceFingerprint" text not null,
   "compatibilityModes" jsonb not null,
-  "registeredAt" timestamptz not null
+  "registeredAt" timestamptz not null,
+  primary key ("packId", "packVersion")
 );
 
 commit;

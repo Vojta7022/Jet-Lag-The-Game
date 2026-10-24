@@ -200,6 +200,7 @@ export interface VisibleMapProjection {
 export interface MatchProjection {
   matchId: string;
   contentPackId: string;
+  contentPackVersion: string;
   lifecycleState: MatchLifecycleState;
   seekPhaseSubstate?: SeekPhaseSubstate;
   paused?: PauseOverlayState;

@@ -31,6 +31,7 @@ export interface MatchRuntimeSnapshot {
   snapshotId: string;
   matchId: string;
   contentPackId: ContentPack['packId'];
+  contentPackVersion: ContentPack['packVersion'];
   runtimeMode: AuthorityRuntimeMode;
   snapshotVersion: number;
   lastEventSequence: number;

@@ -475,6 +475,7 @@ export function buildMatchProjection(
   return {
     matchId: aggregate.matchId,
     contentPackId: aggregate.contentPackId,
+    contentPackVersion: aggregate.contentPackVersion,
     lifecycleState: aggregate.lifecycleState,
     seekPhaseSubstate: aggregate.seekPhaseSubstate,
     paused: aggregate.paused,

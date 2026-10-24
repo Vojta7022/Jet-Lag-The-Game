@@ -138,7 +138,8 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Implement Move's scan-backed round flow: pause seeker actions, reveal the original station, discard the rest of the hider hand, let only the hider relocate to a different in-boundary station, require arrival before closing, and exclude the Move interval from final survival scoring.
 - [x] Enforce the scale-specific Move duration as an authority-side minimum, show a live countdown, and require the hider to arrive at a different station before closing the window. The scan/workbook omit the duration values; the generated pack records the secondary transcription source.
 - [x] Implement foreground and opt-in background location updates, separate permission status, native iOS/Android location configuration, match-scoped recovery of background fixes, and cleanup outside an active round. Unit, typecheck, web-bundle, and native-config checks pass; physical-device GPS validation remains open below (2026-10-24).
-- [ ] Add content-pack selection/validation for the standard game and a versioned extension path for future variants.
+- [x] Add content-pack selection/validation and pin the exact selected pack version through the match aggregate, server record, snapshot, and player projection.
+- [ ] Ship additional variant packs and validate joins when players have multiple compatible versions installed.
 - [ ] Run a full mobile field round on multiple phones with native GPS and cellular connectivity.
 
 ### Current implementation slice: local content-pack selection and validation
@@ -146,7 +147,8 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add a device-installed pack catalog and a rules/question-set picker during match creation; record the selected pack ID in the match.
 - [x] Resolve question/card/rules UI data from the match's selected pack ID instead of a screen-level hard-coded standard pack.
 - [x] Validate each installed pack once, reject invalid selections, and reject joining a match whose selected pack is not installed locally.
-- [ ] Preserve and enforce the exact `packVersion` across server records and match projections; distribute additional variant packs and validate the online join path against multiple installed versions.
+- [x] Preserve and enforce the exact `packVersion` across server records and match projections; add a database migration and reject a player device missing the match's exact version.
+- [ ] Apply the migration to the hosted database and validate a cellular multiplayer match with multiple installed versions.
 
 ### Completed implementation slice: Move authority timer
 

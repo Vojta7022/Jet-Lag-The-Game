@@ -52,6 +52,7 @@ function makeCommit(
     lifecycleState: aggregate.lifecycleState,
     revision: aggregate.revision,
     contentPackId: aggregate.contentPackId,
+    contentPackVersion: aggregate.contentPackVersion,
     createdByPlayerId: aggregate.createdByPlayerId,
     selectedRulesetId: aggregate.selectedRulesetId,
     selectedScale: aggregate.selectedScale,

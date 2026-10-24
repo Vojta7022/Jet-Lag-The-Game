@@ -52,6 +52,7 @@ export function createMatchSnapshot(
     snapshotId: `snapshot:${createRandomUuid()}`,
     matchId: aggregate.matchId,
     contentPackId: aggregate.contentPackId,
+    contentPackVersion: aggregate.contentPackVersion,
     runtimeMode,
     snapshotVersion: aggregate.revision,
     lastEventSequence: aggregate.revision,

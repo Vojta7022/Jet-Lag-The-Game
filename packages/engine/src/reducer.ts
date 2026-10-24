@@ -153,6 +153,7 @@ export function reduceMatchAggregate(
         createdAt: eventEnvelope.occurredAt,
         updatedAt: eventEnvelope.occurredAt,
         contentPackId: match.contentPackId,
+        contentPackVersion: match.contentPackVersion,
         createdByPlayerId: match.createdByPlayerId,
         selectedScale: match.selectedScale,
         players: {

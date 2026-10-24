@@ -109,7 +109,7 @@ begin
   end if;
 
   insert into public.matches (
-    "matchId", "joinCode", "mode", "lifecycleState", "revision", "contentPackId",
+    "matchId", "joinCode", "mode", "lifecycleState", "revision", "contentPackId", "contentPackVersion",
     "createdByPlayerId", "selectedRulesetId", "selectedScale", "createdAt", "updatedAt"
   ) values (
     requested_match_id,
@@ -118,6 +118,7 @@ begin
     p_payload->'match'->>'lifecycleState',
     next_revision,
     p_payload->'match'->>'contentPackId',
+    p_payload->'match'->>'contentPackVersion',
     p_payload->'match'->>'createdByPlayerId',
     p_payload->'match'->>'selectedRulesetId',
     p_payload->'match'->>'selectedScale',
@@ -130,6 +131,7 @@ begin
     "lifecycleState" = excluded."lifecycleState",
     "revision" = excluded."revision",
     "contentPackId" = excluded."contentPackId",
+    "contentPackVersion" = excluded."contentPackVersion",
     "createdByPlayerId" = excluded."createdByPlayerId",
     "selectedRulesetId" = excluded."selectedRulesetId",
     "selectedScale" = excluded."selectedScale",
@@ -141,12 +143,13 @@ begin
   from jsonb_array_elements(p_payload->'events') as rows(value);
 
   insert into public.match_snapshots (
-    "snapshotId", "matchId", "contentPackId", "runtimeMode", "snapshotVersion",
+    "snapshotId", "matchId", "contentPackId", "contentPackVersion", "runtimeMode", "snapshotVersion",
     "lastEventSequence", "aggregate", "createdAt"
   ) values (
     p_payload->'snapshot'->>'snapshotId',
     requested_match_id,
     p_payload->'snapshot'->>'contentPackId',
+    p_payload->'snapshot'->>'contentPackVersion',
     p_payload->'snapshot'->>'runtimeMode',
     next_revision,
     next_revision,

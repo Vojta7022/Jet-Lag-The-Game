@@ -412,6 +412,10 @@ export function validateCommandEnvelope(
       return [error(envelope.command.type, 'CONTENT_PACK_MISMATCH', 'Create match content pack does not match the loaded pack.')];
     }
 
+    if (envelope.command.payload.contentPackVersion && envelope.command.payload.contentPackVersion !== contentPack.packVersion) {
+      return [error(envelope.command.type, 'CONTENT_PACK_VERSION_MISMATCH', 'Create match content pack version does not match the loaded pack.')];
+    }
+
     return [];
   }
 
@@ -421,6 +425,10 @@ export function validateCommandEnvelope(
 
   if (aggregate.contentPackId !== contentPack.packId) {
     return [error(envelope.command.type, 'CONTENT_PACK_MISMATCH', 'The aggregate content pack does not match the loaded pack.')];
+  }
+
+  if (aggregate.contentPackVersion !== contentPack.packVersion) {
+    return [error(envelope.command.type, 'CONTENT_PACK_VERSION_MISMATCH', 'The aggregate content pack version does not match the loaded pack.')];
   }
 
   if (!canActorExecuteCommand(aggregate, envelope.actor, envelope.command)) {

@@ -54,6 +54,7 @@ export interface ProjectionRepository {
 export interface ContentPackReferenceRepository {
   save(record: ContentPackReferenceRecord): Promise<void>;
   getByPackId(packId: string): Promise<ContentPackReferenceRecord | undefined>;
+  getByPackIdAndVersion(packId: string, packVersion: string): Promise<ContentPackReferenceRecord | undefined>;
 }
 
 export interface OnlineAuthorityRepository {

@@ -69,6 +69,7 @@ export interface CreateMatchCommand {
   payload: {
     mode: MatchMode;
     contentPackId: string;
+    contentPackVersion?: string;
     hostPlayerId: string;
     hostDisplayName: string;
     initialScale?: 'small' | 'medium' | 'large';

@@ -136,12 +136,16 @@ export class SupabaseContentPackReferenceRepository implements ContentPackRefere
     await this.client.upsert(
       CONTENT_PACK_REFS_TABLE,
       record as unknown as Record<string, unknown>,
-      ['packId']
+      ['packId', 'packVersion']
     );
   }
 
   async getByPackId(packId: string): Promise<ContentPackReferenceRecord | undefined> {
     return this.client.selectOne<ContentPackReferenceRecord>(CONTENT_PACK_REFS_TABLE, { packId });
+  }
+
+  async getByPackIdAndVersion(packId: string, packVersion: string): Promise<ContentPackReferenceRecord | undefined> {
+    return this.client.selectOne<ContentPackReferenceRecord>(CONTENT_PACK_REFS_TABLE, { packId, packVersion });
   }
 }
 

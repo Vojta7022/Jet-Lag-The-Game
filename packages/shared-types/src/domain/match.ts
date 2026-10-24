@@ -412,6 +412,7 @@ export interface MatchAggregate {
   createdAt: string;
   updatedAt: string;
   contentPackId: ContentPack['packId'];
+  contentPackVersion: ContentPack['packVersion'];
   selectedRulesetId?: string;
   selectedScale?: ScaleKey;
   createdByPlayerId: string;

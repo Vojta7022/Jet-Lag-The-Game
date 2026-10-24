@@ -112,7 +112,7 @@ export interface MatchCreatedEvent {
   payload: {
     match: Pick<
       MatchAggregate,
-      'matchId' | 'mode' | 'contentPackId' | 'createdByPlayerId' | 'selectedScale'
+      'matchId' | 'mode' | 'contentPackId' | 'contentPackVersion' | 'createdByPlayerId' | 'selectedScale'
     >;
     hostPlayer: PlayerModel;
     teams: TeamModel[];

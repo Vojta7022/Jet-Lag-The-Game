@@ -64,6 +64,67 @@ test('online runtime commits authoritative changes atomically when configured fo
   assert.ok(commits.every((commit) => commit.result.events.length === 0));
 });
 
+test('online authority pins and selects the exact requested content pack version', async () => {
+  const { contentPack, repositories, realtime } = createOnlineHarness();
+  const secondVersion = { ...contentPack, packVersion: '0.2.0' };
+  const runtime = new OnlineAuthorityRuntime({
+    contentPacks: [contentPack, secondVersion],
+    repositories,
+    realtimeFanout: realtime
+  });
+  const hostSession = makeOnlineSession('versioned-host', { defaultPlayerId: 'versioned-host' });
+  const firstVersionResult = await runtime.submitAuthenticatedCommand(hostSession, makeOnlineCommandRequest(hostSession, 'version-pinned-match-v1', 1, {
+    type: 'create_match',
+    payload: {
+      mode: 'online',
+      contentPackId: contentPack.packId,
+      contentPackVersion: '0.1.0',
+      hostPlayerId: 'versioned-host',
+      hostDisplayName: 'Versioned Host',
+      initialScale: 'small'
+    }
+  }));
+  assert.equal(firstVersionResult.accepted, true);
+  const matchId = 'version-pinned-match';
+  const result = await runtime.submitAuthenticatedCommand(hostSession, makeOnlineCommandRequest(hostSession, matchId, 1, {
+    type: 'create_match',
+    payload: {
+      mode: 'online',
+      contentPackId: contentPack.packId,
+      contentPackVersion: '0.2.0',
+      hostPlayerId: 'versioned-host',
+      hostDisplayName: 'Versioned Host',
+      initialScale: 'small'
+    }
+  }));
+
+  assert.equal(result.accepted, true);
+  assert.equal((await repositories.matches.getByMatchId(matchId))?.contentPackVersion, '0.2.0');
+  assert.equal((await repositories.snapshots.getLatest(matchId))?.contentPackVersion, '0.2.0');
+  assert.equal((await repositories.contentPackReferences.getByPackIdAndVersion(contentPack.packId, '0.1.0'))?.packVersion, '0.1.0');
+  assert.equal((await repositories.contentPackReferences.getByPackIdAndVersion(contentPack.packId, '0.2.0'))?.packVersion, '0.2.0');
+  assert.equal((await repositories.projections.getLatest({
+    matchId,
+    projectionScope: 'public_match',
+    recipientId: 'public_match'
+  }))?.projection.contentPackVersion, '0.2.0');
+
+  await assert.rejects(
+    () => runtime.submitAuthenticatedCommand(hostSession, makeOnlineCommandRequest(hostSession, 'unknown-pack-version', 1, {
+      type: 'create_match',
+      payload: {
+        mode: 'online',
+        contentPackId: contentPack.packId,
+        contentPackVersion: '9.9.9',
+        hostPlayerId: 'versioned-host',
+        hostDisplayName: 'Versioned Host',
+        initialScale: 'small'
+      }
+    })),
+    /not registered with the online runtime/
+  );
+});
+
 test('online authority loads matching features server-side and completes answer plus map deduction atomically', async () => {
   const { contentPack, repositories, realtime } = createOnlineHarness();
   const providerCalls: Array<{ featureClassIds: string[]; regionType: string }> = [];
@@ -296,6 +357,7 @@ test('online authority runtime persists repository records and publishes scoped 
   assert.equal(result.accepted, true);
   const storedMatch = await repositories.matches.getByMatchId(matchId);
   assert.equal(storedMatch?.revision, 1);
+  assert.equal(storedMatch?.contentPackVersion, contentPack.packVersion);
   assert.match(storedMatch?.joinCode ?? '', /^[A-Z0-9]{6}$/);
   assert.equal((await repositories.matches.getByJoinCode(storedMatch?.joinCode ?? ''))?.matchId, matchId);
   assert.equal((await repositories.events.listAfterSequence(matchId, 0)).length, 1);

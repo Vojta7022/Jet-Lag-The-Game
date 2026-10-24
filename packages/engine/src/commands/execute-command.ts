@@ -545,6 +545,7 @@ function eventsForCommand(
               matchId: envelope.matchId,
               mode: envelope.command.payload.mode,
               contentPackId: envelope.command.payload.contentPackId,
+              contentPackVersion: contentPack.packVersion,
               createdByPlayerId: hostPlayer.playerId,
               selectedScale: envelope.command.payload.initialScale
             },

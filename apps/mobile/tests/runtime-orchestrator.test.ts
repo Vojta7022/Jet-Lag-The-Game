@@ -88,6 +88,17 @@ test('runtime orchestrator binds a match to a selected installed content pack an
     contentPackId: alternatePack.packId
   });
   assert.equal(created.initialSync.projectionDelivery.projection.contentPackId, alternatePack.packId);
+  assert.equal(created.initialSync.projectionDelivery.projection.contentPackVersion, alternatePack.packVersion);
+  assert.throws(() => orchestrator.summarize(created.connection, {
+    ...created.initialSync,
+    projectionDelivery: {
+      ...created.initialSync.projectionDelivery,
+      projection: {
+        ...created.initialSync.projectionDelivery.projection,
+        contentPackVersion: '9.9.9'
+      }
+    }
+  }), /extension-city-sprint@9\.9\.9.*matching pack version/);
   await orchestrator.disconnect(created.connection);
 
   const invalidPack: ContentPack = {

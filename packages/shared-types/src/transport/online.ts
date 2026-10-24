@@ -94,6 +94,7 @@ export interface MatchRecord {
   lifecycleState: MatchLifecycleState;
   revision: number;
   contentPackId: ContentPack['packId'];
+  contentPackVersion: ContentPack['packVersion'];
   createdByPlayerId: string;
   selectedRulesetId?: string;
   selectedScale?: ScaleKey;

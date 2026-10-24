@@ -27,6 +27,7 @@ export interface CreateMatchInput {
   matchId: string;
   initialScale: 'small' | 'medium' | 'large';
   contentPackId?: string;
+  contentPackVersion?: string;
   matchMode?: MatchMode;
 }
 

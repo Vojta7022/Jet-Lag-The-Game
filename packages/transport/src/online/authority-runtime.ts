@@ -71,6 +71,7 @@ function toMatchRecord(aggregate: MatchAggregate) {
     lifecycleState: aggregate.lifecycleState,
     revision: aggregate.revision,
     contentPackId: aggregate.contentPackId,
+    contentPackVersion: aggregate.contentPackVersion,
     createdByPlayerId: aggregate.createdByPlayerId,
     selectedRulesetId: aggregate.selectedRulesetId,
     selectedScale: aggregate.selectedScale,
@@ -92,7 +93,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   private readonly authorityRepository?: OnlineAuthorityRepository;
   private readonly questionFeatureDataProvider?: QuestionFeatureDataProvider;
   private readonly sessionBinder: OnlineSessionBinder;
-  private readonly contentPacksById: Map<string, ContentPack>;
+  private readonly contentPacksByIdAndVersion: Map<string, ContentPack>;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
   private readonly joinCodesByMatchId = new Map<string, string>();
   private readonly subscriptionsByMatchId = new Map<string, Map<string, OnlineRuntimeSubscriptionRecord>>();
@@ -104,7 +105,9 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     this.authorityRepository = options.authorityRepository;
     this.questionFeatureDataProvider = options.questionFeatureDataProvider;
     this.sessionBinder = options.sessionBinder ?? new DefaultOnlineSessionBinder();
-    this.contentPacksById = new Map(options.contentPacks.map((contentPack) => [contentPack.packId, contentPack]));
+    this.contentPacksByIdAndVersion = new Map(
+      options.contentPacks.map((contentPack) => [`${contentPack.packId}@${contentPack.packVersion}`, contentPack])
+    );
   }
 
   async submitAuthenticatedCommand(
@@ -484,6 +487,10 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       aggregate?.contentPackId ??
       (envelope?.command.type === 'create_match' ? envelope.command.payload.contentPackId : undefined) ??
       storedMatch?.contentPackId;
+    const requestedVersion =
+      aggregate?.contentPackVersion ??
+      (envelope?.command.type === 'create_match' ? envelope.command.payload.contentPackVersion : undefined) ??
+      storedMatch?.contentPackVersion;
 
     if (!packId) {
       if (storedMatch) {
@@ -499,15 +506,20 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       );
     }
 
-    const contentPack = this.contentPacksById.get(packId);
+    const contentPack = requestedVersion
+      ? this.contentPacksByIdAndVersion.get(`${packId}@${requestedVersion}`)
+      : [...this.contentPacksByIdAndVersion.values()].find((candidate) => candidate.packId === packId);
     if (!contentPack) {
+      const versionInstalled = [...this.contentPacksByIdAndVersion.values()].some((candidate) => candidate.packId === packId);
       throw new TransportRuntimeError(
-        'CONTENT_PACK_NOT_FOUND',
-        `Content pack "${packId}" is not registered with the online runtime.`
+        versionInstalled ? 'CONTENT_PACK_VERSION_MISMATCH' : 'CONTENT_PACK_NOT_FOUND',
+        versionInstalled
+          ? `Content pack "${packId}@${requestedVersion}" is not registered with the online runtime.`
+          : `Content pack "${packId}" is not registered with the online runtime.`
       );
     }
 
-    const ref = await this.repositories.contentPackReferences.getByPackId(packId);
+    const ref = await this.repositories.contentPackReferences.getByPackIdAndVersion(packId, contentPack.packVersion);
     if (!ref) {
       await this.repositories.contentPackReferences.save({
         packId: contentPack.packId,
