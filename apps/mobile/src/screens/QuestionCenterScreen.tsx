@@ -183,6 +183,7 @@ export function QuestionCenterScreen() {
     string | undefined
   >(categoryViewModels[0]?.templates[0]?.templateId);
   const activeQuestion = findActiveQuestion(projection);
+  const latestQuestion = projection?.visibleQuestions[projection.visibleQuestions.length - 1];
   const resolvedQuestion = findLatestResolvedQuestion(projection);
   const activeQuestionTemplate = findQuestionTemplate(
     defaultContentPack,
@@ -493,6 +494,17 @@ export function QuestionCenterScreen() {
     });
   };
 
+  const handleNullQuestionAnswer = () => {
+    if (!activeQuestion || !activeQuestion.randomizedNullAnswerAllowed) return;
+    void submitCommand({
+      type: 'answer_question',
+      payload: {
+        questionInstanceId: activeQuestion.questionInstanceId,
+        answer: { value: null }
+      }
+    });
+  };
+
   const handleCannotAnswerDuringEndgame = () => {
     if (!activeQuestion || !activeQuestionCategory || !isEndgameQuestionState) return;
     void submitCommand({
@@ -687,6 +699,22 @@ export function QuestionCenterScreen() {
           tone={latestResolvedEffect.mapEffectTone}
           title={latestResolvedEffect.mapEffectTitle}
           detail={latestResolvedEffect.mapEffectDetail}
+        />
+      ) : null}
+
+      {latestQuestion?.status === 'vetoed' ? (
+        <StateBanner
+          tone="info"
+          title="Veto used"
+          detail="The hider declined this clue. It has no answer or card reward, and it counts toward the repeat cost."
+        />
+      ) : null}
+
+      {activeQuestion?.randomizedFromQuestionInstanceId ? (
+        <StateBanner
+          tone="info"
+          title="Randomize used"
+          detail={`The original clue was replaced with ${activeQuestionTemplate?.name ?? 'another question'} from the same category.`}
         />
       ) : null}
 
@@ -975,8 +1003,10 @@ export function QuestionCenterScreen() {
               category={activeQuestionCategory}
               draft={answerDraft}
               candidateFeatures={answerFeatureData}
+              allowNullAnswer={activeQuestion.randomizedNullAnswerAllowed}
               disabled={!canAnswerQuestion || state.loadState === 'loading'}
               onChange={setAnswerDraft}
+              onNullAnswer={handleNullQuestionAnswer}
             />
             {questionAttachmentContext ? (
               <EvidenceCapturePanel

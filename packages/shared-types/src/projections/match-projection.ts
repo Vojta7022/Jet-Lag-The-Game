@@ -136,6 +136,8 @@ export interface VisibleQuestionProjection {
     sourceAccuracyMeters: number[];
     thresholdMeters?: number;
   };
+  randomizedFromQuestionInstanceId?: string;
+  randomizedNullAnswerAllowed?: boolean;
 }
 
 export interface VisibleConstraintProjection {

@@ -12,7 +12,7 @@ import {
 test('discard_card moves an accessible hand card into the discard pile', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
-  const cardInstanceId = moveCardToTeamHand(aggregate, 'power-up-randomize', 'team-hider');
+  const cardInstanceId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
 
   aggregate = executeCommand(
     aggregate,
@@ -75,7 +75,7 @@ test('player_private projections can still see the viewer team shared hand witho
 test('resolved manual cards stay visible in the discard pile for the owning team after the card window closes', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
-  const cardInstanceId = moveCardToTeamHand(aggregate, 'power-up-randomize', 'team-hider');
+  const cardInstanceId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
 
   aggregate = executeCommand(
     aggregate,
@@ -205,4 +205,79 @@ test('Draw 1 Expand 1 can be played during a live answer window without interrup
   assert.equal(aggregate.seekPhaseSubstate, 'awaiting_question_answer');
   assert.equal(aggregate.hiderHandLimitBonus, 1);
   assert.equal(aggregate.cardInstances[sourceCardInstanceId]?.zone, 'discard_pile');
+});
+
+test('Veto ends the active question without an answer or card reward and counts as asked', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const vetoCardId = moveCardToTeamHand(aggregate, 'power-up-veto', 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 101), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:vetoed', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider'
+    } }, 102), contentPack).aggregate;
+
+  const result = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: vetoCardId } }, 103), contentPack);
+  aggregate = result.aggregate;
+
+  assert.equal(aggregate.questionInstances['question:vetoed']?.status, 'vetoed');
+  assert.equal(aggregate.questionInstances['question:vetoed']?.answer, undefined);
+  assert.equal(aggregate.activeQuestionInstanceId, undefined);
+  assert.equal(aggregate.seekPhaseSubstate, 'ready');
+  assert.equal(aggregate.cardInstances[vetoCardId]?.zone, 'discard_pile');
+  assert.equal(aggregate.pendingQuestionReward, undefined);
+  assert.equal(result.events.some((event) => event.event.type === 'question_vetoed'), true);
+});
+
+test('Randomize cancels the active question and asks a different available question from the same category', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const randomizeCardId = moveCardToTeamHand(aggregate, 'power-up-randomize', 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 111), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:rerolled', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider'
+    } }, 112), contentPack).aggregate;
+
+  const originalRandom = Math.random;
+  Math.random = () => 0;
+  let result;
+  try {
+    result = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+      { type: 'play_card', payload: { cardInstanceId: randomizeCardId } }, 113), contentPack);
+  } finally {
+    Math.random = originalRandom;
+  }
+  aggregate = result!.aggregate;
+
+  const replacement = aggregate.activeQuestionInstanceId
+    ? aggregate.questionInstances[aggregate.activeQuestionInstanceId]
+    : undefined;
+  assert.equal(aggregate.questionInstances['question:rerolled']?.status, 'canceled');
+  assert.ok(replacement);
+  assert.equal(replacement.categoryId, 'matching');
+  assert.notEqual(replacement.templateId, 'matching-commercial-airport');
+  assert.equal(replacement.status, 'awaiting_answer');
+  assert.equal(aggregate.cardInstances[randomizeCardId]?.zone, 'discard_pile');
+  assert.equal(result!.events.some((event) => event.event.type === 'question_randomized'), true);
+
+  const nullAnswer = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'answer_question', payload: {
+      questionInstanceId: replacement.questionInstanceId,
+      answer: { value: null }
+    } }, 114), contentPack);
+  aggregate = nullAnswer.aggregate;
+  assert.equal(aggregate.questionInstances[replacement.questionInstanceId]?.status, 'resolved');
+  assert.equal(aggregate.activeQuestionInstanceId, undefined);
+  assert.equal(aggregate.constraints[`${replacement.questionInstanceId}:null-answer`], undefined);
 });

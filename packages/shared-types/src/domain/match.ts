@@ -68,6 +68,7 @@ export type QuestionInstanceStatus =
   | 'applying_constraints'
   | 'awaiting_card_resolution'
   | 'resolved'
+  | 'vetoed'
   | 'canceled';
 
 export type ConstraintRecordStatus = 'active' | 'inactive';
@@ -157,6 +158,8 @@ export interface QuestionInstanceModel {
   resolvedAt?: string;
   cardRewardStatus?: 'pending' | 'complete';
   automaticResolution?: AutomaticQuestionResolutionModel;
+  randomizedFromQuestionInstanceId?: string;
+  randomizedNullAnswerAllowed?: boolean;
 }
 
 export interface AutomaticQuestionResolutionModel {

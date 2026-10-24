@@ -14,12 +14,12 @@ The implementation should preserve the existing rules engine, role-scoped projec
 
 ## Current evidence and constraints
 
-- The suite passes 237 tests with the project's `.venv` on `PATH`; mobile TypeScript typecheck passes. A real-runtime test completes a scored round, and online-runtime tests exercise two separately authenticated phone adapters.
+- At the start of this online phase, the suite passed 237 tests; the current implementation now passes 243. Mobile TypeScript typecheck passes. A real-runtime test completes a scored round, and online-runtime tests exercise two separately authenticated phone adapters.
 - The app has Supabase Auth, role-scoped projections, attachment storage, and an authenticated Edge Function command gateway with atomic revision commits. Production deployment, authorization/privacy review, and a cellular multi-phone field round remain unverified.
 - Hider and seeker devices can publish device fixes. Hider projections receive seeker movement tracks; seeker projections omit hider movement and exact coordinates.
 - Radar is the first fully automatic location question: the authority uses fresh, accuracy-bounded seeker and hider fixes, records the sample provenance, answers the clue, and applies its bounded map deduction in one command. Other question categories still use manual or assisted answer flows.
 - The hider's exact location is intentionally omitted from seeker projections. Preserve this invariant.
-- The pack contains 80 question templates reconciled to the scanned Investigation Book and 37 card definitions (125 card instances); 21 importer warnings remain and many card effects are not authoritative. The generated pack is draft and should be reconciled against the local scanned books before claiming physical-game parity.
+- The pack contains 80 question templates reconciled to the scanned Investigation Book and 37 card definitions (125 card instances); 19 importer warnings remain and many card effects are not authoritative. Veto and Randomize are now typed authoritative effects. The generated pack is still draft and should be reconciled against the local scanned books before claiming physical-game parity.
 - Existing map tools support searchable administrative boundaries, region composition, station discovery, saved local scenarios, compressed link sharing, and question overlays. Content-pack selection, background location sharing, a physical-device GPS test, and reliable multi-device field play remain open.
 
 ## Product behavior
@@ -137,4 +137,4 @@ The existing transport interfaces and command/event model remain the client boun
 - Default location answer policy: freeze the latest fresh, sufficiently accurate hider and relevant seeker/team fixes at question acceptance. If a fix is stale, request a refresh rather than calculate from stale data.
 - Default visibility policy: hiders see seeker locations; seekers never see the hider's exact location; seekers see their own team's positions.
 - Recommended hosting: authenticated Supabase Edge Function as gateway plus Postgres as durable authority, with PostGIS/dedicated worker available if geometry exceeds Edge Function limits.
-- The initial codebase audit verified the existing single-device round and 199 tests, plus mobile typecheck. The current worktree passes 230/230 tests. Neither check verifies native GPS or multi-device field play.
+- The initial codebase audit verified the existing single-device round and 199 tests, plus mobile typecheck. Historical online-phase checkpoints passed 230 and then 237 tests; the current Veto/Randomize slice passes 243 tests. None of these checks verifies native GPS or multi-device field play.

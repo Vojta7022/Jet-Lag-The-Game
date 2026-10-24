@@ -39,6 +39,13 @@ test('the workbook importer creates a normalized draft content pack', () => {
   const randomize = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-randomize');
   assert.ok(randomize);
   assert.equal(randomize.name, 'Randomize');
+  assert.equal(randomize.automationLevel, 'authoritative');
+  assert.equal(randomize.effects[0]?.effectType, 'randomize_question');
+
+  const veto = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-veto');
+  assert.ok(veto);
+  assert.equal(veto.automationLevel, 'authoritative');
+  assert.equal(veto.effects[0]?.effectType, 'veto_question');
 
   const handExpansion = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-draw-1-expand-1');
   assert.ok(handExpansion);

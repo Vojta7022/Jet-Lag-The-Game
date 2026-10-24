@@ -54,3 +54,24 @@ test('repeated investigation questions remain available and multiply their hider
   assert.equal(selection.availableTemplateIds.includes(questionTemplate!.templateId), true);
   assert.equal(selection.rewardMultiplierByTemplate[questionTemplate!.templateId], 3);
 });
+
+test('vetoed questions count toward repeat costs while randomized questions do not', () => {
+  const contentPack = loadEngineTestContentPack();
+  const category = contentPack.questionCategories.find((entry) => entry.categoryId === 'matching');
+  assert.ok(category);
+  const template = contentPack.questionTemplates.find((entry) => entry.categoryId === category!.categoryId);
+  assert.ok(template);
+
+  const selection = buildQuestionSelectionState({
+    contentPack,
+    category: category!,
+    selectedScale: 'small',
+    askedQuestions: [
+      { templateId: template!.templateId, categoryId: category!.categoryId, status: 'vetoed' },
+      { templateId: template!.templateId, categoryId: category!.categoryId, status: 'canceled' }
+    ]
+  });
+
+  assert.equal(selection.rewardMultiplierByTemplate[template!.templateId], 2);
+  assert.equal(selection.askedCountByTemplate[template!.templateId], 1);
+});

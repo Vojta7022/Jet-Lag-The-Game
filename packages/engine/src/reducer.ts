@@ -477,6 +477,69 @@ export function reduceMatchAggregate(
         )
       };
     }
+    case 'question_vetoed': {
+      const questionInstanceId = eventEnvelope.event.payload.questionInstanceId;
+      const question = base.questionInstances[questionInstanceId];
+      return {
+        ...base,
+        lifecycleState: eventEnvelope.event.payload.lifecycleState,
+        seekPhaseSubstate: eventEnvelope.event.payload.seekPhaseSubstate,
+        activeQuestionInstanceId: undefined,
+        questionInstances: {
+          ...base.questionInstances,
+          [questionInstanceId]: { ...question, status: 'vetoed', resolvedAt: eventEnvelope.occurredAt }
+        },
+        timers: mapTimers(base.timers, (timer) => timer.kind === 'question' && timer.ownerRef === questionInstanceId
+          ? { ...timer, status: 'completed', remainingSeconds: 0 }
+          : timer)
+      };
+    }
+    case 'question_randomized': {
+      const { originalQuestionInstanceId, replacementQuestion, replacementQuestionTimer } = eventEnvelope.event.payload;
+      return {
+        ...base,
+        lifecycleState: eventEnvelope.event.payload.lifecycleState,
+        seekPhaseSubstate: eventEnvelope.event.payload.seekPhaseSubstate,
+        activeQuestionInstanceId: replacementQuestion.questionInstanceId,
+        questionInstances: {
+          ...base.questionInstances,
+          [originalQuestionInstanceId]: {
+            ...base.questionInstances[originalQuestionInstanceId],
+            status: 'canceled',
+            resolvedAt: eventEnvelope.occurredAt
+          },
+          [replacementQuestion.questionInstanceId]: replacementQuestion
+        },
+        timers: {
+          ...mapTimers(base.timers, (timer) => timer.kind === 'question' && timer.ownerRef === originalQuestionInstanceId
+            ? { ...timer, status: 'completed', remainingSeconds: 0 }
+            : timer),
+          [replacementQuestionTimer.timerId]: replacementQuestionTimer
+        }
+      };
+    }
+    case 'question_null_answer_resolved': {
+      const questionInstanceId = eventEnvelope.event.payload.questionInstanceId;
+      const question = base.questionInstances[questionInstanceId];
+      return {
+        ...base,
+        lifecycleState: eventEnvelope.event.payload.lifecycleState,
+        seekPhaseSubstate: eventEnvelope.event.payload.seekPhaseSubstate,
+        activeQuestionInstanceId: undefined,
+        questionInstances: {
+          ...base.questionInstances,
+          [questionInstanceId]: {
+            ...question,
+            status: 'resolved',
+            answer: eventEnvelope.event.payload.answer,
+            resolvedAt: eventEnvelope.occurredAt
+          }
+        },
+        timers: mapTimers(base.timers, (timer) => timer.kind === 'question' && timer.ownerRef === questionInstanceId
+          ? { ...timer, status: 'completed', remainingSeconds: 0 }
+          : timer)
+      };
+    }
     case 'constraint_applied': {
       const nextQuestionStatus: MatchAggregate['questionInstances'][string]['status'] =
         eventEnvelope.event.payload.seekPhaseSubstate === 'awaiting_card_resolution'

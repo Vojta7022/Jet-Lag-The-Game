@@ -281,3 +281,24 @@ test('question map effect model marks exact bounded updates as trustworthy geome
   assert.match(model?.resolutionDetail ?? '', /directly clipped geometry/i);
   assert.equal(model?.candidatePrecisionLabel, 'Exact visible boundary');
 });
+
+test('a randomized null answer explains that the map did not change because the answer was null', () => {
+  const question: VisibleQuestionProjection = {
+    ...baseQuestion,
+    answer: { value: null },
+    randomizedFromQuestionInstanceId: 'question-original',
+    randomizedNullAnswerAllowed: true
+  };
+  const model = buildQuestionMapEffectModel({
+    question,
+    template: createTemplate({ templateId: question.templateId, categoryId: question.categoryId, name: 'Nearest airport' }),
+    category: createCategory({ categoryId: question.categoryId, name: 'Matching', resolverKind: 'nearest_feature' })
+  });
+
+  assert.ok(model);
+  assert.equal(model.mapEffectTitle, 'No map change');
+  assert.match(model.mapEffectDetail, /null answer/i);
+  assert.equal(model.confidenceLabel, 'Not applicable');
+  assert.equal(model.boundedLabel, 'No map constraint was produced');
+  assert.equal(model.artifactCountLabel, '0 visible map layers');
+});

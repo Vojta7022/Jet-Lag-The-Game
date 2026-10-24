@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T17:23:32.987Z",
+    "importedAt": "2026-10-24T17:35:51.034Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -1434,13 +1434,13 @@
       "kind": "power_up",
       "name": "Randomize",
       "shortName": "Randomize",
-      "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "automationLevel": "manual",
+      "description": "Replace the current question with a random unasked question from the same category.",
+      "automationLevel": "authoritative",
       "effects": [
         {
-          "effectType": "manual_power_up",
-          "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-          "automationLevel": "manual",
+          "effectType": "randomize_question",
+          "description": "Replace the current question with a random unasked question from the same category.",
+          "automationLevel": "authoritative",
           "rawText": "Randomize"
         }
       ],
@@ -1482,13 +1482,13 @@
       "kind": "power_up",
       "name": "Veto",
       "shortName": "Veto",
-      "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "automationLevel": "manual",
+      "description": "Cancel the current question instead of answering. The question still counts as asked, but no card reward is drawn.",
+      "automationLevel": "authoritative",
       "effects": [
         {
-          "effectType": "manual_power_up",
-          "description": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-          "automationLevel": "manual",
+          "effectType": "veto_question",
+          "description": "Cancel the current question instead of answering. The question still counts as asked, but no card reward is drawn.",
+          "automationLevel": "authoritative",
           "rawText": "Veto"
         }
       ],

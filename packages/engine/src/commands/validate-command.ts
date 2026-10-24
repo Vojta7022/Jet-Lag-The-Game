@@ -726,7 +726,7 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'QUESTION_REWARD_UNAVAILABLE', 'The question category does not define a valid draw-and-pick reward.')];
       }
       const multiplier = Object.values(aggregate.questionInstances).filter(
-        (candidate) => candidate.templateId === question.templateId && candidate.status === 'resolved'
+        (candidate) => candidate.templateId === question.templateId && (candidate.status === 'resolved' || candidate.status === 'vetoed')
       ).length;
       const deck = contentPack.decks.find((candidate) => candidate.ownerScope === 'hider_team');
       if (!deck) {
@@ -782,6 +782,10 @@ export function validateCommandEnvelope(
         if (aggregate.lifecycleState !== 'endgame' || category.resolverKind !== 'photo_challenge') {
           return [error(envelope.command.type, 'ENDGAME_UNANSWERABLE_NOT_ALLOWED', 'This unable-to-answer option is only valid for a photo challenge during endgame.')];
         }
+        return [];
+      }
+
+      if (activeQuestion.randomizedNullAnswerAllowed && envelope.command.payload.answer.value === null) {
         return [];
       }
 
@@ -1078,6 +1082,29 @@ export function validateCommandEnvelope(
       }
 
       const resolutionPlan = buildCardResolutionPlan(cardDefinition, aggregate.selectedScale);
+      if (resolutionPlan.kind === 'veto_question' || resolutionPlan.kind === 'randomize_question') {
+        if (!aggregate.activeQuestionInstanceId || !aggregate.questionInstances[aggregate.activeQuestionInstanceId]) {
+          return [error(envelope.command.type, 'QUESTION_NOT_ACTIVE', 'This card can only be played while a question is awaiting an answer.')];
+        }
+        if (aggregate.seekPhaseSubstate !== 'awaiting_question_answer') {
+          return [error(envelope.command.type, 'QUESTION_NOT_ANSWERABLE', 'This card can only be played during the question response window.')];
+        }
+        if (resolutionPlan.kind === 'randomize_question') {
+          const activeQuestion = aggregate.questionInstances[aggregate.activeQuestionInstanceId!];
+          const previouslyAsked = new Set(Object.values(aggregate.questionInstances)
+            .filter((question) => question.status === 'resolved' || question.status === 'vetoed')
+            .map((question) => question.templateId));
+          const hasReplacement = contentPack.questionTemplates.some((template) =>
+            template.categoryId === activeQuestion.categoryId &&
+            template.templateId !== activeQuestion.templateId &&
+            (!aggregate.selectedScale || template.scaleSet.appliesTo.includes(aggregate.selectedScale)) &&
+            !previouslyAsked.has(template.templateId)
+          );
+          if (!hasReplacement) {
+            return [error(envelope.command.type, 'NO_RANDOM_QUESTION_AVAILABLE', 'There is no other unasked question in this category for the selected scale.')];
+          }
+        }
+      }
       if (resolutionPlan.kind === 'time_bonus' && !getTimerByKind(aggregate, 'hide')) {
         return [error(envelope.command.type, 'TIME_BONUS_NOT_AVAILABLE', 'Time bonus cards only work while the hide timer is still running.')];
       }

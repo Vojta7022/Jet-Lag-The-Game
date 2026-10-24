@@ -81,6 +81,9 @@ export type DomainEvent =
   | QuestionPromptOpenedEvent
   | QuestionAskedEvent
   | QuestionAnsweredEvent
+  | QuestionVetoedEvent
+  | QuestionRandomizedEvent
+  | QuestionNullAnswerResolvedEvent
   | ConstraintAppliedEvent
   | ChatMessageSentEvent
   | AttachmentUploadedEvent
@@ -285,6 +288,36 @@ export interface QuestionAnsweredEvent {
     lifecycleState: MatchLifecycleState;
     seekPhaseSubstate: SeekPhaseSubstate;
     automaticResolution?: MatchAggregate['questionInstances'][string]['automaticResolution'];
+  };
+}
+
+export interface QuestionVetoedEvent {
+  type: 'question_vetoed';
+  payload: {
+    questionInstanceId: string;
+    lifecycleState: MatchLifecycleState;
+    seekPhaseSubstate: SeekPhaseSubstate;
+  };
+}
+
+export interface QuestionRandomizedEvent {
+  type: 'question_randomized';
+  payload: {
+    originalQuestionInstanceId: string;
+    replacementQuestion: QuestionInstanceModel;
+    lifecycleState: MatchLifecycleState;
+    seekPhaseSubstate: SeekPhaseSubstate;
+    replacementQuestionTimer: TimerModel;
+  };
+}
+
+export interface QuestionNullAnswerResolvedEvent {
+  type: 'question_null_answer_resolved';
+  payload: {
+    questionInstanceId: string;
+    answer: Record<string, unknown>;
+    lifecycleState: MatchLifecycleState;
+    seekPhaseSubstate: SeekPhaseSubstate;
   };
 }
 

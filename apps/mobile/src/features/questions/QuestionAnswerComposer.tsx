@@ -25,7 +25,9 @@ interface QuestionAnswerComposerProps {
   draft: QuestionAnswerDraft;
   candidateFeatures: GeoFeatureRecord[];
   disabled?: boolean;
+  allowNullAnswer?: boolean;
   onChange: (draft: QuestionAnswerDraft) => void;
+  onNullAnswer?: () => void;
 }
 
 function OptionButton(props: {
@@ -135,6 +137,19 @@ export function QuestionAnswerComposer(props: QuestionAnswerComposerProps) {
             Use the evidence picker to choose or take a photo, then confirm the recorded attachment ids here. You can still type ids manually if another device or referee view already recorded the evidence.
           </Text>
         </>
+      ) : null}
+
+      {props.allowNullAnswer ? (
+        <View style={styles.guidanceCard}>
+          <Text style={styles.guidanceTitle}>No answer exists?</Text>
+          <Text style={styles.copy}>Randomize allows a null answer when the map has no valid answer for the replacement question.</Text>
+          <OptionButton
+            label="Record no answer"
+            selected={false}
+            disabled={props.disabled}
+            onPress={() => props.onNullAnswer?.()}
+          />
+        </View>
       ) : null}
 
       {props.template.requirements?.length ? (

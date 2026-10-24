@@ -1,5 +1,5 @@
 {
-  "importJobId": "4bbd4e36-0fcf-485a-9191-a1a5c585e73f",
+  "importJobId": "c6221923-308f-45de-a8bb-6e4734d3e309",
   "schemaVersion": "1.0.0",
   "packVersion": "0.1.0",
   "importerVersion": "0.1.0",
@@ -8,32 +8,6 @@
   "status": "draft_output",
   "generatedPackId": "jet-lag-the-game-seed",
   "issues": [
-    {
-      "sheetName": "Hider Deck",
-      "rowNumber": 7,
-      "columnName": "card",
-      "fieldPath": "cards[power-up-randomize].description",
-      "severity": "warning",
-      "code": "POWER_UP_EFFECT_UNSPECIFIED",
-      "message": "The workbook provides a power-up name but no detailed effect text.",
-      "rawValue": "Randomize",
-      "normalizedValue": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "suggestedFix": "Keep the imported card name and add authored effect details later if fuller automation is needed.",
-      "sheetCell": "B7"
-    },
-    {
-      "sheetName": "Hider Deck",
-      "rowNumber": 8,
-      "columnName": "card",
-      "fieldPath": "cards[power-up-veto].description",
-      "severity": "warning",
-      "code": "POWER_UP_EFFECT_UNSPECIFIED",
-      "message": "The workbook provides a power-up name but no detailed effect text.",
-      "rawValue": "Veto",
-      "normalizedValue": "Effect text is not fully defined in the workbook. Resolve this power-up honestly using the active match rules.",
-      "suggestedFix": "Keep the imported card name and add authored effect details later if fuller automation is needed.",
-      "sheetCell": "B8"
-    },
     {
       "sheetName": "Hider Deck",
       "rowNumber": 9,

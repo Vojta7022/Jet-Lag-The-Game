@@ -882,7 +882,19 @@ function eventsForCommand(
       }));
       return events;
     }
-    case 'answer_question':
+    case 'answer_question': {
+      const activeQuestion = aggregate!.questionInstances[envelope.command.payload.questionInstanceId];
+      if (activeQuestion?.randomizedNullAnswerAllowed && envelope.command.payload.answer.value === null) {
+        return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+          type: 'question_null_answer_resolved',
+          payload: {
+            questionInstanceId: activeQuestion.questionInstanceId,
+            answer: envelope.command.payload.answer,
+            lifecycleState: aggregate!.lifecycleState,
+            seekPhaseSubstate: 'ready'
+          }
+        })];
+      }
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
           type: 'question_answered',
@@ -893,6 +905,7 @@ function eventsForCommand(
           }
         })
       ];
+    }
     case 'apply_constraint': {
       const question = aggregate!.questionInstances[envelope.command.payload.questionInstanceId];
       return [buildConstraintAppliedEvent({
@@ -911,7 +924,7 @@ function eventsForCommand(
       const template = getQuestionTemplate(contentPack, question.templateId)!;
       const category = getQuestionCategory(contentPack, template.categoryId)!;
       const multiplier = Object.values(aggregate!.questionInstances).filter(
-        (candidate) => candidate.templateId === question.templateId && candidate.status === 'resolved'
+        (candidate) => candidate.templateId === question.templateId && (candidate.status === 'resolved' || candidate.status === 'vetoed')
       ).length;
       const deck = contentPack.decks.find((candidate) => candidate.ownerScope === 'hider_team')!;
       const holder = resolveDeckHolderForDefinition(aggregate!, contentPack, deck.deckId, envelope.actor.playerId, envelope.actor.role);
@@ -1032,6 +1045,8 @@ function eventsForCommand(
       const opensResolutionWindow =
         resolutionPlan.kind !== 'time_bonus' &&
         resolutionPlan.kind !== 'draw_and_expand_hand' &&
+        resolutionPlan.kind !== 'veto_question' &&
+        resolutionPlan.kind !== 'randomize_question' &&
         aggregate?.lifecycleState === 'seek_phase';
       const playedCard: CardInstanceModel = {
         ...currentCard,
@@ -1079,6 +1094,94 @@ function eventsForCommand(
             increaseBy: resolutionPlan.handSizeIncreaseOnResolve ?? 1
           }
         }));
+        return events;
+      }
+
+      if (resolutionPlan.kind === 'veto_question') {
+        const activeQuestion = aggregate!.activeQuestionInstanceId
+          ? aggregate!.questionInstances[aggregate!.activeQuestionInstanceId]
+          : undefined;
+        if (activeQuestion) {
+          events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+            type: 'question_vetoed',
+            payload: {
+              questionInstanceId: activeQuestion.questionInstanceId,
+              lifecycleState: aggregate!.lifecycleState,
+              seekPhaseSubstate: 'ready'
+            }
+          }));
+        }
+        return events;
+      }
+
+      if (resolutionPlan.kind === 'randomize_question') {
+        const originalQuestion = aggregate!.activeQuestionInstanceId
+          ? aggregate!.questionInstances[aggregate!.activeQuestionInstanceId]
+          : undefined;
+        if (!originalQuestion) return events;
+        const previouslyAskedTemplateIds = new Set(Object.values(aggregate!.questionInstances)
+          .filter((question) => question.status === 'resolved' || question.status === 'vetoed')
+          .map((question) => question.templateId));
+        const candidates = contentPack.questionTemplates.filter((template) =>
+          template.categoryId === originalQuestion.categoryId &&
+          template.templateId !== originalQuestion.templateId &&
+          (!aggregate!.selectedScale || template.scaleSet.appliesTo.includes(aggregate!.selectedScale)) &&
+          !previouslyAskedTemplateIds.has(template.templateId)
+        );
+        const replacementTemplate = candidates[Math.floor(Math.random() * candidates.length)];
+        if (!replacementTemplate) return events;
+        const replacementCategory = getQuestionCategory(contentPack, replacementTemplate.categoryId)!;
+        const replacementQuestion: QuestionInstanceModel = {
+          questionInstanceId: `question:${createRandomUuid()}`,
+          templateId: replacementTemplate.templateId,
+          categoryId: replacementTemplate.categoryId,
+          askedByPlayerId: originalQuestion.askedByPlayerId,
+          targetTeamId: originalQuestion.targetTeamId,
+          status: 'awaiting_answer',
+          askedAt: envelope.occurredAt,
+          randomizedFromQuestionInstanceId: originalQuestion.questionInstanceId,
+          randomizedNullAnswerAllowed: true
+        };
+        const replacementQuestionTimer = buildQuestionTimer(
+          aggregate!, contentPack, replacementQuestion.questionInstanceId, replacementTemplate.templateId, envelope.occurredAt
+        );
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+          type: 'question_randomized',
+          payload: {
+            originalQuestionInstanceId: originalQuestion.questionInstanceId,
+            replacementQuestion,
+            lifecycleState: aggregate!.lifecycleState,
+            seekPhaseSubstate: 'awaiting_question_answer',
+            replacementQuestionTimer
+          }
+        }));
+
+        const automaticAnswer = resolveAutomaticQuestionAnswer({
+          aggregate: aggregate!, contentPack, category: replacementCategory, template: replacementTemplate,
+          askedByPlayerId: replacementQuestion.askedByPlayerId, targetTeamId: replacementQuestion.targetTeamId,
+          occurredAt: envelope.occurredAt
+        });
+        if (automaticAnswer.kind === 'resolved') {
+          const answeredQuestion: QuestionInstanceModel = {
+            ...replacementQuestion, status: 'applying_constraints', answer: automaticAnswer.answer,
+            automaticResolution: automaticAnswer.automaticResolution
+          };
+          events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+            type: 'question_answered',
+            payload: {
+              questionInstanceId: replacementQuestion.questionInstanceId,
+              answer: automaticAnswer.answer,
+              automaticResolution: automaticAnswer.automaticResolution,
+              lifecycleState: aggregate!.lifecycleState,
+              seekPhaseSubstate: 'applying_constraints'
+            }
+          }));
+          events.push(buildConstraintAppliedEvent({
+            aggregate: aggregate!, envelope, contentPack, question: answeredQuestion,
+            constraintId: automaticAnswer.constraintId,
+            metadata: { automaticResolution: automaticAnswer.automaticResolution }, index: events.length
+          }));
+        }
         return events;
       }
 

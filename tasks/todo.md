@@ -29,10 +29,10 @@
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
 - The main remaining gap is a tested, reliable multi-phone end-to-end play path. An authenticated Edge Function gateway and atomic revision commit now exist with unit coverage; production deployment, authorization/privacy audit, and cellular field play still need verification. Nearby mode has no LAN transport.
-- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, and 21 importer warnings. It remains draft content with no ruleset or map preset; card warnings still need adjudication.
+- The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, and 19 importer warnings. It remains draft content with no ruleset or map preset; remaining card warnings still need adjudication.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
-- Implementation direction: single-device referee is the first playable target because its authority, map, and gameplay flows already exist in-process.
+- The initial implementation target was single-device referee; the 2026-10-24 product clarification made one authenticated phone per player the primary product, with referee mode retained as fallback/regression coverage.
 - Home now starts referee setup directly; online create/join remain available as secondary paths.
 - Referee event logs and latest snapshots now use persistent AsyncStorage, and the app stores a resume pointer/profile and reconnects to the recovered host session at startup. Home then offers the existing Continue action.
 - At the initial UI review, protected reveal handoffs were not connected to app UI and their manager was process-local. The referee handoff panel is now part of live map play, and token/checkpoint state survives restarts. A controlled full-round runtime walkthrough passes.
@@ -42,7 +42,7 @@
 - Web `accessible={false}` SVG props caused the reported React warning; decorative game SVGs now use `aria-hidden={true}`. Measured map width also prevents the map surface from extending beyond its card.
 - At the start of the online multiplayer phase the full suite passes 237/237 with the project `.venv` on `PATH`; mobile TypeScript typecheck passes.
 - The scan-confirmed standard round flow is implemented. Imported workbook card text remains draft and may need manual adjudication; it is kept for personal/private play until distribution rights and importer warnings are reviewed.
-- Reconciled the workbook's extra “4th Admin (Borough)” Measuring row against the scanned Investigation Book: it is not listed there, so the base-game importer now excludes it and reports the source discrepancy. The 4th Admin Matching prompt remains. The regenerated pack has 80 templates and the full importer report records 21 warnings plus one informational exclusion.
+- Reconciled the workbook's extra “4th Admin (Borough)” Measuring row against the scanned Investigation Book: it is not listed there, so the base-game importer now excludes it and reports the source discrepancy. The 4th Admin Matching prompt remains. The regenerated pack has 80 templates and the importer now reports 19 warnings plus one informational exclusion after Veto and Randomize gained typed effects.
 
 ## Active: online multiplayer for one phone per player
 
@@ -67,6 +67,13 @@
 - [x] Add an engine integration test for Draw 1, Expand Maximum Hand Size by 1: draw one, increase hand capacity for the rest of the round, and reset the capacity on the next round.
 - [x] Implement the typed card effect in the authoritative card path and expose the current hand limit to the owning team UI.
 - [x] Run focused and full verification; update card/rules notes with the scan citation.
+
+### Completed implementation slice: scanned Veto and Randomize power-ups
+
+- [x] Add engine tests for question cancellation, replacement selection, null answers, and repeat-cost semantics.
+- [x] Import Veto and Randomize as typed authoritative effects and regenerate the standard draft content pack.
+- [x] Apply both effects through public match events so all role projections follow the same question lifecycle.
+- [x] Verify focused engine behavior, full suite, mobile typecheck, and update the scan-backed rules notes.
 
 - [x] OCR the scanned base rulebook and Investigation Book locally; inspect the reference map implementation.
 - [x] Reconcile the workbook question inventory to the 80 prompts printed in the Investigation Book; report workbook-only rows and keep the printed 4th Admin Matching option.
@@ -103,6 +110,8 @@
 - Running timers now carry original start/duration anchors into visible projections; injected mobile commands use the real wall clock; pause records current remaining time and resume shifts the anchor to preserve it. Timer and rules flows have focused passing coverage.
 - Full verification for the previous online/Radar slice passed: `npm test` (237 tests), `npm run mobile:typecheck`, and `git diff --check`. The project virtual environment provides the importer dependency `openpyxl`.
 - The scanned Draw 1 Expand 1 power-up is now a typed, immediate engine effect: it draws one card, stacks the hand limit for the rest of the round, remains usable during an active answer window, and resets on next-round start. The 239-test full suite and mobile typecheck pass after the change.
+- Veto ends the answer window without a response or card reward but counts as asked for repeat cost. Randomize cancels its original question, selects an unasked same-category question allowed at the selected scale, and starts a fresh timer; the original remains eligible at its original cost. A randomized null response resolves without map geometry and still counts for the printed hider reward. The generated base pack carries both typed effects. [rulebook scan, p. 46; `tests/engine/cards.test.ts`]
+- The app labels a randomized null response as a completed no-map-change result instead of showing it as a pending map outcome. Full suite passed 243 tests; mobile typecheck and `git diff --check` pass.
 
 ### Review — 2026-10-24
 

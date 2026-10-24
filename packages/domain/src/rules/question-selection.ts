@@ -43,7 +43,7 @@ export function buildQuestionSelectionState(args: {
     (question) =>
       question.categoryId === args.category.categoryId &&
       question.status !== 'canceled' &&
-      (question.status === undefined || question.status === 'resolved')
+      (question.status === undefined || question.status === 'resolved' || question.status === 'vetoed')
   );
   const askedCountByTemplate: Record<string, number> = {};
 

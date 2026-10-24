@@ -12,7 +12,7 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'time_bonus';
+  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
@@ -144,6 +144,14 @@ export function buildCardResolutionPlan(
       drawCountOnResolve: drawCount,
       handSizeIncreaseOnResolve: handSizeIncrease
     };
+  }
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'veto_question')) {
+    return { kind: 'veto_question', discardRequirement: {} };
+  }
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'randomize_question')) {
+    return { kind: 'randomize_question', discardRequirement: {} };
   }
 
   return {

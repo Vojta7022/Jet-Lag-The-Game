@@ -643,9 +643,20 @@ function buildPowerUpCards(
     automationLevel: CardDefinition['automationLevel'];
     effect: CardDefinition['effects'][number];
   } | undefined => {
-    if (normalizeLabel(label).displayText.toLowerCase() !== 'draw 1 expand 1') {
-      return undefined;
+    const normalized = normalizeLabel(label).displayText.toLowerCase();
+    if (normalized === 'veto') {
+      const description = 'Cancel the current question instead of answering. The question still counts as asked, but no card reward is drawn.';
+      return { description, automationLevel: 'authoritative', effect: {
+        effectType: 'veto_question', description, automationLevel: 'authoritative', rawText: label
+      } };
     }
+    if (normalized === 'randomize') {
+      const description = 'Replace the current question with a random unasked question from the same category.';
+      return { description, automationLevel: 'authoritative', effect: {
+        effectType: 'randomize_question', description, automationLevel: 'authoritative', rawText: label
+      } };
+    }
+    if (normalized !== 'draw 1 expand 1') return undefined;
     const description = 'Draw and keep one card, then permanently increase your maximum hand size by one for this round.';
     return {
       description,

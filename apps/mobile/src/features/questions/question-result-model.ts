@@ -182,26 +182,43 @@ export function buildQuestionMapEffectModel(
   }
 
   const constraint = args.constraint;
-  const mapEffect = buildMapEffectDetails(constraint, args.visibleMap);
+  const hasRandomizedNullAnswer = args.question.randomizedNullAnswerAllowed && args.question.answer?.value === null;
+  const mapEffect = hasRandomizedNullAnswer
+    ? {
+        mapEffectModeLabel: 'No map change',
+        mapEffectTone: 'info' as const,
+        mapEffectTitle: 'No map change',
+        mapEffectDetail: 'The randomized question had a null answer because no valid answer was available. The search area stayed the same.',
+        geometryEffect: 'metadata_only' as const
+      }
+    : buildMapEffectDetails(constraint, args.visibleMap);
   const clippedArtifactCount = constraint?.artifacts.filter((artifact) => artifact.clippedToRegion).length ?? 0;
 
   return {
     questionLabel: args.template?.name ?? 'Selected question',
     categoryLabel: args.category?.name ?? 'Question category',
-    answerSummary: summarizeAnswer(args.question.answer),
-    resolutionModeLabel: formatResolutionMode(constraint?.resolutionMode),
+    answerSummary: hasRandomizedNullAnswer ? 'No valid answer was available' : summarizeAnswer(args.question.answer),
+    resolutionModeLabel: hasRandomizedNullAnswer ? 'Null answer' : formatResolutionMode(constraint?.resolutionMode),
     resolutionTone: buildResolutionTone(constraint?.resolutionMode),
-    resolutionDetail: describeResolutionMode(constraint?.resolutionMode),
+    resolutionDetail: hasRandomizedNullAnswer
+      ? 'The rulebook allows a randomized question to resolve with no answer when its answer does not exist in the selected map.'
+      : describeResolutionMode(constraint?.resolutionMode),
     mapEffectModeLabel: mapEffect.mapEffectModeLabel,
     mapEffectTone: mapEffect.mapEffectTone,
     mapEffectTitle: mapEffect.mapEffectTitle,
     mapEffectDetail: mapEffect.mapEffectDetail,
-    confidenceLabel: constraint ? `${Math.round(constraint.confidenceScore * 100)}%` : 'Pending',
+    confidenceLabel: hasRandomizedNullAnswer
+      ? 'Not applicable'
+      : constraint ? `${Math.round(constraint.confidenceScore * 100)}%` : 'Pending',
     candidatePrecisionLabel: formatCandidatePrecisionLabel(args.visibleMap?.remainingArea?.precision),
-    boundedLabel: constraint
+    boundedLabel: hasRandomizedNullAnswer
+      ? 'No map constraint was produced'
+      : constraint
       ? `${clippedArtifactCount} of ${constraint.artifacts.length} visible map layer${constraint.artifacts.length === 1 ? '' : 's'} stayed inside the playable region`
       : 'Waiting for the bounded map result',
-    artifactCountLabel: constraint
+    artifactCountLabel: hasRandomizedNullAnswer
+      ? '0 visible map layers'
+      : constraint
       ? `${constraint.artifacts.length} visible map layer${constraint.artifacts.length === 1 ? '' : 's'}`
       : 'No visible map layers yet',
     historySummary: mapEffect.historySummary,

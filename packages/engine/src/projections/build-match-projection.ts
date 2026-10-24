@@ -358,7 +358,9 @@ export function buildMatchProjection(
       : undefined,
     askedAt: question.askedAt,
     resolvedAt: question.resolvedAt,
-    automaticResolution: question.automaticResolution
+    automaticResolution: question.automaticResolution,
+    randomizedFromQuestionInstanceId: question.randomizedFromQuestionInstanceId,
+    randomizedNullAnswerAllowed: question.randomizedNullAnswerAllowed
   }));
 
   const visibleConstraints = Object.values(aggregate.constraints).map((constraint) => ({
