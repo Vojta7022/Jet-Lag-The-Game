@@ -170,7 +170,7 @@ export function resolveLocationViewerRole(
 }
 
 export function canViewerShareLiveLocation(role: MatchRole): boolean {
-  return role === 'host' || role === 'seeker';
+  return role === 'host' || role === 'seeker' || role === 'hider';
 }
 
 export function canStartContinuousSharing(

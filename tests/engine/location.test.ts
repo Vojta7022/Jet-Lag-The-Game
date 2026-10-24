@@ -50,6 +50,12 @@ test('movement projections include seeker breadcrumbs while keeping hider raw mo
     viewerTeamId: 'team-hider',
     viewerRole: 'hider'
   });
+  const hiderTeamProjection = buildMatchProjection(aggregate, contentPack, {
+    scope: 'player_private',
+    viewerPlayerId: 'hider-1',
+    viewerTeamId: 'team-hider',
+    viewerRole: 'hider'
+  });
   const publicProjection = buildMatchProjection(aggregate, contentPack, {
     scope: 'public_match'
   });
@@ -62,6 +68,11 @@ test('movement projections include seeker breadcrumbs while keeping hider raw mo
   assert.equal(seekerProjection.visibleMovementTracks[0]?.playerId, 'seeker-1');
   assert.equal(seekerProjection.visibleMovementTracks[0]?.latestSample?.longitude, 14.438);
 
-  assert.equal(hiderProjection.visibleMovementTracks.length, 0);
+  assert.equal(hiderProjection.visibleMovementTracks.length, 1);
+  assert.equal(hiderProjection.visibleMovementTracks[0]?.playerId, 'seeker-1');
+  assert.equal(hiderTeamProjection.visibleMovementTracks.length, 1);
+  assert.equal(hiderTeamProjection.visibleMovementTracks[0]?.playerId, 'seeker-1');
+  assert.equal(hiderTeamProjection.visibleMovementTracks[0]?.samples.length, 2);
+  assert.equal(hiderTeamProjection.visibleMovementTracks.some((track) => track.playerId === 'hider-1'), false);
   assert.equal(publicProjection.visibleMovementTracks.length, 0);
 });

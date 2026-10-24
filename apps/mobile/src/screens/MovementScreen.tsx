@@ -91,7 +91,7 @@ export function MovementScreen() {
         <StateBanner
           tone="info"
           title="Read-only movement view"
-          detail="Only seeker and host-admin views can send location updates in this first phase. Other roles can only inspect movement data that the current projection allows."
+          detail="Seekers share their positions with their team. Hiders can share location samples for question answers and see seeker positions; the hider’s raw live position is never shown to seekers."
         />
       ) : null}
 
@@ -173,7 +173,7 @@ export function MovementScreen() {
           previewRegion={fallbackPreviewRegion}
         />
         <Text style={styles.copy}>
-          The map renders projected non-hider movement tracks on the same geographic surface as the active playable region. Hidden hider coordinates stay out of these overlays even when the authority stores them.
+          The map renders only role-authorized movement tracks on the playable region. Hiders can see seekers; seekers never receive the hider’s raw live position.
         </Text>
         <AppButton
           label="Refresh Movement"

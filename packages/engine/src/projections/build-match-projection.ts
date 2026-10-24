@@ -105,6 +105,12 @@ function canViewMovementSample(aggregate: MatchAggregate, viewer: ProjectionView
     : viewer.viewerRole;
   const viewerTeamId = viewer.viewerTeamId ?? getPlayerTeam(aggregate, viewer.viewerPlayerId)?.teamId;
 
+  // Hiders need the seeker team's live positions to play the chase. Their own
+  // movement samples stay private, and seekers never receive hider samples.
+  if (viewerRole === 'hider') {
+    return sample.role === 'seeker';
+  }
+
   if (viewerRole !== 'seeker') {
     return false;
   }

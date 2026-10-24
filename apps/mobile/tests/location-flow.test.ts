@@ -8,6 +8,8 @@ import type { ContentPack } from '../../../packages/shared-types/src/index.ts';
 import { mobileAppEnvironment } from '../src/config/env.ts';
 import { buildQuestionFlowBootstrapCommands } from '../src/features/questions/question-flow-bootstrap.ts';
 import {
+  canStartContinuousSharing,
+  canSendSingleLocationUpdate,
   buildLocationUpdateCommand,
   buildMovementTrackViewModels,
   createInitialLocationShellState,
@@ -39,6 +41,16 @@ test('location shell reducer makes denied and unavailable states explicit', () =
   });
   assert.equal(state.permissionState, 'denied');
   assert.equal(Boolean(state.errorMessage), true);
+});
+
+test('hiders can share their live location while seekers remain eligible', () => {
+  const ready = {
+    ...createInitialLocationShellState(),
+    permissionState: 'granted' as const,
+    availabilityState: 'available' as const
+  };
+  assert.equal(canStartContinuousSharing('hider', ready), true);
+  assert.equal(canSendSingleLocationUpdate('hider', ready), true);
 });
 
 test('movement flow preserves visible seeker breadcrumbs and map overlays through the runtime projection', async () => {
