@@ -274,8 +274,10 @@ export function canStartContinuousSharing(
 export function shouldAutomaticallyShareLocation(
   lifecycleState: MatchLifecycleState | undefined,
   role: MatchRole,
-  state: LocationShellState
+  state: LocationShellState,
+  moveInProgress = false
 ): boolean {
+  if (moveInProgress && role === 'seeker') return false;
   const activePlayPhase = lifecycleState === 'hide_phase' ||
     lifecycleState === 'seek_phase' ||
     lifecycleState === 'endgame';
@@ -284,8 +286,10 @@ export function shouldAutomaticallyShareLocation(
 
 export function canSendSingleLocationUpdate(
   role: MatchRole,
-  state: LocationShellState
+  state: LocationShellState,
+  moveInProgress = false
 ): boolean {
+  if (moveInProgress && role === 'seeker') return false;
   return canViewerShareLiveLocation(role) &&
     state.permissionState === 'granted' &&
     state.availabilityState !== 'unavailable';

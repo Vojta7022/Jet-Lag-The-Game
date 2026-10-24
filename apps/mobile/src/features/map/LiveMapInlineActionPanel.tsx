@@ -12,6 +12,7 @@ import {
   buildDeckViewModels,
   buildQuestionResponseCardReason,
   canResolveCardWindow,
+  getCardResolutionBlockedReason,
   CardResolutionStatusPanel,
   CardZoneSection,
   HIDER_HAND_TARGET,
@@ -217,7 +218,7 @@ export function LiveMapInlineActionPanel() {
   const activeCardBehavior = activeCard ? buildCardBehaviorModel(activeCard.definition) : undefined;
   const canResolveCard = Boolean(activeMatch && canResolveCardWindow(viewerRole, projection));
   const resolveDisabledReason = activeCard && !canResolveCard
-    ? 'The hider holding this card or a host-admin can close this card window after the live effect is handled.'
+    ? getCardResolutionBlockedReason(viewerRole, projection) ?? 'The hider holding this card or a host-admin can close this card window after the live effect is handled.'
     : undefined;
 
   const activeQuestionTimerSeconds = timingModel?.timers.find(

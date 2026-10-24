@@ -77,13 +77,15 @@ export function validateStateForCommand(
         ? []
         : [error(command.type, 'INVALID_STATE', 'A new round can only start after the previous hider is found.')];
     case 'lock_hider_location':
-      return isLifecycleState(aggregate, 'hide_phase')
+      return isLifecycleState(aggregate, 'hide_phase') ||
+        (isSeekPhaseState(aggregate, 'awaiting_card_resolution') && aggregate.activeCardResolution?.resolutionKind === 'move')
         ? []
-        : [error(command.type, 'INVALID_STATE', 'Hider location can only be locked during hide phase.')];
+        : [error(command.type, 'INVALID_STATE', 'Hider location can only be locked during hide phase or a Move card.')];
     case 'set_hiding_zone':
-      return isLifecycleState(aggregate, 'hide_phase')
+      return isLifecycleState(aggregate, 'hide_phase') ||
+        (isSeekPhaseState(aggregate, 'awaiting_card_resolution') && aggregate.activeCardResolution?.resolutionKind === 'move')
         ? []
-        : [error(command.type, 'INVALID_STATE', 'The hiding zone can only be selected during the hide phase.')];
+        : [error(command.type, 'INVALID_STATE', 'The hiding zone can only be selected during hide phase or a Move card.')];
     case 'set_final_hiding_spot':
       return isSeekPhaseState(aggregate)
         ? []
@@ -96,12 +98,16 @@ export function validateStateForCommand(
       return aggregate.lifecycleState === 'hide_phase' ||
         isSeekPhaseState(aggregate, 'ready') ||
         isSeekPhaseState(aggregate, 'cooldown') ||
+        (isSeekPhaseState(aggregate, 'awaiting_card_resolution') && aggregate.activeCardResolution?.resolutionKind === 'move') ||
         isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Location updates are only allowed in active movement states.')];
     case 'end_hide_phase':
       if (!isLifecycleState(aggregate, 'hide_phase')) {
         return [error(command.type, 'INVALID_STATE', 'Hide phase can only end while the match is hiding.')];
+      }
+      if (aggregate.activeCardResolution?.resolutionKind === 'move') {
+        return [error(command.type, 'CARD_RESOLUTION_LOCKED', 'The active Move card must finish before hide phase can end.')];
       }
       if (!hasLockedHiderLocation(aggregate)) {
         return [error(command.type, 'MISSING_HIDER_LOCATION', 'Hide phase cannot end before the hider location is locked.')];
@@ -195,7 +201,8 @@ export function validateStateForCommand(
         ? []
         : [error(command.type, 'INVALID_STATE', 'Cards can only be discarded in allowed hand-management windows.')];
     case 'resolve_card_window':
-      return isSeekPhaseState(aggregate, 'awaiting_card_resolution')
+      return isSeekPhaseState(aggregate, 'awaiting_card_resolution') ||
+        (isLifecycleState(aggregate, 'hide_phase') && aggregate.activeCardResolution?.resolutionKind === 'move')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Card windows can only close during card resolution.')];
     case 'complete_cooldown':

@@ -539,6 +539,12 @@ export function validateCommandEnvelope(
       if (!Number.isFinite(envelope.command.payload.latitude) || !Number.isFinite(envelope.command.payload.longitude)) {
         return [error(envelope.command.type, 'INVALID_LOCATION', 'Locking the hider location requires valid coordinates.')];
       }
+      if (
+        aggregate.activeCardResolution?.resolutionKind === 'move' &&
+        actorRole !== 'hider' && envelope.actor.role !== 'host'
+      ) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider can confirm arrival during a Move card.')];
+      }
       const zone = aggregate.hiddenState.hidingZone;
       if (zone && distanceMeters(
         [envelope.command.payload.longitude, envelope.command.payload.latitude],
@@ -549,6 +555,11 @@ export function validateCommandEnvelope(
       return [];
     }
     case 'set_hiding_zone': {
+      const isMoveResolution = aggregate.activeCardResolution?.resolutionKind === 'move';
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId);
+      if (isMoveResolution && actorRole !== 'hider' && envelope.actor.role !== 'host') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider can select a new zone during a Move card.')];
+      }
       const { stationId, stationName, latitude, longitude } = envelope.command.payload;
       if (!stationId.trim() || !stationName.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
         return [error(envelope.command.type, 'INVALID_HIDING_ZONE', 'Choose a named transit station with valid coordinates.')];
@@ -562,7 +573,7 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'STATION_OUTSIDE_MAP', 'The selected station and its full hiding zone must fit inside the playable map.')];
       }
       const lockedLocation = aggregate.hiddenState.hiderLocation;
-      if (lockedLocation && distanceMeters(
+      if (!isMoveResolution && lockedLocation && distanceMeters(
         [longitude, latitude],
         [lockedLocation.longitude, lockedLocation.latitude]
       ) > 100) {
@@ -626,6 +637,10 @@ export function validateCommandEnvelope(
       }
 
       const actorRole = getPlayerRole(aggregate, envelope.actor.playerId);
+      const isMoveResolution = aggregate.activeCardResolution?.resolutionKind === 'move';
+      if (isMoveResolution && actorRole !== 'hider' && envelope.actor.role !== 'host') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider can move during a Move card.')];
+      }
       const ruleset = getRuleset(contentPack, aggregate.selectedRulesetId);
       if (actorRole === 'seeker' && aggregate.lifecycleState === 'seek_phase' &&
         ruleset?.locationPolicies?.endgameRequiresOffTransit === true &&
@@ -639,7 +654,7 @@ export function validateCommandEnvelope(
       if (actorRole === 'hider' && aggregate.lifecycleState === 'endgame') {
         return [error(envelope.command.type, 'HIDER_LOCATION_FROZEN', 'The hider must stay at the final hiding spot during endgame.')];
       }
-      if (actorRole === 'hider' && aggregate.lifecycleState === 'seek_phase' &&
+      if (!isMoveResolution && actorRole === 'hider' && aggregate.lifecycleState === 'seek_phase' &&
         ruleset?.locationPolicies?.requireStationCenteredZone === true) {
         const zone = aggregate.hiddenState.hidingZone;
         if (!zone) {
@@ -1159,6 +1174,16 @@ export function validateCommandEnvelope(
       }
 
       const resolutionPlan = buildCardResolutionPlan(effectCardDefinition, aggregate.selectedScale);
+      if (resolutionPlan.kind === 'move' && !aggregate.hiddenState.hidingZone) {
+        return [error(envelope.command.type, 'MOVE_ORIGIN_REQUIRED', 'Move requires an original hiding station to reveal to seekers.')];
+      }
+      if (
+        resolutionPlan.kind === 'move' &&
+        aggregate.lifecycleState === 'seek_phase' &&
+        (aggregate.activeQuestionInstanceId || aggregate.seekPhaseSubstate !== 'ready')
+      ) {
+        return [error(envelope.command.type, 'MOVE_TIMING_INVALID', 'Move can only begin between questions when seekers are ready.')];
+      }
       if (resolutionPlan.kind === 'veto_question' || resolutionPlan.kind === 'randomize_question') {
         if (!aggregate.activeQuestionInstanceId || !aggregate.questionInstances[aggregate.activeQuestionInstanceId]) {
           return [error(envelope.command.type, 'QUESTION_NOT_ACTIVE', 'This card can only be played while a question is awaiting an answer.')];
@@ -1193,7 +1218,11 @@ export function validateCommandEnvelope(
       const otherHandCards = handCards.filter((card) =>
         card.cardInstanceId !== cardInstance.cardInstanceId && card.cardInstanceId !== duplicateTargetId
       );
-      if (resolutionPlan.discardRequirement.discardWholeHand && otherHandCards.length === 0) {
+      if (
+        resolutionPlan.discardRequirement.discardWholeHand &&
+        resolutionPlan.kind !== 'move' &&
+        otherHandCards.length === 0
+      ) {
         return [error(envelope.command.type, 'DISCARD_COST_UNPAID', 'This card needs spare hand cards to pay its discard cost.')];
       }
 
@@ -1250,6 +1279,16 @@ export function validateCommandEnvelope(
       const activeResolution = aggregate.activeCardResolution;
       if (activeResolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
         return [error(envelope.command.type, 'CARD_WINDOW_NOT_ACTIVE', 'This card resolution window is not active.')];
+      }
+
+      if (activeResolution.resolutionKind === 'move') {
+        const zone = aggregate.hiddenState.hidingZone;
+        if (!zone || (activeResolution.moveOriginStationId && zone.stationId === activeResolution.moveOriginStationId)) {
+          return [error(envelope.command.type, 'MOVE_ZONE_REQUIRED', 'Choose a new transit station as the hiding-zone center before ending Move.')];
+        }
+        if (!aggregate.hiddenState.hiderLocation) {
+          return [error(envelope.command.type, 'MOVE_ARRIVAL_REQUIRED', 'Confirm arrival at the new hiding-zone station before ending Move.')];
+        }
       }
 
       const actorRole = getPlayerRole(aggregate, envelope.actor.playerId);

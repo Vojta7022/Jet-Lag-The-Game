@@ -53,6 +53,16 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     return (
       <View style={styles.container}>
         <Text style={styles.title}>{guidance.title}</Text>
+        {props.resolution?.resolutionKind === 'move' ? (
+          <>
+            <Text style={styles.copy}>
+              Original transit station: {props.resolution.moveOriginStationName ?? 'not recorded'}.
+            </Text>
+            <Text style={styles.copy}>
+              Seekers stay in place and do not ask questions while the hider moves. The hider must choose a different station, travel by valid transit, and confirm arrival. End the window only after the printed Move duration has elapsed; that scale duration is not present in the scanned rulebook.
+            </Text>
+          </>
+        ) : null}
         <Text style={styles.copy}>{guidance.detail}</Text>
         <Text style={styles.copy}>{guidance.nextStep}</Text>
       </View>

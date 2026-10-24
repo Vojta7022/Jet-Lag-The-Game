@@ -12,6 +12,8 @@ import {
 } from '../../geo/src/index.ts';
 
 function toEventLogEntry(eventEnvelope: DomainEventEnvelope): EventLogEntry {
+  const event = eventEnvelope.event;
+  const isCardResolutionEvent = event.type === 'card_resolution_opened' || event.type === 'card_resolution_closed';
   return {
     eventId: eventEnvelope.eventId,
     sequence: eventEnvelope.sequence,
@@ -19,7 +21,9 @@ function toEventLogEntry(eventEnvelope: DomainEventEnvelope): EventLogEntry {
     occurredAt: eventEnvelope.occurredAt,
     actorId: eventEnvelope.actor.actorId,
     actorRole: eventEnvelope.actor.role,
-    visibilityScope: eventEnvelope.visibilityScope
+    visibilityScope: eventEnvelope.visibilityScope,
+    resolutionKind: event.type === 'card_resolution_opened' ? event.payload.resolutionKind : undefined,
+    sourceCardInstanceId: isCardResolutionEvent ? event.payload.sourceCardInstanceId : undefined
   };
 }
 
@@ -723,6 +727,8 @@ export function reduceMatchAggregate(
           openedAt: eventEnvelope.occurredAt,
           openedByPlayerId: eventEnvelope.actor.playerId ?? eventEnvelope.actor.actorId,
           resolutionKind: eventEnvelope.event.payload.resolutionKind,
+          moveOriginStationId: eventEnvelope.event.payload.moveOriginStationId,
+          moveOriginStationName: eventEnvelope.event.payload.moveOriginStationName,
           discardRequirement: eventEnvelope.event.payload.discardRequirement,
           drawCountOnResolve: eventEnvelope.event.payload.drawCountOnResolve,
           timeBonusMinutes: eventEnvelope.event.payload.timeBonusMinutes,
@@ -734,7 +740,10 @@ export function reduceMatchAggregate(
           holderType: eventEnvelope.event.payload.holderType,
           holderId: eventEnvelope.event.payload.holderId,
           openingHandCardInstanceIds: eventEnvelope.event.payload.openingHandCardInstanceIds
-        }
+        },
+        hiddenState: eventEnvelope.event.payload.resolutionKind === 'move'
+          ? { ...base.hiddenState, hiderLocation: undefined, finalHidingSpot: undefined }
+          : base.hiddenState
       };
     case 'card_resolution_closed': {
       const updatedCards = { ...base.cardInstances };

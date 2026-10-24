@@ -41,10 +41,17 @@ export function LocationSharingProvider(props: {
   const activeRole = resolveLocationViewerRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
 
   const submitSample = useCallback(async (sample: DeviceLocationSample) => {
+    if (!canSendSingleLocationUpdate(
+      activeRole,
+      state,
+      activeMatch?.projection.activeCardResolution?.resolutionKind === 'move'
+    )) {
+      return;
+    }
     dispatch({ type: 'sample_recorded', sample });
     await submitCommand(buildLocationUpdateCommand(sample));
     dispatch({ type: 'sample_submitted', submittedAt: sample.recordedAt });
-  }, [submitCommand]);
+  }, [activeMatch?.projection.activeCardResolution?.resolutionKind, activeRole, state, submitCommand]);
 
   const refreshPermissionState = useCallback(async () => {
     const source = sourceRef.current;
@@ -78,7 +85,11 @@ export function LocationSharingProvider(props: {
       appShellState.activeMatch?.playerRole,
       appShellState.activeMatch?.recipient.scope
     );
-    if (!canSendSingleLocationUpdate(role, state)) {
+    if (!canSendSingleLocationUpdate(
+      role,
+      state,
+      appShellState.activeMatch?.projection.activeCardResolution?.resolutionKind === 'move'
+    )) {
       return;
     }
 
@@ -91,7 +102,13 @@ export function LocationSharingProvider(props: {
         errorMessage: error instanceof Error ? error.message : 'Unable to fetch a device location sample.'
       });
     }
-  }, [appShellState.activeMatch?.playerRole, appShellState.activeMatch?.recipient.scope, state, submitSample]);
+  }, [
+    appShellState.activeMatch?.playerRole,
+    appShellState.activeMatch?.projection.activeCardResolution?.resolutionKind,
+    appShellState.activeMatch?.recipient.scope,
+    state,
+    submitSample
+  ]);
 
   const captureCurrentPosition = useCallback(async (): Promise<DeviceLocationSample | undefined> => {
     try {
@@ -154,14 +171,22 @@ export function LocationSharingProvider(props: {
     const shouldShare = shouldAutomaticallyShareLocation(
       activeMatch?.projection.lifecycleState,
       activeRole,
-      state
+      state,
+      activeMatch?.projection.activeCardResolution?.resolutionKind === 'move'
     );
     if (shouldShare && state.sharingState !== 'sharing') {
       void startSharing();
     } else if (!shouldShare && state.sharingState === 'sharing') {
       void stopSharing();
     }
-  }, [activeMatch?.projection.lifecycleState, activeRole, startSharing, state, stopSharing]);
+  }, [
+    activeMatch?.projection.lifecycleState,
+    activeMatch?.projection.activeCardResolution?.resolutionKind,
+    activeRole,
+    startSharing,
+    state,
+    stopSharing
+  ]);
 
   useEffect(() => {
     return () => {

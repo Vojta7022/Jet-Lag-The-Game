@@ -93,6 +93,14 @@ export function formatCardKindLabel(kind: CardDefinition['kind']): string {
 }
 
 export function buildCardBehaviorModel(cardDefinition: CardDefinition): CardBehaviorModel {
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'move_power_up')) {
+    return {
+      label: 'Assisted',
+      tone: 'warning',
+      detail: 'The engine enforces the relocation flow, station arrival, seeker freeze, and hand discard. The duration still comes from the physical card because its scale values are missing from the scan.'
+    };
+  }
+
   if (cardDefinition.automationLevel === 'authoritative') {
     return {
       label: 'Authoritative',

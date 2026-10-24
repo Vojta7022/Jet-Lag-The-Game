@@ -237,6 +237,36 @@ function buildHideTimer(
   };
 }
 
+function pauseTimerAt(timer: TimerModel, occurredAt: string): TimerModel {
+  const startedAtMs = Date.parse(timer.startedAt);
+  const nowMs = Date.parse(occurredAt);
+  const elapsedSeconds = timer.status === 'running' && Number.isFinite(startedAtMs) && Number.isFinite(nowMs)
+    ? Math.max(0, Math.floor((nowMs - startedAtMs) / 1000))
+    : 0;
+  return {
+    ...timer,
+    status: 'paused',
+    pausedAt: occurredAt,
+    remainingSeconds: timer.status === 'running'
+      ? Math.max(0, timer.durationSeconds - elapsedSeconds)
+      : timer.remainingSeconds
+  };
+}
+
+function resumeTimerAt(timer: TimerModel, occurredAt: string): TimerModel {
+  const elapsedSeconds = Math.max(0, timer.durationSeconds - timer.remainingSeconds);
+  const resumedAtMs = Date.parse(occurredAt);
+  const startedAt = Number.isFinite(resumedAtMs)
+    ? new Date(resumedAtMs - elapsedSeconds * 1000).toISOString()
+    : timer.startedAt;
+  return {
+    ...timer,
+    status: 'running',
+    startedAt,
+    pausedAt: undefined
+  };
+}
+
 function buildQuestionTimer(
   aggregate: MatchAggregate,
   contentPack: ContentPack,
@@ -317,8 +347,19 @@ function elapsedUnpausedSeconds(aggregate: MatchAggregate, startedAt: string, en
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) return 0;
   const pausedIntervals: Array<[number, number]> = [];
   let pausedAtMs: number | undefined;
+  const openMoveWindows = new Map<string, number>();
   for (const entry of [...aggregate.eventLog].sort((left, right) => left.sequence - right.sequence)) {
     const occurredAtMs = Date.parse(entry.occurredAt);
+    if (!Number.isFinite(occurredAtMs)) continue;
+    if (entry.type === 'card_resolution_opened' && entry.resolutionKind === 'move' && entry.sourceCardInstanceId) {
+      openMoveWindows.set(entry.sourceCardInstanceId, occurredAtMs);
+    } else if (entry.type === 'card_resolution_closed' && entry.sourceCardInstanceId) {
+      const moveStartedAt = openMoveWindows.get(entry.sourceCardInstanceId);
+      if (moveStartedAt !== undefined) {
+        pausedIntervals.push([moveStartedAt, occurredAtMs]);
+        openMoveWindows.delete(entry.sourceCardInstanceId);
+      }
+    }
     if (!Number.isFinite(occurredAtMs) || occurredAtMs <= startMs || occurredAtMs >= endMs) continue;
     if (entry.type === 'match_paused' && pausedAtMs === undefined) {
       pausedAtMs = occurredAtMs;
@@ -328,6 +369,7 @@ function elapsedUnpausedSeconds(aggregate: MatchAggregate, startedAt: string, en
     }
   }
   if (pausedAtMs !== undefined) pausedIntervals.push([pausedAtMs, endMs]);
+  for (const moveStartedAt of openMoveWindows.values()) pausedIntervals.push([moveStartedAt, endMs]);
   for (const question of Object.values(aggregate.questionInstances)) {
     if (!question.lateResponseStartedAt) continue;
     const lateStartedAt = Date.parse(question.lateResponseStartedAt);
@@ -1134,12 +1176,13 @@ function eventsForCommand(
         ? getCardDefinition(contentPack, copiedCardInstance.cardDefinitionId) as CardDefinition
         : cardDefinition;
       const resolutionPlan = buildCardResolutionPlan(effectCardDefinition, aggregate!.selectedScale);
-      const opensResolutionWindow =
-        resolutionPlan.kind !== 'time_bonus' &&
-        resolutionPlan.kind !== 'draw_and_expand_hand' &&
-        resolutionPlan.kind !== 'veto_question' &&
-        resolutionPlan.kind !== 'randomize_question' &&
-        aggregate?.lifecycleState === 'seek_phase';
+      const opensResolutionWindow = resolutionPlan.kind === 'move'
+        ? aggregate?.lifecycleState === 'hide_phase' || aggregate?.lifecycleState === 'seek_phase'
+        : resolutionPlan.kind !== 'time_bonus' &&
+          resolutionPlan.kind !== 'draw_and_expand_hand' &&
+          resolutionPlan.kind !== 'veto_question' &&
+          resolutionPlan.kind !== 'randomize_question' &&
+          aggregate?.lifecycleState === 'seek_phase';
       const playedCard: CardInstanceModel = {
         ...currentCard,
         zone: opensResolutionWindow ? 'pending_resolution' : 'discard_pile',
@@ -1312,10 +1355,13 @@ function eventsForCommand(
               seekPhaseSubstate: 'awaiting_card_resolution',
               lifecycleState: aggregate!.lifecycleState,
               resolutionKind: resolutionPlan.kind,
-              discardRequirement:
-                resolutionPlan.discardRequirement.requiredCards ||
-                resolutionPlan.discardRequirement.requiredKind ||
-                resolutionPlan.discardRequirement.discardWholeHand
+              moveOriginStationId: resolutionPlan.kind === 'move' ? aggregate!.hiddenState.hidingZone?.stationId : undefined,
+              moveOriginStationName: resolutionPlan.kind === 'move' ? aggregate!.hiddenState.hidingZone?.stationName : undefined,
+              discardRequirement: resolutionPlan.kind === 'move'
+                ? undefined
+                : resolutionPlan.discardRequirement.requiredCards ||
+                  resolutionPlan.discardRequirement.requiredKind ||
+                  resolutionPlan.discardRequirement.discardWholeHand
                   ? resolutionPlan.discardRequirement
                   : undefined,
               drawCountOnResolve: resolutionPlan.drawCountOnResolve,
@@ -1333,6 +1379,37 @@ function eventsForCommand(
             }
           })
         );
+
+        if (resolutionPlan.kind === 'move') {
+          for (const cardInstanceId of openingHandCardInstanceIds) {
+            if (cardInstanceId === currentCard.cardInstanceId) continue;
+            const card = aggregate!.cardInstances[cardInstanceId];
+            if (!card || card.zone !== 'hand') continue;
+            events.push(makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {
+              type: 'card_discarded',
+              payload: {
+                cardInstanceId,
+                cardInstance: {
+                  ...card,
+                  zone: 'discard_pile',
+                  updatedAt: envelope.occurredAt
+                }
+              }
+            }));
+          }
+          if (aggregate!.lifecycleState === 'hide_phase') {
+            const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide');
+            if (hideTimer) {
+              events.push(makeEventEnvelope(aggregate, envelope, events.length, 'authority', {
+                type: 'timer_adjusted',
+                payload: {
+                  sourceCardInstanceId: currentCard.cardInstanceId,
+                  timer: pauseTimerAt(hideTimer, envelope.occurredAt)
+                }
+              }));
+            }
+          }
+        }
       }
 
       return events;
@@ -1436,6 +1513,19 @@ function eventsForCommand(
             sourceCardInstanceId: activeResolution.sourceCardInstanceId
           }
         }));
+      }
+
+      if (activeResolution?.resolutionKind === 'move' && aggregate!.lifecycleState === 'hide_phase') {
+        const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide' && timer.status === 'paused');
+        if (hideTimer) {
+          events.push(makeEventEnvelope(aggregate, envelope, events.length, 'authority', {
+            type: 'timer_adjusted',
+            payload: {
+              sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+              timer: resumeTimerAt(hideTimer, envelope.occurredAt)
+            }
+          }));
+        }
       }
 
       events.push(

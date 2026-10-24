@@ -23,6 +23,7 @@ import {
   canDrawCards,
   canPlayCards,
   canResolveCardWindow,
+  getCardResolutionBlockedReason,
   describeDeckVisibility,
   findResolvedVisibleCard,
   formatDeckOwnerScope,
@@ -379,7 +380,7 @@ export function CardsScreen() {
     : [];
   const resolveDisabledReason =
     activeCard && !canResolve
-      ? 'The hider holding this card or a host-admin must close the active card window after the effect is handled.'
+      ? getCardResolutionBlockedReason(viewerRole, projection) ?? 'The hider holding this card or a host-admin must close the active card window after the effect is handled.'
       : undefined;
   const cardEvidenceHint =
     activeMatch?.onlineStatus?.attachmentStorageMode ===

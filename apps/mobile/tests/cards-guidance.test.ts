@@ -101,6 +101,18 @@ test('card guidance stays honest about manual and authoritative behavior', () =>
   assert.match(authoritative.detail, /engine applies this card directly/i);
 });
 
+test('Move guidance separates the enforced relocation flow from its unverified duration', () => {
+  const move = buildCardBehaviorModel(createCardDefinition({
+    cardDefinitionId: 'power-up-move',
+    name: 'Move',
+    effects: [{ effectType: 'move_power_up', description: 'Move to a new station.', automationLevel: 'manual' }]
+  }));
+
+  assert.equal(move.label, 'Assisted');
+  assert.match(move.detail, /relocation flow/i);
+  assert.match(move.detail, /duration.*physical card/i);
+});
+
 test('card guidance provides honest fallback descriptions when workbook text is weak', () => {
   const weakCard = createCardDefinition({
     description: 'Effect text is not defined in the workbook.'

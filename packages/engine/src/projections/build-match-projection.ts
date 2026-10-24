@@ -457,6 +457,8 @@ export function buildMatchProjection(
                 ? aggregate.activeCardResolution.copiedCardInstanceId
                 : undefined,
             resolutionKind: aggregate.activeCardResolution.resolutionKind,
+            moveOriginStationId: aggregate.activeCardResolution.moveOriginStationId,
+            moveOriginStationName: aggregate.activeCardResolution.moveOriginStationName,
             discardRequirement: aggregate.activeCardResolution.discardRequirement,
             drawCountOnResolve: aggregate.activeCardResolution.drawCountOnResolve,
             timeBonusMinutes: aggregate.activeCardResolution.timeBonusMinutes,

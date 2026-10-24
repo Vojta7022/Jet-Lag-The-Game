@@ -112,6 +112,8 @@ test('hiders can share their live location while seekers remain eligible', () =>
   };
   assert.equal(canStartContinuousSharing('hider', ready), true);
   assert.equal(canSendSingleLocationUpdate('hider', ready), true);
+  assert.equal(canSendSingleLocationUpdate('seeker', ready, true), false);
+  assert.equal(canSendSingleLocationUpdate('hider', ready, true), true);
 });
 
 test('live location sharing starts automatically for active player rounds and stops outside play phases', () => {
@@ -122,6 +124,8 @@ test('live location sharing starts automatically for active player rounds and st
   };
   assert.equal(shouldAutomaticallyShareLocation('hide_phase', 'hider', ready), true);
   assert.equal(shouldAutomaticallyShareLocation('seek_phase', 'seeker', ready), true);
+  assert.equal(shouldAutomaticallyShareLocation('seek_phase', 'seeker', ready, true), false);
+  assert.equal(shouldAutomaticallyShareLocation('seek_phase', 'hider', ready, true), true);
   assert.equal(shouldAutomaticallyShareLocation('endgame', 'hider', ready), true);
   assert.equal(shouldAutomaticallyShareLocation('lobby', 'seeker', ready), false);
   assert.equal(shouldAutomaticallyShareLocation('seek_phase', 'spectator', ready), false);

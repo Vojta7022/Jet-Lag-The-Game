@@ -1,18 +1,167 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { representativePointFromGeometry } from '../../packages/geo/src/index.ts';
 import { buildMatchProjection, executeCommand } from '../../packages/engine/src/index.ts';
 import {
   loadEngineTestContentPack,
   makeEnvelope,
   moveCardToTeamHand,
+  setupMatchToHidePhase,
   setupMatchToSeekReady
 } from './helpers.ts';
+
+test('Move lets only the hider relocate, select a new zone, and confirm arrival', () => {
+  const contentPack = loadEngineTestContentPack();
+  contentPack.rulesets[0]!.locationPolicies = {
+    requireStationCenteredZone: true,
+    endgameRequiresOffTransit: true
+  };
+  let aggregate = setupMatchToHidePhase(contentPack);
+  const point = representativePointFromGeometry(aggregate.mapRegion?.boundaryGeometry);
+  assert.ok(point);
+  const oldStation = { latitude: point![1], longitude: point![0] };
+  const newStation = { latitude: 50.2, longitude: 14.25 };
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'set_hiding_zone', payload: { stationId: 'node/old', stationName: 'Old Station', ...oldStation } } as never,
+    30), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'lock_hider_location', payload: oldStation },
+    31), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    { type: 'end_hide_phase', payload: {} },
+    32), contentPack).aggregate;
+  const moveCardId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
+  const spareCardId = moveCardToTeamHand(aggregate, 'power-up-veto', 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: moveCardId } },
+    33), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'move');
+  assert.equal(aggregate.activeCardResolution?.moveOriginStationName, 'Old Station');
+  assert.equal(aggregate.hiddenState.hiderLocation, undefined);
+  assert.equal(aggregate.cardInstances[spareCardId]?.zone, 'discard_pile');
+  const seekerMoveView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'team_private', viewerPlayerId: 'seeker-1', viewerTeamId: 'team-seeker', viewerRole: 'seeker'
+  });
+  assert.equal(seekerMoveView.activeCardResolution?.moveOriginStationName, 'Old Station');
+  assert.equal(seekerMoveView.hiddenState, undefined);
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'update_location', payload: { latitude: 50.21, longitude: 14.25, source: 'manual' } },
+    34), contentPack), /only the hider can move during a Move card/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'update_location', payload: { ...newStation, source: 'manual' } },
+    35), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'set_hiding_zone', payload: { stationId: 'node/new', stationName: 'New Station', ...newStation } } as never,
+    36), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'lock_hider_location', payload: newStation },
+    37), contentPack).aggregate;
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: moveCardId } },
+    39), contentPack).aggregate;
+
+  assert.equal(aggregate.hiddenState.hidingZone?.stationId, 'node/new');
+  assert.equal(aggregate.hiddenState.hiderLocation?.latitude, newStation.latitude);
+  assert.equal(aggregate.seekPhaseSubstate, 'ready');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'set_final_hiding_spot', payload: {
+      latitude: newStation.latitude,
+      longitude: newStation.longitude,
+      publiclyAccessible: true,
+      within3mOfMarkedPath: true
+    } },
+    40), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'update_location', payload: {
+      latitude: newStation.latitude,
+      longitude: newStation.longitude,
+      source: 'manual',
+      onTransit: false
+    } },
+    44), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'confirm_hider_found', payload: {
+      latitude: newStation.latitude,
+      longitude: newStation.longitude,
+      visuallyIdentified: true
+    } },
+    49), contentPack).aggregate;
+  assert.equal(aggregate.roundResults?.at(-1)?.survivalSeconds, 33);
+});
+
+test('Move pauses and resumes the hide-phase timer without consuming its remaining time', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToHidePhase(contentPack);
+  const point = representativePointFromGeometry(aggregate.mapRegion?.boundaryGeometry);
+  assert.ok(point);
+  const oldStation = { latitude: point![1], longitude: point![0] };
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'set_hiding_zone', payload: { stationId: 'node/old', stationName: 'Old Station', ...oldStation } } as never,
+    20), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'lock_hider_location', payload: oldStation },
+    21), contentPack).aggregate;
+  const moveCardId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: moveCardId } },
+    30), contentPack).aggregate;
+  const pausedTimer = Object.values(aggregate.timers).find((timer) => timer.kind === 'hide');
+  assert.equal(pausedTimer?.status, 'paused');
+  assert.equal(pausedTimer?.remainingSeconds, 100);
+
+  const newStation = { latitude: 50.2, longitude: 14.25 };
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'update_location', payload: { ...newStation, source: 'manual' } },
+    50), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'set_hiding_zone', payload: { stationId: 'node/new', stationName: 'New Station', ...newStation } } as never,
+    51), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'lock_hider_location', payload: newStation },
+    52), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    { type: 'end_hide_phase', payload: {} },
+    55), contentPack), /Move card must finish/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: moveCardId } },
+    60), contentPack).aggregate;
+
+  const resumedTimer = Object.values(aggregate.timers).find((timer) => timer.kind === 'hide');
+  assert.equal(resumedTimer?.status, 'running');
+  assert.equal(resumedTimer?.remainingSeconds, 100);
+  assert.equal(resumedTimer?.startedAt, new Date(Date.UTC(2026, 0, 1, 0, 0, 40)).toISOString());
+});
 
 test('discard_card moves an accessible hand card into the discard pile', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
-  const cardInstanceId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
+  const cardInstanceId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-zoologist', 'team-hider');
 
   aggregate = executeCommand(
     aggregate,
@@ -52,6 +201,19 @@ test('Move cannot be played after the endgame has started', () => {
     ),
     contentPack
   ), /cannot be played during the endgame/i);
+});
+
+test('Move requires an original station to reveal before it starts', () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToSeekReady(contentPack);
+  const moveCardInstanceId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: moveCardInstanceId } },
+    39
+  ), contentPack), /original hiding station/i);
 });
 
 test('player_private projections can still see the viewer team shared hand without leaking other teams', () => {
@@ -94,7 +256,7 @@ test('player_private projections can still see the viewer team shared hand witho
 test('resolved manual cards stay visible in the discard pile for the owning team after the card window closes', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
-  const cardInstanceId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
+  const cardInstanceId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-zoologist', 'team-hider');
 
   aggregate = executeCommand(
     aggregate,
@@ -262,7 +424,7 @@ test('Duplicate identifies a copied manual effect in its private resolution wind
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
   const duplicateCardId = moveCardToTeamHand(aggregate, 'power-up-duplicate', 'team-hider');
-  const originalCardId = moveCardToTeamHand(aggregate, 'power-up-move', 'team-hider');
+  const originalCardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-zoologist', 'team-hider');
 
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },

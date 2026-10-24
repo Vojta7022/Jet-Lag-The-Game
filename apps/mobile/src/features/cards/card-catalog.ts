@@ -210,5 +210,24 @@ export function canDiscardCards(projection: MatchProjection | undefined): boolea
 }
 
 export function canResolveCardWindow(role: MatchRole, projection: MatchProjection | undefined): boolean {
-  return (role === 'host' || role === 'hider') && Boolean(projection?.activeCardResolution?.sourceCardInstanceId);
+  return (role === 'host' || role === 'hider') && Boolean(
+    projection?.activeCardResolution?.sourceCardInstanceId && !getCardResolutionBlockedReason(role, projection)
+  );
+}
+
+export function getCardResolutionBlockedReason(role: MatchRole, projection: MatchProjection | undefined): string | undefined {
+  if (!projection?.activeCardResolution?.sourceCardInstanceId) return undefined;
+  if (role !== 'host' && role !== 'hider') {
+    return 'Only the hider or host can close this card window.';
+  }
+  if (projection.activeCardResolution.resolutionKind === 'move') {
+    const zone = projection.hiddenState?.hidingZone;
+    if (!zone || (projection.activeCardResolution.moveOriginStationId && zone.stationId === projection.activeCardResolution.moveOriginStationId)) {
+      return 'Choose a new transit station as the center of the Move hiding zone.';
+    }
+    if (!projection.hiddenState?.hiderLocationLocked) {
+      return 'Confirm arrival at the new station with a fresh GPS fix before ending Move.';
+    }
+  }
+  return undefined;
 }

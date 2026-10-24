@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
+import { distanceMeters } from '../../../../packages/geo/src/index.ts';
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
 import { isLiveGameplayState } from '../components/gameplay-nav-model.ts';
@@ -229,6 +230,9 @@ export function MapScreen() {
     ? projection?.visibleMap?.playableBoundary.geometry
     : previewRegion?.geometry;
   const savedHidingZone = projection?.hiddenState?.hidingZone;
+  const isMoveResolution = projection?.activeCardResolution?.resolutionKind === 'move';
+  const canSetRoundZone = projection?.lifecycleState === 'hide_phase' ||
+    (projection?.lifecycleState === 'seek_phase' && isMoveResolution);
   const savedZoneStation: TransitStationCandidate | undefined = savedHidingZone ? {
     stationId: savedHidingZone.stationId,
     name: savedHidingZone.stationName,
@@ -239,6 +243,16 @@ export function MapScreen() {
   const hiderLocationLocked = Boolean(
     projection?.hiddenState?.hiderLocationLocked ||
     (isHostView && projection?.hiddenState?.hiderLocation)
+  );
+  const arrivalSample = locationState.lastDeviceSample;
+  const arrivalSampleAgeMs = arrivalSample ? Date.now() - Date.parse(arrivalSample.recordedAt) : Number.POSITIVE_INFINITY;
+  const arrivalSampleIsFresh = arrivalSample?.source === 'device' && arrivalSampleAgeMs >= 0 && arrivalSampleAgeMs <= 30_000;
+  const arrivedAtSelectedStation = Boolean(
+    arrivalSample && arrivalSampleIsFresh && activeZoneStation &&
+    distanceMeters(
+      [arrivalSample.longitude, arrivalSample.latitude],
+      [activeZoneStation.longitude, activeZoneStation.latitude]
+    ) <= 100
   );
   const hideTimerRemaining = timingModel?.timers.find((timer) => timer.kind === 'hide')?.remainingSeconds;
 
@@ -741,7 +755,7 @@ export function MapScreen() {
           Round zone: {savedHidingZone.stationName} · {savedHidingZone.radiusMeters} m
         </Text>
       ) : null}
-      {liveGameplayState && projection?.lifecycleState === 'hide_phase' && (viewerRole === 'hider' || isHostView) && activeZoneStation ? (
+      {liveGameplayState && canSetRoundZone && (viewerRole === 'hider' || isHostView) && activeZoneStation ? (
         <Pressable
           accessibilityRole="button"
           disabled={state.loadState === 'loading' || savedHidingZone?.stationId === activeZoneStation.stationId}
@@ -760,34 +774,46 @@ export function MapScreen() {
           style={styles.stationSetZoneButton}
         >
           <Text style={styles.stationSetZoneLabel}>
-            {savedHidingZone?.stationId === activeZoneStation.stationId ? 'Round zone selected' : 'Set as round zone'}
+            {savedHidingZone?.stationId === activeZoneStation.stationId
+              ? 'Station already selected'
+              : isMoveResolution ? 'Set new Move zone' : 'Set as round zone'}
           </Text>
         </Pressable>
       ) : null}
-      {liveGameplayState && projection?.lifecycleState === 'hide_phase' &&
+      {liveGameplayState && canSetRoundZone &&
         (viewerRole === 'hider' || isHostView) && savedHidingZone &&
         savedHidingZone.stationId === activeZoneStation?.stationId ? (
           hiderLocationLocked ? (
             <Text style={styles.stationArrivalConfirmed}>
-              Station arrival confirmed. Hide phase will end when the clock expires.
+              {isMoveResolution ? 'Arrival confirmed. Finish Move when its printed timer expires.' : 'Station arrival confirmed. Hide phase will end when the clock expires.'}
             </Text>
           ) : (
             <Pressable
               accessibilityRole="button"
-              disabled={state.loadState === 'loading'}
+              disabled={state.loadState === 'loading' || !arrivedAtSelectedStation}
               onPress={() => void submitCommand({
                 type: 'lock_hider_location',
                 payload: {
-                  latitude: activeZoneStation.latitude,
-                  longitude: activeZoneStation.longitude,
-                  accuracyMeters: 10
+                  latitude: arrivalSample?.latitude ?? activeZoneStation.latitude,
+                  longitude: arrivalSample?.longitude ?? activeZoneStation.longitude,
+                  accuracyMeters: arrivalSample?.accuracyMeters ?? 10
                 }
               })}
               style={styles.stationArrivalButton}
             >
-              <Text style={styles.stationArrivalLabel}>I've arrived at {savedHidingZone.stationName}</Text>
+              <Text style={styles.stationArrivalLabel}>Confirm arrival at {savedHidingZone.stationName}</Text>
             </Pressable>
           )
+        ) : null}
+      {liveGameplayState && canSetRoundZone && (viewerRole === 'hider' || isHostView) &&
+        savedHidingZone?.stationId === activeZoneStation?.stationId && !hiderLocationLocked ? (
+          <Text style={styles.helperCopy}>
+            {arrivedAtSelectedStation
+              ? 'Fresh GPS confirms you are within 100 m of this station.'
+              : arrivalSampleIsFresh
+                ? 'Move within 100 m of the selected station before confirming arrival.'
+                : 'Waiting for a fresh GPS fix at the selected station.'}
+          </Text>
         ) : null}
       {!stationSearchLoading && !stationSearchError && transitStations.length === 0 ? (
         <Text style={styles.helperCopy}>Station candidates are loaded on demand from OpenStreetMap.</Text>
@@ -849,6 +875,14 @@ export function MapScreen() {
         ) : null}
 
         {projection?.paused ? <MatchTimingBanner model={timingModel} /> : null}
+
+        {projection?.activeCardResolution?.resolutionKind === 'move' ? (
+          <StateBanner
+            tone="info"
+            title="Move is in progress"
+            detail={`Original station: ${projection.activeCardResolution.moveOriginStationName ?? 'not recorded'}. The hider is choosing a new station. Seekers must stay put and must not ask questions. The Move timer duration is missing from the scanned rulebook, so follow the printed card and finish the window only after it expires.`}
+          />
+        ) : null}
 
         {activeMatch && !liveGameplayState ? (
           <View style={styles.setupShell}>

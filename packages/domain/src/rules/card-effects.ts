@@ -12,7 +12,7 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws';
+  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
@@ -181,6 +181,10 @@ export function buildCardResolutionPlan(
 
   if (cardDefinition.effects.some((effect) => effect.effectType === 'randomize_question')) {
     return { kind: 'randomize_question', discardRequirement: {} };
+  }
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'move_power_up')) {
+    return { kind: 'move', discardRequirement: { discardWholeHand: true } };
   }
 
   const disableTemplatesEffect = cardDefinition.effects.find((effect) => effect.effectType === 'disable_question_templates');
