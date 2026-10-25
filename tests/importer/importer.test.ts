@@ -227,6 +227,15 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.match(String(bridgeTroll?.rulebookGuidanceText), /elevated structure.*pedestrians, cars, or other vehicles/i);
   assert.equal(bridgeTroll?.automationLevel, 'assisted');
   assert.equal(bridgeTroll?.effects[0]?.effectType, 'bridge_troll_challenge');
+  const birdGuide = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bird-guide');
+  assert.equal(birdGuide?.automationLevel, 'assisted');
+  assert.equal(birdGuide?.effects[0]?.effectType, 'bird_guide_challenge');
+  assert.equal(birdGuide?.requirements?.requiresVideoUpload, true);
+  assert.deepEqual(birdGuide?.effects[0]?.payload, {
+    maximumFilmingMinutesByScale: { small: 5, medium: 10, large: 15 },
+    requireHiderBirdInFrameAttestation: true,
+    requireSeekerHiderApproval: true
+  });
   const uTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-u-turn');
   assert.match(String(uTurn?.rulebookGuidanceText), /ignore skipped stops/i);
   assert.equal(uTurn?.automationLevel, 'assisted');
@@ -347,6 +356,14 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   const bridgeTroll = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
   assert.equal(bridgeTroll?.automationLevel, 'assisted');
   assert.equal(bridgeTroll?.effects[0]?.effectType, 'bridge_troll_challenge');
+  const birdGuide = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bird-guide');
+  assert.equal(birdGuide?.automationLevel, 'assisted');
+  assert.equal(birdGuide?.effects[0]?.effectType, 'bird_guide_challenge');
+  assert.deepEqual(birdGuide?.effects[0]?.payload, {
+    maximumFilmingMinutesByScale: { small: 5, medium: 10, large: 15 },
+    requireHiderBirdInFrameAttestation: true,
+    requireSeekerHiderApproval: true
+  });
   const uTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-u-turn');
   assert.equal(uTurn?.automationLevel, 'assisted');
   assert.equal(uTurn?.effects[0]?.effectType, 'u_turn_challenge');

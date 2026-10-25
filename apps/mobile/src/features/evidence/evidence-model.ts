@@ -17,6 +17,8 @@ export interface SelectedMediaAsset {
   width?: number;
   height?: number;
   fileSizeBytes?: number;
+  durationMs?: number;
+  mediaType?: 'image' | 'video';
 }
 
 export interface LocalEvidenceContextDescriptor {
@@ -51,6 +53,8 @@ export interface LocalMediaAttachmentDraft {
   width?: number;
   height?: number;
   fileSizeBytes?: number;
+  durationMs?: number;
+  mediaType?: 'image' | 'video';
   createdAt: string;
   stage: LocalMediaDraftStage;
 }
@@ -67,7 +71,7 @@ export function createLocalMediaAttachmentDraft(args: {
     (args.context.kind === 'question'
       ? 'Question evidence image'
       : args.context.kind === 'card'
-        ? 'Card evidence image'
+        ? args.context.attachmentKind === 'video_evidence' ? 'Card evidence video' : 'Card evidence image'
         : 'Chat image');
 
   return {
@@ -89,6 +93,8 @@ export function createLocalMediaAttachmentDraft(args: {
     width: args.asset.width,
     height: args.asset.height,
     fileSizeBytes: args.asset.fileSizeBytes,
+    durationMs: args.asset.durationMs,
+    mediaType: args.asset.mediaType,
     createdAt: args.createdAt ?? new Date().toISOString(),
     stage: 'selected_local'
   };
@@ -130,6 +136,9 @@ export function buildAttachmentUploadCommandFromDraft(
   if (draft.fileSizeBytes !== undefined) {
     metadata.fileSizeBytes = draft.fileSizeBytes;
   }
+
+  if (draft.durationMs !== undefined) metadata.durationMs = draft.durationMs;
+  if (draft.mediaType !== undefined) metadata.mediaType = draft.mediaType;
 
   if (options?.captureMetadata) {
     Object.assign(metadata, options.captureMetadata);

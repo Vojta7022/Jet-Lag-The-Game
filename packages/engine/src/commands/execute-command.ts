@@ -1397,6 +1397,7 @@ function eventsForCommand(
               rightTurnDurationMinutes: resolutionPlan.kind === 'right_turn_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               rightTurnDeadEndDistanceMeters: resolutionPlan.kind === 'right_turn_challenge' ? resolutionPlan.deadEndDistanceMeters : undefined,
               unguidedTouristOutdoorsConfirmedByPlayerIds: resolutionPlan.kind === 'unguided_tourist_challenge' ? [] : undefined,
+              birdGuideMaximumDurationMinutes: resolutionPlan.kind === 'bird_guide_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               uTurnAlternateTransitWindowMinutes: resolutionPlan.kind === 'u_turn_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorDurationMinutes: resolutionPlan.kind === 'jammed_door_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorRetryCooldownMinutes: resolutionPlan.doorwayRetryCooldownMinutes,
@@ -1579,6 +1580,24 @@ function eventsForCommand(
             hiderAttachmentId: envelope.command.payload.unguidedTouristHiderAttachmentId!,
             hiderRulesAttested: envelope.command.payload.unguidedTouristRulesAttested === true,
             requiredSeekerPlayerIds: seekerTeam?.memberPlayerIds ?? []
+          }
+        }));
+      }
+
+      if (activeResolution?.resolutionKind === 'bird_guide_challenge') {
+        const attachment = envelope.command.payload.birdGuideHiderAttachmentId
+          ? aggregate!.attachments[envelope.command.payload.birdGuideHiderAttachmentId]
+          : undefined;
+        const durationMs = Number(attachment?.captureMetadata.durationMs ?? 0);
+        const maximumDurationMs = (activeResolution.birdGuideMaximumDurationMinutes ?? 5) * 60_000;
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'bird_guide_challenge_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            hiderAttachmentId: attachment!.attachmentId,
+            hiderBirdInFrameAttested: envelope.command.payload.birdGuideBirdPresentAttested === true,
+            hiderDurationMs: durationMs,
+            maximumDurationMs
           }
         }));
       }
@@ -1960,6 +1979,24 @@ function eventsForCommand(
     case 'review_unguided_tourist_photo':
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
         type: 'unguided_tourist_photo_reviewed',
+        payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId, approved: envelope.command.payload.approved }
+      })];
+    case 'submit_bird_guide_video': {
+      const challenge = aggregate!.birdGuideChallenge!;
+      const attachment = aggregate!.attachments[envelope.command.payload.attachmentId]!;
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'bird_guide_video_submitted',
+        payload: {
+          sourceCardInstanceId: challenge.sourceCardInstanceId,
+          attachmentId: attachment.attachmentId,
+          playerId: envelope.actor.playerId!,
+          durationMs: Number(attachment.captureMetadata.durationMs)
+        }
+      })];
+    }
+    case 'review_bird_guide_video':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'bird_guide_video_reviewed',
         payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId, approved: envelope.command.payload.approved }
       })];
     case 'confirm_egg_partner_acquired':

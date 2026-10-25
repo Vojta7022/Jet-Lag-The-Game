@@ -87,6 +87,8 @@ export type DomainCommand =
   | ConfirmUnguidedTouristOutdoorsCommand
   | SubmitUnguidedTouristPhotoCommand
   | ReviewUnguidedTouristPhotoCommand
+  | SubmitBirdGuideVideoCommand
+  | ReviewBirdGuideVideoCommand
   | ConfirmEggPartnerAcquiredCommand
   | ReportEggPartnerMemberLostCommand
   | ReportJammedDoorRollCommand
@@ -374,6 +376,8 @@ export interface ResolveCardWindowCommand {
     cairnTargetConfirmed?: boolean;
     unguidedTouristHiderAttachmentId?: string;
     unguidedTouristRulesAttested?: boolean;
+    birdGuideHiderAttachmentId?: string;
+    birdGuideBirdPresentAttested?: boolean;
   };
 }
 
@@ -517,6 +521,16 @@ export interface SubmitUnguidedTouristPhotoCommand {
 
 export interface ReviewUnguidedTouristPhotoCommand {
   type: 'review_unguided_tourist_photo';
+  payload: { sourceCardInstanceId: string; approved: boolean };
+}
+
+export interface SubmitBirdGuideVideoCommand {
+  type: 'submit_bird_guide_video';
+  payload: { sourceCardInstanceId: string; attachmentId: string };
+}
+
+export interface ReviewBirdGuideVideoCommand {
+  type: 'review_bird_guide_video';
   payload: { sourceCardInstanceId: string; approved: boolean };
 }
 

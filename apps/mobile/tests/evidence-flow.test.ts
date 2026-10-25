@@ -69,6 +69,40 @@ test('media picker unavailable guidance stays honest about local setup requireme
   assert.match(cameraUnavailable.title, /Camera/i);
 });
 
+test('Bird Guide evidence is public video with duration retained in the match attachment metadata', () => {
+  const contentPack = loadContentPack();
+  const projection = {
+    visibleQuestions: [], visibleCards: [], visibleAttachments: [],
+    activeCardResolution: {
+      sourceCardInstanceId: 'card:bird-guide', resolutionKind: 'bird_guide_challenge',
+      birdGuideMaximumDurationMinutes: 5
+    }
+  } as unknown as MatchProjection;
+  const context = buildEvidenceContexts(contentPack, projection, 'hider').find((item) => item.kind === 'card');
+  assert.ok(context);
+  assert.equal(context?.attachmentKind, 'video_evidence');
+  assert.equal(context?.suggestedVisibilityScope, 'public_match');
+  assert.match(context?.detail ?? '', /bird.*in frame/i);
+
+  const draft = createLocalMediaAttachmentDraft({
+    context: {
+      contextId: context!.contextId, kind: 'card', title: context!.title, detail: context!.detail,
+      visibilityScope: context!.suggestedVisibilityScope, attachmentKind: context!.attachmentKind,
+      cardInstanceId: context!.cardInstanceId
+    },
+    asset: { uri: 'file:///bird.mp4', source: 'camera', mimeType: 'video/mp4', durationMs: 4_250, mediaType: 'video' },
+    createId: () => 'bird-video',
+    createdAt: '2026-10-25T12:00:00.000Z'
+  });
+  const command = buildAttachmentUploadCommandFromDraft(draft);
+  assert.equal(command.type, 'upload_attachment');
+  if (command.type === 'upload_attachment') {
+    assert.equal(command.payload.kind, 'video_evidence');
+    assert.equal(command.payload.captureMetadata?.durationMs, 4_250);
+    assert.equal(command.payload.captureMetadata?.mediaType, 'video');
+  }
+});
+
 test('chat media selections build real attachment commands before the message send command', () => {
   const localDraft = createLocalMediaAttachmentDraft({
     context: {

@@ -211,6 +211,84 @@ test('Unguided Tourist requires seeker outdoors confirmations and hider photo ap
   assert.equal(aggregate.seekPhaseSubstate, 'awaiting_question_selection');
 });
 
+test('Bird Guide uses the printed one-shot filming limit for each scale', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('bird guide'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'bird_guide_challenge', description: card.description, automationLevel: 'assisted',
+    payload: { maximumFilmingMinutesByScale: { small: 5, medium: 10, large: 15 }, requireHiderBirdInFrameAttestation: true, requireSeekerHiderApproval: true } } as never];
+  assert.equal(buildCardResolutionPlan(card, 'small').kind, 'bird_guide_challenge');
+  assert.equal(buildCardResolutionPlan(card, 'small').activeDurationMinutes, 5);
+  assert.equal(buildCardResolutionPlan(card, 'medium').activeDurationMinutes, 10);
+  assert.equal(buildCardResolutionPlan(card, 'large').activeDurationMinutes, 15);
+});
+
+test('Bird Guide blocks questions until a seeker video matches the hider recording and is approved', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('bird guide'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'bird_guide_challenge', description: card.description, automationLevel: 'assisted',
+    payload: { maximumFilmingMinutesByScale: { small: 5, medium: 10, large: 15 }, requireHiderBirdInFrameAttestation: true, requireSeekerHiderApproval: true } } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.selectedScale = 'small';
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 100), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'upload_attachment', payload: { attachmentId: 'bird:hider', kind: 'video_evidence', label: 'Hider bird video', visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera', durationMs: 4_000 } } }, 101), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'upload_attachment', payload: { attachmentId: 'bird:hider-second', kind: 'video_evidence', label: 'Second hider take', visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera', durationMs: 4_000 } } }, 101.5), contentPack), /only one/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, birdGuideHiderAttachmentId: 'bird:hider', birdGuideBirdPresentAttested: false } }, 102), contentPack), /bird.*in frame/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, birdGuideHiderAttachmentId: 'bird:hider', birdGuideBirdPresentAttested: true } }, 103), contentPack).aggregate;
+  assert.equal(aggregate.birdGuideChallenge?.hiderDurationMs, 4_000);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 104), contentPack), /ready/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'upload_attachment', payload: { attachmentId: 'bird:short', kind: 'video_evidence', label: 'Short bird attempt', visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera', durationMs: 3_999 } } }, 105), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'submit_bird_guide_video', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: 'bird:short' } }, 106), contentPack), /same amount of time or longer/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'upload_attachment', payload: { attachmentId: 'bird:attempt-one', kind: 'video_evidence', label: 'Bird attempt one', visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera', durationMs: 4_000 } } }, 107), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'submit_bird_guide_video', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: 'bird:attempt-one' } }, 108), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'upload_attachment', payload: { attachmentId: 'bird:attempt-too-soon', kind: 'video_evidence', label: 'Premature retry', visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera', durationMs: 4_100 } } }, 108.5), contentPack), /review the current video/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'review_bird_guide_video', payload: { sourceCardInstanceId: cardInstanceId, approved: false } }, 109), contentPack).aggregate;
+  assert.equal(aggregate.birdGuideChallenge?.rejectedAttemptCount, 1);
+  assert.ok(aggregate.birdGuideChallenge);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'upload_attachment', payload: { attachmentId: 'bird:attempt-two', kind: 'video_evidence', label: 'Bird attempt two', visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera', durationMs: 5_000 } } }, 110), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'submit_bird_guide_video', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: 'bird:attempt-two' } }, 111), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'review_bird_guide_video', payload: { sourceCardInstanceId: cardInstanceId, approved: true } }, 112), contentPack).aggregate;
+  assert.equal(aggregate.birdGuideChallenge, undefined);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 113), contentPack).aggregate;
+  assert.equal(aggregate.seekPhaseSubstate, 'awaiting_question_selection');
+});
+
 test('Labyrinth blocks questions until a seeker solution is approved by the hider', () => {
   const contentPack = loadEngineTestContentPack();
   const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('labyrinth'));

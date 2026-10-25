@@ -10,6 +10,7 @@ import {
 import { AppButton } from '../../ui/AppButton.tsx';
 import { Field } from '../../ui/Field.tsx';
 import { colors } from '../../ui/theme.ts';
+import { InlineVideoPlayer } from './InlineVideoPlayer.tsx';
 
 interface LocalMediaDraftListProps {
   drafts: LocalMediaAttachmentDraft[];
@@ -34,7 +35,9 @@ export function LocalMediaDraftList(props: LocalMediaDraftListProps) {
     <View style={styles.list}>
       {props.drafts.map((draft) => (
         <View key={draft.attachmentId} style={styles.card}>
-          <Image source={{ uri: draft.uri }} style={styles.preview} resizeMode="cover" />
+          {draft.mediaType === 'video' ? (
+            <View style={styles.preview}><InlineVideoPlayer uri={draft.uri} /></View>
+          ) : <Image source={{ uri: draft.uri }} style={styles.preview} resizeMode="cover" />}
           <View style={styles.content}>
             <Text style={styles.meta}>
               {formatLocalMediaDraftStage(draft.stage)} • {draft.source === 'camera' ? 'Camera' : 'Library'}

@@ -601,3 +601,10 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Keep seeker questions and transit blocked until a seeker submits a fresh public camera photo and attests to no internet research, then the active hider approves it. Rejection clears the pending attempt and permits a retry.
 - [x] Add player-facing clue/check-in, photo submission, and hider review controls; show the scan clarification that road parts, curbs, and sidewalks do not qualify.
 - [x] Verify both workbook profiles, engine lifecycle and gates, public evidence-context guidance, full suite (427/427), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Screenshot distance/image compliance, actual outdoor presence, and internet use remain human-attested; native camera/location and cellular field play remain unverified.
+
+### Completed implementation slice: Curse of the Bird Guide video challenge
+
+- [x] Import the scan-backed 5/10/15-minute scale limits in both workbook profiles and regenerate the draft content pack.
+- [x] Enforce one public camera video from the hider, a bird-in-frame start attestation, seeker camera attempts no shorter than the hider's video, scale duration caps, serialized hider review/retry, and question blocking until approval.
+- [x] Add camera video capture, local/remote video playback, duration metadata, and role-specific hider/seeker controls to the mobile card flow; store online evidence in the existing authenticated Supabase attachment path.
+- [x] Verify engine and media flows, both workbook mappings, full suite (430/430), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). People must still confirm the bird is recognizable and remains in frame; the app enforces duration and records attestation but does not inspect video content. Native phone camera playback and hosted/cellular storage remain unverified.

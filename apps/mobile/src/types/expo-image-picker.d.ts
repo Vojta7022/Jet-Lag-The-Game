@@ -13,6 +13,8 @@ declare module 'expo-image-picker' {
     mimeType?: string | null;
     fileName?: string | null;
     fileSize?: number;
+    duration?: number | null;
+    type?: 'image' | 'video' | 'livePhoto' | 'pairedVideo' | null;
     width: number;
     height: number;
   }
@@ -41,5 +43,6 @@ declare module 'expo-image-picker' {
     mediaTypes?: MediaType | MediaType[];
     allowsEditing?: boolean;
     quality?: number;
+    videoMaxDuration?: number;
   }): Promise<ImagePickerResult>;
 }

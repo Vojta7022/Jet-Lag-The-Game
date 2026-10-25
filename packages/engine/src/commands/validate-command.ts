@@ -53,6 +53,7 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'hangman_challenge',
   'labyrinth_challenge',
   'unguided_tourist_challenge',
+  'bird_guide_challenge',
   'bridge_troll_challenge',
   'seeker_off_transit_challenge',
   'u_turn_challenge',
@@ -80,6 +81,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.zoologistChallenge ||
     aggregate.luxuryCarChallenge ||
     aggregate.unguidedTouristChallenge ||
+    aggregate.birdGuideChallenge ||
     (aggregate.activeCardResolution?.resolutionKind &&
       QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
   );
@@ -547,6 +549,10 @@ export function validateCommandEnvelope(
 
   if (envelope.command.type === 'begin_question_prompt' && aggregate.unguidedTouristChallenge) {
     return [error(envelope.command.type, 'QUESTION_BLOCKED_BY_CURSE', 'Seekers are not ready to ask questions until the active challenge is cleared.')];
+  }
+
+  if (envelope.command.type === 'begin_question_prompt' && aggregate.birdGuideChallenge) {
+    return [error(envelope.command.type, 'QUESTION_BLOCKED_BY_CURSE', 'Seekers are not ready to ask questions until the active Bird Guide video is approved.')];
   }
 
   switch (envelope.command.type) {
@@ -1342,6 +1348,39 @@ export function validateCommandEnvelope(
         ];
       }
 
+      if (envelope.command.payload.kind === 'video_evidence' && envelope.command.payload.cardInstanceId) {
+        const resolution = aggregate.activeCardResolution;
+        const challenge = aggregate.birdGuideChallenge;
+        const cardInstanceId = envelope.command.payload.cardInstanceId;
+        const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+        const durationMs = Number(envelope.command.payload.captureMetadata?.durationMs ?? 0);
+        if (resolution?.sourceCardInstanceId === cardInstanceId && resolution.resolutionKind === 'bird_guide_challenge') {
+          const activeHider = Object.values(aggregate.roleAssignments).find((assignment) => assignment.role === 'hider')?.playerId;
+          const priorHiderVideo = Object.values(aggregate.attachments).some((attachment) =>
+            attachment.linkedCardInstanceId === cardInstanceId && attachment.kind === 'video_evidence' && attachment.ownerPlayerId === envelope.actor.playerId
+          );
+          if ((actorRole !== 'host' && (actorRole !== 'hider' || envelope.actor.playerId !== activeHider)) || priorHiderVideo) {
+            return [error(envelope.command.type, 'BIRD_GUIDE_ONE_HIDER_RECORDING', 'The hider can record only one Bird Guide video.')];
+          }
+          if (envelope.command.payload.visibilityScope !== 'public_match' || envelope.command.payload.captureMetadata?.pickerSource !== 'camera' ||
+            !Number.isFinite(durationMs) || durationMs <= 0 || durationMs > (resolution.birdGuideMaximumDurationMinutes ?? 5) * 60_000) {
+            return [error(envelope.command.type, 'BIRD_GUIDE_HIDER_VIDEO_INVALID', 'Record one public camera video within the scale’s Bird Guide time limit.')];
+          }
+        } else if (challenge?.sourceCardInstanceId === cardInstanceId) {
+          const seekerIds = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.memberPlayerIds ?? [];
+          if (challenge.candidate) {
+            return [error(envelope.command.type, 'BIRD_GUIDE_REVIEW_PENDING', 'Wait for the hider to review the current video before recording another attempt.')];
+          }
+          if (!envelope.actor.playerId || !seekerIds.includes(envelope.actor.playerId) || actorRole !== 'seeker') {
+            return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may record a Bird Guide attempt.')];
+          }
+          if (envelope.command.payload.visibilityScope !== 'public_match' || envelope.command.payload.captureMetadata?.pickerSource !== 'camera' ||
+            !Number.isFinite(durationMs) || durationMs <= 0 || durationMs > challenge.maximumDurationMs) {
+            return [error(envelope.command.type, 'BIRD_GUIDE_SEEKER_VIDEO_INVALID', 'Record a public camera video within the Bird Guide time limit.')];
+          }
+        }
+      }
+
       if (label.length === 0 && note.length === 0) {
         return [
           error(
@@ -1614,6 +1653,24 @@ export function validateCommandEnvelope(
         }
       }
 
+      if (activeResolution.resolutionKind === 'bird_guide_challenge') {
+        const attachment = envelope.command.payload.birdGuideHiderAttachmentId
+          ? aggregate.attachments[envelope.command.payload.birdGuideHiderAttachmentId]
+          : undefined;
+        const durationMs = Number(attachment?.captureMetadata.durationMs ?? 0);
+        const maximumDurationMs = (activeResolution.birdGuideMaximumDurationMinutes ?? 5) * 60_000;
+        if (envelope.command.payload.birdGuideBirdPresentAttested !== true) {
+          return [error(envelope.command.type, 'BIRD_GUIDE_FRAME_ATTESTATION_REQUIRED', 'Confirm the bird was in frame when recording started. Any recognizable part counts.')];
+        }
+        if (!attachment || attachment.kind !== 'video_evidence' ||
+          attachment.linkedCardInstanceId !== activeResolution.sourceCardInstanceId ||
+          attachment.ownerPlayerId !== envelope.actor.playerId || attachment.visibilityScope !== 'public_match' ||
+          attachment.captureMetadata.pickerSource !== 'camera' || !Number.isFinite(durationMs) || durationMs <= 0 ||
+          durationMs > maximumDurationMs) {
+          return [error(envelope.command.type, 'BIRD_GUIDE_HIDER_VIDEO_REQUIRED', `Record a public camera video of the bird, no longer than ${maximumDurationMs / 60_000} minutes, then attach it to this card.`)];
+        }
+      }
+
       if (activeResolution.resolutionKind === 'zoologist_challenge') {
         const category = envelope.command.payload.zoologistCategory;
         const attachment = envelope.command.payload.zoologistHiderAttachmentId
@@ -1760,6 +1817,43 @@ export function validateCommandEnvelope(
       const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
       if (actorRole !== 'host' && (actorRole !== 'hider' || envelope.actor.playerId !== activeHider)) {
         return [error(envelope.command.type, 'FORBIDDEN', 'Only the active hider can approve or reject the seekers’ photo.')];
+      }
+      return [];
+    }
+    case 'submit_bird_guide_video': {
+      const challenge = aggregate.birdGuideChallenge;
+      const payload = envelope.command.payload;
+      const attachment = aggregate.attachments[payload.attachmentId];
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'BIRD_GUIDE_NOT_ACTIVE', 'There is no active Bird Guide video challenge.')];
+      }
+      if (challenge.candidate) return [error(envelope.command.type, 'BIRD_GUIDE_REVIEW_PENDING', 'Wait for the hider to review the current video before submitting another.')];
+      const seekerIds = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.memberPlayerIds ?? [];
+      if (!envelope.actor.playerId || !seekerIds.includes(envelope.actor.playerId) ||
+        (getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role) !== 'seeker') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may submit a matching bird video.')];
+      }
+      const durationMs = Number(attachment?.captureMetadata.durationMs ?? 0);
+      if (!attachment || attachment.kind !== 'video_evidence' || attachment.linkedCardInstanceId !== payload.sourceCardInstanceId ||
+        attachment.ownerPlayerId !== envelope.actor.playerId || attachment.visibilityScope !== 'public_match' ||
+        attachment.captureMetadata.pickerSource !== 'camera' || Date.parse(attachment.createdAt) <= Date.parse(challenge.activatedAt) ||
+        !Number.isFinite(durationMs) || durationMs <= 0 || durationMs > challenge.maximumDurationMs) {
+        return [error(envelope.command.type, 'BIRD_GUIDE_CAMERA_VIDEO_REQUIRED', 'Record a new public camera video of a bird within the challenge time limit and attach it to this card.')];
+      }
+      if (durationMs < challenge.hiderDurationMs) {
+        return [error(envelope.command.type, 'BIRD_GUIDE_VIDEO_TOO_SHORT', 'Your bird video must last the same amount of time or longer than the hider recording.')];
+      }
+      return [];
+    }
+    case 'review_bird_guide_video': {
+      const challenge = aggregate.birdGuideChallenge;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || !challenge.candidate) {
+        return [error(envelope.command.type, 'BIRD_GUIDE_VIDEO_NOT_PENDING', 'There is no seeker video awaiting hider review.')];
+      }
+      const activeHider = Object.values(aggregate.roleAssignments).find((assignment) => assignment.role === 'hider')?.playerId;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (actorRole !== 'host' && (actorRole !== 'hider' || envelope.actor.playerId !== activeHider)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the active hider can approve or reject the seekers’ bird video.')];
       }
       return [];
     }

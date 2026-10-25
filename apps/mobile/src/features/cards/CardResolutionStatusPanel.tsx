@@ -34,6 +34,7 @@ interface CardResolutionStatusPanelProps {
   luxuryCarHiderAttachmentId?: string;
   labyrinthHiderAttachmentId?: string;
   unguidedTouristHiderAttachmentId?: string;
+  birdGuideHiderAttachmentId?: string;
   unguidedTouristOutdoorsConfirmedByPlayerIds?: string[];
   unguidedTouristSeekerPlayerIds?: string[];
   viewerPlayerId?: string;
@@ -49,7 +50,8 @@ interface CardResolutionStatusPanelProps {
     uTurnSelection?: { nextStationName: string; preconditionsConfirmed: true },
     ransomNoteSelection?: { castingCostConfirmed: true },
     cairnSelection?: { targetHeight: number; targetConfirmed: true },
-    unguidedTouristSelection?: { hiderAttachmentId: string; rulesAttested: true }
+    unguidedTouristSelection?: { hiderAttachmentId: string; rulesAttested: true },
+    birdGuideSelection?: { hiderAttachmentId: string; birdPresentAttested: true }
   ) => void;
 }
 
@@ -71,6 +73,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [cairnTargetConfirmed, setCairnTargetConfirmed] = useState(false);
   const [labyrinthSolution, setLabyrinthSolution] = useState('');
   const [unguidedTouristRulesAttested, setUnguidedTouristRulesAttested] = useState(false);
+  const [birdGuideFrameAttested, setBirdGuideFrameAttested] = useState(false);
   const [clockNow, setClockNow] = useState(Date.now());
   useEffect(() => {
     setSelectedTemplateIds([]);
@@ -90,6 +93,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     setCairnTargetConfirmed(false);
     setLabyrinthSolution('');
     setUnguidedTouristRulesAttested(false);
+    setBirdGuideFrameAttested(false);
   }, [props.resolution?.sourceCardInstanceId]);
   useEffect(() => {
     if (props.resolution?.resolutionKind !== 'labyrinth_challenge') return;
@@ -126,6 +130,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const labyrinthChallenge = props.resolution?.resolutionKind === 'labyrinth_challenge';
   const rightTurnChallenge = props.resolution?.resolutionKind === 'right_turn_challenge';
   const unguidedTouristChallenge = props.resolution?.resolutionKind === 'unguided_tourist_challenge';
+  const birdGuideChallenge = props.resolution?.resolutionKind === 'bird_guide_challenge';
   const touristConfirmed = props.unguidedTouristOutdoorsConfirmedByPlayerIds ?? [];
   const touristSeekers = props.unguidedTouristSeekerPlayerIds ?? [];
   const touristOutdoorsComplete = touristSeekers.every((playerId) => touristConfirmed.includes(playerId));
@@ -157,6 +162,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     (!cairnChallenge || (Number.isSafeInteger(Number(cairnTargetHeight)) && Number(cairnTargetHeight) >= 1 && cairnTargetConfirmed)) &&
     (!labyrinthChallenge || labyrinth?.status === 'solved') &&
     (!unguidedTouristChallenge || (Boolean(props.unguidedTouristHiderAttachmentId) && touristOutdoorsComplete && unguidedTouristRulesAttested)) &&
+    (!birdGuideChallenge || (Boolean(props.birdGuideHiderAttachmentId) && birdGuideFrameAttested)) &&
     !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
@@ -536,6 +542,19 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         </View>
       ) : null}
 
+      {birdGuideChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>BIRD GUIDE · ONE TAKE</Text>
+          <Text style={styles.copy}>Hider: record one continuous video, up to {props.resolution?.birdGuideMaximumDurationMinutes ?? 5} minutes on this scale. A recognizable part of the bird must already be in frame when recording begins. If the bird leaves the frame, stop recording. Seekers later need a bird video at least this long; the hider can request another seeker attempt.</Text>
+          <Text style={styles.copy}>{props.birdGuideHiderAttachmentId ? 'Your public camera video is ready to start the challenge.' : 'Record your one Bird Guide video in Card Evidence below.'}</Text>
+          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: birdGuideFrameAttested }} onPress={() => setBirdGuideFrameAttested((value) => !value)} style={styles.uTurnCheckboxRow}>
+            <View style={[styles.uTurnCheckbox, birdGuideFrameAttested ? styles.uTurnCheckboxOn : undefined]}><Text style={styles.uTurnCheck}>{birdGuideFrameAttested ? '✓' : ''}</Text></View>
+            <Text style={styles.copy}>I confirm a recognizable part of the bird was in frame when my recording started.</Text>
+          </Pressable>
+          <Text style={styles.copy}>The app records video duration, but players must verify the bird remains in frame and that both videos show a bird.</Text>
+        </View>
+      ) : null}
+
       {uTurnChallenge ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>U-TURN TRANSIT CHECK</Text>
@@ -609,6 +628,9 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             : undefined,
           unguidedTouristChallenge && unguidedTouristRulesAttested && props.unguidedTouristHiderAttachmentId
             ? { hiderAttachmentId: props.unguidedTouristHiderAttachmentId, rulesAttested: true }
+            : undefined,
+          birdGuideChallenge && birdGuideFrameAttested && props.birdGuideHiderAttachmentId
+            ? { hiderAttachmentId: props.birdGuideHiderAttachmentId, birdPresentAttested: true }
             : undefined
         )}
         disabled={!canSubmit || props.disabled}

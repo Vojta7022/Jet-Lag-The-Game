@@ -11,6 +11,7 @@ import {
 import {
   captureImageWithCamera,
   pickImageFromLibrary,
+  recordVideoWithCamera,
   type MediaSelectionResult
 } from './media-picker.ts';
 
@@ -24,7 +25,7 @@ function buildFeedbackFromSelection(result: MediaSelectionResult): EvidenceConte
   if (result.status === 'selected') {
     return {
       tone: 'success',
-      title: 'Photo ready on this device',
+      title: `${result.asset.mediaType === 'video' ? 'Video' : 'Photo'} ready on this device`,
       detail: 'The preview stays local to this device until you record the attachment in match state.'
     };
   }
@@ -91,6 +92,16 @@ export function useLocalMediaAttachments(createId: () => string) {
     setContextBusy(context.contextId, true);
     try {
       const result = await captureImageWithCamera();
+      return appendSelection(context, result);
+    } finally {
+      setContextBusy(context.contextId, false);
+    }
+  }, [appendSelection, setContextBusy]);
+
+  const recordVideo = useCallback(async (context: LocalEvidenceContextDescriptor, maxDurationSeconds: number) => {
+    setContextBusy(context.contextId, true);
+    try {
+      const result = await recordVideoWithCamera(maxDurationSeconds);
       return appendSelection(context, result);
     } finally {
       setContextBusy(context.contextId, false);
@@ -186,6 +197,7 @@ export function useLocalMediaAttachments(createId: () => string) {
   return {
     chooseFromLibrary,
     takePhoto,
+    recordVideo,
     updateDraft,
     removeDraft,
     markSubmitting,

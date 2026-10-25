@@ -148,6 +148,7 @@ export interface CardDefinition {
   rewardsOrPenalties?: CardEffectDefinition[];
   requirements?: {
     requiresPhotoUpload?: boolean;
+    requiresVideoUpload?: boolean;
     requiresDiceRoll?: boolean;
     requiresLocationSelection?: boolean;
     requiresManualApproval?: boolean;

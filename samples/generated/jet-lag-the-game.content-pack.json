@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T20:38:01.590Z",
+    "importedAt": "2026-10-25T20:56:35.260Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -1911,7 +1911,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": true
+        "requiresPhotoUpload": true,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -1995,7 +1996,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": true,
-        "requiresPhotoUpload": true
+        "requiresPhotoUpload": true,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2084,7 +2086,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2165,7 +2168,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2247,7 +2251,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2321,7 +2326,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": true,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2401,7 +2407,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": true
+        "requiresPhotoUpload": true,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2486,7 +2493,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2566,7 +2574,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2652,7 +2661,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2743,7 +2753,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2824,7 +2835,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2905,7 +2917,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2985,7 +2998,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": true,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3070,7 +3084,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3150,7 +3165,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": true,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3236,7 +3252,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3323,7 +3340,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": true
+        "requiresPhotoUpload": true,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3381,7 +3399,7 @@
       "shortName": "Curse Of The Bird Guide",
       "description": "You have one chance to film a bird for as long as possible. Up to [S5 M10 L15] minutes straight, if at any point the bird leaves the frame your timer is stopped. The seekers must then film a bird for the same amount of time or longer",
       "rulebookGuidanceText": "The bird must be in frame when recording starts. Any recognizable part of it counts as in frame. Seekers have unlimited attempts to record their matching video.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3391,19 +3409,26 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "bird_guide_challenge",
           "description": "You have one chance to film a bird for as long as possible. Up to [S5 M10 L15] minutes straight, if at any point the bird leaves the frame your timer is stopped. The seekers must then film a bird for the same amount of time or longer",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "You have one chance to film a bird for as long as possible. Up to [S5 M10 L15] minutes straight, if at any point the bird leaves the frame your timer is stopped. The seekers must then film a bird for the same amount of time or longer",
           "payload": {
-            "workbookName": "Curse Of The Bird Guide"
+            "maximumFilmingMinutesByScale": {
+              "small": 5,
+              "medium": 10,
+              "large": 15
+            },
+            "requireHiderBirdInFrameAttestation": true,
+            "requireSeekerHiderApproval": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": true,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": true
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3414,7 +3439,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {
@@ -3484,7 +3509,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3569,7 +3595,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3651,7 +3678,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3733,7 +3761,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3818,7 +3847,8 @@
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": false,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": false,
+        "requiresVideoUpload": false
       },
       "visibilityPolicy": {
         "visibleTo": [

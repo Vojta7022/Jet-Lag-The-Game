@@ -239,7 +239,7 @@ export interface MatchProjection {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
     openedAt?: string;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     hangman?: {
       status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
       secretWord?: string;
@@ -274,6 +274,7 @@ export interface MatchProjection {
     rightTurnDurationMinutes?: number;
     rightTurnDeadEndDistanceMeters?: number;
     unguidedTouristOutdoorsConfirmedByPlayerIds?: string[];
+    birdGuideMaximumDurationMinutes?: number;
     uTurnAlternateTransitWindowMinutes?: number;
     jammedDoorRetryCooldownMinutes?: number;
     jammedDoorMinimumTotal?: number;
@@ -370,6 +371,16 @@ export interface MatchProjection {
     activatedAt: string;
     requiredSeekerPlayerIds: string[];
     candidate?: { attachmentId: string; submittedByPlayerId: string; attestedNoInternetResearch: boolean; submittedAt: string };
+    rejectedAttemptCount: number;
+  };
+  birdGuideChallenge?: {
+    sourceCardInstanceId: string;
+    hiderAttachmentId: string;
+    hiderBirdInFrameAttested: boolean;
+    hiderDurationMs: number;
+    maximumDurationMs: number;
+    activatedAt: string;
+    candidate?: { attachmentId: string; submittedByPlayerId: string; durationMs: number; submittedAt: string };
     rejectedAttemptCount: number;
   };
   eggPartnerChallenge?: {

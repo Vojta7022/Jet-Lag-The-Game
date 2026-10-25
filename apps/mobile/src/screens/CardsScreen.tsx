@@ -378,7 +378,7 @@ export function CardsScreen() {
             detail: activeCardEvidenceContext.detail,
             visibilityScope: activeCardEvidenceContext.suggestedVisibilityScope,
             teamId: activeCardEvidenceContext.teamId,
-            attachmentKind: 'photo_evidence',
+            attachmentKind: activeCardEvidenceContext.attachmentKind,
             cardInstanceId: activeCardEvidenceContext.cardInstanceId
           }
         : undefined,
@@ -446,6 +446,25 @@ export function CardsScreen() {
   const touristHiderAttachmentId = projection?.activeCardResolution?.resolutionKind === 'unguided_tourist_challenge'
     ? touristOwnedPhotos.at(-1)?.attachmentId
     : undefined;
+  const birdGuideCardInstanceId = projection?.activeCardResolution?.resolutionKind === 'bird_guide_challenge'
+    ? projection.activeCardResolution.sourceCardInstanceId
+    : projection?.birdGuideChallenge?.sourceCardInstanceId;
+  const birdGuideVideos = birdGuideCardInstanceId && activeMatch?.recipient.playerId
+    ? projection?.visibleAttachments.filter((attachment) => attachment.linkedCardInstanceId === birdGuideCardInstanceId &&
+        attachment.ownerPlayerId === activeMatch.recipient.playerId && attachment.kind === 'video_evidence' &&
+        attachment.visibilityScope === 'public_match') ?? []
+    : [];
+  const birdGuideHiderAttachmentId = projection?.activeCardResolution?.resolutionKind === 'bird_guide_challenge'
+    ? birdGuideVideos.at(-1)?.attachmentId
+    : undefined;
+  const birdGuideSeekerAttachmentId = projection?.birdGuideChallenge
+    ? birdGuideVideos.at(-1)?.attachmentId
+    : undefined;
+  const birdGuideMaximumDurationMinutes = projection?.activeCardResolution?.resolutionKind === 'bird_guide_challenge'
+    ? projection.activeCardResolution.birdGuideMaximumDurationMinutes ?? 5
+    : projection?.birdGuideChallenge
+      ? Math.floor(projection.birdGuideChallenge.maximumDurationMs / 60_000)
+      : undefined;
   const resolveDisabledReason =
     activeCard && !canResolve
       ? getCardResolutionBlockedReason(viewerRole, projection) ?? 'The hider holding this card or a host-admin must close the active card window after the effect is handled.'
@@ -552,6 +571,29 @@ export function CardsScreen() {
               <AppButton label="Send found photo to hider" disabled={state.loadState === 'loading' || !touristOwnPhotoId || !touristNoInternetConfirmed} onPress={() => touristOwnPhotoId && void submitCommand({ type: 'submit_unguided_tourist_photo', payload: { sourceCardInstanceId: projection.unguidedTouristChallenge!.sourceCardInstanceId, attachmentId: touristOwnPhotoId, attestedNoInternetResearch: true } })} />
             </>
           ) : null}
+        </Panel>
+      ) : null}
+
+      {projection?.birdGuideChallenge ? (
+        <Panel title="Curse of the Bird Guide" subtitle="Match the hider’s bird recording." tone="accent">
+          <Text style={styles.copy}>Hider’s one-take target: {Math.ceil(projection.birdGuideChallenge.hiderDurationMs / 1000)} seconds. Scale cap: {Math.floor(projection.birdGuideChallenge.maximumDurationMs / 60_000)} minutes. The hider must confirm that a recognizable part of the bird was already in frame at the start.</Text>
+          {projection.birdGuideChallenge.candidate ? (
+            <>
+              <Text style={styles.copy}>A seeker submitted a {Math.ceil(projection.birdGuideChallenge.candidate.durationMs / 1000)} second video. The hider checks that it shows a bird and lasts at least as long as the reference.</Text>
+              {(viewerRole === 'hider' || viewerRole === 'host') ? (
+                <View style={styles.buttonRow}>
+                  <AppButton label="Needs another try" tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'review_bird_guide_video', payload: { sourceCardInstanceId: projection.birdGuideChallenge!.sourceCardInstanceId, approved: false } })} />
+                  <AppButton label="Approve video" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'review_bird_guide_video', payload: { sourceCardInstanceId: projection.birdGuideChallenge!.sourceCardInstanceId, approved: true } })} />
+                </View>
+              ) : null}
+            </>
+          ) : viewerRole === 'seeker' ? (
+            <>
+              <Text style={styles.copy}>{birdGuideSeekerAttachmentId ? 'Your camera video is ready to send.' : 'Record a bird video that lasts at least as long as the hider’s.'}</Text>
+              <AppButton label="Send bird video to hider" disabled={state.loadState === 'loading' || !birdGuideSeekerAttachmentId} onPress={() => birdGuideSeekerAttachmentId && void submitCommand({ type: 'submit_bird_guide_video', payload: { sourceCardInstanceId: projection.birdGuideChallenge!.sourceCardInstanceId, attachmentId: birdGuideSeekerAttachmentId } })} />
+            </>
+          ) : <Text style={styles.copy}>Waiting for the seekers to submit a matching bird video.</Text>}
+          <Text style={styles.copy}>Players verify bird identity and continuous framing by watching the videos. The app checks recorded duration and the hider’s frame-start attestation; it cannot inspect the video content.</Text>
         </Panel>
       ) : null}
 
@@ -1165,6 +1207,7 @@ export function CardsScreen() {
               luxuryCarHiderAttachmentId={luxuryCarHiderAttachmentId}
               labyrinthHiderAttachmentId={labyrinthHiderAttachmentId}
               unguidedTouristHiderAttachmentId={touristHiderAttachmentId}
+              birdGuideHiderAttachmentId={birdGuideHiderAttachmentId}
               unguidedTouristOutdoorsConfirmedByPlayerIds={projection.activeCardResolution.unguidedTouristOutdoorsConfirmedByPlayerIds}
               unguidedTouristSeekerPlayerIds={projection.players.filter((player) => player.role === 'seeker').map((player) => player.playerId)}
               viewerPlayerId={activeMatch?.recipient.playerId}
@@ -1227,7 +1270,7 @@ export function CardsScreen() {
                   type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId, dieRoll }
                 });
               }}
-              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection, ransomNoteSelection, cairnSelection, unguidedTouristSelection) => {
+              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection, ransomNoteSelection, cairnSelection, unguidedTouristSelection, birdGuideSelection) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -1264,6 +1307,10 @@ export function CardsScreen() {
                       unguidedTouristHiderAttachmentId: unguidedTouristSelection.hiderAttachmentId,
                       unguidedTouristRulesAttested: unguidedTouristSelection.rulesAttested
                     } : {})
+                    ,...(birdGuideSelection ? {
+                      birdGuideHiderAttachmentId: birdGuideSelection.hiderAttachmentId,
+                      birdGuideBirdPresentAttested: birdGuideSelection.birdPresentAttested
+                    } : {})
                   }
                 });
               }}
@@ -1283,12 +1330,17 @@ export function CardsScreen() {
               projection?.activeCardResolution?.resolutionKind === 'labyrinth_challenge' ||
               projection?.activeCardResolution?.resolutionKind === 'luxury_car_challenge' ||
               Boolean(projection?.zoologistChallenge) || Boolean(projection?.luxuryCarChallenge) || Boolean(projection?.unguidedTouristChallenge)}
+            videoOnly={cardAttachmentContext.attachmentKind === 'video_evidence'}
+            videoMaxDurationSeconds={(birdGuideMaximumDurationMinutes ?? 5) * 60}
             drafts={cardEvidenceDrafts}
             visibleAttachments={activeCardEvidenceContext?.attachments ?? []}
             disabled={
               !activeMatch ||
               state.loadState === 'loading' ||
-              viewerRole === 'spectator'
+              viewerRole === 'spectator' ||
+              (cardAttachmentContext.attachmentKind === 'video_evidence' && !(projection?.activeCardResolution?.resolutionKind === 'bird_guide_challenge'
+                ? viewerRole === 'hider' || viewerRole === 'host'
+                : Boolean(projection?.birdGuideChallenge) && viewerRole === 'seeker'))
             }
             busy={localMedia.isContextBusy(cardAttachmentContext.contextId)}
             feedback={localMedia.getContextFeedback(
@@ -1304,6 +1356,9 @@ export function CardsScreen() {
             }}
             onTakePhoto={() => {
               void localMedia.takePhoto(cardAttachmentContext);
+            }}
+            onRecordVideo={() => {
+              void localMedia.recordVideo(cardAttachmentContext, (birdGuideMaximumDurationMinutes ?? 5) * 60);
             }}
             onUpdateDraft={localMedia.updateDraft}
             onRemoveDraft={localMedia.removeDraft}

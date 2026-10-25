@@ -13,6 +13,7 @@ import { findActiveQuestion, findQuestionCategory, findQuestionTemplate } from '
 export interface EvidenceContextViewModel {
   contextId: string;
   kind: 'question' | 'card';
+  attachmentKind: 'photo_evidence' | 'video_evidence';
   title: string;
   detail: string;
   questionInstanceId?: string;
@@ -68,6 +69,7 @@ function resolveQuestionEvidenceContext(args: {
   return {
     contextId: `question:${question.questionInstanceId}`,
     kind: 'question',
+    attachmentKind: 'photo_evidence',
     title: `Photo Evidence: ${template.name}`,
     detail: 'Pick or capture an image, then record the attachment metadata honestly in the match before submitting the answer.',
     questionInstanceId: question.questionInstanceId,
@@ -82,8 +84,8 @@ function resolveQuestionEvidenceContext(args: {
   };
 }
 
-function cardRequiresPhotoEvidence(card: CardDefinition): boolean {
-  if (card.requirements?.requiresPhotoUpload) {
+function cardRequiresEvidence(card: CardDefinition): boolean {
+  if (card.requirements?.requiresPhotoUpload || card.requirements?.requiresVideoUpload) {
     return true;
   }
 
@@ -111,19 +113,25 @@ function resolveCardEvidenceContext(args: {
     args.projection.zoologistChallenge?.sourceCardInstanceId ??
     args.projection.luxuryCarChallenge?.sourceCardInstanceId ??
     args.projection.unguidedTouristChallenge?.sourceCardInstanceId;
-  if (!cardInstanceId) {
+  const challengeCardInstanceId = args.projection.birdGuideChallenge?.sourceCardInstanceId;
+  const resolvedCardInstanceId = cardInstanceId ?? challengeCardInstanceId;
+  if (!resolvedCardInstanceId) {
     return undefined;
   }
 
-  const activeCard = findVisibleCard(args.projection, cardInstanceId);
+  const activeCard = findVisibleCard(args.projection, resolvedCardInstanceId);
   const challengeEffectType = args.projection.zoologistChallenge
     ? 'zoologist_challenge'
     : args.projection.luxuryCarChallenge
       ? 'luxury_car_challenge'
       : args.projection.unguidedTouristChallenge
         ? 'unguided_tourist_challenge'
+      : args.projection.birdGuideChallenge
+        ? 'bird_guide_challenge'
       : args.projection.activeCardResolution?.resolutionKind === 'unguided_tourist_challenge'
         ? 'unguided_tourist_challenge'
+      : args.projection.activeCardResolution?.resolutionKind === 'bird_guide_challenge'
+        ? 'bird_guide_challenge'
       : args.projection.activeCardResolution?.resolutionKind === 'labyrinth_challenge'
         ? 'labyrinth_challenge'
       : undefined;
@@ -132,12 +140,12 @@ function resolveCardEvidenceContext(args: {
     : challengeEffectType
       ? args.contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === challengeEffectType))
       : undefined;
-  if (!definition || !cardRequiresPhotoEvidence(definition)) {
+  if (!definition || !cardRequiresEvidence(definition)) {
     return undefined;
   }
 
   const isPublicPhotoChallenge = definition.effects.some((effect) =>
-    effect.effectType === 'labyrinth_challenge' || effect.effectType === 'zoologist_challenge' || effect.effectType === 'luxury_car_challenge' || effect.effectType === 'unguided_tourist_challenge'
+    effect.effectType === 'labyrinth_challenge' || effect.effectType === 'zoologist_challenge' || effect.effectType === 'luxury_car_challenge' || effect.effectType === 'unguided_tourist_challenge' || effect.effectType === 'bird_guide_challenge'
   );
   const detail = definition.effects.some((effect) => effect.effectType === 'labyrinth_challenge')
     ? 'Take a camera photo of the hand-drawn maze and record it publicly so the seekers can solve it.'
@@ -149,18 +157,21 @@ function resolveCardEvidenceContext(args: {
         ? (args.projection.unguidedTouristChallenge
             ? 'Seekers take a new public camera photo of the found structure. The hider reviews it; the app records the no-internet attestation.'
             : 'The hider shares a public Street View screenshot from their photo library. Keep the image unzoomed, level with the horizon, and show a human-built structure other than any part of a road, curb, or sidewalk.')
+      : definition.effects.some((effect) => effect.effectType === 'bird_guide_challenge')
+        ? 'Record a new bird video with the bird already in frame. The hider has one recording; seekers may retry until the hider approves a video at least as long.'
       : 'Pick or capture supporting media, then record the attachment metadata honestly before the referee closes the card window.';
 
   const attachments = args.projection.visibleAttachments.filter(
-    (attachment) => attachment.linkedCardInstanceId === cardInstanceId
+    (attachment) => attachment.linkedCardInstanceId === resolvedCardInstanceId
   );
 
   return {
-    contextId: `card:${cardInstanceId}`,
+    contextId: `card:${resolvedCardInstanceId}`,
     kind: 'card',
+    attachmentKind: definition.effects.some((effect) => effect.effectType === 'bird_guide_challenge') ? 'video_evidence' : 'photo_evidence',
     title: `Card Evidence: ${definition.name}`,
     detail,
-    cardInstanceId,
+    cardInstanceId: resolvedCardInstanceId,
     suggestedVisibilityScope: isPublicPhotoChallenge ? 'public_match' : resolveSuggestedEvidenceScope({
       role: args.role,
       teamId: activeCard?.holderType === 'team' ? activeCard?.holderId : undefined

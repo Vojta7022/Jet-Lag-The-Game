@@ -3,7 +3,7 @@ import type { MatchRole } from './match.ts';
 
 export type ChatChannelKind = 'lobby' | 'global' | 'team';
 
-export type AttachmentKind = 'image' | 'photo_evidence' | 'file';
+export type AttachmentKind = 'image' | 'photo_evidence' | 'video_evidence' | 'file';
 
 export type AttachmentStatus = 'placeholder_pending' | 'linked';
 

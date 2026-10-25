@@ -308,6 +308,7 @@ export function reduceMatchAggregate(
         gamblersFeetChallenge: undefined,
         rightTurnChallenge: undefined,
         unguidedTouristChallenge: undefined,
+        birdGuideChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -353,6 +354,7 @@ export function reduceMatchAggregate(
         gamblersFeetChallenge: undefined,
         rightTurnChallenge: undefined,
         unguidedTouristChallenge: undefined,
+        birdGuideChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -828,6 +830,31 @@ export function reduceMatchAggregate(
         }
       };
     }
+    case 'bird_guide_challenge_started':
+      return { ...base, birdGuideChallenge: {
+        sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+        hiderAttachmentId: eventEnvelope.event.payload.hiderAttachmentId,
+        hiderBirdInFrameAttested: eventEnvelope.event.payload.hiderBirdInFrameAttested,
+        hiderDurationMs: eventEnvelope.event.payload.hiderDurationMs,
+        maximumDurationMs: eventEnvelope.event.payload.maximumDurationMs,
+        activatedAt: eventEnvelope.occurredAt,
+        rejectedAttemptCount: 0
+      } };
+    case 'bird_guide_video_submitted':
+      if (base.birdGuideChallenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return { ...base, birdGuideChallenge: { ...base.birdGuideChallenge,
+        candidate: { attachmentId: eventEnvelope.event.payload.attachmentId,
+          submittedByPlayerId: eventEnvelope.event.payload.playerId,
+          durationMs: eventEnvelope.event.payload.durationMs,
+          submittedAt: eventEnvelope.occurredAt }
+      } };
+    case 'bird_guide_video_reviewed': {
+      const challenge = base.birdGuideChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      if (eventEnvelope.event.payload.approved) return { ...base, birdGuideChallenge: undefined };
+      return { ...base, birdGuideChallenge: { ...challenge, candidate: undefined,
+        rejectedAttemptCount: challenge.rejectedAttemptCount + 1 } };
+    }
     case 'egg_partner_challenge_started':
       return {
         ...base,
@@ -1238,6 +1265,7 @@ export function reduceMatchAggregate(
           gamblersFeetDurationMinutes: eventEnvelope.event.payload.gamblersFeetDurationMinutes,
           rightTurnDurationMinutes: eventEnvelope.event.payload.rightTurnDurationMinutes,
           unguidedTouristOutdoorsConfirmedByPlayerIds: eventEnvelope.event.payload.unguidedTouristOutdoorsConfirmedByPlayerIds ?? [],
+          birdGuideMaximumDurationMinutes: eventEnvelope.event.payload.birdGuideMaximumDurationMinutes,
           rightTurnDeadEndDistanceMeters: eventEnvelope.event.payload.rightTurnDeadEndDistanceMeters,
           uTurnAlternateTransitWindowMinutes: eventEnvelope.event.payload.uTurnAlternateTransitWindowMinutes,
           jammedDoorRetryCooldownMinutes: eventEnvelope.event.payload.jammedDoorRetryCooldownMinutes,

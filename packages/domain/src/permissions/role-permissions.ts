@@ -45,6 +45,7 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'report_gamblers_feet_steps',
   'report_right_turn_route_choice',
   'review_unguided_tourist_photo',
+  'review_bird_guide_video',
   'confirm_egg_partner_acquired',
   'report_egg_partner_member_lost',
   'report_jammed_door_roll',
@@ -87,6 +88,7 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'publish_labyrinth_maze',
   'review_labyrinth_solution',
   'review_unguided_tourist_photo',
+  'review_bird_guide_video',
   'answer_question'
 ]);
 
@@ -116,6 +118,7 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'report_right_turn_route_choice',
   'confirm_unguided_tourist_outdoors',
   'submit_unguided_tourist_photo',
+  'submit_bird_guide_video',
   'confirm_egg_partner_acquired',
   'report_egg_partner_member_lost',
   'report_jammed_door_roll',

@@ -47,7 +47,9 @@ function normalizeAsset(
     fileName: asset.fileName ?? undefined,
     width: asset.width,
     height: asset.height,
-    fileSizeBytes: asset.fileSize
+    fileSizeBytes: asset.fileSize,
+    durationMs: asset.duration ?? undefined,
+    mediaType: asset.type === 'video' ? 'video' : 'image'
   };
 }
 
@@ -126,6 +128,42 @@ export async function captureImageWithCamera(): Promise<MediaSelectionResult> {
       status: 'error',
       title: 'Could not open the camera',
       detail: error instanceof Error ? error.message : 'The camera request failed.'
+    };
+  }
+}
+
+export async function recordVideoWithCamera(maxDurationSeconds: number): Promise<MediaSelectionResult> {
+  const imagePicker = await loadImagePickerModule();
+  if (!imagePicker) return describeUnavailablePicker('camera');
+  const permission = await imagePicker.requestCameraPermissionsAsync();
+  if (!permission.granted) {
+    return {
+      status: 'permission_denied',
+      title: 'Camera access denied',
+      detail: 'Allow camera access to record the Bird Guide video on this device.'
+    };
+  }
+  try {
+    const result = await imagePicker.launchCameraAsync({
+      mediaTypes: ['videos'],
+      videoMaxDuration: Math.max(1, Math.floor(maxDurationSeconds)),
+      allowsEditing: false
+    });
+    if (result.canceled || !result.assets?.[0]) return { status: 'cancelled' };
+    const asset = normalizeAsset(result.assets[0], 'camera');
+    if (asset.mediaType !== 'video' || !asset.durationMs || asset.durationMs <= 0) {
+      return {
+        status: 'error',
+        title: 'Video duration unavailable',
+        detail: 'This recording does not include a readable duration. Record a new video with the camera.'
+      };
+    }
+    return { status: 'selected', asset };
+  } catch (error) {
+    return {
+      status: 'error',
+      title: 'Could not record video',
+      detail: error instanceof Error ? error.message : 'The camera video request failed.'
     };
   }
 }

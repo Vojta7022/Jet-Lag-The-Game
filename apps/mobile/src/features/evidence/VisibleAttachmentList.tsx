@@ -12,6 +12,7 @@ import {
 
 import { useAppShell } from '../../providers/AppShellProvider.tsx';
 import { colors } from '../../ui/theme.ts';
+import { InlineVideoPlayer } from './InlineVideoPlayer.tsx';
 
 interface VisibleAttachmentListProps {
   attachments: VisibleAttachmentProjection[];
@@ -33,7 +34,9 @@ export function VisibleAttachmentList(props: VisibleAttachmentListProps) {
         const remotePreview = getAttachmentMediaSource(attachment);
         return (
           <View key={attachment.attachmentId} style={styles.card}>
-            {localPreview?.uri || remotePreview?.uri ? (
+            {attachment.kind === 'video_evidence' && (localPreview?.uri || remotePreview?.uri) ? (
+              <InlineVideoPlayer uri={localPreview?.uri ?? remotePreview!.uri} headers={localPreview?.uri ? undefined : remotePreview?.headers} height={160} />
+            ) : (localPreview?.uri || remotePreview?.uri) ? (
               <Image
                 source={localPreview?.uri ? { uri: localPreview.uri } : { uri: remotePreview!.uri, headers: remotePreview?.headers }}
                 style={styles.preview}

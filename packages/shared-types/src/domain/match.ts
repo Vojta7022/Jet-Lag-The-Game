@@ -411,7 +411,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -430,6 +430,7 @@ export interface CardResolutionWindow {
     rejectedAttemptCount: number;
   };
   unguidedTouristOutdoorsConfirmedByPlayerIds?: string[];
+  birdGuideMaximumDurationMinutes?: number;
   moveOriginStationId?: string;
   moveOriginStationName?: string;
   moveDurationSeconds?: number;
@@ -560,6 +561,17 @@ export interface UnguidedTouristChallengeModel {
   rejectedAttemptCount: number;
 }
 
+export interface BirdGuideChallengeModel {
+  sourceCardInstanceId: string;
+  hiderAttachmentId: string;
+  hiderBirdInFrameAttested: boolean;
+  hiderDurationMs: number;
+  maximumDurationMs: number;
+  activatedAt: string;
+  candidate?: { attachmentId: string; submittedByPlayerId: string; durationMs: number; submittedAt: string };
+  rejectedAttemptCount: number;
+}
+
 export interface EggPartnerChallengeModel {
   sourceCardInstanceId: string;
   activatedAt: string;
@@ -660,6 +672,7 @@ export interface MatchAggregate {
   gamblersFeetChallenge?: GamblersFeetChallengeModel;
   rightTurnChallenge?: RightTurnChallengeModel;
   unguidedTouristChallenge?: UnguidedTouristChallengeModel;
+  birdGuideChallenge?: BirdGuideChallengeModel;
   eggPartnerChallenge?: EggPartnerChallengeModel;
   jammedDoorChallenge?: JammedDoorChallengeModel;
   zoologistChallenge?: ZoologistChallengeModel;

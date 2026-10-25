@@ -168,6 +168,8 @@ export function validateStateForCommand(
     case 'confirm_unguided_tourist_outdoors':
     case 'submit_unguided_tourist_photo':
     case 'review_unguided_tourist_photo':
+    case 'submit_bird_guide_video':
+    case 'review_bird_guide_video':
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Seeker movement challenge reports are only available while seekers are searching.')];
@@ -200,6 +202,7 @@ export function validateStateForCommand(
         Boolean(aggregate.zoologistChallenge) ||
         Boolean(aggregate.luxuryCarChallenge) ||
         Boolean(aggregate.unguidedTouristChallenge) ||
+        Boolean(aggregate.birdGuideChallenge) ||
         isLifecycleState(aggregate, 'endgame') ||
         isLifecycleState(aggregate, 'game_complete')
         ? []

@@ -28,8 +28,11 @@ interface EvidenceCapturePanelProps {
   submitHint?: string;
   emptyVisibleText?: string;
   cameraOnly?: boolean;
+  videoOnly?: boolean;
+  videoMaxDurationSeconds?: number;
   onChooseFromLibrary: () => void;
   onTakePhoto: () => void;
+  onRecordVideo?: () => void;
   onUpdateDraft: (
     attachmentId: string,
     patch: Partial<Pick<LocalMediaAttachmentDraft, 'label' | 'note'>>
@@ -53,18 +56,24 @@ export function EvidenceCapturePanel(props: EvidenceCapturePanelProps) {
       ) : null}
 
       <View style={styles.actions}>
-        {!props.cameraOnly ? <AppButton
+        {!props.videoOnly && !props.cameraOnly ? <AppButton
           label={props.busy ? 'Opening Library...' : 'Choose Photo'}
           onPress={props.onChooseFromLibrary}
           disabled={props.disabled || props.busy}
           tone="secondary"
         /> : null}
-        <AppButton
+        {!props.videoOnly ? <AppButton
           label={props.busy ? 'Opening Camera...' : 'Take Photo'}
           onPress={props.onTakePhoto}
           disabled={props.disabled || props.busy}
           tone="secondary"
-        />
+        /> : null}
+        {props.videoOnly ? <AppButton
+          label={props.busy ? 'Opening Camera...' : 'Record Bird Video'}
+          onPress={props.onRecordVideo ?? props.onTakePhoto}
+          disabled={props.disabled || props.busy || !props.onRecordVideo}
+          tone="secondary"
+        /> : null}
       </View>
 
       <LocalMediaDraftList
@@ -84,7 +93,7 @@ export function EvidenceCapturePanel(props: EvidenceCapturePanelProps) {
 
       {props.submitHint ? <Text style={styles.copy}>{props.submitHint}</Text> : null}
       <Text style={styles.helper}>
-        If photo picking is unavailable in this build, the app will show a setup message instead of pretending the upload worked.
+        {props.videoOnly ? `Record with this device's camera, up to ${Math.ceil((props.videoMaxDurationSeconds ?? 0) / 60)} minutes.` : 'If photo picking is unavailable in this build, the app will show a setup message instead of pretending the upload worked.'}
       </Text>
 
       <View style={styles.visibleBlock}>
