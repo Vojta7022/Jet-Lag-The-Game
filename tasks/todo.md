@@ -158,10 +158,16 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 ### Partial implementation slice: Coastline Measuring
 
 - [x] Load bounded OSM `natural=coastline` ways as line geometry; use the same nearest mapped shoreline for the automatic closer/further answer and approximate map deduction.
-- [x] Add player guidance that mapped ocean coastline is only part of the scanned definition; great-lake shores and waterway connections of at least 2 km remain outside automatic coverage.
+- [x] Show the exact scanned inland-water conditions in answer guidance and keep manual referee adjudication until the map data can prove great-lake identity, direct waterway connectivity, and the continuous 2 km width rule.
 - [x] Verify provider clipping, line geometry, automatic answer/map update, and role guidance with fixture tests; full suite passes (325), mobile typecheck passes, and `git diff --check` is clean (2026-10-25).
 - [ ] Model and verify great-lake shorelines plus connected waterways at least 2 km wide; retain manual handling until the complete printed target can be represented.
 - [ ] Verify coastline data against a live coastal region. No live Overpass query was run for this slice (2026-10-25).
+
+### Completed implementation slice: exact Coastline answer guidance
+
+- [x] Preserve the printed definition in player guidance: ocean, a great lake, or water flowing directly to one through a waterway never narrower than 2 km.
+- [x] Keep ocean shoreline automation labeled approximate and inland cases referee-judged until lake identity, route connectivity, and continuous waterway width can be proven.
+- [x] Verify the UI rule text, full suite (384/384), mobile typecheck, the scored single-device referee round, and local online multiplayer smoke (2026-10-25).
 
 ### Completed implementation slice: scan-faithful Landmass Matching
 

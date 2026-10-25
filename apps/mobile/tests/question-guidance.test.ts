@@ -417,7 +417,7 @@ test('question guidance describes named water-shape Measuring and excludes swimm
   assert.match(describeExpectedAnswerGuidance(template, category), /swimming pools/i);
 });
 
-test('question guidance limits automatic coastline Measuring to mapped ocean shoreline', () => {
+test('question guidance preserves the full Coastline rule and identifies inland cases needing a referee', () => {
   const category = createCategory({
     categoryId: 'measuring',
     name: 'Measuring',
@@ -435,8 +435,11 @@ test('question guidance limits automatic coastline Measuring to mapped ocean sho
 
   const guidance = describeExpectedAnswerGuidance(template, category);
   assert.match(guidance, /mapped ocean[- ]coastline/i);
-  assert.match(guidance, /great-lake shorelines or waterways at least 2 km wide/i);
-  assert.match(guidance, /manual/i);
+  assert.match(guidance, /a great lake/i);
+  assert.match(guidance, /flowing directly into the ocean or a great lake/i);
+  assert.match(guidance, /never less than 2 km wide/i);
+  assert.match(guidance, /the app cannot verify those connections or widths/i);
+  assert.match(guidance, /referee must rule manually/i);
 });
 
 test('Tentacles guidance explains the seeker-anchored reach and automatic closest-place answer', () => {
