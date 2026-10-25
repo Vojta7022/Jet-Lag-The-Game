@@ -35,7 +35,8 @@ interface CardResolutionStatusPanelProps {
   onResolve: (
     questionTemplateIds: string[],
     zoologistSelection?: { category: ZoologistAnimalCategory; hiderAttachmentId: string },
-    luxuryCarSelection?: { hiderAttachmentId: string; description: string; productionYear: number; msrpCents: number; currencyCode: string }
+    luxuryCarSelection?: { hiderAttachmentId: string; description: string; productionYear: number; msrpCents: number; currencyCode: string },
+    uTurnSelection?: { nextStationName: string; preconditionsConfirmed: true }
   ) => void;
 }
 
@@ -50,6 +51,8 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [luxuryCarProductionYear, setLuxuryCarProductionYear] = useState('');
   const [luxuryCarMsrp, setLuxuryCarMsrp] = useState('');
   const [luxuryCarCurrencyCode, setLuxuryCarCurrencyCode] = useState('USD');
+  const [uTurnNextStationName, setUTurnNextStationName] = useState('');
+  const [uTurnPreconditionsConfirmed, setUTurnPreconditionsConfirmed] = useState(false);
   useEffect(() => {
     setSelectedTemplateIds([]);
     setHangmanWord('');
@@ -61,6 +64,8 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     setLuxuryCarProductionYear('');
     setLuxuryCarMsrp('');
     setLuxuryCarCurrencyCode('USD');
+    setUTurnNextStationName('');
+    setUTurnPreconditionsConfirmed(false);
   }, [props.resolution?.sourceCardInstanceId]);
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
@@ -86,6 +91,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const gamblersFeetChallenge = props.resolution?.resolutionKind === 'gamblers_feet_challenge';
   const zoologistChallenge = props.resolution?.resolutionKind === 'zoologist_challenge';
   const luxuryCarChallenge = props.resolution?.resolutionKind === 'luxury_car_challenge';
+  const uTurnChallenge = props.resolution?.resolutionKind === 'u_turn_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const normalizedLuxuryCarMsrp = luxuryCarMsrp.trim();
@@ -102,6 +108,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     (!hangmanChallenge || hangman?.status === 'solved' || hangman?.status === 'ended') &&
     (!zoologistChallenge || (Boolean(zoologistCategory) && Boolean(props.zoologistHiderAttachmentId))) &&
     (!luxuryCarChallenge || luxuryCarFormValid) &&
+    (!uTurnChallenge || (uTurnNextStationName.trim().length >= 2 && uTurnPreconditionsConfirmed)) &&
     !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
@@ -370,6 +377,19 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         </View>
       ) : null}
 
+      {uTurnChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>U-TURN TRANSIT CHECK</Text>
+          <Text style={styles.copy}>Name the next station the seekers’ current service will actually stop at. Another form of transit must serve that station within {props.resolution?.uTurnAlternateTransitWindowMinutes ?? 'the printed'} minutes. The next stop must be farther from the hider than the seekers’ current position.</Text>
+          <TextInput accessibilityLabel="U-Turn next station" onChangeText={setUTurnNextStationName} placeholder="Next actual stop" style={styles.hangmanInput} value={uTurnNextStationName} />
+          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: uTurnPreconditionsConfirmed }} onPress={() => setUTurnPreconditionsConfirmed((value) => !value)} style={styles.uTurnCheckboxRow}>
+            <View style={[styles.uTurnCheckbox, uTurnPreconditionsConfirmed ? styles.uTurnCheckboxOn : undefined]}><Text style={styles.uTurnCheck}>{uTurnPreconditionsConfirmed ? '✓' : ''}</Text></View>
+            <Text style={styles.copy}>I confirmed the actual next stop, that it is farther from the hider, and that another transit mode serves it within the time window.</Text>
+          </Pressable>
+          <Text style={styles.copy}>The app tracks the agreed stop and seeker confirmations. Route direction and alternate service availability are hider/referee attestations because the app does not have authoritative live service data.</Text>
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Next step</Text>
         <Text style={styles.copy}>{guidance.nextStep}</Text>
@@ -393,6 +413,9 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
                 msrpCents: luxuryCarMsrpCents,
                 currencyCode: luxuryCarCurrencyCode.trim().toUpperCase()
               }
+            : undefined,
+          uTurnChallenge && uTurnNextStationName.trim().length >= 2 && uTurnPreconditionsConfirmed
+            ? { nextStationName: uTurnNextStationName.trim(), preconditionsConfirmed: true }
             : undefined
         )}
         disabled={!canSubmit || props.disabled}
@@ -545,4 +568,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15
   },
+  uTurnCheckboxRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  uTurnCheckbox: { alignItems: 'center', backgroundColor: colors.surfaceRaised, borderColor: colors.borderStrong, borderRadius: 6, borderWidth: 1, height: 24, justifyContent: 'center', width: 24 },
+  uTurnCheckboxOn: { backgroundColor: colors.accentMuted, borderColor: colors.accent },
+  uTurnCheck: { color: colors.accentStrong, fontWeight: '900' },
 });

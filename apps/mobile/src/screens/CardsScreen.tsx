@@ -17,6 +17,7 @@ import {
   EggPartnerChallengePanel,
   JammedDoorChallengePanel,
   LuxuryCarChallengePanel,
+  UTurnChallengePanel,
   CardZoneSection,
   buildQuestionResponseCardReason,
   buildCardFlowBootstrapCommands,
@@ -561,6 +562,22 @@ export function CardsScreen() {
         </Panel>
       ) : null}
 
+      {projection?.uTurnChallenge ? (
+        <Panel title="Curse of the U-Turn" subtitle="Leave the current service at the next qualifying stop." tone="accent">
+          <UTurnChallengePanel
+            challenge={projection.uTurnChallenge}
+            players={projection.players.filter((player) => projection.uTurnChallenge?.requiredSeekerPlayerIds.includes(player.playerId)).map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+            viewerRole={viewerRole}
+            viewerPlayerId={activeMatch?.recipient.playerId}
+            disabled={state.loadState === 'loading'}
+            onReport={(stationName, targetPlayerId) => void submitCommand({
+              type: 'report_u_turn_disembarkation',
+              payload: { sourceCardInstanceId: projection.uTurnChallenge!.sourceCardInstanceId, stationName, targetPlayerId }
+            })}
+          />
+        </Panel>
+      ) : null}
+
       {activeMatch && latestLateResolvedQuestion && viewerRole === 'hider' ? (
         <StateBanner
           tone="warning"
@@ -1092,7 +1109,7 @@ export function CardsScreen() {
                   type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId, dieRoll }
                 });
               }}
-              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection) => {
+              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -1113,6 +1130,10 @@ export function CardsScreen() {
                       luxuryCarProductionYear: luxuryCarSelection.productionYear,
                       luxuryCarMsrpCents: luxuryCarSelection.msrpCents,
                       luxuryCarCurrencyCode: luxuryCarSelection.currencyCode
+                    } : {}),
+                    ...(uTurnSelection ? {
+                      uTurnNextStationName: uTurnSelection.nextStationName,
+                      uTurnPreconditionsConfirmed: uTurnSelection.preconditionsConfirmed
                     } : {})
                   }
                 });

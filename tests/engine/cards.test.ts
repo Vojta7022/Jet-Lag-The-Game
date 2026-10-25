@@ -349,6 +349,65 @@ test('Urban Explorer blocks questions until every seeker confirms they are off t
   assert.equal(askQuestion(82).lifecycleState, 'seek_phase');
 });
 
+test('U-Turn blocks questions until every seeker disembarks at the confirmed next station', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((item) => item.cardDefinitionId === 'curse-curse-of-the-u-turn');
+  assert.ok(card);
+  card.effects = [{ effectType: 'u_turn_challenge', description: card.description, automationLevel: 'assisted', payload: {
+    alternateTransitWindowMinutesByScale: { small: 30, medium: 30, large: 60 }
+  } } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.players['seeker-2'] = {
+    playerId: 'seeker-2', displayName: 'Second Seeker', connectionState: 'connected', joinedAt: aggregate.createdAt
+  };
+  aggregate.roleAssignments['seeker-2'] = { playerId: 'seeker-2', role: 'seeker', teamId: 'team-seeker' };
+  aggregate.teams['team-seeker']!.memberPlayerIds.push('seeker-2');
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  assert.equal(buildCardResolutionPlan(card, 'small').kind, 'u_turn_challenge');
+  assert.equal((buildCardResolutionPlan(card, 'small') as { activeDurationMinutes?: number }).activeDurationMinutes, 30);
+  assert.equal((buildCardResolutionPlan(card, 'large') as { activeDurationMinutes?: number }).activeDurationMinutes, 60);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, uTurnNextStationName: 'Central Station' } } as never, 70.5), contentPack), /confirm the seekers are moving farther/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, uTurnNextStationName: 'Central Station', uTurnPreconditionsConfirmed: true } } as never, 71), contentPack).aggregate;
+  assert.equal(aggregate.uTurnChallenge?.nextStationName, 'Central Station');
+  assert.equal(aggregate.uTurnChallenge?.alternateTransitWindowMinutes, 30);
+
+  const ask = (step: number) => {
+    const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'begin_question_prompt', payload: {} }, step), contentPack).aggregate;
+    return executeCommand(prompted, makeEnvelope(prompted.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'ask_question', payload: {
+        questionInstanceId: `question:u-turn:${step}`, templateId: 'matching-commercial-airport', targetTeamId: 'team-hider'
+      } }, step + 1), contentPack);
+  };
+  assert.throws(() => ask(72), /each seeker must confirm disembarking at central station/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'report_u_turn_disembarkation', payload: { sourceCardInstanceId: cardInstanceId, stationName: 'Central Station' } }, 73), contentPack), /does not have permission/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    { type: 'report_u_turn_disembarkation', payload: { sourceCardInstanceId: cardInstanceId, stationName: 'Central Station', targetPlayerId: 'seeker-2' } }, 73.5), contentPack).aggregate;
+  assert.ok(aggregate.uTurnChallenge?.disembarkedAtByPlayerId['seeker-2']);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_u_turn_disembarkation', payload: { sourceCardInstanceId: cardInstanceId, stationName: 'Wrong Station' } } as never, 74), contentPack), /confirm that you disembarked at central station/i);
+  assert.throws(() => ask(75), /each seeker must confirm disembarking at central station/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_u_turn_disembarkation', payload: { sourceCardInstanceId: cardInstanceId, stationName: 'Central Station' } }, 76), contentPack).aggregate;
+  assert.equal(aggregate.uTurnChallenge, undefined);
+  assert.equal(ask(77).aggregate.activeQuestionInstanceId, `question:u-turn:77`);
+});
+
 test('Water Weight opens an assisted supply challenge with its printed scale-specific bonus', () => {
   const contentPack = loadEngineTestContentPack();
   const waterWeight = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');
@@ -873,7 +932,7 @@ test('player_private projections can still see the viewer team shared hand witho
 test('resolved manual cards stay visible in the discard pile for the owning team after the card window closes', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
-  const cardInstanceId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-u-turn', 'team-hider');
+  const cardInstanceId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-cairn', 'team-hider');
 
   aggregate = executeCommand(
     aggregate,
@@ -1041,7 +1100,7 @@ test('Duplicate identifies a copied manual effect in its private resolution wind
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
   const duplicateCardId = moveCardToTeamHand(aggregate, 'power-up-duplicate', 'team-hider');
-  const originalCardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-u-turn', 'team-hider');
+  const originalCardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-cairn', 'team-hider');
 
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },

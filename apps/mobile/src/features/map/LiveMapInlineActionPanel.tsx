@@ -17,6 +17,7 @@ import {
   EggPartnerChallengePanel,
   JammedDoorChallengePanel,
   EndlessTumbleChallengePanel,
+  UTurnChallengePanel,
   CardZoneSection,
   HIDER_HAND_TARGET,
   resolveCurrentRole
@@ -85,6 +86,7 @@ export function LiveMapInlineActionPanel() {
     (projection?.lifecycleState === 'endgame' ? 'ready' : undefined);
   const capabilities = getQuestionFlowCapabilities(viewerRole);
   const seekerOffTransitRestriction = projection?.seekerOffTransitRestriction;
+  const uTurnChallenge = projection?.uTurnChallenge;
   const seekerPlayers = projection?.players.filter((player) => player.role === 'seeker') ?? [];
   const seekerTransitStatuses = seekerOffTransitRestriction?.statusByPlayerId ?? {};
   const allSeekersOffTransit = Boolean(
@@ -462,6 +464,19 @@ export function LiveMapInlineActionPanel() {
               );
             })() : null}
           </View>
+        ) : null}
+        {uTurnChallenge ? (
+          <UTurnChallengePanel
+            challenge={uTurnChallenge}
+            players={seekerPlayers.map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+            viewerRole={viewerRole}
+            viewerPlayerId={activeMatch?.recipient.playerId}
+            disabled={state.loadState === 'loading'}
+            onReport={(stationName, targetPlayerId) => void submitCommand({
+              type: 'report_u_turn_disembarkation',
+              payload: { sourceCardInstanceId: uTurnChallenge.sourceCardInstanceId, stationName, targetPlayerId }
+            })}
+          />
         ) : null}
         {waterWeightChallenge ? (
           <View style={styles.section}>

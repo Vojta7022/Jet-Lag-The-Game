@@ -238,7 +238,7 @@ export interface MatchProjection {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
     openedAt?: string;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     hangman?: {
       status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
       secretWord?: string;
@@ -260,6 +260,7 @@ export interface MatchProjection {
     endlessTumbleMinimumDistanceMeters?: number;
     endlessTumbleSuccessfulDieResults?: number[];
     gamblersFeetDurationMinutes?: number;
+    uTurnAlternateTransitWindowMinutes?: number;
     jammedDoorRetryCooldownMinutes?: number;
     jammedDoorMinimumTotal?: number;
     jammedDoorDurationMinutes?: number;
@@ -278,6 +279,14 @@ export interface MatchProjection {
     sourceCardInstanceId: string;
     activatedAt: string;
     statusByPlayerId: Record<string, { onTransitOrAtStation: boolean; updatedAt: string }>;
+  };
+  uTurnChallenge?: {
+    sourceCardInstanceId: string;
+    nextStationName: string;
+    alternateTransitWindowMinutes: number;
+    activatedAt: string;
+    requiredSeekerPlayerIds: string[];
+    disembarkedAtByPlayerId: Record<string, string>;
   };
   waterWeightChallenge?: {
     sourceCardInstanceId: string;

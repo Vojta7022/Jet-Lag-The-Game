@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T18:24:35.253Z",
+    "importedAt": "2026-10-25T18:40:04.384Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2455,7 +2455,7 @@
       "shortName": "Curse Of The U-Turn",
       "description": "Seeker(s) must disembark their current mode of transportation at the next station (as long as that station is served by another form of transit in the next [S0.5, M0.5, L1] hours",
       "rulebookGuidanceText": "Use the next station that the seekers’ current route will actually stop at; ignore skipped stops. If the route or stop is uncertain, ask the seekers and tell them which station you believe is next so they can confirm. A route that eventually moves toward the hider may still qualify when its next station is farther away.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -2465,18 +2465,23 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "u_turn_challenge",
           "description": "Seeker(s) must disembark their current mode of transportation at the next station (as long as that station is served by another form of transit in the next [S0.5, M0.5, L1] hours",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Seeker(s) must disembark their current mode of transportation at the next station (as long as that station is served by another form of transit in the next [S0.5, M0.5, L1] hours",
           "payload": {
-            "workbookName": "Curse Of The U-Turn"
+            "alternateTransitWindowMinutesByScale": {
+              "small": 30,
+              "medium": 30,
+              "large": 60
+            },
+            "requiredAttestations": "all_seekers_disembark_at_next_station"
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true,
+        "requiresManualApproval": false,
         "requiresPhotoUpload": false
       },
       "visibilityPolicy": {
@@ -2488,7 +2493,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

@@ -218,6 +218,12 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(bridgeTroll?.effects[0]?.effectType, 'bridge_troll_challenge');
   const uTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-u-turn');
   assert.match(String(uTurn?.rulebookGuidanceText), /ignore skipped stops/i);
+  assert.equal(uTurn?.automationLevel, 'assisted');
+  assert.equal(uTurn?.effects[0]?.effectType, 'u_turn_challenge');
+  assert.deepEqual(uTurn?.effects[0]?.payload, {
+    alternateTransitWindowMinutesByScale: { small: 30, medium: 30, large: 60 },
+    requiredAttestations: 'all_seekers_disembark_at_next_station'
+  });
   const urbanExplorer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
   assert.match(String(urbanExplorer?.rulebookGuidanceText), /questions already asked.*still need an answer/i);
   assert.equal(urbanExplorer?.automationLevel, 'assisted');
@@ -299,6 +305,13 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   const bridgeTroll = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
   assert.equal(bridgeTroll?.automationLevel, 'assisted');
   assert.equal(bridgeTroll?.effects[0]?.effectType, 'bridge_troll_challenge');
+  const uTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-u-turn');
+  assert.equal(uTurn?.automationLevel, 'assisted');
+  assert.equal(uTurn?.effects[0]?.effectType, 'u_turn_challenge');
+  assert.deepEqual(uTurn?.effects[0]?.payload, {
+    alternateTransitWindowMinutesByScale: { small: 30, medium: 30, large: 60 },
+    requiredAttestations: 'all_seekers_disembark_at_next_station'
+  });
   const urbanExplorer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
   assert.equal(urbanExplorer?.automationLevel, 'assisted');
   assert.equal(urbanExplorer?.effects[0]?.effectType, 'seeker_off_transit_challenge');

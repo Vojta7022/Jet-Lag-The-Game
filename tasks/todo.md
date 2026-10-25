@@ -552,3 +552,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Keep questions blocked until the hider accepts the seeker's car evidence; require a different photo after rejection.
 - [x] Add hider, seeker, and referee UI for photo capture, MSRP entry, comparison, and adjudication; retain public evidence context after the card window closes.
 - [x] Verify evidence ownership/freshness, strict MSRP comparison, rejection/retry, authorization, round reset, both import profiles, full suite (415/415), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). Model/year and MSRP source remain team-adjudicated where uncertain.
+
+### Completed implementation slice: Curse of the U-Turn transit gate
+
+- [x] Import the scan-backed assisted effect and scale-specific alternate-transit window in both workbook mappings.
+- [x] Record the hider-confirmed next stop and require every active seeker to report disembarking there before questions resume; reject wrong-stop and duplicate reports.
+- [x] Keep the route, direction, and alternate-service checks explicitly player-attested; do not imply the app has authoritative live transit service data.
+- [x] Add role-aware controls in Cards, Question Center, and Live Map, plus host referee controls for the single-device fallback; persist the challenge and clear it after all reports or on round reset.
+- [x] Verify command authorization, no early completion, all-seeker completion, scale windows, both import profiles, round reset, full suite (416/416), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25).

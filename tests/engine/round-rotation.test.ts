@@ -93,6 +93,14 @@ test('starting the next round rotates the hider, resets round state and deck, an
     activatedAt: found.createdAt,
     statusByPlayerId: {}
   };
+  found.uTurnChallenge = {
+    sourceCardInstanceId: 'u-turn-instance',
+    nextStationName: 'Central Station',
+    alternateTransitWindowMinutes: 30,
+    activatedAt: found.createdAt,
+    requiredSeekerPlayerIds: ['hider-1'],
+    disembarkedAtByPlayerId: {}
+  };
   found.zoologistChallenge = {
     sourceCardInstanceId: 'zoologist-instance',
     category: 'bird',
@@ -134,6 +142,7 @@ test('starting the next round rotates the hider, resets round state and deck, an
   assert.equal(next.disabledQuestionCategoryId, undefined);
   assert.equal(next.disabledQuestionCategorySourceCardInstanceId, undefined);
   assert.equal(next.seekerOffTransitRestriction, undefined);
+  assert.equal(next.uTurnChallenge, undefined);
   assert.equal(next.zoologistChallenge, undefined);
   assert.equal(next.luxuryCarChallenge, undefined);
   assert.equal(next.roleAssignments['seeker-1']?.role, 'hider');

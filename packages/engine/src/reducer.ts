@@ -299,6 +299,7 @@ export function reduceMatchAggregate(
         teams: Object.fromEntries(eventEnvelope.event.payload.teams.map((team) => [team.teamId, team])),
         hiderRotationOrder: eventEnvelope.event.payload.hiderRotationOrder,
         seekerOffTransitRestriction: undefined,
+        uTurnChallenge: undefined,
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
@@ -339,6 +340,7 @@ export function reduceMatchAggregate(
         activeQuestionInstanceId: undefined,
         activeCardResolution: undefined,
         seekerOffTransitRestriction: undefined,
+        uTurnChallenge: undefined,
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
@@ -523,6 +525,31 @@ export function reduceMatchAggregate(
           statusByPlayerId: {}
         }
       };
+    case 'u_turn_challenge_started':
+      return {
+        ...base,
+        uTurnChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          nextStationName: eventEnvelope.event.payload.nextStationName,
+          alternateTransitWindowMinutes: eventEnvelope.event.payload.alternateTransitWindowMinutes,
+          activatedAt: eventEnvelope.occurredAt,
+          requiredSeekerPlayerIds: eventEnvelope.event.payload.requiredSeekerPlayerIds,
+          disembarkedAtByPlayerId: {}
+        }
+      };
+    case 'u_turn_disembarkation_reported': {
+      const challenge = base.uTurnChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const disembarkedAtByPlayerId = {
+        ...challenge.disembarkedAtByPlayerId,
+        [eventEnvelope.event.payload.playerId]: eventEnvelope.occurredAt
+      };
+      const complete = challenge.requiredSeekerPlayerIds.every((playerId) => disembarkedAtByPlayerId[playerId]);
+      return {
+        ...base,
+        uTurnChallenge: complete ? undefined : { ...challenge, disembarkedAtByPlayerId }
+      };
+    }
     case 'seeker_transit_context_changed': {
       const restriction = base.seekerOffTransitRestriction;
       if (restriction?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
@@ -1062,6 +1089,7 @@ export function reduceMatchAggregate(
           endlessTumbleMinimumDistanceMeters: eventEnvelope.event.payload.endlessTumbleMinimumDistanceMeters,
           endlessTumbleSuccessfulDieResults: eventEnvelope.event.payload.endlessTumbleSuccessfulDieResults,
           gamblersFeetDurationMinutes: eventEnvelope.event.payload.gamblersFeetDurationMinutes,
+          uTurnAlternateTransitWindowMinutes: eventEnvelope.event.payload.uTurnAlternateTransitWindowMinutes,
           jammedDoorRetryCooldownMinutes: eventEnvelope.event.payload.jammedDoorRetryCooldownMinutes,
           jammedDoorMinimumTotal: eventEnvelope.event.payload.jammedDoorMinimumTotal,
           jammedDoorDurationMinutes: eventEnvelope.event.payload.jammedDoorDurationMinutes,

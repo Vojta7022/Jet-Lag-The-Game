@@ -1392,6 +1392,7 @@ function eventsForCommand(
               endlessTumbleMinimumDistanceMeters: resolutionPlan.minimumDistanceMeters,
               endlessTumbleSuccessfulDieResults: resolutionPlan.successfulDieResults,
               gamblersFeetDurationMinutes: resolutionPlan.kind === 'gamblers_feet_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
+              uTurnAlternateTransitWindowMinutes: resolutionPlan.kind === 'u_turn_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorDurationMinutes: resolutionPlan.kind === 'jammed_door_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorRetryCooldownMinutes: resolutionPlan.doorwayRetryCooldownMinutes,
               jammedDoorMinimumTotal: resolutionPlan.doorwayMinimumTotal,
@@ -1555,6 +1556,19 @@ function eventsForCommand(
         events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
           type: 'seeker_off_transit_restriction_started',
           payload: { sourceCardInstanceId: activeResolution.sourceCardInstanceId }
+        }));
+      }
+
+      if (activeResolution?.resolutionKind === 'u_turn_challenge') {
+        const seekerTeam = Object.values(aggregate!.teams).find((team) => team.side === 'seeker');
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'u_turn_challenge_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            nextStationName: envelope.command.payload.uTurnNextStationName!.trim(),
+            alternateTransitWindowMinutes: activeResolution.uTurnAlternateTransitWindowMinutes!,
+            requiredSeekerPlayerIds: seekerTeam?.memberPlayerIds ?? []
+          }
         }));
       }
 
@@ -1907,6 +1921,15 @@ function eventsForCommand(
         payload: {
           sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
           accepted: envelope.command.payload.accepted
+        }
+      })];
+    case 'report_u_turn_disembarkation':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'u_turn_disembarkation_reported',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          playerId: envelope.command.payload.targetPlayerId ?? envelope.actor.playerId!,
+          stationName: envelope.command.payload.stationName.trim()
         }
       })];
     case 'complete_cooldown':

@@ -53,6 +53,7 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'hangman_challenge',
   'bridge_troll_challenge',
   'seeker_off_transit_challenge',
+  'u_turn_challenge',
   'water_weight_challenge',
   'endless_tumble_challenge',
   'lemon_phylactery_challenge',
@@ -65,6 +66,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
   return Boolean(
     aggregate.bridgeTrollChallenge ||
     aggregate.seekerOffTransitRestriction ||
+    aggregate.uTurnChallenge ||
     aggregate.waterWeightChallenge ||
     aggregate.endlessTumbleChallenge ||
     aggregate.lemonPhylacteryChallenge ||
@@ -882,6 +884,14 @@ export function validateCommandEnvelope(
           return [error(envelope.command.type, 'URBAN_EXPLORER_TRANSIT_RESTRICTED', 'Seekers cannot ask while anyone is on transit or at a train station.')];
         }
       }
+      if (aggregate.uTurnChallenge) {
+        const missingPlayer = aggregate.uTurnChallenge.requiredSeekerPlayerIds.some((playerId) =>
+          !aggregate.uTurnChallenge!.disembarkedAtByPlayerId[playerId]
+        );
+        if (missingPlayer) {
+          return [error(envelope.command.type, 'U_TURN_DISEMBARKATION_REQUIRED', `Each seeker must confirm disembarking at ${aggregate.uTurnChallenge.nextStationName}.`)];
+        }
+      }
       if (aggregate.waterWeightChallenge && !aggregate.waterWeightChallenge.liquidAcquiredAt) {
         return [error(envelope.command.type, 'WATER_WEIGHT_LIQUID_REQUIRED', 'Seekers must confirm they acquired the required new liquid before asking another question.')];
       }
@@ -1583,6 +1593,15 @@ export function validateCommandEnvelope(
         }
       }
 
+      if (activeResolution.resolutionKind === 'u_turn_challenge') {
+        const stationName = envelope.command.payload.uTurnNextStationName?.trim();
+        if (!stationName || stationName.length > 120 || envelope.command.payload.uTurnPreconditionsConfirmed !== true ||
+          !Number.isInteger(activeResolution.uTurnAlternateTransitWindowMinutes) ||
+          (activeResolution.uTurnAlternateTransitWindowMinutes ?? 0) <= 0) {
+          return [error(envelope.command.type, 'U_TURN_PRECONDITIONS_REQUIRED', 'Record the next actual stop and confirm the seekers are moving farther from the hider and another transit mode serves that stop within the displayed time window.')];
+        }
+      }
+
       if (activeResolution.resolutionKind === 'move') {
         if (
           typeof activeResolution.moveDurationSeconds === 'number' &&
@@ -1710,6 +1729,27 @@ export function validateCommandEnvelope(
       const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
       if (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId)) {
         return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must update their own transit status from their seeker account.')];
+      }
+      return [];
+    }
+    case 'report_u_turn_disembarkation': {
+      const challenge = aggregate.uTurnChallenge;
+      const { sourceCardInstanceId, stationName } = envelope.command.payload;
+      if (!challenge || challenge.sourceCardInstanceId !== sourceCardInstanceId) {
+        return [error(envelope.command.type, 'U_TURN_NOT_ACTIVE', 'There is no active U-Turn transit challenge.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const playerId = actorRole === 'host' ? envelope.command.payload.targetPlayerId : envelope.actor.playerId;
+      const reportedPlayerRole = getPlayerRole(aggregate, playerId);
+      if (!playerId || !challenge.requiredSeekerPlayerIds.includes(playerId) || reportedPlayerRole !== 'seeker' ||
+        (actorRole !== 'host' && (actorRole !== 'seeker' || envelope.command.payload.targetPlayerId !== undefined))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must report from their own account; only the host referee may record a report on a seeker’s behalf.')];
+      }
+      if (challenge.disembarkedAtByPlayerId[playerId]) {
+        return [error(envelope.command.type, 'U_TURN_ALREADY_REPORTED', 'You have already confirmed this U-Turn stop.')];
+      }
+      if (typeof stationName !== 'string' || stationName.trim().toLocaleLowerCase() !== challenge.nextStationName.toLocaleLowerCase()) {
+        return [error(envelope.command.type, 'U_TURN_STATION_MISMATCH', `Confirm that you disembarked at ${challenge.nextStationName}.`)];
       }
       return [];
     }

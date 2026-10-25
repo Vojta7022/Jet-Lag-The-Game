@@ -66,6 +66,7 @@ export type DomainCommand =
   | EndHangmanChallengeCommand
   | SetBridgeTrollPositionCommand
   | SetSeekerTransitContextCommand
+  | ReportUTurnDisembarkationCommand
   | ConfirmWaterWeightLiquidAcquiredCommand
   | ReportWaterWeightLiquidLostCommand
   | ResolveEndlessTumbleCastCommand
@@ -353,6 +354,8 @@ export interface ResolveCardWindowCommand {
     luxuryCarProductionYear?: number;
     luxuryCarMsrpCents?: number;
     luxuryCarCurrencyCode?: string;
+    uTurnNextStationName?: string;
+    uTurnPreconditionsConfirmed?: boolean;
   };
 }
 
@@ -379,6 +382,11 @@ export interface SetBridgeTrollPositionCommand {
 export interface SetSeekerTransitContextCommand {
   type: 'set_seeker_transit_context';
   payload: { sourceCardInstanceId: string; onTransitOrAtStation: boolean };
+}
+
+export interface ReportUTurnDisembarkationCommand {
+  type: 'report_u_turn_disembarkation';
+  payload: { sourceCardInstanceId: string; stationName: string; targetPlayerId?: string };
 }
 
 export interface ConfirmWaterWeightLiquidAcquiredCommand {

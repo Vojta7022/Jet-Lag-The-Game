@@ -105,6 +105,8 @@ export type DomainEvent =
   | BridgeTrollPositionChangedEvent
   | SeekerOffTransitRestrictionStartedEvent
   | SeekerTransitContextChangedEvent
+  | UTurnChallengeStartedEvent
+  | UTurnDisembarkationReportedEvent
   | WaterWeightChallengeStartedEvent
   | WaterWeightLiquidAcquiredEvent
   | WaterWeightLiquidLostEvent
@@ -447,7 +449,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -461,6 +463,7 @@ export interface CardResolutionOpenedEvent {
     endlessTumbleMinimumDistanceMeters?: number;
     endlessTumbleSuccessfulDieResults?: number[];
     gamblersFeetDurationMinutes?: number;
+    uTurnAlternateTransitWindowMinutes?: number;
     jammedDoorRetryCooldownMinutes?: number;
     jammedDoorMinimumTotal?: number;
     jammedDoorDurationMinutes?: number;
@@ -509,6 +512,21 @@ export interface SeekerOffTransitRestrictionStartedEvent {
 export interface SeekerTransitContextChangedEvent {
   type: 'seeker_transit_context_changed';
   payload: { sourceCardInstanceId: string; playerId: string; onTransitOrAtStation: boolean };
+}
+
+export interface UTurnChallengeStartedEvent {
+  type: 'u_turn_challenge_started';
+  payload: {
+    sourceCardInstanceId: string;
+    nextStationName: string;
+    alternateTransitWindowMinutes: number;
+    requiredSeekerPlayerIds: string[];
+  };
+}
+
+export interface UTurnDisembarkationReportedEvent {
+  type: 'u_turn_disembarkation_reported';
+  payload: { sourceCardInstanceId: string; playerId: string; stationName: string };
 }
 
 export interface WaterWeightChallengeStartedEvent {

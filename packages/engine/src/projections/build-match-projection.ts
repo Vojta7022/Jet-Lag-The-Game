@@ -525,6 +525,7 @@ export function buildMatchProjection(
     activeCardResolution,
     bridgeTrollChallenge: aggregate.bridgeTrollChallenge,
     seekerOffTransitRestriction: aggregate.seekerOffTransitRestriction,
+    uTurnChallenge: aggregate.uTurnChallenge,
     waterWeightChallenge: aggregate.waterWeightChallenge,
     endlessTumbleChallenge: aggregate.endlessTumbleChallenge,
     lemonPhylacteryChallenge: aggregate.lemonPhylacteryChallenge,

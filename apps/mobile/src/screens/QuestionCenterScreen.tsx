@@ -68,6 +68,7 @@ import { EndlessTumbleChallengePanel } from '../features/cards/EndlessTumbleChal
 import { GamblersFeetChallengePanel } from '../features/cards/GamblersFeetChallengePanel.tsx';
 import { EggPartnerChallengePanel } from '../features/cards/EggPartnerChallengePanel.tsx';
 import { JammedDoorChallengePanel } from '../features/cards/JammedDoorChallengePanel.tsx';
+import { UTurnChallengePanel } from '../features/cards/UTurnChallengePanel.tsx';
 
 function resolveCurrentRole(
   role: string | undefined,
@@ -878,6 +879,22 @@ export function QuestionCenterScreen() {
           <Text style={styles.helper}>
             Update your status whenever your situation changes. The app requires every seeker to confirm they are off transit and clear of station platforms/buildings before allowing a question; your group remains responsible for truthful physical-world reports.
           </Text>
+        </Panel>
+      ) : null}
+
+      {projection?.uTurnChallenge ? (
+        <Panel title="Curse of the U-Turn" subtitle="Leave transit at the confirmed next stop before the next question." tone="accent">
+          <UTurnChallengePanel
+            challenge={projection.uTurnChallenge}
+            players={projection.players.filter((player) => projection.uTurnChallenge?.requiredSeekerPlayerIds.includes(player.playerId)).map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+            viewerRole={viewerRole}
+            viewerPlayerId={activeMatch?.recipient.playerId}
+            disabled={state.loadState === 'loading'}
+            onReport={(stationName, targetPlayerId) => void submitCommand({
+              type: 'report_u_turn_disembarkation',
+              payload: { sourceCardInstanceId: projection.uTurnChallenge!.sourceCardInstanceId, stationName, targetPlayerId }
+            })}
+          />
         </Panel>
       ) : null}
 

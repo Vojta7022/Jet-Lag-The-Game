@@ -93,6 +93,7 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'guess_hangman_letter',
   'set_bridge_troll_position',
   'set_seeker_transit_context',
+  'report_u_turn_disembarkation',
   'confirm_water_weight_liquid_acquired',
   'report_water_weight_liquid_lost',
   'report_endless_tumble_roll',

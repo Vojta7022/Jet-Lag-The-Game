@@ -7,6 +7,7 @@ export * from './GamblersFeetChallengePanel.tsx';
 export * from './EggPartnerChallengePanel.tsx';
 export * from './JammedDoorChallengePanel.tsx';
 export * from './LuxuryCarChallengePanel.tsx';
+export * from './UTurnChallengePanel.tsx';
 export * from './CardZoneSection.tsx';
 export * from './CardZoneStats.tsx';
 export * from './card-catalog.ts';
