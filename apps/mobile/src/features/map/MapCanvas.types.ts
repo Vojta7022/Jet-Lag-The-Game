@@ -6,6 +6,7 @@ import type {
 
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
 import type { TransitStationCandidate } from './station-layer.ts';
+import type { MapScenarioCustomOverlay } from './map-scenarios.ts';
 
 export interface MapCanvasProps {
   visibleMap?: VisibleMapProjection;
@@ -17,4 +18,5 @@ export interface MapCanvasProps {
   transitStations?: TransitStationCandidate[];
   selectedStation?: TransitStationCandidate;
   hidingRadiusMeters?: number;
+  customOverlays?: MapScenarioCustomOverlay[];
 }

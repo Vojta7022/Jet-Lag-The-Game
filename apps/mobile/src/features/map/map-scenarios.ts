@@ -2,6 +2,22 @@ import { deflateSync, inflateSync, strFromU8, strToU8 } from 'fflate';
 
 import type { TransitStationCandidate } from './station-layer.ts';
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
+import type { GeoJsonGeometryModel } from '../../../../../packages/shared-types/src/index.ts';
+
+export interface MapScenarioCustomOverlay {
+  id: string;
+  name: string;
+  color: string;
+  visible: boolean;
+  geometry: GeoJsonGeometryModel;
+}
+
+export interface MapScenarioCustomStation {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
 
 export interface MapScenario {
   version: 1;
@@ -13,6 +29,9 @@ export interface MapScenario {
   excludedRegions?: PlayableRegionCatalogEntry[];
   selectedStation?: Pick<TransitStationCandidate, 'stationId' | 'name' | 'latitude' | 'longitude'>;
   hidingRadiusMeters?: number;
+  customOverlays?: MapScenarioCustomOverlay[];
+  stationSource?: 'osm' | 'custom' | 'both';
+  customStations?: MapScenarioCustomStation[];
 }
 
 function isCoordinateRing(value: unknown): boolean {
@@ -36,6 +55,62 @@ function hasPlayableBoundary(region: PlayableRegionCatalogEntry): boolean {
     );
   }
   return false;
+}
+
+function isPosition(value: unknown): boolean {
+  return Array.isArray(value) && value.length >= 2 &&
+    Number.isFinite(value[0]) && Math.abs(value[0]) <= 180 &&
+    Number.isFinite(value[1]) && Math.abs(value[1]) <= 90;
+}
+
+function isLine(value: unknown, minimumLength = 2): boolean {
+  return Array.isArray(value) && value.length >= minimumLength && value.every(isPosition);
+}
+
+function isRing(value: unknown): boolean {
+  return isLine(value, 4) && Array.isArray(value) &&
+    (value[0] as unknown[])[0] === (value[value.length - 1] as unknown[])[0] &&
+    (value[0] as unknown[])[1] === (value[value.length - 1] as unknown[])[1];
+}
+
+function isCustomGeometry(value: unknown, depth = 0): value is GeoJsonGeometryModel {
+  if (!value || typeof value !== 'object' || depth > 8) return false;
+  const geometry = value as GeoJsonGeometryModel;
+  const coordinates = geometry.coordinates;
+  switch (geometry.type) {
+    case 'Point': return isPosition(coordinates);
+    case 'MultiPoint': return Array.isArray(coordinates) && coordinates.length > 0 && coordinates.every(isPosition);
+    case 'LineString': return isLine(coordinates);
+    case 'MultiLineString': return Array.isArray(coordinates) && coordinates.length > 0 && coordinates.every((line) => isLine(line));
+    case 'Polygon': return Array.isArray(coordinates) && coordinates.length > 0 && coordinates.every(isRing);
+    case 'MultiPolygon': return Array.isArray(coordinates) && coordinates.length > 0 && coordinates.every((polygon) =>
+      Array.isArray(polygon) && polygon.length > 0 && polygon.every(isRing)
+    );
+    case 'GeometryCollection': return Array.isArray(geometry.geometries) && geometry.geometries.length > 0 &&
+      geometry.geometries.every((child) => isCustomGeometry(child, depth + 1));
+    default: return false;
+  }
+}
+
+function hasValidCustomData(parsed: Partial<MapScenario>): boolean {
+  if (parsed.stationSource !== undefined && !['osm', 'custom', 'both'].includes(parsed.stationSource)) return false;
+  if (parsed.customOverlays !== undefined && (
+    !Array.isArray(parsed.customOverlays) || parsed.customOverlays.length > 100 ||
+    !parsed.customOverlays.every((overlay) => overlay &&
+      typeof overlay.id === 'string' && overlay.id.length > 0 && overlay.id.length <= 100 &&
+      typeof overlay.name === 'string' && overlay.name.trim().length > 0 && overlay.name.length <= 100 &&
+      typeof overlay.color === 'string' && /^#[0-9a-f]{6}$/i.test(overlay.color) &&
+      typeof overlay.visible === 'boolean' && isCustomGeometry(overlay.geometry))
+  )) return false;
+  if (parsed.customStations !== undefined && (
+    !Array.isArray(parsed.customStations) || parsed.customStations.length > 2000 ||
+    !parsed.customStations.every((station) => station &&
+      typeof station.id === 'string' && station.id.length > 0 && station.id.length <= 100 &&
+      typeof station.name === 'string' && station.name.trim().length > 0 && station.name.length <= 100 &&
+      Number.isFinite(station.latitude) && station.latitude >= -90 && station.latitude <= 90 &&
+      Number.isFinite(station.longitude) && station.longitude >= -180 && station.longitude <= 180)
+  )) return false;
+  return true;
 }
 
 export function encodeMapScenario(scenario: MapScenario): string {
@@ -87,6 +162,7 @@ function validateMapScenario(parsedValue: unknown): MapScenario {
     (!Number.isFinite(parsed.hidingRadiusMeters) || parsed.hidingRadiusMeters <= 0 || parsed.hidingRadiusMeters > 100_000)) {
     throw new Error('invalid hiding radius');
   }
+  if (!hasValidCustomData(parsed)) throw new Error('invalid custom map data');
   return parsed as MapScenario;
 }
 

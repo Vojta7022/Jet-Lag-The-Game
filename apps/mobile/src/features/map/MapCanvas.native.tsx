@@ -47,9 +47,10 @@ function NativeMapSurface(props: MapCanvasProps) {
         previewRegion: props.previewRegion,
         transitStations: props.transitStations,
         selectedStation: props.selectedStation,
-        hidingRadiusMeters: props.hidingRadiusMeters
+        hidingRadiusMeters: props.hidingRadiusMeters,
+        customOverlays: props.customOverlays
       }),
-    [props.hidingRadiusMeters, props.previewRegion, props.roundStartLocation, props.selectedStation, props.transitStations, props.visibleMap, props.visibleMovementTracks]
+    [props.customOverlays, props.hidingRadiusMeters, props.previewRegion, props.roundStartLocation, props.selectedStation, props.transitStations, props.visibleMap, props.visibleMovementTracks]
   );
   const referenceGeometry = getPreferredMapGeometry({
     visibleMap: props.visibleMap,

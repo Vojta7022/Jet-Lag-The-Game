@@ -6,6 +6,7 @@ import type {
 } from '../../../../../packages/shared-types/src/index.ts';
 
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
+import type { MapScenarioCustomOverlay } from './map-scenarios.ts';
 import { buildHidingZoneCircle, getHidingRadiusMeters, type TransitStationCandidate } from './station-layer.ts';
 
 export interface MapOverlayDescriptor {
@@ -36,6 +37,7 @@ export function buildMapOverlayModel(args: {
   transitStations?: TransitStationCandidate[];
   selectedStation?: TransitStationCandidate;
   hidingRadiusMeters?: number;
+  customOverlays?: MapScenarioCustomOverlay[];
 }): MapOverlayModel {
   const overlays: MapOverlayDescriptor[] = [];
 
@@ -230,6 +232,27 @@ export function buildMapOverlayModel(args: {
     });
   }
 
+  for (const layer of args.customOverlays ?? []) {
+    if (!layer.visible) continue;
+    const geometryType = layer.geometry.type;
+    const renderMode = geometryType === 'Point' || geometryType === 'MultiPoint'
+      ? 'point'
+      : geometryType === 'LineString' || geometryType === 'MultiLineString'
+        ? 'line'
+        : 'fill';
+    overlays.push({
+      overlayId: `custom:${layer.id}`,
+      label: layer.name,
+      geometry: layer.geometry,
+      renderMode,
+      fill: `rgba(${Number.parseInt(layer.color.slice(1, 3), 16)}, ${Number.parseInt(layer.color.slice(3, 5), 16)}, ${Number.parseInt(layer.color.slice(5, 7), 16)}, 0.3)`,
+      stroke: layer.color,
+      strokeWidth: 2,
+      opacity: 1,
+      pointRadius: 5
+    });
+  }
+
   return {
     overlays,
     legend: [
@@ -241,7 +264,8 @@ export function buildMapOverlayModel(args: {
       { label: 'Visible Position', color: '#7a4b00' },
       { label: 'Last Round Start', color: '#ef702f' },
       { label: 'Transit Stations', color: '#f2bd43' },
-      { label: 'Selected Hiding Zone', color: '#e29a22' }
+      { label: 'Selected Hiding Zone', color: '#e29a22' },
+      ...(args.customOverlays ?? []).filter((layer) => layer.visible).map((layer) => ({ label: layer.name, color: layer.color }))
     ]
   };
 }

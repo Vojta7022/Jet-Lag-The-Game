@@ -19,6 +19,7 @@ import {
   projectGeometryPoints
 } from './map-geometry.ts';
 import { buildMapOverlayModel } from './map-overlays.ts';
+import type { MapScenarioCustomOverlay } from './map-scenarios.ts';
 import { buildOsmTileLayout } from './map-tiles.ts';
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
 import { panMapViewport, zoomMapViewport, type MapViewportTransform } from './map-canvas-gesture.ts';
@@ -34,6 +35,7 @@ interface MapFallbackCanvasProps {
   transitStations?: import('./station-layer.ts').TransitStationCandidate[];
   selectedStation?: import('./station-layer.ts').TransitStationCandidate;
   hidingRadiusMeters?: number;
+  customOverlays?: MapScenarioCustomOverlay[];
 }
 
 export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
@@ -52,9 +54,10 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
       previewRegion: props.previewRegion,
       transitStations: props.transitStations,
       selectedStation: props.selectedStation,
-      hidingRadiusMeters: props.hidingRadiusMeters
+      hidingRadiusMeters: props.hidingRadiusMeters,
+      customOverlays: props.customOverlays
     }),
-    [props.hidingRadiusMeters, props.previewRegion, props.roundStartLocation, props.selectedStation, props.transitStations, props.visibleMap, props.visibleMovementTracks]
+    [props.customOverlays, props.hidingRadiusMeters, props.previewRegion, props.roundStartLocation, props.selectedStation, props.transitStations, props.visibleMap, props.visibleMovementTracks]
   );
   const referenceGeometry = getPreferredMapGeometry({
     visibleMap: props.visibleMap,

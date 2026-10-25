@@ -967,6 +967,7 @@ export function MapScreen() {
                 previewRegion={buildCompositePlayableRegion(loadedScenario.selectedRegions, loadedScenario.excludedRegions ?? [])}
                 selectedStation={scenarioStation}
                 hidingRadiusMeters={scenarioHidingRadius}
+                customOverlays={loadedScenario.customOverlays}
               />
             ) : (
               <StateBanner tone="error" title="Invalid region subtraction" detail="A subtracted region must fit fully inside an included region." />
