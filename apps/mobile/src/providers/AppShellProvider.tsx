@@ -41,6 +41,7 @@ interface AppShellContextValue {
   createMatch: (input: Omit<CreateMatchInput, 'runtimeKind'>) => Promise<boolean>;
   getContentPackByReference: (packId?: string, packVersion?: string) => ContentPack;
   getInstalledContentPacks: () => ContentPack[];
+  importContentPackJson: (rawJson: string) => Promise<ContentPack>;
   joinMatch: (input: Omit<JoinMatchInput, 'runtimeKind'>) => Promise<boolean>;
   refreshActiveMatch: () => Promise<boolean>;
   recoverActiveMatch: () => Promise<boolean>;
@@ -453,6 +454,10 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
 
   const getInstalledContentPacks = useCallback(() => runtimeClient.getInstalledContentPacks(), [runtimeClient]);
 
+  const importContentPackJson = useCallback((rawJson: string) => {
+    return runtimeClient.importContentPackJson(rawJson);
+  }, [runtimeClient]);
+
   const armProtectedReveal = useCallback(async (viewer: ProjectionViewer, reason: string) => {
     const connection = connectionRef.current;
     if (!connection) return undefined;
@@ -519,6 +524,7 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     getAttachmentMediaSource,
     getContentPackByReference,
     getInstalledContentPacks,
+    importContentPackJson,
     armProtectedReveal,
     openProtectedReveal,
     hideProtectedReveal,
@@ -535,6 +541,7 @@ export function AppShellProvider(props: { children: React.ReactNode }) {
     getAttachmentMediaSource,
     getContentPackByReference,
     getInstalledContentPacks,
+    importContentPackJson,
     armProtectedReveal,
     openProtectedReveal,
     hideProtectedReveal,

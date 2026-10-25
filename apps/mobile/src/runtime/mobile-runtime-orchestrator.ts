@@ -51,6 +51,7 @@ import {
 } from '../features/evidence/evidence-model.ts';
 
 import { createUuid } from './create-uuid.ts';
+import { ContentPackCatalog, parseContentPackJson } from './content-pack-catalog.ts';
 import {
   buildSupabaseAttachmentMediaSource,
   buildSupabaseAttachmentUploadCommand,
@@ -154,6 +155,7 @@ export class MobileRuntimeOrchestrator {
   private readonly singleDevicePersistence: LocalRuntimePersistence;
   private readonly clock: () => Date;
   private readonly onlineSessionManagerOverride?: Pick<SupabaseMobileSessionManager, 'isConfigured' | 'createOnlineAuthSession'>;
+  private readonly contentPackCatalog?: ContentPackCatalog;
   private readonly commandSequences = new Map<string, number>();
   private readonly inMemoryRuntimes = new Map<string, InMemoryAuthorityRuntime>();
   private readonly nearbyRuntimes = new Map<string, NearbyAuthorityRuntime>();
@@ -168,6 +170,7 @@ export class MobileRuntimeOrchestrator {
     singleDevicePersistence?: LocalRuntimePersistence;
     clock?: () => Date;
     onlineSessionManager?: Pick<SupabaseMobileSessionManager, 'isConfigured' | 'createOnlineAuthSession'>;
+    contentPackCatalog?: ContentPackCatalog;
   }) {
     this.contentPacks = options.contentPacks ?? (options.contentPack ? [options.contentPack] : []);
     if (this.contentPacks.length === 0) {
@@ -185,6 +188,48 @@ export class MobileRuntimeOrchestrator {
     this.singleDevicePersistence = options.singleDevicePersistence ?? new InMemoryPersistence();
     this.clock = options.clock ?? (() => new Date());
     this.onlineSessionManagerOverride = options.onlineSessionManager;
+    this.contentPackCatalog = options.contentPackCatalog;
+  }
+
+  async restoreInstalledContentPacks(): Promise<void> {
+    const packs = await this.contentPackCatalog?.load() ?? [];
+    for (const pack of packs) this.registerContentPack(pack);
+  }
+
+  async importContentPackJson(rawJson: string): Promise<ContentPack> {
+    const pack = parseContentPackJson(rawJson);
+    const existing = this.contentPacks.find((candidate) =>
+      candidate.packId === pack.packId && candidate.packVersion === pack.packVersion
+    );
+    if (existing) {
+      if (JSON.stringify(existing) !== JSON.stringify(pack)) {
+        throw new Error(`Content pack version ${pack.packId}@${pack.packVersion} is already installed with different contents.`);
+      }
+      return existing;
+    }
+
+    await this.contentPackCatalog?.install(pack);
+    this.registerContentPack(pack);
+    return pack;
+  }
+
+  private registerContentPack(pack: ContentPack): void {
+    const key = `${pack.packId}@${pack.packVersion}`;
+    const existing = this.contentPacks.find((candidate) => `${candidate.packId}@${candidate.packVersion}` === key);
+    if (existing) {
+      if (JSON.stringify(existing) !== JSON.stringify(pack)) {
+        throw new Error(`Content pack version ${key} is already installed with different contents.`);
+      }
+      return;
+    }
+
+    const issues = validateContentPack(pack);
+    const blockingIssues = issues.filter((issue) => issue.blocking || issue.severity === 'error');
+    if (blockingIssues.length > 0) {
+      throw new Error(`Content pack "${pack.title}" (${key}) failed validation: ${blockingIssues.map((issue) => issue.message).join(' ')}`);
+    }
+    this.contentPacks.push(pack);
+    this.contentPackIssuesByReference.set(key, issues);
   }
 
   async createMatch(

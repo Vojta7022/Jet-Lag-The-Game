@@ -7,6 +7,7 @@ import { InMemoryRuntimePersistence } from '../../../packages/transport/src/in-m
 import type { ContentPack } from '../../../packages/shared-types/src/index.ts';
 
 import { mobileAppEnvironment } from '../src/config/env.ts';
+import { ContentPackCatalog } from '../src/runtime/content-pack-catalog.ts';
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 
 const generatedPackPath = fileURLToPath(
@@ -15,6 +16,12 @@ const generatedPackPath = fileURLToPath(
 
 function loadContentPack(): ContentPack {
   return JSON.parse(readFileSync(generatedPackPath, 'utf8')) as ContentPack;
+}
+
+class MemoryContentPackStorage {
+  value: string | null = null;
+  async getItem() { return this.value; }
+  async setItem(_key: string, value: string) { this.value = value; }
 }
 
 test('runtime orchestrator can create host sessions across all supported foundations', async () => {
@@ -141,6 +148,41 @@ test('runtime orchestrator binds a match to a selected installed content pack an
     }),
     /content pack .*not-installed.*not installed/i
   );
+});
+
+test('runtime installs, persists, restores, and starts matches with imported content packs', async () => {
+  const basePack = loadContentPack();
+  const importedPack: ContentPack = {
+    ...basePack,
+    packId: 'extension-city-sprint',
+    packVersion: '1.0.0',
+    title: 'City Sprint Extension'
+  };
+  const catalog = new ContentPackCatalog(new MemoryContentPackStorage());
+  const firstRuntime = new MobileRuntimeOrchestrator({
+    contentPacks: [basePack],
+    environment: mobileAppEnvironment,
+    contentPackCatalog: catalog
+  });
+  await firstRuntime.importContentPackJson(JSON.stringify(importedPack));
+  assert.equal(firstRuntime.getContentPackByReference(importedPack.packId, importedPack.packVersion).title, importedPack.title);
+
+  const restoredRuntime = new MobileRuntimeOrchestrator({
+    contentPacks: [basePack],
+    environment: mobileAppEnvironment,
+    contentPackCatalog: catalog
+  });
+  await restoredRuntime.restoreInstalledContentPacks();
+  const created = await restoredRuntime.createMatch({ displayName: 'Host', playerId: 'extension-host' }, {
+    runtimeKind: 'single_device_referee',
+    matchId: 'imported-pack-match',
+    initialScale: 'small',
+    contentPackId: importedPack.packId,
+    contentPackVersion: importedPack.packVersion
+  });
+  assert.equal(created.initialSync.projectionDelivery.projection.contentPackId, importedPack.packId);
+  assert.equal(created.initialSync.projectionDelivery.projection.contentPackVersion, importedPack.packVersion);
+  await restoredRuntime.disconnect(created.connection);
 });
 
 test('mobile runtime timestamps authoritative commands using its injected wall clock', async () => {

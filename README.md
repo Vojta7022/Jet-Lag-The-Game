@@ -22,6 +22,7 @@ Cross-platform mobile app and rules engine for running a configurable transit-ba
 ## User workflows
 
 - Import game content, run the mobile app, configure a game, and validate engine/geo behavior with tests.
+- During match setup, import a validated content-pack JSON file (up to 5 MB). Imported packs are saved on that device and appear in the rules/question-set selector. Pack versions are immutable: publish changed content under a new version. Every player joining online must have the exact selected pack ID and version installed locally; pack files are not distributed by the server yet.
 - Use package-level READMEs for deeper module notes.
 
 ## Stack

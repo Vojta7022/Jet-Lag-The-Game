@@ -148,7 +148,9 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Resolve question/card/rules UI data from the match's exact pack ID/version in map, question, card, and private handoff screens.
 - [x] Validate each installed pack once, reject invalid selections, and reject joining a match whose selected pack is not installed locally.
 - [x] Preserve and enforce the exact `packVersion` across server records and match projections; register references by ID/version, reject ambiguous creates, and reject a player device missing the match's exact version.
+- [x] Import validated content-pack JSON files up to 5 MB, persist them in the local library, restore them on startup, and include them in the match setup selector.
 - [ ] Apply the migration to the hosted database and validate a cellular multiplayer match with multiple installed versions.
+- [ ] Bundle or distribute additional content variants; players currently need the same pack version installed manually on every device.
 
 ### Completed implementation slice: Move authority timer
 

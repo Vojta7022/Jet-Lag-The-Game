@@ -1,4 +1,6 @@
 import { router } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -25,7 +27,7 @@ const SCALE_OPTIONS = [
 ] as const;
 
 export function CreateMatchScreen() {
-  const { state, createMatch, getInstalledContentPacks } = useAppShell();
+  const { state, createMatch, getInstalledContentPacks, importContentPackJson } = useAppShell();
   const runtimeClient = useRuntimeClient();
   const { runtimeKind } = useRuntimeMode();
   const [matchId, setMatchId] = useState(
@@ -35,9 +37,40 @@ export function CreateMatchScreen() {
     'small' | 'medium' | 'large'
   >('small');
   const [contentPackReference, setContentPackReference] = useState(`${defaultContentPack.packId}@${defaultContentPack.packVersion}`);
+  const [installingPack, setInstallingPack] = useState(false);
+  const [packNotice, setPackNotice] = useState<{ tone: 'info' | 'error'; message: string }>();
   const contentPacks = getInstalledContentPacks();
   const selectedPack = contentPacks.find((pack) => `${pack.packId}@${pack.packVersion}` === contentPackReference)
     ?? runtimeClient.getContentPackByReference();
+
+  const importPack = async () => {
+    setInstallingPack(true);
+    setPackNotice(undefined);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', 'text/json', 'text/plain'],
+        multiple: false,
+        copyToCacheDirectory: true
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset) throw new Error('The selected file did not contain readable content.');
+      if (asset.size !== undefined && asset.size > 5 * 1024 * 1024) {
+        throw new Error('Content pack JSON must be smaller than 5 MB.');
+      }
+      const rawJson = asset.file ? await asset.file.text() : await new File(asset.uri).text();
+      const pack = await importContentPackJson(rawJson);
+      setContentPackReference(`${pack.packId}@${pack.packVersion}`);
+      setPackNotice({ tone: 'info', message: `${pack.title} ${pack.packVersion} is installed on this device and ready for a new match.` });
+    } catch (error) {
+      setPackNotice({
+        tone: 'error',
+        message: error instanceof Error ? error.message : 'The content pack could not be installed.'
+      });
+    } finally {
+      setInstallingPack(false);
+    }
+  };
   const matchMode =
     runtimeKind === 'online_foundation'
       ? 'online'
@@ -150,7 +183,7 @@ export function CreateMatchScreen() {
         </View>
         <View style={styles.choiceGroup}>
           <Text style={styles.choiceLabel}>Rules & Question Set</Text>
-          <Text style={styles.packHint}>Everyone in the match uses this exact pack version.</Text>
+          <Text style={styles.packHint}>Import a versioned JSON game pack. Every player needs the same version installed.</Text>
           {contentPacks.map((pack) => {
             const packReference = `${pack.packId}@${pack.packVersion}`;
             const selected = packReference === contentPackReference;
@@ -178,6 +211,19 @@ export function CreateMatchScreen() {
               </Pressable>
             );
           })}
+          <AppButton
+            label={installingPack ? 'Adding game pack…' : 'Add a game pack from file'}
+            onPress={() => void importPack()}
+            disabled={installingPack}
+            tone="secondary"
+          />
+          {packNotice ? (
+            <StateBanner
+              tone={packNotice.tone}
+              title={packNotice.tone === 'error' ? 'Pack not installed' : 'New game ready'}
+              detail={packNotice.message}
+            />
+          ) : null}
         </View>
         {runtimeKind === 'online_foundation' ? (
           <StateBanner
