@@ -318,7 +318,8 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 ## Active: rules-faithful game and reference-map workflows
 
 - [x] Let the map workbench search and compose playable regions before a match exists; save/share/export the draft and carry its compressed scenario through new-match creation, lobby, optional team-assignment dashboard, and map setup.
-- [x] Verify standalone region search, include/exclude editing, scenario persistence and handoff through team assignment, the 461-test suite, single-device referee round, mobile typecheck, Expo web export, and `git diff --check` (2026-10-26). Hand-drawn masks are available before match creation too.
+- [x] Verify standalone region search, include/exclude editing, scenario persistence and handoff through team assignment, the 462-test suite, single-device referee round, mobile typecheck, Expo web export, and `git diff --check` (2026-10-26). Hand-drawn masks are available before match creation too.
+- [x] Make public Nominatim region search submit-driven rather than autocomplete; keyboard and button submissions share the same request path, while editing a query makes stale results unavailable. Verified with the 462-test suite, mobile typecheck, and Expo web export (2026-10-26). Policy: https://operations.osmfoundation.org/policies/nominatim/.
 
 ### Current rules slice: late question answers
 

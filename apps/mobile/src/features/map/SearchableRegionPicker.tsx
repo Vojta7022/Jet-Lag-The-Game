@@ -15,6 +15,7 @@ import { RegionSelectionList } from './RegionSelectionList.tsx';
 interface SearchableRegionPickerProps {
   query: string;
   minimumQueryLengthMet: boolean;
+  hasCurrentSearch: boolean;
   results: PlayableRegionCatalogEntry[];
   previewRegion?: PlayableRegionCatalogEntry;
   selectedRegionId?: string;
@@ -27,6 +28,7 @@ interface SearchableRegionPickerProps {
   isLoading: boolean;
   errorMessage?: string;
   onChangeQuery: (value: string) => void;
+  onSubmitSearch: () => void;
   onRetry: () => void;
   onSelect: (regionId: string) => void;
   onAddPreviewRegion: () => void;
@@ -46,10 +48,18 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         onChangeText={props.onChangeQuery}
         placeholder="Type Prague or Central Bohemia"
         autoCapitalize="words"
+        returnKeyType="search"
+        onSubmitEditing={props.onSubmitSearch}
       />
       <Text style={styles.helper}>
-        Find your city, combine neighbouring regions, or subtract a contained region to shape your match map.
+        Search for a city or administrative region, then combine neighbouring regions or subtract a contained area.
       </Text>
+      <AppButton
+        label={props.hasCurrentSearch ? 'Search Again' : 'Search Regions'}
+        onPress={props.onSubmitSearch}
+        disabled={!props.minimumQueryLengthMet || props.isLoading}
+        tone="secondary"
+      />
 
       {props.selectedRegionCount > 0 ? (
         <Text style={styles.meta}>
@@ -57,7 +67,7 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         </Text>
       ) : null}
 
-      {props.attribution ? (
+      {props.hasCurrentSearch && props.attribution ? (
         <View style={styles.attributionCard}>
           <Text style={styles.attributionLabel}>
             {props.usingFallback ? 'Fallback source' : 'Boundary source'}
@@ -70,7 +80,7 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         </View>
       ) : null}
 
-      {props.noticeMessage ? (
+      {props.hasCurrentSearch && props.noticeMessage ? (
         <View style={styles.stateBlock}>
           <StateBanner
             tone="info"
@@ -99,7 +109,7 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         />
       ) : null}
 
-      {props.isLoading ? (
+      {props.hasCurrentSearch && props.isLoading ? (
         <StateBanner
           tone="info"
           title="Searching regions"
@@ -107,7 +117,7 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         />
       ) : null}
 
-      {!props.isLoading && props.errorMessage ? (
+      {props.hasCurrentSearch && !props.isLoading && props.errorMessage ? (
         <View style={styles.stateBlock}>
           <StateBanner
             tone="error"
@@ -118,15 +128,21 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         </View>
       ) : null}
 
-      {!props.isLoading && !props.errorMessage ? (
+      {!props.hasCurrentSearch && props.minimumQueryLengthMet ? (
+        <StateBanner
+          tone="info"
+          title="Ready to search"
+          detail="Submit the query to load matching playable boundaries."
+        />
+      ) : null}
+
+      {props.hasCurrentSearch && !props.isLoading && !props.errorMessage ? (
         <>
-          {props.minimumQueryLengthMet ? (
-            <Text style={styles.meta}>
-              {props.results.length === 1 ? '1 matching region' : `${props.results.length} matching regions`}
-              {props.sourceLabel ? ` · ${props.sourceLabel}` : ''}
-            </Text>
-          ) : null}
-          {props.minimumQueryLengthMet && props.results.length > 0 ? (
+          <Text style={styles.meta}>
+            {props.results.length === 1 ? '1 matching region' : `${props.results.length} matching regions`}
+            {props.sourceLabel ? ` · ${props.sourceLabel}` : ''}
+          </Text>
+          {props.results.length > 0 ? (
             <View style={styles.resultBlock}>
               <RegionSelectionList
                 regions={props.results}
@@ -170,7 +186,7 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
               ) : null}
             </View>
           ) : null}
-          {props.minimumQueryLengthMet && props.results.length === 0 ? (
+          {props.results.length === 0 ? (
             <StateBanner
               tone="warning"
               title="No matching regions"

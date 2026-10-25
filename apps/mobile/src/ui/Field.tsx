@@ -12,6 +12,8 @@ interface FieldProps {
   multiline?: boolean;
   numberOfLines?: number;
   keyboardType?: TextInputProps['keyboardType'];
+  returnKeyType?: TextInputProps['returnKeyType'];
+  onSubmitEditing?: () => void;
 }
 
 export function Field(props: FieldProps) {
@@ -25,8 +27,10 @@ export function Field(props: FieldProps) {
         keyboardType={props.keyboardType}
         onChangeText={props.onChangeText}
         numberOfLines={props.numberOfLines}
+        onSubmitEditing={props.onSubmitEditing}
         placeholder={props.placeholder}
         placeholderTextColor={colors.textMuted}
+        returnKeyType={props.returnKeyType}
         style={[styles.input, props.multiline ? styles.inputMultiline : null]}
         value={props.value}
       />

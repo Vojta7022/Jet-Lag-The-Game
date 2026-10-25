@@ -144,6 +144,7 @@ Current provider behavior:
 
 - the app first queries an OSM-compatible Nominatim search source for real place candidates and polygon boundaries
 - provider results are cached in memory, deduplicated while requests are in flight, and spaced out with a minimum delay between request starts
+- region queries are submitted explicitly with the Search button or keyboard action; typing alone does not send autocomplete requests
 - the map search UI shows source attribution and whether the live provider or bundled fallback is active
 - the HTTP request execution layer is isolated from the screen and provider mapping code so a backend or proxy can replace direct client traffic later without changing the map screen API
 - bundled seed regions are only used when the provider is unavailable, not as the default path
@@ -151,6 +152,7 @@ Current provider behavior:
 Provider deployment guidance:
 
 - local or low-volume development can use the public Nominatim base URL directly
+- the public Nominatim service prohibits client-side autocomplete; explicit user-submitted searches are used here ([usage policy](https://operations.osmfoundation.org/policies/nominatim/), checked 2026-10-26)
 - production should point `EXPO_PUBLIC_REGION_PROVIDER_BASE_URL` at a backend or proxy that applies attribution, caching, and rate limiting server-side
 - the current mobile provider abstraction is designed so this swap does not require a new search UI or a new bounded-region apply flow
 

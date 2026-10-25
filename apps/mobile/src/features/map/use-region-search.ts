@@ -5,6 +5,11 @@ import type {
   RegionSourceAttribution
 } from './region-types.ts';
 import type { RegionDataSource } from './region-data-source.ts';
+import {
+  createRegionSearchRequestState,
+  editRegionSearchQuery,
+  submitRegionSearchQuery
+} from './region-search-model.ts';
 
 interface UseRegionSearchArgs {
   source: RegionDataSource;
@@ -43,17 +48,15 @@ export function resolveRegionSearchSelection(args: {
 }
 
 export function useRegionSearch(args: UseRegionSearchArgs) {
-  const [query, setQueryState] = useState(args.initialQuery ?? '');
-  const [debouncedQuery, setDebouncedQuery] = useState(args.initialQuery ?? '');
+  const [searchState, setSearchState] = useState(() => createRegionSearchRequestState(args.initialQuery ?? ''));
   const [regions, setRegions] = useState<PlayableRegionCatalogEntry[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<PlayableRegionCatalogEntry | undefined>(undefined);
   const [sourceLabel, setSourceLabel] = useState('');
   const [usingFallback, setUsingFallback] = useState(false);
   const [noticeMessage, setNoticeMessage] = useState<string | undefined>(undefined);
   const [attribution, setAttribution] = useState<RegionSourceAttribution | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
-  const [reloadToken, setReloadToken] = useState(0);
   const selectedRegionIdRef = useRef(args.initialRegionId);
   const lastAppliedExternalQueryRef = useRef(normalizeExternalSearchQuery(args.initialQuery));
   const lastAppliedExternalRegionIdRef = useRef(args.initialRegionId);
@@ -65,8 +68,9 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
     }
 
     lastAppliedExternalQueryRef.current = nextQuery;
-    setQueryState((current) => (current === nextQuery ? current : nextQuery));
-    setDebouncedQuery((current) => (current === nextQuery ? current : nextQuery));
+    setSearchState((current) => current.draftQuery === nextQuery
+      ? current
+      : editRegionSearchQuery(current, nextQuery));
   }, [args.initialQuery]);
 
   useEffect(() => {
@@ -92,18 +96,11 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   }, [args.initialRegionId, regions]);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      setDebouncedQuery(query);
-    }, 350);
-
-    return () => clearTimeout(timeoutId);
-  }, [query]);
-
-  useEffect(() => {
     let cancelled = false;
+    const requestQuery = searchState.requestQuery;
 
     async function runSearch() {
-      if (debouncedQuery.trim().length < 2) {
+      if (searchState.requestId === 0 || requestQuery.length < 2) {
         setRegions([]);
         setSelectedRegion(undefined);
         setSourceLabel('');
@@ -120,7 +117,7 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
       setNoticeMessage(undefined);
 
       try {
-        const response = await args.source.searchRegions(debouncedQuery);
+        const response = await args.source.searchRegions(requestQuery);
         if (cancelled) {
           return;
         }
@@ -163,14 +160,22 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
     return () => {
       cancelled = true;
     };
-  }, [args.source, debouncedQuery, reloadToken]);
+  }, [args.source, searchState.requestQuery, searchState.requestId]);
 
   const selectedRegionId = selectedRegion?.regionId;
-  const minimumQueryLengthMet = debouncedQuery.trim().length >= 2;
+  const query = searchState.draftQuery;
+  const minimumQueryLengthMet = query.trim().length >= 2;
+  const hasCurrentSearch = searchState.requestId > 0 && searchState.requestQuery === query.trim();
 
   const setQuery = useCallback((value: string) => {
     lastAppliedExternalQueryRef.current = value;
-    setQueryState((current) => (current === value ? current : value));
+    setErrorMessage(undefined);
+    setSearchState((current) => (current.draftQuery === value ? current : editRegionSearchQuery(current, value)));
+  }, []);
+
+  const submitSearch = useCallback(() => {
+    setErrorMessage(undefined);
+    setSearchState((current) => submitRegionSearchQuery(current));
   }, []);
 
   const selectRegion = useCallback(async (regionId: string) => {
@@ -197,8 +202,10 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   }, [args.source, regions]);
 
   const retrySearch = useCallback(() => {
-    setReloadToken((value) => value + 1);
-  }, []);
+    const currentQuery = searchState.draftQuery.trim();
+    if (currentQuery.length < 2) return;
+    submitSearch();
+  }, [searchState.draftQuery, submitSearch]);
 
   const clearSelection = useCallback(() => {
     lastAppliedExternalRegionIdRef.current = undefined;
@@ -209,7 +216,9 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   return useMemo(() => ({
     query,
     setQuery,
+    submitSearch,
     minimumQueryLengthMet,
+    hasCurrentSearch,
     regions,
     selectedRegion,
     selectedRegionId,
@@ -230,6 +239,8 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
     noticeMessage,
     attribution,
     query,
+    submitSearch,
+    hasCurrentSearch,
     regions,
     retrySearch,
     selectRegion,

@@ -41,6 +41,11 @@ import {
 import { seedPlayableRegions } from '../src/features/map/seed-regions.ts';
 import { buildDrawnExclusionRegion } from '../src/features/map/drawn-region.ts';
 import {
+  createRegionSearchRequestState,
+  editRegionSearchQuery,
+  submitRegionSearchQuery
+} from '../src/features/map/region-search-model.ts';
+import {
   resolveRegionSearchSelection,
   shouldApplyExternalRegionSearchValue
 } from '../src/features/map/use-region-search.ts';
@@ -225,6 +230,25 @@ test('region search restore guards ignore echoed Praha draft updates and replace
 
   assert.equal(staleSelection?.regionId, centralBohemia.regionId);
   assert.equal(preservedSelection?.regionId, prague.regionId);
+});
+
+test('region typing does not call the provider until the player submits the query', () => {
+  const initial = createRegionSearchRequestState();
+  const typed = editRegionSearchQuery(initial, 'Prague');
+  assert.equal(typed.requestId, initial.requestId);
+  assert.equal(typed.requestQuery, '');
+
+  const submitted = submitRegionSearchQuery(typed);
+  assert.equal(submitted.requestId, initial.requestId + 1);
+  assert.equal(submitted.requestQuery, 'Prague');
+
+  const edited = editRegionSearchQuery(submitted, 'Vienna');
+  assert.equal(edited.requestId, submitted.requestId);
+  assert.equal(edited.requestQuery, 'Prague');
+
+  const nextSubmitted = submitRegionSearchQuery(edited);
+  assert.equal(nextSubmitted.requestId, submitted.requestId + 1);
+  assert.equal(nextSubmitted.requestQuery, 'Vienna');
 });
 
 test('composite region builder adds, removes, and clears selected regions without duplicates', () => {

@@ -1067,6 +1067,7 @@ export function MapScreen() {
             <SearchableRegionPicker
               query={regionSearch.query}
               minimumQueryLengthMet={regionSearch.minimumQueryLengthMet}
+              hasCurrentSearch={regionSearch.hasCurrentSearch}
               results={regionSearch.regions}
               previewRegion={regionSearch.selectedRegion}
               selectedRegionId={regionSearch.selectedRegionId}
@@ -1079,6 +1080,7 @@ export function MapScreen() {
               isLoading={regionSearch.isLoading}
               errorMessage={regionSearch.errorMessage}
               onChangeQuery={regionSearch.setQuery}
+              onSubmitSearch={regionSearch.submitSearch}
               onRetry={regionSearch.retrySearch}
               onSelect={(regionId) => { void regionSearch.selectRegion(regionId); }}
               onAddPreviewRegion={() => {
@@ -1367,6 +1369,7 @@ export function MapScreen() {
                 <SearchableRegionPicker
                   query={regionSearch.query}
                   minimumQueryLengthMet={regionSearch.minimumQueryLengthMet}
+                  hasCurrentSearch={regionSearch.hasCurrentSearch}
                   results={regionSearch.regions}
                   previewRegion={regionSearch.selectedRegion}
                   selectedRegionId={regionSearch.selectedRegionId}
@@ -1379,6 +1382,7 @@ export function MapScreen() {
                   isLoading={regionSearch.isLoading}
                   errorMessage={regionSearch.errorMessage}
                   onChangeQuery={regionSearch.setQuery}
+                  onSubmitSearch={regionSearch.submitSearch}
                   onRetry={regionSearch.retrySearch}
                   onSelect={(regionId) => {
                     void regionSearch.selectRegion(regionId);
