@@ -98,6 +98,9 @@ export type DomainEvent =
   | CardDiscardedEvent
   | CardResolutionOpenedEvent
   | CardResolutionClosedEvent
+  | HangmanWordSetEvent
+  | HangmanLetterGuessedEvent
+  | HangmanChallengeEndedEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -419,7 +422,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -440,6 +443,21 @@ export interface CardResolutionOpenedEvent {
     holderId?: string;
     openingHandCardInstanceIds?: string[];
   };
+}
+
+export interface HangmanWordSetEvent {
+  type: 'hangman_word_set';
+  payload: { sourceCardInstanceId: string; word: string; secretOwnerPlayerId: string };
+}
+
+export interface HangmanLetterGuessedEvent {
+  type: 'hangman_letter_guessed';
+  payload: { sourceCardInstanceId: string; letter: string; correct: boolean; solved: boolean };
+}
+
+export interface HangmanChallengeEndedEvent {
+  type: 'hangman_challenge_ended';
+  payload: { sourceCardInstanceId: string; revealedWord: string };
 }
 
 export interface QuestionTemplatesDisabledEvent {

@@ -956,7 +956,26 @@ export function CardsScreen() {
               questionCategories={contentPack.questionCategories}
               questionTemplates={contentPack.questionTemplates}
               selectedScale={selectedScale}
+              viewerRole={viewerRole}
               disabled={state.loadState === 'loading'}
+              onSetHangmanWord={(word) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'set_hangman_word', payload: { sourceCardInstanceId, word }
+                });
+              }}
+              onGuessHangmanLetter={(letter) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'guess_hangman_letter', payload: { sourceCardInstanceId, letter }
+                });
+              }}
+              onEndHangmanChallenge={() => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'end_hangman_challenge', payload: { sourceCardInstanceId }
+                });
+              }}
               onResolve={(questionTemplateIds) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;

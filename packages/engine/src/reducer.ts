@@ -741,11 +741,61 @@ export function reduceMatchAggregate(
           sourceDeckId: eventEnvelope.event.payload.sourceDeckId,
           holderType: eventEnvelope.event.payload.holderType,
           holderId: eventEnvelope.event.payload.holderId,
-          openingHandCardInstanceIds: eventEnvelope.event.payload.openingHandCardInstanceIds
+          openingHandCardInstanceIds: eventEnvelope.event.payload.openingHandCardInstanceIds,
+          hangman: eventEnvelope.event.payload.resolutionKind === 'hangman_challenge'
+            ? { status: 'awaiting_word', guessedLetters: [], incorrectLetters: [] }
+            : undefined
         },
         hiddenState: eventEnvelope.event.payload.resolutionKind === 'move'
           ? { ...base.hiddenState, hiderLocation: undefined, finalHidingSpot: undefined }
           : base.hiddenState
+      };
+    case 'hangman_word_set':
+      if (base.activeCardResolution?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        activeCardResolution: {
+          ...base.activeCardResolution,
+          hangman: {
+            status: 'playing',
+            secretWord: eventEnvelope.event.payload.word,
+            secretOwnerPlayerId: eventEnvelope.event.payload.secretOwnerPlayerId,
+            guessedLetters: [],
+            incorrectLetters: []
+          }
+        }
+      };
+    case 'hangman_letter_guessed': {
+      if (base.activeCardResolution?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const hangman = base.activeCardResolution.hangman;
+      if (!hangman) return base;
+      return {
+        ...base,
+        activeCardResolution: {
+          ...base.activeCardResolution,
+          hangman: {
+            ...hangman,
+            status: eventEnvelope.event.payload.solved ? 'solved' : 'playing',
+            guessedLetters: [...hangman.guessedLetters, eventEnvelope.event.payload.letter],
+            incorrectLetters: eventEnvelope.event.payload.correct
+              ? hangman.incorrectLetters
+              : [...hangman.incorrectLetters, eventEnvelope.event.payload.letter]
+          }
+        }
+      };
+    }
+    case 'hangman_challenge_ended':
+      if (base.activeCardResolution?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        activeCardResolution: {
+          ...base.activeCardResolution,
+          hangman: {
+            ...base.activeCardResolution.hangman!,
+            status: 'ended',
+            revealedWord: eventEnvelope.event.payload.revealedWord
+          }
+        }
       };
     case 'card_resolution_closed': {
       const updatedCards = { ...base.cardInstances };

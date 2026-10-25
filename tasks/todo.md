@@ -300,6 +300,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Implement the typed card effect in the authoritative card path and expose the current hand limit to the owning team UI.
 - [x] Run focused and full verification; update card/rules notes with the scan citation.
 
+### Current implementation slice: assisted Hidden Hangman curse
+
+- [x] Type the scanned five-letter Hangman effect and import it as assisted; test the generated card data.
+- [x] Track the hider's private word and seeker guesses in authoritative events/projections without leaking the word early.
+- [x] Keep the card window open until the word is solved or the hider ends the group-played challenge, then wire the role-specific controls into card and live-map UI.
+- [x] Verify engine privacy/permissions, importer, full suite, mobile typecheck, and document any rule boundary that remains group-enforced.
+
 ### Completed implementation slice: scanned Veto and Randomize power-ups
 
 - [x] Add engine tests for question cancellation, replacement selection, null answers, and repeat-cost semantics.
@@ -376,3 +383,4 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add searchable administrative-region subtraction to the map builder: contained regions become polygon holes, included/excluded choices survive draft and scenario persistence/sharing, and invalid crossing/overlapping cuts are blocked. Focused map/scenario/state tests (37 passing), mobile typecheck, and `git diff --check` pass (2026-10-25). Arbitrary polygon clipping, cuts that cross the selected boundary, and file import/export remain open.
 - Photo questions now support the scanned ordinary-play case where the requested subject does not exist in the hiding zone: the hider may submit a null answer, resolve without a map deduction, and still take the card reward. The control is available in both Question Center and the inline live-map answer flow; non-photo questions reject it. [base rulebook scan p. 32; `tests/engine/endgame-questions.test.ts`]
 - All 18 Photos prompts now show the relevant scan-derived specification in question selection and answer entry, with source pages in generated provenance; conflicting workbook requirement text is omitted from the player view. Several wrong workbook units/conditions were corrected from the printed pages. [base rulebook scan, printed pp. 32–35; `tests/importer/importer.test.ts`; `apps/mobile/tests/question-guidance.test.ts`]
+- Hidden Hangman is now an assisted card with a hider-private five-letter word, public seeker guesses/misses and masked progress, role-specific inputs on Cards and Live Map, and an authority gate that blocks app movement/location updates and questions until solve or hider-confirmed game end. Hider team/player projections retain the secret; seeker projections do not receive it before completion. Full suite 332/332, mobile typecheck, and Expo web/iOS/Android exports passed. The group still applies its own Hangman loss rule and confirms actual transit boarding because the scan gives no incorrect-guess limit or onboard control. [base rulebook scan p. 56; `tests/engine/cards.test.ts`; checked 2026-10-25]

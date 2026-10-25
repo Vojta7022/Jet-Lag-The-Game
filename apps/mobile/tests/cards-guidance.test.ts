@@ -4,10 +4,11 @@ import test from 'node:test';
 import type {
   CardDefinition,
   DeckDefinition,
+  MatchProjection,
   VisibleCardProjection
 } from '../../../packages/shared-types/src/index.ts';
 
-import type { ResolvedVisibleCardModel } from '../src/features/cards/card-catalog.ts';
+import { getCardResolutionBlockedReason, type ResolvedVisibleCardModel } from '../src/features/cards/card-catalog.ts';
 
 import {
   buildCardActionState,
@@ -221,4 +222,19 @@ test('card guidance returns scan-derived rulebook text for card details', () => 
 
   assert.equal(describeCardRulebookGuidance(card), 'Questions already asked on transit still need an answer.');
   assert.equal(describeCardRulebookGuidance(createCardDefinition()), undefined);
+});
+
+test('Hidden Hangman stays open until solved or the hider ends the challenge', () => {
+  const projection = (status: 'awaiting_word' | 'playing' | 'solved' | 'ended') => ({
+    activeCardResolution: {
+      sourceCardInstanceId: 'hangman-card',
+      resolutionKind: 'hangman_challenge',
+      hangman: { status, maskedWord: '_____', guessedLetters: [], incorrectLetters: [] }
+    }
+  } as unknown as MatchProjection);
+
+  assert.equal(getCardResolutionBlockedReason('hider', projection('awaiting_word')), 'Set the secret word, then finish the seekers’ Hangman challenge.');
+  assert.equal(getCardResolutionBlockedReason('hider', projection('playing')), 'Finish the seekers’ Hangman challenge before closing this card.');
+  assert.equal(getCardResolutionBlockedReason('hider', projection('solved')), undefined);
+  assert.equal(getCardResolutionBlockedReason('seeker', projection('solved')), 'Only the hider or host can close this card window.');
 });

@@ -58,6 +58,9 @@ export type DomainCommand =
   | PlayCardCommand
   | DiscardCardCommand
   | ResolveCardWindowCommand
+  | SetHangmanWordCommand
+  | GuessHangmanLetterCommand
+  | EndHangmanChallengeCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -317,6 +320,21 @@ export interface ResolveCardWindowCommand {
     sourceCardInstanceId: string;
     questionTemplateIds?: string[];
   };
+}
+
+export interface SetHangmanWordCommand {
+  type: 'set_hangman_word';
+  payload: { sourceCardInstanceId: string; word: string };
+}
+
+export interface GuessHangmanLetterCommand {
+  type: 'guess_hangman_letter';
+  payload: { sourceCardInstanceId: string; letter: string };
+}
+
+export interface EndHangmanChallengeCommand {
+  type: 'end_hangman_challenge';
+  payload: { sourceCardInstanceId: string };
 }
 
 export interface CompleteCooldownCommand {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import type { MatchProjection, QuestionCategoryDefinition, QuestionTemplateDefinition, ScaleKey } from '../../../../../packages/shared-types/src/index.ts';
+import type { MatchProjection, MatchRole, QuestionCategoryDefinition, QuestionTemplateDefinition, ScaleKey } from '../../../../../packages/shared-types/src/index.ts';
 import type { ResolvedVisibleCardModel } from './card-catalog.ts';
 
 import { CardAutomationPill } from './CardAutomationPill.tsx';
@@ -24,12 +24,22 @@ interface CardResolutionStatusPanelProps {
   questionCategories?: QuestionCategoryDefinition[];
   questionTemplates?: QuestionTemplateDefinition[];
   selectedScale?: ScaleKey;
+  viewerRole?: MatchRole;
+  onSetHangmanWord?: (word: string) => void;
+  onGuessHangmanLetter?: (letter: string) => void;
+  onEndHangmanChallenge?: () => void;
   onResolve: (questionTemplateIds: string[]) => void;
 }
 
 export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps) {
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
-  useEffect(() => setSelectedTemplateIds([]), [props.resolution?.sourceCardInstanceId]);
+  const [hangmanWord, setHangmanWord] = useState('');
+  const [hangmanLetter, setHangmanLetter] = useState('');
+  useEffect(() => {
+    setSelectedTemplateIds([]);
+    setHangmanWord('');
+    setHangmanLetter('');
+  }, [props.resolution?.sourceCardInstanceId]);
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
   const discardRequirement = props.resolution?.discardRequirement;
@@ -46,8 +56,79 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
       ? `This bonus adds ${props.resolution.timeBonusMinutes} minute${props.resolution.timeBonusMinutes === 1 ? '' : 's'} to final hiding time only if held when found.`
       : undefined;
   const questionSelectionRequired = props.resolution?.resolutionKind === 'disable_question_templates';
+  const hangmanChallenge = props.resolution?.resolutionKind === 'hangman_challenge';
+  const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
-  const canSubmit = props.canResolve && (!questionSelectionRequired || selectedTemplateIds.length === requiredQuestionCount);
+  const canSubmit = props.canResolve &&
+    (!questionSelectionRequired || selectedTemplateIds.length === requiredQuestionCount) &&
+    (!hangmanChallenge || hangman?.status === 'solved' || hangman?.status === 'ended');
+
+  const hangmanPanel = hangmanChallenge ? (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>HANGMAN CHALLENGE</Text>
+      <Text style={styles.hangmanWord}>{hangman?.maskedWord?.split('').join('  ') ?? '_  _  _  _  _'}</Text>
+      <Text style={styles.copy}>
+        {hangman?.status === 'awaiting_word'
+          ? 'The hider chooses a real five-letter dictionary word in the group’s language.'
+          : hangman?.status === 'solved'
+            ? 'Solved! The hider can close the curse now.'
+            : hangman?.status === 'ended'
+              ? `Challenge over. The word was ${hangman.revealedWord ?? hangman.maskedWord}.`
+              : 'Seekers must finish their group’s game of Hangman before questions or transit can resume.'}
+      </Text>
+      {hangman?.guessedLetters.length ? (
+        <Text style={styles.metaChip}>Guessed: {hangman.guessedLetters.join(' · ')}</Text>
+      ) : null}
+      {hangman?.incorrectLetters.length ? (
+        <Text style={styles.warning}>Misses: {hangman.incorrectLetters.join(' · ')}</Text>
+      ) : null}
+      {hangman?.status === 'awaiting_word' && (props.viewerRole === 'hider' || props.viewerRole === 'host') && props.onSetHangmanWord ? (
+        <>
+          <TextInput
+            accessibilityLabel="Five-letter Hangman word"
+            autoCapitalize="characters"
+            maxLength={5}
+            onChangeText={(value) => setHangmanWord(value.replace(/[^\p{L}]/gu, '').toUpperCase())}
+            placeholder="ENTER WORD"
+            style={styles.hangmanInput}
+            value={hangmanWord}
+          />
+          <AppButton
+            label="Set Secret Word"
+            disabled={props.disabled || Array.from(hangmanWord).length !== 5}
+            onPress={() => props.onSetHangmanWord?.(hangmanWord)}
+          />
+        </>
+      ) : null}
+      {hangman?.status === 'playing' && props.viewerRole === 'seeker' && props.onGuessHangmanLetter ? (
+        <View style={styles.hangmanGuessRow}>
+          <TextInput
+            accessibilityLabel="Guess a Hangman letter"
+            autoCapitalize="characters"
+            maxLength={1}
+            onChangeText={(value) => setHangmanLetter(value.replace(/[^\p{L}]/gu, '').toUpperCase())}
+            placeholder="?"
+            style={[styles.hangmanInput, styles.hangmanLetterInput]}
+            value={hangmanLetter}
+          />
+          <AppButton
+            label="Guess Letter"
+            disabled={props.disabled || Array.from(hangmanLetter).length !== 1 || hangman?.guessedLetters.includes(hangmanLetter)}
+            onPress={() => {
+              props.onGuessHangmanLetter?.(hangmanLetter);
+              setHangmanLetter('');
+            }}
+          />
+        </View>
+      ) : null}
+      {hangman?.status === 'playing' && (props.viewerRole === 'hider' || props.viewerRole === 'host') && props.onEndHangmanChallenge ? (
+        <>
+          <Text style={styles.copy}>The hider ends this only after the seekers have lost by the group’s Hangman rules; the word will then be revealed.</Text>
+          <AppButton label="Seekers Lost — End Challenge" tone="secondary" disabled={props.disabled} onPress={props.onEndHangmanChallenge} />
+        </>
+      ) : null}
+    </View>
+  ) : null;
 
   if (!props.activeCard) {
     return (
@@ -63,6 +144,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             </Text>
           </>
         ) : null}
+        {hangmanPanel}
         <Text style={styles.copy}>{guidance.detail}</Text>
         <Text style={styles.copy}>{guidance.nextStep}</Text>
       </View>
@@ -141,6 +223,8 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
           </View>
         ) : null}
       </View>
+
+      {hangmanPanel}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Next step</Text>
@@ -222,6 +306,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 17
+  },
+  hangmanWord: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: 3,
+    textAlign: 'center'
+  },
+  hangmanInput: {
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.borderStrong,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 2,
+    minHeight: 50,
+    paddingHorizontal: 14,
+    textAlign: 'center'
+  },
+  hangmanLetterInput: { width: 66 },
+  hangmanGuessRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8
   },
   categoryPicker: {
     gap: 8

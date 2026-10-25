@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-24T21:37:29.976Z",
+    "importedAt": "2026-10-25T11:09:01.553Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2126,7 +2126,7 @@
       "shortName": "Curse Of The Hidden Hangman",
       "description": "Before asking another question or boarding another form of transportation, seeker(s) must be the hider(s) in game of hangman.",
       "rulebookGuidanceText": "The hider’s five-letter word must be a real dictionary word in the language the group is playing in.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -2136,18 +2136,19 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "hangman_challenge",
           "description": "Before asking another question or boarding another form of transportation, seeker(s) must be the hider(s) in game of hangman.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Before asking another question or boarding another form of transportation, seeker(s) must be the hider(s) in game of hangman.",
           "payload": {
-            "workbookName": "Curse Of The Hidden Hangman"
+            "wordLength": 5,
+            "secretScope": "hider_player"
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2158,7 +2159,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

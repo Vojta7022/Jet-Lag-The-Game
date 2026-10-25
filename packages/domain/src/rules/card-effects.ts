@@ -12,7 +12,7 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws';
+  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
@@ -116,6 +116,10 @@ export function buildCardResolutionPlan(
   selectedScale: ScaleKey | undefined
 ): CardResolutionPlan {
   const lowerName = normalizedCardName(cardDefinition);
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'hangman_challenge')) {
+    return { kind: 'hangman_challenge', discardRequirement: {} };
+  }
 
   if (cardDefinition.kind === 'time_bonus') {
     return {

@@ -165,6 +165,11 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(spottyMemory.effects[0]?.effectType, 'random_question_category_lock');
   assert.deepEqual(spottyMemory.effects[0]?.payload, { duration: 'hider_run', rerollAfterQuestion: true });
   assert.equal(spottyMemory.requirements?.requiresManualApproval, false);
+  const hiddenHangman = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-hidden-hangman');
+  assert.ok(hiddenHangman);
+  assert.equal(hiddenHangman.automationLevel, 'assisted');
+  assert.equal(hiddenHangman.effects[0]?.effectType, 'hangman_challenge');
+  assert.deepEqual(hiddenHangman.effects[0]?.payload, { wordLength: 5, secretScope: 'hider_player' });
   assert.deepEqual(discardDrawThree.effects[0]?.payload, { discardCount: 2, drawCount: 3 });
   assert.match(discardDrawThree.description, /discard 2 cards from your hand, then draw and keep 3 replacement cards/i);
 

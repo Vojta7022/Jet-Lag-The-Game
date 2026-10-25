@@ -220,6 +220,13 @@ export function getCardResolutionBlockedReason(role: MatchRole, projection: Matc
   if (role !== 'host' && role !== 'hider') {
     return 'Only the hider or host can close this card window.';
   }
+  if (projection.activeCardResolution.resolutionKind === 'hangman_challenge' &&
+    projection.activeCardResolution.hangman?.status !== 'solved' &&
+    projection.activeCardResolution.hangman?.status !== 'ended') {
+    return projection.activeCardResolution.hangman?.status === 'awaiting_word'
+      ? 'Set the secret word, then finish the seekers’ Hangman challenge.'
+      : 'Finish the seekers’ Hangman challenge before closing this card.';
+  }
   if (projection.activeCardResolution.resolutionKind === 'move') {
     const zone = projection.hiddenState?.hidingZone;
     if (!zone || (projection.activeCardResolution.moveOriginStationId && zone.stationId === projection.activeCardResolution.moveOriginStationId)) {

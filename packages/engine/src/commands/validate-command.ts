@@ -1296,6 +1296,13 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'CARD_WINDOW_NOT_ACTIVE', 'This card resolution window is not active.')];
       }
 
+      if (activeResolution.resolutionKind === 'hangman_challenge' &&
+        !['solved', 'ended'].includes(activeResolution.hangman?.status ?? 'awaiting_word')) {
+        return [error(envelope.command.type, 'HANGMAN_CHALLENGE_ACTIVE', activeResolution.hangman?.status === 'awaiting_word'
+          ? 'Set the five-letter word and complete the Hangman challenge before closing this card.'
+          : 'Finish the Hangman challenge before closing this card.')];
+      }
+
       if (activeResolution.resolutionKind === 'move') {
         if (
           typeof activeResolution.moveDurationSeconds === 'number' &&
@@ -1346,6 +1353,53 @@ export function validateCommandEnvelope(
         contentPack,
         envelope as CommandEnvelope<Extract<CommandEnvelope['command'], { type: 'resolve_card_window' }>>
       );
+    }
+    case 'set_hangman_word': {
+      const resolution = aggregate.activeCardResolution;
+      if (resolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || resolution.resolutionKind !== 'hangman_challenge') {
+        return [error(envelope.command.type, 'HANGMAN_NOT_ACTIVE', 'There is no active Hidden Hangman challenge for this card.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (actorRole !== 'hider' && actorRole !== 'host' && actorRole !== 'system') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider may choose the Hangman word.')];
+      }
+      const word = envelope.command.payload.word.normalize('NFC').toUpperCase();
+      if (resolution.hangman?.status !== 'awaiting_word' || !/^\p{L}{5}$/u.test(word)) {
+        return [error(envelope.command.type, 'HANGMAN_WORD_INVALID', 'Choose one five-letter word in the language your group is playing.')];
+      }
+      return [];
+    }
+    case 'guess_hangman_letter': {
+      const resolution = aggregate.activeCardResolution;
+      if (resolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || resolution.resolutionKind !== 'hangman_challenge') {
+        return [error(envelope.command.type, 'HANGMAN_NOT_ACTIVE', 'There is no active Hidden Hangman challenge for this card.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (actorRole !== 'seeker') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may guess a Hangman letter.')];
+      }
+      const letter = envelope.command.payload.letter.normalize('NFC').toUpperCase();
+      if (resolution.hangman?.status !== 'playing' || !/^\p{L}$/u.test(letter)) {
+        return [error(envelope.command.type, 'HANGMAN_GUESS_INVALID', 'Enter one letter after the hider sets the word.')];
+      }
+      if (resolution.hangman.guessedLetters.includes(letter)) {
+        return [error(envelope.command.type, 'HANGMAN_LETTER_ALREADY_GUESSED', 'That letter has already been guessed.')];
+      }
+      return [];
+    }
+    case 'end_hangman_challenge': {
+      const resolution = aggregate.activeCardResolution;
+      if (resolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || resolution.resolutionKind !== 'hangman_challenge') {
+        return [error(envelope.command.type, 'HANGMAN_NOT_ACTIVE', 'There is no active Hidden Hangman challenge for this card.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (actorRole !== 'hider' && actorRole !== 'host' && actorRole !== 'system') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider may end the Hangman challenge.')];
+      }
+      if (resolution.hangman?.status !== 'playing') {
+        return [error(envelope.command.type, 'HANGMAN_CHALLENGE_NOT_PLAYING', 'The Hangman challenge is not waiting for the seeker team.')];
+      }
+      return [];
     }
     case 'resume_match':
       return [];

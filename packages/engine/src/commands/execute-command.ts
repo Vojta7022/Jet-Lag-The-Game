@@ -1550,6 +1550,40 @@ function eventsForCommand(
 
       return events;
     }
+    case 'set_hangman_word': {
+      return [makeEventEnvelope(aggregate, envelope, 0, 'player_private', {
+        type: 'hangman_word_set',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          word: envelope.command.payload.word.normalize('NFC').toUpperCase(),
+          secretOwnerPlayerId: envelope.actor.playerId ?? envelope.actor.actorId
+        }
+      })];
+    }
+    case 'guess_hangman_letter': {
+      const hangman = aggregate!.activeCardResolution!.hangman!;
+      const letter = envelope.command.payload.letter.normalize('NFC').toUpperCase();
+      const word = hangman.secretWord!;
+      const guessedLetters = new Set([...hangman.guessedLetters, letter]);
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'hangman_letter_guessed',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          letter,
+          correct: word.includes(letter),
+          solved: Array.from(word).every((character) => guessedLetters.has(character))
+        }
+      })];
+    }
+    case 'end_hangman_challenge': {
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'hangman_challenge_ended',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          revealedWord: aggregate!.activeCardResolution!.hangman!.secretWord!
+        }
+      })];
+    }
     case 'complete_cooldown':
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {

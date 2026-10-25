@@ -37,6 +37,8 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'end_match',
   'archive_match',
   'resolve_card_window',
+  'set_hangman_word',
+  'end_hangman_challenge',
   'complete_cooldown',
   'apply_constraint',
   'update_location'
@@ -57,6 +59,8 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'play_card',
   'discard_card',
   'resolve_card_window',
+  'set_hangman_word',
+  'end_hangman_challenge',
   'answer_question'
 ]);
 
@@ -71,7 +75,8 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'upload_attachment',
   'draw_card',
   'play_card',
-  'discard_card'
+  'discard_card',
+  'guess_hangman_letter'
 ]);
 
 const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);

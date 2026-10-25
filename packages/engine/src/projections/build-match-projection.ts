@@ -468,7 +468,26 @@ export function buildMatchProjection(
             requireDistinctQuestionCategories: aggregate.activeCardResolution.requireDistinctQuestionCategories,
             rerollAfterQuestion: aggregate.activeCardResolution.rerollAfterQuestion,
             questionRewardCount: aggregate.activeCardResolution.questionRewardCount,
-            extraQuestionRewardDrawCount: aggregate.activeCardResolution.extraQuestionRewardDrawCount
+            extraQuestionRewardDrawCount: aggregate.activeCardResolution.extraQuestionRewardDrawCount,
+            hangman: aggregate.activeCardResolution.hangman
+              ? (() => {
+                  const state = aggregate.activeCardResolution!.hangman!;
+                  const secretVisible = viewer.scope === 'authority' || viewer.scope === 'host_admin' || viewerRole === 'hider';
+                  const word = state.secretWord;
+                  const guessed = new Set(state.guessedLetters);
+                  const maskedWord = word
+                    ? Array.from(word).map((letter) => guessed.has(letter) || state.status === 'solved' || state.status === 'ended' ? letter : '_').join('')
+                    : '_____';
+                  return {
+                    status: state.status,
+                    ...(secretVisible && word ? { secretWord: word } : {}),
+                    ...(state.revealedWord ? { revealedWord: state.revealedWord } : {}),
+                    maskedWord,
+                    guessedLetters: state.guessedLetters,
+                    incorrectLetters: state.incorrectLetters
+                  };
+                })()
+              : undefined
           }
         : undefined;
 

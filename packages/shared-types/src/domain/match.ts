@@ -382,7 +382,15 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge';
+  hangman?: {
+    status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
+    secretWord?: string;
+    secretOwnerPlayerId?: string;
+    revealedWord?: string;
+    guessedLetters: string[];
+    incorrectLetters: string[];
+  };
   moveOriginStationId?: string;
   moveOriginStationName?: string;
   moveDurationSeconds?: number;

@@ -113,6 +113,105 @@ test('Move lets only the hider relocate, select a new zone, and confirm arrival'
   assert.equal(aggregate.roundResults?.at(-1)?.survivalSeconds, 33);
 });
 
+test('Hidden Hangman tracks a private five-letter word and public seeker guesses until solved', () => {
+  const contentPack = loadEngineTestContentPack();
+  const hangmanDefinition = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-hidden-hangman');
+  assert.ok(hangmanDefinition);
+  hangmanDefinition.castingCost = [];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const cardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-hidden-hangman', 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: cardId } }, 70), contentPack).aggregate;
+
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'hangman_challenge');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardId } }, 71), contentPack), /set the five-letter word/i);
+
+  const setWord = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'set_hangman_word', payload: { sourceCardInstanceId: cardId, word: 'train' } } as never, 72), contentPack);
+  assert.equal(setWord.events[0]?.visibilityScope, 'player_private');
+  aggregate = setWord.aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardId } }, 73), contentPack), /finish the Hangman challenge/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'update_location', payload: { latitude: 50.1, longitude: 14.1, source: 'manual' } }, 74), contentPack), /location updates are only allowed in active movement states/i);
+  const hiderView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'player_private', viewerPlayerId: 'hider-1', viewerTeamId: 'team-hider', viewerRole: 'hider'
+  });
+  const seekerView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'player_private', viewerPlayerId: 'seeker-1', viewerTeamId: 'team-seeker', viewerRole: 'seeker'
+  });
+  assert.equal(hiderView.activeCardResolution?.hangman?.secretWord, 'TRAIN');
+  assert.equal(seekerView.activeCardResolution?.hangman?.secretWord, undefined);
+  assert.equal(seekerView.activeCardResolution?.hangman?.maskedWord, '_____');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'guess_hangman_letter', payload: { sourceCardInstanceId: cardId, letter: 'z' } } as never, 73), contentPack).aggregate;
+  const seekerAfterMiss = buildMatchProjection(aggregate, contentPack, {
+    scope: 'player_private', viewerPlayerId: 'seeker-1', viewerTeamId: 'team-seeker', viewerRole: 'seeker'
+  });
+  assert.deepEqual(seekerAfterMiss.activeCardResolution?.hangman?.incorrectLetters, ['Z']);
+  assert.equal(seekerAfterMiss.activeCardResolution?.hangman?.maskedWord, '_____');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'guess_hangman_letter', payload: { sourceCardInstanceId: cardId, letter: 'r' } } as never, 74), contentPack).aggregate;
+  assert.deepEqual(aggregate.activeCardResolution?.hangman?.guessedLetters, ['Z', 'R']);
+  assert.equal(buildMatchProjection(aggregate, contentPack, {
+    scope: 'player_private', viewerPlayerId: 'seeker-1', viewerTeamId: 'team-seeker', viewerRole: 'seeker'
+  }).activeCardResolution?.hangman?.maskedWord, '_R___');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'guess_hangman_letter', payload: { sourceCardInstanceId: cardId, letter: 'R' } } as never, 75), contentPack), /already been guessed/i);
+
+  for (const [step, letter] of ['t', 'a', 'i', 'n'].entries()) {
+    aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'guess_hangman_letter', payload: { sourceCardInstanceId: cardId, letter } } as never, 76 + step), contentPack).aggregate;
+  }
+  assert.equal(aggregate.activeCardResolution?.hangman?.status, 'solved');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardId } }, 80), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution, undefined);
+});
+
+test('Hidden Hangman hider ends the group-played challenge and reveals its word to seekers', () => {
+  const contentPack = loadEngineTestContentPack();
+  const hangmanDefinition = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-hidden-hangman');
+  assert.ok(hangmanDefinition);
+  hangmanDefinition.castingCost = [];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const cardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-hidden-hangman', 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: cardId } }, 90), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'set_hangman_word', payload: { sourceCardInstanceId: cardId, word: 'train' } } as never, 91), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'end_hangman_challenge', payload: { sourceCardInstanceId: cardId } } as never, 92), contentPack), /does not have permission/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'end_hangman_challenge', payload: { sourceCardInstanceId: cardId } } as never, 93), contentPack).aggregate;
+
+  const seekerView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'player_private', viewerPlayerId: 'seeker-1', viewerTeamId: 'team-seeker', viewerRole: 'seeker'
+  });
+  assert.equal(seekerView.activeCardResolution?.hangman?.status, 'ended');
+  assert.equal(seekerView.activeCardResolution?.hangman?.revealedWord, 'TRAIN');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardId } }, 94), contentPack), /does not have permission/i);
+});
+
 test('Move pauses and resumes the hide-phase timer without consuming its remaining time', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToHidePhase(contentPack);
