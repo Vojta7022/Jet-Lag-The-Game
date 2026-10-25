@@ -275,6 +275,7 @@ export interface QuestionFeatureRecordModel {
   longitude: number;
   geometrySupport: 'point' | 'line' | 'polygon' | 'mixed' | 'metadata_only';
   coverage: 'exact' | 'approximate' | 'metadata_only';
+  geometry?: GeoJsonGeometryModel;
   properties?: Record<string, unknown>;
 }
 

@@ -338,7 +338,7 @@ test('question support helper stays honest about approximate and metadata-only p
       category: matchingCategory!,
       regionId: 'unknown-region'
     }),
-    'Will stay as recorded evidence until suitable place data is available'
+    'The app checks fresh player locations against OpenStreetMap administrative boundaries when connected; missing or ambiguous divisions stay manual'
   );
   assert.equal(
     describeTemplateSupport({

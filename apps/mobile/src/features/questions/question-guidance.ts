@@ -269,6 +269,9 @@ export function describeExpectedAnswerGuidance(
     (template.featureClassRefs ?? []).length > 0 &&
     (template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
   ) {
+    if ((template.featureClassRefs ?? []).some((feature) => /^(?:[1-4](?:st|nd|rd|th)-admin-)/.test(feature.featureClassId))) {
+      return 'When connected, the app compares both fresh locations against OpenStreetMap administrative boundaries and narrows the map to that division. If the required level is missing or GPS overlaps a border, it asks for a manual ruling.';
+    }
     return category.resolverKind === 'nearest_candidate'
       ? 'When connected, the app checks the seeker reach radius, then finds the reachable place closest to the hider using fresh GPS and OpenStreetMap data.'
       : 'When connected, the app answers from fresh GPS locations for both players and OpenStreetMap places in the selected region.';

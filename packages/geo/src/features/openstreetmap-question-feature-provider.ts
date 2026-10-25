@@ -5,6 +5,7 @@ import type {
 } from '../../../shared-types/src/index.ts';
 
 import { geometryBoundingBox, pointInGeometry } from '../geometry/geojson.ts';
+import { assembleAdministrativeBoundary } from './admin-boundary-hierarchy.ts';
 
 interface OSMTagSelector {
   tags: Record<string, string>;
@@ -29,7 +30,8 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-bbox-center-v1';
+const OSM_SOURCE_VERSION = 'overpass-admin-area-v2';
+const ADMIN_FEATURE_CLASS_IDS = /^(?:[1-4](?:st|nd|rd|th)-admin-)/;
 
 const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
   'a-commercial-airport': [{ tags: { aeroway: 'aerodrome', scheduled_service: 'yes' } }],
@@ -74,7 +76,7 @@ const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
 };
 
 export function hasOpenStreetMapFeatureClass(featureClassId: string): boolean {
-  return Object.hasOwn(SELECTORS_BY_FEATURE_CLASS, featureClassId);
+  return Object.hasOwn(SELECTORS_BY_FEATURE_CLASS, featureClassId) || ADMIN_FEATURE_CLASS_IDS.test(featureClassId);
 }
 
 function escapeOverpassValue(value: string): string {
@@ -92,6 +94,11 @@ function queryFor(selectors: OSMTagSelector[], box: NonNullable<ReturnType<typeo
     return ['node', 'way', 'relation'].map((element) => `${element}${tagQuery}${bbox};`);
   });
   return `[out:json][timeout:25];(${clauses.join('')});out center tags;`;
+}
+
+function adminBoundaryQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
+  const bbox = `(${box.minLat},${box.minLon},${box.maxLat},${box.maxLon})`;
+  return `[out:json][timeout:25];rel["boundary"="administrative"]${bbox};out geom tags;`;
 }
 
 interface OverpassElement {
@@ -171,7 +178,28 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
     if (!box) return undefined;
 
     const featuresById = new Map<string, QuestionFeatureRecordModel>();
-    for (const featureClassId of [...new Set(request.featureClassIds)]) {
+    const featureClassIds = [...new Set(request.featureClassIds)];
+    const needsAdminBoundaries = featureClassIds.some((id) => ADMIN_FEATURE_CLASS_IDS.test(id));
+    if (needsAdminBoundaries) {
+      const response = await this.fetcher(this.endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: `data=${encodeURIComponent(adminBoundaryQueryFor(box))}`,
+        signal: AbortSignal.timeout(30_000)
+      });
+      if (!response.ok) throw new Error(`OpenStreetMap boundary lookup failed with HTTP ${response.status}.`);
+      const raw = await response.text();
+      if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap boundary data exceeds the 8 MB safety limit.');
+      const parsed = JSON.parse(raw) as { elements?: unknown };
+      if (!Array.isArray(parsed.elements)) throw new Error('OpenStreetMap boundary response did not contain elements.');
+      if (parsed.elements.length > this.maxElements) throw new Error(`OpenStreetMap returned more than ${this.maxElements} administrative boundaries for this question.`);
+      for (const element of parsed.elements) {
+        const feature = assembleAdministrativeBoundary(element);
+        if (feature) featuresById.set(feature.featureId, feature);
+      }
+    }
+
+    for (const featureClassId of featureClassIds) {
       const selectors = SELECTORS_BY_FEATURE_CLASS[featureClassId];
       if (!selectors) continue;
       const query = queryFor(selectors, box);
@@ -194,7 +222,8 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
       }
     }
 
-    if ([...new Set(request.featureClassIds)].every((featureClassId) => !SELECTORS_BY_FEATURE_CLASS[featureClassId])) return undefined;
+    if (featureClassIds.every((featureClassId) =>
+      !SELECTORS_BY_FEATURE_CLASS[featureClassId] && !ADMIN_FEATURE_CLASS_IDS.test(featureClassId))) return undefined;
     return {
       source: 'OpenStreetMap',
       sourceUrl: OSM_COPYRIGHT_URL,

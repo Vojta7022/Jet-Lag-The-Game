@@ -191,6 +191,14 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add regression checks for migration policy changes and protected object paths. Full suite passes 277 tests, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 - [ ] Validate the migration on local Postgres/Supabase and perform live RLS adversarial checks; this checkout has no Supabase CLI or project configuration.
 
+### Completed implementation slice: administrative-division Matching
+
+- [x] Load OSM administrative relation polygons for the selected playable region and assemble closed outer/inner rings from relation member ways.
+- [x] Resolve first through fourth administrative Matching questions from both players' fresh device locations and the same trusted boundary snapshot used by the map deduction.
+- [x] Refuse automatic answers when the needed hierarchy level is absent/ambiguous or GPS uncertainty overlaps the selected border; keep the manual path available.
+- [x] Verify relation geometry assembly, ordinal selection, provider query/normalization, automatic answer, map narrowing, full tests, and mobile typecheck.
+- [ ] Add provider-backed boundary distance for Measuring admin-border templates and validate country-specific hierarchy coverage against real regions before calling all admin questions automatic.
+
 ### Product-owner clarification — individual phones (2026-10-24)
 
 - Each participant uses their own phone; the online match is shared across the full group.

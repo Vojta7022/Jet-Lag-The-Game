@@ -99,7 +99,7 @@ test('single-device referee can complete a rule-based round through found and sc
   const resolvedRadar = resolved.projectionDelivery.projection.visibleQuestions.find((question) => question.questionInstanceId === 'question:round-radar');
   assert.equal(resolvedRadar?.status, 'resolved');
   assert.equal(resolvedRadar?.answer?.value, 'yes');
-  assert.equal(resolvedRadar?.automaticResolution?.resolverVersion, 'jetlag-location-v1');
+  assert.equal(resolvedRadar?.automaticResolution?.resolverVersion, 'jetlag-location-v2');
   assert.equal(resolved.projectionDelivery.projection.seekPhaseSubstate, 'ready');
   assert.equal(resolved.projectionDelivery.projection.visibleMap?.history.length, 1);
   assert.equal(resolved.projectionDelivery.projection.visibleConstraints[0]?.sourceQuestionInstanceId, 'question:round-radar');

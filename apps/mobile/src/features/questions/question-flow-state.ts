@@ -212,7 +212,12 @@ export function describeTemplateSupport(args: {
         (args.category.resolverKind === 'nearest_feature_match' || args.category.resolverKind === 'comparative_distance' || args.category.resolverKind === 'nearest_candidate') &&
         (args.template.featureClassRefs ?? []).length > 0 &&
         (args.template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
-      ) return 'The app can answer from fresh player locations and OpenStreetMap places in the selected region when connected';
+      ) {
+        if ((args.template.featureClassRefs ?? []).some((feature) => /^(?:[1-4](?:st|nd|rd|th)-admin-)/.test(feature.featureClassId))) {
+          return 'The app checks fresh player locations against OpenStreetMap administrative boundaries when connected; missing or ambiguous divisions stay manual';
+        }
+        return 'The app can answer from fresh player locations and OpenStreetMap places in the selected region when connected';
+      }
       return 'Will stay as recorded evidence until suitable place data is available';
     default:
       return 'Stays recorded without a map update for now';

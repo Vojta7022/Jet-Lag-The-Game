@@ -14,6 +14,7 @@ import { queryClosestAmongCandidates, queryNearestFeature } from '../features/qu
 import { filterGeometryByGrid } from '../geometry/grid.ts';
 import {
   geometryHasArea,
+  pointInGeometry,
   representativePointFromGeometry,
   type LonLat
 } from '../geometry/geojson.ts';
@@ -436,11 +437,38 @@ function resolveMatching(
   metadata: Record<string, unknown>
 ): ResolvedConstraintDraft {
   if (context.constraint.kind === 'same_admin_region') {
-    return metadataOnlyDraft({
-      summary: 'Administrative-region matching is recorded as metadata-only.',
-      detail: 'This pack does not yet provide region-boundary metadata sufficient for automatic spatial narrowing.',
-      reasoningSteps: ['Kept the current candidate area unchanged and recorded the answer for manual reasoning.'],
-      metadata
+    const referenceId = metadata.referenceAdminBoundaryId;
+    const answer = answerValue(context.question.answer);
+    const referenceBoundary = typeof referenceId === 'string'
+      ? featureData(metadata).find((feature) => feature.featureId === referenceId)
+      : undefined;
+    if (!referenceBoundary?.geometry || (answer !== 'yes' && answer !== 'no')) {
+      return metadataOnlyDraft({
+        summary: 'Administrative-region matching could not load a usable boundary.',
+        detail: 'The selected administrative division boundary was incomplete, so the map was left unchanged.',
+        reasoningSteps: ['No complete reference polygon was available for map clipping.'],
+        metadata
+      });
+    }
+    return approximateGridOutcome({
+      baseGeometry,
+      stepMeters: gridResolutionMeters(metadata),
+      predicate: (point) => {
+        const insideReference = pointInGeometry(point, referenceBoundary.geometry);
+        return answer === 'yes' ? insideReference : !insideReference;
+      },
+      summary: answer === 'yes'
+        ? `Administrative matching keeps the selected ${referenceBoundary.label} division.`
+        : `Administrative matching removes the selected ${referenceBoundary.label} division.`,
+      detail: 'The authoritative answer compares the same OSM administrative boundary at each player’s fresh location. The polygon is sampled to narrow the search map.',
+      reasoningSteps: [
+        `The seeker is in ${referenceBoundary.label}.`,
+        answer === 'yes'
+          ? 'Kept candidate cells inside that administrative division.'
+          : 'Kept candidate cells outside that administrative division.'
+      ],
+      featureCoverage: 'approximate',
+      metadata: { referenceAdminBoundaryId: referenceBoundary.featureId, ...metadata }
     });
   }
 

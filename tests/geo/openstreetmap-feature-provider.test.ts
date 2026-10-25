@@ -36,13 +36,45 @@ test('OpenStreetMap question feature provider bounds its query and drops feature
   assert.equal(dataset.retrievedAt, '2026-10-24T12:00:00.000Z');
 });
 
-test('OpenStreetMap question feature provider returns undefined for feature types without an agreed mapping', async () => {
+test('OpenStreetMap question feature provider returns undefined for feature types without a mapping', async () => {
   const provider = new OpenStreetMapQuestionFeatureProvider({ fetch: async () => { throw new Error('must not query'); } });
   const result = await provider.load({
-    featureClassIds: ['1st-admin-state'],
+    featureClassIds: ['metro-lines'],
     regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
   });
   assert.equal(result, undefined);
+});
+
+test('OpenStreetMap provider loads polygon geometry for administrative-division Matching', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [{
+        type: 'relation',
+        id: 9201,
+        tags: { boundary: 'administrative', admin_level: '4', name: 'Example State' },
+        members: [{
+          type: 'way',
+          role: 'outer',
+          geometry: [
+            { lon: 14, lat: 50 }, { lon: 15, lat: 50 }, { lon: 15, lat: 51 },
+            { lon: 14, lat: 51 }, { lon: 14, lat: 50 }
+          ]
+        }]
+      }] }), { status: 200 });
+    }
+  });
+  const dataset = await provider.load({
+    featureClassIds: ['1st-admin-state'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[14.2, 50.2], [14.8, 50.2], [14.8, 50.8], [14.2, 50.8], [14.2, 50.2]]] }
+  });
+
+  assert.ok(dataset);
+  assert.match(submittedQuery, /boundary.*administrative/);
+  assert.match(submittedQuery, /out geom tags/);
+  assert.equal(dataset.features[0]?.featureId, 'osm:relation/9201');
+  assert.equal(dataset.features[0]?.geometry?.type, 'MultiPolygon');
 });
 
 test('OpenStreetMap provider maps the printed Tentacles place classes and leaves metro lines unsupported', async () => {

@@ -10,10 +10,12 @@ import {
   distanceMeters,
   queryClosestAmongCandidates,
   queryNearestFeature,
+  distanceToAdministrativeBoundaryMeters,
+  selectAdministrativeDivisionAtPoint,
   type GeoFeatureRecord
 } from '../../../geo/src/index.ts';
 
-export const AUTOMATIC_QUESTION_RESOLVER_VERSION = 'jetlag-location-v1';
+export const AUTOMATIC_QUESTION_RESOLVER_VERSION = 'jetlag-location-v2';
 const DEFAULT_MAX_FIX_AGE_SECONDS = 30;
 const DEFAULT_MAX_FIX_ACCURACY_METERS = 50;
 
@@ -55,10 +57,25 @@ function toGeoFeatureRecords(dataset: QuestionFeatureDatasetModel): GeoFeatureRe
     featureClassId: feature.featureClassId,
     label: feature.label,
     representativePoint: { latitude: feature.latitude, longitude: feature.longitude },
+    geometry: feature.geometry,
     geometrySupport: feature.geometrySupport,
     coverage: feature.coverage,
     properties: feature.properties
   }));
+}
+
+function administrativeDivisionOrdinal(template: QuestionTemplateDefinition): number | undefined {
+  const featureClassId = template.featureClassRefs?.[0]?.featureClassId ?? '';
+  const match = featureClassId.match(/^([1-4])(?:st|nd|rd|th)-admin-/);
+  return match ? Number(match[1]) : undefined;
+}
+
+function datasetProvenanceFor(dataset: QuestionFeatureDatasetModel) {
+  return {
+    featureDatasetSource: dataset.source,
+    featureDatasetVersion: dataset.sourceVersion,
+    featureDatasetRetrievedAt: dataset.retrievedAt
+  };
 }
 
 function nearestFeatureHasConfidentMargin(args: {
@@ -99,12 +116,14 @@ export function resolveAutomaticQuestionAnswer(args: {
   const { aggregate, contentPack, category, template } = args;
   if (category.answerPolicy === 'manual') return { kind: 'manual' };
   if (!['threshold_distance', 'hotter_colder', 'nearest_feature_match', 'comparative_distance', 'nearest_candidate'].includes(category.resolverKind)) return { kind: 'manual' };
+  const adminDivisionOrdinal = administrativeDivisionOrdinal(template);
   if (
     (category.resolverKind === 'nearest_feature_match' || category.resolverKind === 'comparative_distance' || category.resolverKind === 'nearest_candidate') &&
     (!args.questionFeatureDataset ||
       (template.featureClassRefs ?? []).length === 0 ||
       !args.questionFeatureDataset.features.some((feature) =>
-        (template.featureClassRefs ?? []).some((reference) => reference.featureClassId === feature.featureClassId)))
+        (template.featureClassRefs ?? []).some((reference) => reference.featureClassId === feature.featureClassId) ||
+        (adminDivisionOrdinal !== undefined && feature.featureClassId === 'admin-boundary')))
   ) return { kind: 'manual' };
 
   const seeker = latestSample(aggregate.locationSamples, (sample) =>
@@ -138,6 +157,62 @@ export function resolveAutomaticQuestionAnswer(args: {
       kind: 'blocked',
       code: 'LOCATION_FIX_REQUIRED',
       message: `A fresh and accurate location fix is required from the seeker and hider (within ${maxAgeSeconds} seconds and ${maxAccuracyMeters} meters accuracy).`
+    };
+  }
+
+  if (category.resolverKind === 'nearest_feature_match' && adminDivisionOrdinal !== undefined) {
+    const dataset = args.questionFeatureDataset;
+    if (!dataset) return { kind: 'manual' };
+    const seekerBoundary = selectAdministrativeDivisionAtPoint(
+      dataset.features, [seeker.longitude, seeker.latitude], adminDivisionOrdinal
+    );
+    const hiderBoundary = selectAdministrativeDivisionAtPoint(
+      dataset.features, [hider.longitude, hider.latitude], adminDivisionOrdinal
+    );
+    if (!seekerBoundary || !hiderBoundary) return { kind: 'manual' };
+    const seekerBoundaryDistance = distanceToAdministrativeBoundaryMeters(
+      [seeker.longitude, seeker.latitude], seekerBoundary
+    );
+    const hiderBoundaryDistance = distanceToAdministrativeBoundaryMeters(
+      [hider.longitude, hider.latitude], hiderBoundary
+    );
+    if (seekerBoundaryDistance === undefined || hiderBoundaryDistance === undefined ||
+      seekerBoundaryDistance <= seeker.accuracyMeters! || hiderBoundaryDistance <= hider.accuracyMeters!) {
+      return {
+        kind: 'blocked',
+        code: 'LOCATION_ANSWER_AMBIGUOUS',
+        message: 'GPS uncertainty overlaps an administrative border. Refresh both locations or resolve this question manually.'
+      };
+    }
+    const constraintRefs = new Set([...(template.constraintRefs ?? []), ...(category.defaultConstraintRefs ?? [])]);
+    const constraint = contentPack.constraints.find((candidate) =>
+      constraintRefs.has(candidate.constraintId) && candidate.kind === 'same_admin_region');
+    if (!constraint) return { kind: 'manual' };
+    const features = toGeoFeatureRecords(dataset);
+    return {
+      kind: 'resolved',
+      answer: { value: seekerBoundary.featureId === hiderBoundary.featureId ? 'yes' : 'no' },
+      constraintId: constraint.constraintId,
+      automaticResolution: {
+        resolverVersion: AUTOMATIC_QUESTION_RESOLVER_VERSION,
+        method: 'nearest_feature_match',
+        sourceSampleIds: [seeker.sampleId, hider.sampleId],
+        sourceRecordedAt: [seeker.recordedAt, hider.recordedAt],
+        sourceAccuracyMeters: [seeker.accuracyMeters!, hider.accuracyMeters!],
+        thresholdMeters: 0,
+        referenceFeatureId: seekerBoundary.featureId,
+        ...datasetProvenanceFor(dataset)
+      },
+      constraintMetadata: {
+        featureData: features,
+        featureDatasetSource: dataset.source,
+        featureDatasetVersion: dataset.sourceVersion,
+        featureDatasetRetrievedAt: dataset.retrievedAt,
+        featureDataCoverage: dataset.coverage,
+        gridResolutionMeters: 250,
+        referenceAdminBoundaryId: seekerBoundary.featureId,
+        adminDivisionOrdinal
+      }
     };
   }
 

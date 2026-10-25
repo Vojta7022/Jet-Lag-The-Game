@@ -154,6 +154,59 @@ test('Matching automatically compares the nearest same-class features and narrow
   assert.equal(result.aggregate.searchArea?.history.at(-1)?.summary.includes('Matching'), true);
 });
 
+test('administrative Matching selects a country-hierarchy division and clips the map to the seeker division', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 50.1, longitude: 14.1,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 50.2, longitude: 14.2,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const polygon = (west: number, east: number) => ({
+    type: 'MultiPolygon' as const,
+    coordinates: [[[[west, 50], [east, 50], [east, 50.4], [west, 50.4], [west, 50]]]]
+  });
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test-admin-boundaries-v1',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [
+      { featureId: 'osm:relation/country', featureClassId: 'admin-boundary', label: 'Country', longitude: 14.2, latitude: 50.2, geometrySupport: 'polygon' as const, coverage: 'approximate' as const, properties: { adminLevel: 2 }, geometry: polygon(14, 14.4) },
+      { featureId: 'osm:relation/state-a', featureClassId: 'admin-boundary', label: 'State A', longitude: 14.1, latitude: 50.2, geometrySupport: 'polygon' as const, coverage: 'approximate' as const, properties: { adminLevel: 4 }, geometry: polygon(14, 14.25) },
+      { featureId: 'osm:relation/state-b', featureClassId: 'admin-boundary', label: 'State B', longitude: 14.3, latitude: 50.2, geometrySupport: 'polygon' as const, coverage: 'approximate' as const, properties: { adminLevel: 4 }, geometry: polygon(14.25, 14.4) }
+    ]
+  };
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:admin-matching', templateId: 'matching-1st-admin-state', targetTeamId: 'team-hider' }
+    }, 16), contentPack, dataset);
+
+  const question = result.aggregate.questionInstances['question:admin-matching'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.value, 'yes');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:relation/state-a');
+  const constraint = Object.values(result.aggregate.constraints).find((item) => item.sourceQuestionInstanceId === question?.questionInstanceId);
+  assert.equal(constraint?.metadata.referenceAdminBoundaryId, 'osm:relation/state-a');
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
+
+  const incompleteHierarchy = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:admin-missing-level', templateId: 'matching-2nd-admin-county', targetTeamId: 'team-hider' }
+    }, 17), contentPack, { ...dataset, features: [dataset.features[0]!, dataset.features[1]!, dataset.features[2]!] });
+  assert.equal(incompleteHierarchy.aggregate.questionInstances['question:admin-missing-level']?.status, 'awaiting_answer');
+});
+
 test('Station-name-length Matching compares nearest names by character count and clips by that same rule', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
