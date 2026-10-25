@@ -29,6 +29,7 @@ interface CardResolutionStatusPanelProps {
   onGuessHangmanLetter?: (letter: string) => void;
   onEndHangmanChallenge?: () => void;
   onResolveEndlessTumbleCast?: (dieRoll: number) => void;
+  onResolveGamblersFeetCast?: (dieRoll: number) => void;
   onResolve: (questionTemplateIds: string[]) => void;
 }
 
@@ -37,11 +38,13 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [hangmanWord, setHangmanWord] = useState('');
   const [hangmanLetter, setHangmanLetter] = useState('');
   const [endlessTumbleCastRoll, setEndlessTumbleCastRoll] = useState<number | undefined>();
+  const [gamblersFeetCastRoll, setGamblersFeetCastRoll] = useState<number | undefined>();
   useEffect(() => {
     setSelectedTemplateIds([]);
     setHangmanWord('');
     setHangmanLetter('');
     setEndlessTumbleCastRoll(undefined);
+    setGamblersFeetCastRoll(undefined);
   }, [props.resolution?.sourceCardInstanceId]);
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
@@ -64,12 +67,13 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const seekerOffTransitChallenge = props.resolution?.resolutionKind === 'seeker_off_transit_challenge';
   const waterWeightChallenge = props.resolution?.resolutionKind === 'water_weight_challenge';
   const endlessTumbleChallenge = props.resolution?.resolutionKind === 'endless_tumble_challenge';
+  const gamblersFeetChallenge = props.resolution?.resolutionKind === 'gamblers_feet_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const canSubmit = props.canResolve &&
     (!questionSelectionRequired || selectedTemplateIds.length === requiredQuestionCount) &&
     (!hangmanChallenge || hangman?.status === 'solved' || hangman?.status === 'ended') &&
-    !endlessTumbleChallenge;
+    !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
     <View style={styles.section}>
@@ -278,6 +282,25 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
                   if (endlessTumbleCastRoll !== undefined) props.onResolveEndlessTumbleCast?.(endlessTumbleCastRoll);
                 }}
               />
+            </>
+          ) : <Text style={styles.copy}>Waiting for the hider to report the casting die.</Text>}
+        </View>
+      ) : null}
+
+      {gamblersFeetChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>GAMBLER’S FEET CASTING ROLL</Text>
+          <Text style={styles.copy}>The hider rolls a six-sided die. An even result cancels the curse; an odd result starts it for {props.resolution?.gamblersFeetDurationMinutes ?? 20} minutes. Seekers may roll independently; each die result allows up to that many steps.</Text>
+          {props.viewerRole === 'hider' || props.viewerRole === 'host' ? (
+            <>
+              <View style={styles.hangmanGuessRow}>
+                {[1, 2, 3, 4, 5, 6].map((value) => (
+                  <Pressable key={value} onPress={() => setGamblersFeetCastRoll(value)} style={[styles.categoryOption, gamblersFeetCastRoll === value ? styles.categoryOptionSelected : null]}>
+                    <Text style={[styles.categoryLabel, gamblersFeetCastRoll === value ? styles.categoryLabelSelected : null]}>{value}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <AppButton label={gamblersFeetCastRoll ? `Record casting roll: ${gamblersFeetCastRoll}` : 'Choose the die result'} disabled={props.disabled || gamblersFeetCastRoll === undefined || !props.onResolveGamblersFeetCast} onPress={() => gamblersFeetCastRoll !== undefined && props.onResolveGamblersFeetCast?.(gamblersFeetCastRoll)} />
             </>
           ) : <Text style={styles.copy}>Waiting for the hider to report the casting die.</Text>}
         </View>

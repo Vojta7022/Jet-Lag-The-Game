@@ -1759,6 +1759,60 @@ export function validateCommandEnvelope(
       }
       return [];
     }
+    case 'resolve_gamblers_feet_cast': {
+      const resolution = aggregate.activeCardResolution;
+      if (resolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || resolution.resolutionKind !== 'gamblers_feet_challenge') {
+        return [error(envelope.command.type, 'GAMBLERS_FEET_NOT_WAITING_FOR_CAST_ROLL', 'There is no Gambler’s Feet casting roll to resolve.')];
+      }
+      if (!Number.isInteger(envelope.command.payload.dieRoll) || envelope.command.payload.dieRoll < 1 || envelope.command.payload.dieRoll > 6) {
+        return [error(envelope.command.type, 'GAMBLERS_FEET_DIE_ROLL_INVALID', 'Enter a six-sided die result from 1 to 6.')];
+      }
+      const sourceCard = aggregate.cardInstances[resolution.sourceCardInstanceId];
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if ((actorRole !== 'hider' && actorRole !== 'host' && actorRole !== 'system') || !sourceCard ||
+        (actorRole === 'hider' && !isCardAccessibleToActor(aggregate, sourceCard, envelope.actor.playerId, envelope.actor.role))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider who holds the curse may resolve its casting roll.')];
+      }
+      return [];
+    }
+    case 'roll_gamblers_feet_die':
+    case 'report_gamblers_feet_steps': {
+      const challenge = aggregate.gamblersFeetChallenge;
+      const payload = envelope.command.payload;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'GAMBLERS_FEET_NOT_ACTIVE', 'There is no active Gambler’s Feet challenge.')];
+      }
+      if (Date.parse(envelope.occurredAt) >= Date.parse(challenge.expiresAt)) {
+        return [error(envelope.command.type, 'GAMBLERS_FEET_EXPIRED', 'The Gambler’s Feet timer has expired.')];
+      }
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      const targetPlayerId = payload.targetPlayerId ?? envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const refereeMaySetAnother = actorRole === 'host' || actorRole === 'system';
+      if (!targetPlayerId || !seekerTeam?.memberPlayerIds.includes(targetPlayerId) ||
+        (!refereeMaySetAnother && (actorRole !== 'seeker' || targetPlayerId !== envelope.actor.playerId))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker reports their own die rolls and steps from their seeker account.')];
+      }
+      const playerState = challenge.statusByPlayerId[targetPlayerId] ?? { stepsRemaining: 0, unaccountedSteps: 0, updatedAt: envelope.occurredAt };
+      if (envelope.command.type === 'roll_gamblers_feet_die') {
+        const rollPayload = envelope.command.payload as { dieRoll: number };
+        if (!Number.isInteger(rollPayload.dieRoll) || rollPayload.dieRoll < 1 || rollPayload.dieRoll > 6) {
+          return [error(envelope.command.type, 'GAMBLERS_FEET_DIE_ROLL_INVALID', 'Enter a six-sided die result from 1 to 6.')];
+        }
+        return [];
+      }
+      const stepsPayload = envelope.command.payload as { stepsTaken: number; overstep?: 'accidental' | 'safety' };
+      if (!Number.isInteger(stepsPayload.stepsTaken) || stepsPayload.stepsTaken < 1 || stepsPayload.stepsTaken > 10000) {
+        return [error(envelope.command.type, 'GAMBLERS_FEET_STEPS_INVALID', 'Enter a whole number of steps from 1 to 10,000.')];
+      }
+      if (playerState.unaccountedSteps > 0) {
+        return [error(envelope.command.type, 'GAMBLERS_FEET_RECONCILIATION_REQUIRED', `Roll again to account for the ${playerState.unaccountedSteps} unaccounted step${playerState.unaccountedSteps === 1 ? '' : 's'} before walking.`)];
+      }
+      if (stepsPayload.stepsTaken > playerState.stepsRemaining && stepsPayload.overstep !== 'accidental' && stepsPayload.overstep !== 'safety') {
+        return [error(envelope.command.type, 'GAMBLERS_FEET_STEP_LIMIT_EXCEEDED', 'You may only report steps covered by your die roll. Mark an accidental overstep or safety exception if one occurred.')];
+      }
+      return [];
+    }
     case 'resume_match':
       return [];
     case 'archive_match':

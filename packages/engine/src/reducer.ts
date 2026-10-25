@@ -302,6 +302,7 @@ export function reduceMatchAggregate(
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
+        gamblersFeetChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         cardInstances: Object.fromEntries(
           eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
@@ -337,6 +338,7 @@ export function reduceMatchAggregate(
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
+        gamblersFeetChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         disabledQuestionTemplateIds: [],
         disabledQuestionCategoryId: undefined,
@@ -619,6 +621,32 @@ export function reduceMatchAggregate(
         awardedCurseBonusMinutes: (base.awardedCurseBonusMinutes ?? 0) + bonusMinutesAwarded
       };
     }
+    case 'gamblers_feet_challenge_started':
+      return {
+        ...base,
+        gamblersFeetChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt,
+          expiresAt: eventEnvelope.event.payload.expiresAt,
+          durationMinutes: eventEnvelope.event.payload.durationMinutes,
+          statusByPlayerId: {}
+        }
+      };
+    case 'gamblers_feet_player_updated': {
+      const challenge = base.gamblersFeetChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const { playerId, stepsRemaining, unaccountedSteps, dieRoll } = eventEnvelope.event.payload;
+      return {
+        ...base,
+        gamblersFeetChallenge: {
+          ...challenge,
+          statusByPlayerId: {
+            ...challenge.statusByPlayerId,
+            [playerId]: { stepsRemaining, unaccountedSteps, ...(dieRoll !== undefined ? { lastDieRoll: dieRoll } : {}), updatedAt: eventEnvelope.occurredAt }
+          }
+        }
+      };
+    }
     case 'question_response_expired': {
       const question = base.questionInstances[eventEnvelope.event.payload.questionInstanceId];
       if (!question) return base;
@@ -892,6 +920,7 @@ export function reduceMatchAggregate(
           timeBonusMinutes: eventEnvelope.event.payload.timeBonusMinutes,
           endlessTumbleMinimumDistanceMeters: eventEnvelope.event.payload.endlessTumbleMinimumDistanceMeters,
           endlessTumbleSuccessfulDieResults: eventEnvelope.event.payload.endlessTumbleSuccessfulDieResults,
+          gamblersFeetDurationMinutes: eventEnvelope.event.payload.gamblersFeetDurationMinutes,
           questionTemplateCount: eventEnvelope.event.payload.questionTemplateCount,
           requireDistinctQuestionCategories: eventEnvelope.event.payload.requireDistinctQuestionCategories,
           questionRewardCount: eventEnvelope.event.payload.questionRewardCount,

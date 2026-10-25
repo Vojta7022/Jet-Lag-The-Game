@@ -13,6 +13,7 @@ import {
   canResolveCardWindow,
   getCardResolutionBlockedReason,
   CardResolutionStatusPanel,
+  GamblersFeetChallengePanel,
   EndlessTumbleChallengePanel,
   CardZoneSection,
   HIDER_HAND_TARGET,
@@ -518,6 +519,19 @@ export function LiveMapInlineActionPanel() {
               return <AppButton key={player.playerId} label={`${viewerRole === 'host' ? `${player.displayName}: ` : ''}${touching ? 'Report lemon lost' : 'Confirm lemon attached'}`} tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'set_lemon_phylactery_contact', payload: { sourceCardInstanceId: lemonPhylacteryChallenge.sourceCardInstanceId, targetPlayerId: viewerRole === 'host' ? player.playerId : undefined, touching: !touching } })} />;
             })}
             <Text style={styles.copy}>Use a real lemon. Any attachment method works. Report when it stops touching clothing or skin; the hider immediately earns the scale bonus. Reattach before the next question.</Text>
+          </View>
+        ) : null}
+        {projection?.gamblersFeetChallenge ? (
+          <View style={styles.section}>
+            <GamblersFeetChallengePanel
+              challenge={projection.gamblersFeetChallenge}
+              players={seekerPlayers.map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+              viewerRole={viewerRole}
+              viewerPlayerId={activeMatch?.recipient.playerId}
+              disabled={state.loadState === 'loading'}
+              onRoll={(playerId, dieRoll) => void submitCommand({ type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, dieRoll, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
+              onReportSteps={(playerId, stepsTaken, overstep) => void submitCommand({ type: 'report_gamblers_feet_steps', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, stepsTaken, overstep, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
+            />
           </View>
         ) : null}
         <LiveMapInfoChips

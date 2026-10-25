@@ -113,6 +113,9 @@ export type DomainEvent =
   | EndlessTumbleRollReportedEvent
   | LemonPhylacteryChallengeStartedEvent
   | LemonPhylacteryContactChangedEvent
+  | GamblersFeetChallengeStartedEvent
+  | GamblersFeetCastResolvedEvent
+  | GamblersFeetPlayerUpdatedEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -434,7 +437,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -447,6 +450,7 @@ export interface CardResolutionOpenedEvent {
     timeBonusMinutes?: number;
     endlessTumbleMinimumDistanceMeters?: number;
     endlessTumbleSuccessfulDieResults?: number[];
+    gamblersFeetDurationMinutes?: number;
     questionTemplateCount?: number;
     requireDistinctQuestionCategories?: boolean;
     rerollAfterQuestion?: boolean;
@@ -547,6 +551,21 @@ export interface LemonPhylacteryChallengeStartedEvent {
 export interface LemonPhylacteryContactChangedEvent {
   type: 'lemon_phylactery_contact_changed';
   payload: { sourceCardInstanceId: string; playerId: string; touching: boolean; bonusMinutesAwarded: number };
+}
+
+export interface GamblersFeetChallengeStartedEvent {
+  type: 'gamblers_feet_challenge_started';
+  payload: { sourceCardInstanceId: string; durationMinutes: number; expiresAt: string };
+}
+
+export interface GamblersFeetCastResolvedEvent {
+  type: 'gamblers_feet_cast_resolved';
+  payload: { sourceCardInstanceId: string; dieRoll: number; effectActivated: boolean };
+}
+
+export interface GamblersFeetPlayerUpdatedEvent {
+  type: 'gamblers_feet_player_updated';
+  payload: { sourceCardInstanceId: string; playerId: string; dieRoll?: number; stepsRemaining: number; unaccountedSteps: number };
 }
 
 export interface QuestionTemplatesDisabledEvent {

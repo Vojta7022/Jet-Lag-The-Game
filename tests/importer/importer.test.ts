@@ -236,6 +236,14 @@ test('the workbook importer creates a normalized draft content pack', () => {
     requiredAttestations: 'all_seekers'
   });
   assert.equal(lemonPhylactery?.requirements?.requiresManualApproval, false);
+  const gamblersFeet = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');
+  assert.equal(gamblersFeet?.automationLevel, 'assisted');
+  assert.equal(gamblersFeet?.effects[0]?.effectType, 'gamblers_feet_challenge');
+  assert.deepEqual(gamblersFeet?.effects[0]?.payload, {
+    minutesByScale: { small: 20, medium: 40, large: 60 },
+    dicePerSeeker: true
+  });
+  assert.equal(gamblersFeet?.requirements?.requiresManualApproval, false);
 
   const hiderDeck = result.pack.decks.find((deck) => deck.deckId === 'hider-main');
   assert.ok(hiderDeck);
@@ -262,6 +270,9 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   const lemonPhylactery = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-lemon-phylactery');
   assert.equal(lemonPhylactery?.automationLevel, 'assisted');
   assert.equal(lemonPhylactery?.effects[0]?.effectType, 'lemon_phylactery_challenge');
+  const gamblersFeet = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');
+  assert.equal(gamblersFeet?.automationLevel, 'assisted');
+  assert.equal(gamblersFeet?.effects[0]?.effectType, 'gamblers_feet_challenge');
   const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
   assert.equal(photoTemplates.length, 18);
   assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));

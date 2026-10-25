@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T17:13:35.904Z",
+    "importedAt": "2026-10-25T17:33:52.869Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3727,7 +3727,7 @@
       "shortName": "Curse Of The Gambler's Feet",
       "description": "For the next [S20, M40, L60] minutes seekers must roll a die before they take any steps in any direction, they may take that many steps before rolling again",
       "rulebookGuidanceText": "Use a six-sided die. With multiple seekers, each may roll separately or one roll may set the steps for everyone. If seekers accidentally take extra steps, stop and roll retroactively to account for them. Extra steps are allowed only when needed for safety.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3737,18 +3737,23 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "gamblers_feet_challenge",
           "description": "For the next [S20, M40, L60] minutes seekers must roll a die before they take any steps in any direction, they may take that many steps before rolling again",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "For the next [S20, M40, L60] minutes seekers must roll a die before they take any steps in any direction, they may take that many steps before rolling again",
           "payload": {
-            "workbookName": "Curse Of The Gambler's Feet"
+            "minutesByScale": {
+              "small": 20,
+              "medium": 40,
+              "large": 60
+            },
+            "dicePerSeeker": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3759,7 +3764,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

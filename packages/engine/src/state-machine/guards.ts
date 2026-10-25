@@ -144,6 +144,15 @@ export function validateStateForCommand(
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Lemon contact can only be updated while seekers are searching.')];
+    case 'resolve_gamblers_feet_cast':
+      return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Gambler’s Feet can only be cast while seekers are searching.')];
+    case 'roll_gamblers_feet_die':
+    case 'report_gamblers_feet_steps':
+      return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Gambler’s Feet step tracking is only active while seekers are searching.')];
     case 'ask_question':
       return isSeekPhaseState(aggregate, 'awaiting_question_selection') ||
         (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'awaiting_question_selection')
@@ -227,6 +236,7 @@ export function validateStateForCommand(
         : [error(command.type, 'INVALID_STATE', 'Cards can only be discarded in allowed hand-management windows.')];
     case 'resolve_card_window':
       return isSeekPhaseState(aggregate, 'awaiting_card_resolution') ||
+        (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'awaiting_card_resolution') ||
         (isLifecycleState(aggregate, 'hide_phase') && aggregate.activeCardResolution?.resolutionKind === 'move')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Card windows can only close during card resolution.')];

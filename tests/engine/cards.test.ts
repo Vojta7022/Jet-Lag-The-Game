@@ -400,6 +400,80 @@ test('Lemon Phylactery gates questions per seeker and awards the scale bonus whe
   assert.equal(ask().aggregate.seekPhaseSubstate, 'awaiting_question_answer');
 });
 
+test('Gambler’s Feet creates a timed, typed step-challenge plan from its selected scale', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');
+  assert.ok(card);
+  card.effects = [{ ...card.effects[0]!, effectType: 'gamblers_feet_challenge', automationLevel: 'assisted', payload: { minutesByScale: { small: 20, medium: 40, large: 60 } } } as never];
+  const plan = buildCardResolutionPlan(card, 'medium');
+  assert.equal(plan.kind, 'gamblers_feet_challenge');
+  assert.equal(plan.activeDurationMinutes, 40);
+});
+
+test('Gambler’s Feet activates on an odd cast and tracks each seeker’s step allowance and accidental-step debt', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');
+  assert.ok(card);
+  card.castingCost = [];
+  card.effects = [{ ...card.effects[0]!, effectType: 'gamblers_feet_challenge', automationLevel: 'assisted', payload: { minutesByScale: { small: 20, medium: 40, large: 60 } } } as never];
+  let aggregate = setupMatchToSeekReady(contentPack, 'medium');
+  aggregate.teams['team-seeker']!.memberPlayerIds.push('seeker-2');
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 3 } }, 71), contentPack).aggregate;
+  assert.equal(aggregate.gamblersFeetChallenge?.durationMinutes, 40);
+  assert.equal(aggregate.gamblersFeetChallenge?.expiresAt, '2026-01-01T00:41:11.000Z');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 3 } }, 72), contentPack).aggregate;
+  assert.equal(aggregate.gamblersFeetChallenge?.statusByPlayerId['seeker-2'], undefined);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 3, targetPlayerId: 'seeker-2' } }, 72), contentPack), /each seeker reports their own die rolls/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'report_gamblers_feet_steps', payload: { sourceCardInstanceId: cardInstanceId, stepsTaken: 2 } }, 73), contentPack).aggregate;
+  assert.equal(aggregate.gamblersFeetChallenge?.statusByPlayerId['seeker-1']?.stepsRemaining, 1);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'report_gamblers_feet_steps', payload: { sourceCardInstanceId: cardInstanceId, stepsTaken: 3 } }, 74), contentPack), /mark an accidental overstep or safety exception/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'report_gamblers_feet_steps', payload: { sourceCardInstanceId: cardInstanceId, stepsTaken: 3, overstep: 'accidental' } }, 74), contentPack).aggregate;
+  assert.equal(aggregate.gamblersFeetChallenge?.statusByPlayerId['seeker-1']?.unaccountedSteps, 2);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'report_gamblers_feet_steps', payload: { sourceCardInstanceId: cardInstanceId, stepsTaken: 1 } }, 75), contentPack), /roll again to account for the 2 unaccounted steps/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 1 } }, 76), contentPack).aggregate;
+  assert.equal(aggregate.gamblersFeetChallenge?.statusByPlayerId['seeker-1']?.unaccountedSteps, 1);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 2 } }, 77), contentPack).aggregate;
+  assert.equal(aggregate.gamblersFeetChallenge?.statusByPlayerId['seeker-1']?.stepsRemaining, 1);
+  assert.equal(aggregate.gamblersFeetChallenge?.statusByPlayerId['seeker-1']?.unaccountedSteps, 0);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 1 } }, 2471), contentPack), /timer has expired/i);
+});
+
+test('Gambler’s Feet has no effect when its casting die is even', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');
+  assert.ok(card);
+  card.effects = [{ ...card.effects[0]!, effectType: 'gamblers_feet_challenge', automationLevel: 'assisted', payload: { minutesByScale: { small: 20, medium: 40, large: 60 } } } as never];
+  const aggregate = setupMatchToSeekReady(contentPack, 'medium');
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  const opened = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 80), contentPack).aggregate;
+  const resolved = executeCommand(opened, makeEnvelope(opened.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 4 } }, 81), contentPack);
+  assert.equal(resolved.aggregate.gamblersFeetChallenge, undefined);
+  assert.equal(resolved.aggregate.activeCardResolution, undefined);
+  assert.equal(resolved.events[0]?.event.type, 'gamblers_feet_cast_resolved');
+  assert.equal(resolved.events[0]?.event.payload.effectActivated, false);
+});
+
+test('Gambler’s Feet can be cast and resolved during endgame', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');
+  assert.ok(card);
+  card.castingCost = [];
+  card.effects = [{ ...card.effects[0]!, effectType: 'gamblers_feet_challenge', automationLevel: 'assisted', payload: { minutesByScale: { small: 20, medium: 40, large: 60 } } } as never];
+  const aggregate = setupMatchToSeekReady(contentPack, 'medium');
+  aggregate.lifecycleState = 'endgame';
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  const opened = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 90), contentPack).aggregate;
+  assert.equal(opened.activeCardResolution?.resolutionKind, 'gamblers_feet_challenge');
+  const resolved = executeCommand(opened, makeEnvelope(opened.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 3 } }, 91), contentPack).aggregate;
+  assert.ok(resolved.gamblersFeetChallenge);
+  assert.equal(resolved.lifecycleState, 'endgame');
+});
+
 test('Water Weight blocks questions until acquisition and awards its scale bonus on the first loss report', () => {
   const contentPack = loadEngineTestContentPack();
   const waterWeight = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');

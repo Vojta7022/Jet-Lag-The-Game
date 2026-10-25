@@ -512,3 +512,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add seeker self-report controls and a host referee control in both Question Center and the live map; preserve the challenge through the hider run and reset it on round rotation.
 - [x] Reject the curse during endgame and prevent overlap with other typed question/transit blockers.
 - [x] Verify full suite (403/403), mobile typecheck, content-pack regeneration, and `git diff --check` (2026-10-25). Physical contact remains player-attested.
+
+### Completed implementation slice: Curse of the Gambler’s Feet
+
+- [x] Import the scanned p. 55 casting rule and the printed 20/40/60-minute duration as an assisted, scale-aware card effect in both workbook mappings.
+- [x] Resolve the hider’s d6 cast (even cancels; odd activates), then track each seeker’s own die allowance and reported steps for the timed effect.
+- [x] Record accidental oversteps as step debt that requires additional die rolls before walking again; allow explicitly attested safety exceptions and report player step counts as physical attestations.
+- [x] Add controls in the card window, Question Center, and live map; allow the unrestricted card in endgame and verify that Lemon Phylactery’s printed endgame restriction remains specific to that card.
+- [x] Verify cast parity, allowance decrement, per-player isolation, overstep recovery, expiration, both workbook profiles, full suite (407 tests), mobile typecheck, and web export (2026-10-25).

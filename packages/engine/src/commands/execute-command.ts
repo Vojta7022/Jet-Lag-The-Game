@@ -1204,7 +1204,7 @@ function eventsForCommand(
           resolutionPlan.kind !== 'draw_and_expand_hand' &&
           resolutionPlan.kind !== 'veto_question' &&
           resolutionPlan.kind !== 'randomize_question' &&
-          aggregate?.lifecycleState === 'seek_phase';
+          (aggregate?.lifecycleState === 'seek_phase' || aggregate?.lifecycleState === 'endgame');
       const playedCard: CardInstanceModel = {
         ...currentCard,
         zone: opensResolutionWindow ? 'pending_resolution' : 'discard_pile',
@@ -1391,6 +1391,7 @@ function eventsForCommand(
               timeBonusMinutes: resolutionPlan.timeBonusMinutes,
               endlessTumbleMinimumDistanceMeters: resolutionPlan.minimumDistanceMeters,
               endlessTumbleSuccessfulDieResults: resolutionPlan.successfulDieResults,
+              gamblersFeetDurationMinutes: resolutionPlan.activeDurationMinutes,
               questionTemplateCount: resolutionPlan.questionTemplateCount,
               requireDistinctQuestionCategories: resolutionPlan.requireDistinctQuestionCategories,
               rerollAfterQuestion: resolutionPlan.rerollAfterQuestion,
@@ -1731,6 +1732,61 @@ function eventsForCommand(
           playerId,
           touching: envelope.command.payload.touching,
           bonusMinutesAwarded: wasTouching && !envelope.command.payload.touching ? challenge.hiderBonusMinutes : 0
+        }
+      })];
+    }
+    case 'resolve_gamblers_feet_cast': {
+      const resolution = aggregate!.activeCardResolution!;
+      const dieRoll = envelope.command.payload.dieRoll;
+      const effectActivated = dieRoll % 2 === 1;
+      const events: DomainEventEnvelope[] = [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'gamblers_feet_cast_resolved',
+        payload: { sourceCardInstanceId: resolution.sourceCardInstanceId, dieRoll, effectActivated }
+      })];
+      if (effectActivated) {
+        const durationMinutes = resolution.gamblersFeetDurationMinutes ?? 20;
+        const expiresAt = new Date(Date.parse(envelope.occurredAt) + durationMinutes * 60_000).toISOString();
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+          type: 'gamblers_feet_challenge_started',
+          payload: { sourceCardInstanceId: resolution.sourceCardInstanceId, durationMinutes, expiresAt }
+        }));
+      }
+      events.push(makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {
+        type: 'card_resolution_closed',
+        payload: { sourceCardInstanceId: resolution.sourceCardInstanceId, seekPhaseSubstate: 'ready', lifecycleState: aggregate!.lifecycleState }
+      }));
+      return events;
+    }
+    case 'roll_gamblers_feet_die': {
+      const challenge = aggregate!.gamblersFeetChallenge!;
+      const playerId = envelope.command.payload.targetPlayerId ?? envelope.actor.playerId!;
+      const prior = challenge.statusByPlayerId[playerId] ?? { stepsRemaining: 0, unaccountedSteps: 0, updatedAt: envelope.occurredAt };
+      const dieRoll = envelope.command.payload.dieRoll;
+      const paidDebt = Math.min(prior.unaccountedSteps, dieRoll);
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'gamblers_feet_player_updated',
+        payload: {
+          sourceCardInstanceId: challenge.sourceCardInstanceId,
+          playerId,
+          dieRoll,
+          stepsRemaining: dieRoll - paidDebt,
+          unaccountedSteps: prior.unaccountedSteps - paidDebt
+        }
+      })];
+    }
+    case 'report_gamblers_feet_steps': {
+      const challenge = aggregate!.gamblersFeetChallenge!;
+      const playerId = envelope.command.payload.targetPlayerId ?? envelope.actor.playerId!;
+      const prior = challenge.statusByPlayerId[playerId] ?? { stepsRemaining: 0, unaccountedSteps: 0, updatedAt: envelope.occurredAt };
+      const { stepsTaken, overstep } = envelope.command.payload;
+      const overage = Math.max(0, stepsTaken - prior.stepsRemaining);
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'gamblers_feet_player_updated',
+        payload: {
+          sourceCardInstanceId: challenge.sourceCardInstanceId,
+          playerId,
+          stepsRemaining: overage > 0 ? 0 : prior.stepsRemaining - stepsTaken,
+          unaccountedSteps: prior.unaccountedSteps + (overstep === 'accidental' ? overage : 0)
         }
       })];
     }

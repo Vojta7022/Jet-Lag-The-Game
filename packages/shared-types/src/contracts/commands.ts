@@ -71,6 +71,9 @@ export type DomainCommand =
   | ResolveEndlessTumbleCastCommand
   | ReportEndlessTumbleRollCommand
   | SetLemonPhylacteryContactCommand
+  | ResolveGamblersFeetCastCommand
+  | RollGamblersFeetDieCommand
+  | ReportGamblersFeetStepsCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -395,6 +398,21 @@ export interface ReportEndlessTumbleRollCommand {
 export interface SetLemonPhylacteryContactCommand {
   type: 'set_lemon_phylactery_contact';
   payload: { sourceCardInstanceId: string; touching: boolean; targetPlayerId?: string };
+}
+
+export interface ResolveGamblersFeetCastCommand {
+  type: 'resolve_gamblers_feet_cast';
+  payload: { sourceCardInstanceId: string; dieRoll: number };
+}
+
+export interface RollGamblersFeetDieCommand {
+  type: 'roll_gamblers_feet_die';
+  payload: { sourceCardInstanceId: string; dieRoll: number; targetPlayerId?: string };
+}
+
+export interface ReportGamblersFeetStepsCommand {
+  type: 'report_gamblers_feet_steps';
+  payload: { sourceCardInstanceId: string; stepsTaken: number; overstep?: 'accidental' | 'safety'; targetPlayerId?: string };
 }
 
 export interface CompleteCooldownCommand {

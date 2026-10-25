@@ -410,7 +410,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -431,6 +431,7 @@ export interface CardResolutionWindow {
   timeBonusMinutes?: number;
   endlessTumbleMinimumDistanceMeters?: number;
   endlessTumbleSuccessfulDieResults?: number[];
+  gamblersFeetDurationMinutes?: number;
   questionTemplateCount?: number;
   requireDistinctQuestionCategories?: boolean;
   rerollAfterQuestion?: boolean;
@@ -481,6 +482,14 @@ export interface LemonPhylacteryChallengeModel {
   statusByPlayerId: Record<string, { touching: boolean; updatedAt: string }>;
 }
 
+export interface GamblersFeetChallengeModel {
+  sourceCardInstanceId: string;
+  activatedAt: string;
+  expiresAt: string;
+  durationMinutes: number;
+  statusByPlayerId: Record<string, { stepsRemaining: number; unaccountedSteps: number; lastDieRoll?: number; updatedAt: string }>;
+}
+
 export interface MatchAggregate {
   matchId: string;
   mode: MatchMode;
@@ -515,6 +524,7 @@ export interface MatchAggregate {
   waterWeightChallenge?: WaterWeightChallengeModel;
   endlessTumbleChallenge?: EndlessTumbleChallengeModel;
   lemonPhylacteryChallenge?: LemonPhylacteryChallengeModel;
+  gamblersFeetChallenge?: GamblersFeetChallengeModel;
   awardedCurseBonusMinutes?: number;
   hiderHandLimitBonus?: number;
   disabledQuestionTemplateIds?: string[];

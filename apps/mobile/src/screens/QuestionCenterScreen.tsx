@@ -65,6 +65,7 @@ import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 import { EndlessTumbleChallengePanel } from '../features/cards/EndlessTumbleChallengePanel.tsx';
+import { GamblersFeetChallengePanel } from '../features/cards/GamblersFeetChallengePanel.tsx';
 
 function resolveCurrentRole(
   role: string | undefined,
@@ -964,6 +965,20 @@ export function QuestionCenterScreen() {
             return <AppButton key={player.playerId} label={`${viewerRole === 'host' ? `${player.displayName}: ` : ''}${touching ? 'Report lemon no longer touching' : 'Confirm lemon attached'}`} tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'set_lemon_phylactery_contact', payload: { sourceCardInstanceId: lemonPhylacteryChallenge.sourceCardInstanceId, targetPlayerId: viewerRole === 'host' ? player.playerId : undefined, touching: !touching } })} />;
           })}
           <Text style={styles.helper}>Use a real lemon and any attachment method. A lost lemon immediately gives the hider the scale bonus; attach it again before the next question. Physical contact is player-attested.</Text>
+        </Panel>
+      ) : null}
+
+      {projection?.gamblersFeetChallenge ? (
+        <Panel title="Curse of the Gambler’s Feet" subtitle="Track each seeker’s die allowance before they walk." tone="accent">
+          <GamblersFeetChallengePanel
+            challenge={projection.gamblersFeetChallenge}
+            players={projection.players.filter((player) => player.role === 'seeker').map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+            viewerRole={viewerRole}
+            viewerPlayerId={activeMatch?.recipient.playerId}
+            disabled={state.loadState === 'loading'}
+            onRoll={(playerId, dieRoll) => void submitCommand({ type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, dieRoll, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
+            onReportSteps={(playerId, stepsTaken, overstep) => void submitCommand({ type: 'report_gamblers_feet_steps', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, stepsTaken, overstep, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
+          />
         </Panel>
       ) : null}
 

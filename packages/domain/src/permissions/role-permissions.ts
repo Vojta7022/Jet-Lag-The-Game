@@ -40,6 +40,9 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'resolve_endless_tumble_cast',
   'report_endless_tumble_roll',
   'set_lemon_phylactery_contact',
+  'resolve_gamblers_feet_cast',
+  'roll_gamblers_feet_die',
+  'report_gamblers_feet_steps',
   'set_hangman_word',
   'end_hangman_challenge',
   'complete_cooldown',
@@ -63,6 +66,7 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'discard_card',
   'resolve_card_window',
   'resolve_endless_tumble_cast',
+  'resolve_gamblers_feet_cast',
   'set_hangman_word',
   'end_hangman_challenge',
   'answer_question'
@@ -86,7 +90,9 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'confirm_water_weight_liquid_acquired',
   'report_water_weight_liquid_lost',
   'report_endless_tumble_roll',
-  'set_lemon_phylactery_contact'
+  'set_lemon_phylactery_contact',
+  'roll_gamblers_feet_die',
+  'report_gamblers_feet_steps'
 ]);
 
 const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);
