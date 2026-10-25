@@ -1,7 +1,8 @@
+import polygonClippingModule from 'polygon-clipping';
+
 import {
   createMultiPolygonGeometry,
   createPolygonGeometry,
-  pointInGeometry,
   polygonRingsFromGeometry
 } from '../../../../../packages/geo/src/index.ts';
 
@@ -11,6 +12,14 @@ import type {
   PlayableRegionCatalogEntry
 } from './region-types.ts';
 import { getGeometryBounds, type GeometryBounds } from './map-geometry.ts';
+
+type MultiPolygonCoordinates = [number, number][][][];
+type PolygonClippingOperations = {
+  union: (geometry: MultiPolygonCoordinates, ...geometries: MultiPolygonCoordinates[]) => MultiPolygonCoordinates;
+  intersection: (geometry: MultiPolygonCoordinates, ...geometries: MultiPolygonCoordinates[]) => MultiPolygonCoordinates;
+  difference: (geometry: MultiPolygonCoordinates, ...geometries: MultiPolygonCoordinates[]) => MultiPolygonCoordinates;
+};
+const polygonClipping = polygonClippingModule as unknown as PolygonClippingOperations;
 
 function dedupeRegions(regions: PlayableRegionCatalogEntry[]): PlayableRegionCatalogEntry[] {
   const seenRegionIds = new Set<string>();
@@ -102,78 +111,30 @@ function buildRawCombinedGeometry(regions: PlayableRegionCatalogEntry[]) {
   return createMultiPolygonGeometry(polygons);
 }
 
-function cross(a: [number, number], b: [number, number], c: [number, number]): number {
-  return (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
-}
-
-function segmentIntersects(a: [number, number], b: [number, number], c: [number, number], d: [number, number]): boolean {
-  const first = cross(a, b, c);
-  const second = cross(a, b, d);
-  const third = cross(c, d, a);
-  const fourth = cross(c, d, b);
-  return first * second <= 0 && third * fourth <= 0 &&
-    Math.max(Math.min(a[0], b[0]), Math.min(c[0], d[0])) <= Math.min(Math.max(a[0], b[0]), Math.max(c[0], d[0])) &&
-    Math.max(Math.min(a[1], b[1]), Math.min(c[1], d[1])) <= Math.min(Math.max(a[1], b[1]), Math.max(c[1], d[1]));
-}
-
-function polygonBoundariesIntersect(left: number[][][], right: number[][][]): boolean {
-  const leftRings = left as [number, number][][];
-  const rightRings = right as [number, number][][];
-  return leftRings.some((leftRing) => rightRings.some((rightRing) => {
-    for (let leftIndex = 0; leftIndex < leftRing.length - 1; leftIndex += 1) {
-      for (let rightIndex = 0; rightIndex < rightRing.length - 1; rightIndex += 1) {
-        if (segmentIntersects(leftRing[leftIndex]!, leftRing[leftIndex + 1]!, rightRing[rightIndex]!, rightRing[rightIndex + 1]!)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }));
-}
-
 function buildDifferenceGeometry(
   includedRegions: PlayableRegionCatalogEntry[],
   excludedRegions: PlayableRegionCatalogEntry[]
 ) {
   const includedPolygons = includedRegions.flatMap((region) => polygonRingsFromGeometry(region.geometry));
-  const outputPolygons = includedPolygons.map((polygon) => polygon.map((ring) => [...ring]));
-  let invalidOverlap = false;
+  const excludedPolygons = excludedRegions.flatMap((region) => polygonRingsFromGeometry(region.geometry));
+  if (includedPolygons.length === 0 || excludedPolygons.length === 0) return undefined;
 
-  for (const excludedRegion of excludedRegions) {
-    const excludedPolygons = polygonRingsFromGeometry(excludedRegion.geometry);
-    if (excludedPolygons.length === 0 || excludedPolygons.some((polygon) => polygon.length !== 1)) return undefined;
+  try {
+    const includedUnion = polygonClipping.union(includedPolygons);
+    const excludedUnion = polygonClipping.union(excludedPolygons);
+    if (includedUnion.length === 0 || excludedUnion.length === 0) return undefined;
 
-    for (const excludedPolygon of excludedPolygons) {
-      const excludedOuterRing = excludedPolygon[0];
-      if (!excludedOuterRing || excludedOuterRing.length < 4) return undefined;
-      let matchedIncludedPolygon = false;
-      const excludedGeometry = createPolygonGeometry(excludedPolygon);
-      if (!excludedGeometry) return undefined;
+    // A subtraction with no shared area is almost always an accidental map edit.
+    if (polygonClipping.intersection(includedUnion, excludedUnion).length === 0) return undefined;
 
-      includedPolygons.forEach((includedPolygon, index) => {
-        const includedGeometry = createPolygonGeometry(includedPolygon);
-        const includedOuter = includedPolygon[0];
-        if (!includedGeometry || !includedOuter) return;
-        const fullyInside = excludedOuterRing.slice(0, -1).every((point) => pointInGeometry(point, includedGeometry));
-        const boundaryIntersects = polygonBoundariesIntersect([excludedOuterRing], includedPolygon);
-        const touchesIncluded = excludedOuterRing.slice(0, -1).some((point) => pointInGeometry(point, includedGeometry));
-        const includesExcluded = includedOuter.slice(0, -1).some((point) => pointInGeometry(point, excludedGeometry));
-        if (!fullyInside || boundaryIntersects) {
-          if (boundaryIntersects || touchesIncluded || includesExcluded) invalidOverlap = true;
-          return;
-        }
-        matchedIncludedPolygon = true;
-        outputPolygons[index]!.push([...excludedOuterRing]);
-      });
-
-      if (!matchedIncludedPolygon || invalidOverlap) return undefined;
-    }
+    const difference = polygonClipping.difference(includedUnion, excludedUnion);
+    if (difference.length === 0) return undefined;
+    return difference.length === 1
+      ? createPolygonGeometry(difference[0] as [number, number][][])
+      : createMultiPolygonGeometry(difference as [number, number][][][]);
+  } catch {
+    return undefined;
   }
-
-  const geometry = outputPolygons.length === 1
-    ? createPolygonGeometry(outputPolygons[0]!)
-    : createMultiPolygonGeometry(outputPolygons);
-  return geometry;
 }
 
 function boundsAppearConnected(left: GeometryBounds | undefined, right: GeometryBounds | undefined): boolean {
@@ -311,7 +272,7 @@ export function buildCompositePlayableRegion(
       rawCombinedGeometry,
       displayLabel,
       summary,
-      dissolveStatus: 'disabled_stable_raw',
+      dissolveStatus: allExcludedRegions.length > 0 ? 'boolean_clipped' : 'disabled_stable_raw',
       dissolveNotice: allExcludedRegions.length === 0
         ? 'Stable composite rendering is using the raw component boundaries. Shared internal borders may remain visible until a future robust union implementation is added.'
         : undefined,

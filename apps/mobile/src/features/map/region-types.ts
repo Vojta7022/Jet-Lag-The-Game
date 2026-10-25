@@ -57,7 +57,7 @@ export interface CompositeRegionMetadata {
   rawCombinedGeometry: GeoJsonGeometryModel;
   displayLabel: string;
   summary: string;
-  dissolveStatus: 'disabled_stable_raw';
+  dissolveStatus: 'disabled_stable_raw' | 'boolean_clipped';
   dissolveNotice?: string;
   disconnectedWarning?: CompositeRegionWarning;
 }

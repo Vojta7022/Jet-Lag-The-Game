@@ -404,12 +404,13 @@ test('composite region builder subtracts a contained region as a real playable-b
   assert.equal(composite?.geometry.type === 'Polygon' ? composite.geometry.coordinates.length : 0, 2);
   assert.equal(pointInGeometry([1, 1], composite?.geometry), true);
   assert.equal(pointInGeometry([3, 3], composite?.geometry), false);
+  assert.equal(composite?.compositeMetadata?.dissolveStatus, 'boolean_clipped');
   assert.equal(composite?.compositeMetadata?.excludedRegions?.[0]?.regionId, 'test:excluded');
   assert.equal(composite?.compositeMetadata?.dissolveNotice, undefined);
   assert.deepEqual(composite?.compositeMetadata?.sourceProviderLabels, ['Test']);
 });
 
-test('composite region builder rejects a subtract region that is not fully contained', () => {
+test('composite region builder clips a subtract region at the included boundary', () => {
   const outer: PlayableRegionCatalogEntry = {
     regionId: 'test:outer', displayName: 'Outer Region', regionKind: 'admin_region', summary: 'Outer',
     featureDatasetRefs: ['osm-admin'],
@@ -422,10 +423,15 @@ test('composite region builder rejects a subtract region that is not fully conta
     geometry: { type: 'Polygon', coordinates: [[[8, 2], [12, 2], [12, 4], [8, 4], [8, 2]]] }
   };
 
-  assert.equal(buildCompositePlayableRegion([outer], [crossing]), undefined);
+  const composite = buildCompositePlayableRegion([outer], [crossing]);
+
+  assert.ok(composite);
+  assert.equal(pointInGeometry([7, 3], composite.geometry), true);
+  assert.equal(pointInGeometry([9, 3], composite.geometry), false);
+  assert.equal(pointInGeometry([5, 3], composite.geometry), true);
 });
 
-test('composite region builder rejects a subtract region that crosses an overlapping included boundary', () => {
+test('composite region builder subtracts across overlapping included regions', () => {
   const included: PlayableRegionCatalogEntry = {
     regionId: 'test:included-a', displayName: 'Included A', regionKind: 'admin_region', summary: 'A',
     featureDatasetRefs: [],
@@ -443,7 +449,12 @@ test('composite region builder rejects a subtract region that crosses an overlap
     geometry: { type: 'Polygon' as const, coordinates: [[[2, 2], [8, 2], [8, 4], [2, 4], [2, 2]]] }
   };
 
-  assert.equal(buildCompositePlayableRegion([included, overlapping], [crossing]), undefined);
+  const composite = buildCompositePlayableRegion([included, overlapping], [crossing]);
+
+  assert.ok(composite);
+  assert.equal(pointInGeometry([3, 3], composite.geometry), false);
+  assert.equal(pointInGeometry([7, 3], composite.geometry), false);
+  assert.equal(pointInGeometry([10, 1], composite.geometry), true);
 });
 
 test('live map display suppresses initial candidate geometry until real search updates exist', () => {
