@@ -1378,6 +1378,7 @@ function eventsForCommand(
               seekPhaseSubstate: 'awaiting_card_resolution',
               lifecycleState: aggregate!.lifecycleState,
               resolutionKind: resolutionPlan.kind,
+              labyrinthDrawingWindowMinutes: resolutionPlan.kind === 'labyrinth_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               moveOriginStationId: resolutionPlan.kind === 'move' ? aggregate!.hiddenState.hidingZone?.stationId : undefined,
               moveOriginStationName: resolutionPlan.kind === 'move' ? aggregate!.hiddenState.hidingZone?.stationName : undefined,
               moveDurationSeconds: resolutionPlan.moveDurationSeconds,
@@ -1719,6 +1720,31 @@ function eventsForCommand(
         }
       })];
     }
+    case 'publish_labyrinth_maze':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'labyrinth_maze_published',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          attachmentId: envelope.command.payload.attachmentId
+        }
+      })];
+    case 'submit_labyrinth_solution':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'labyrinth_solution_submitted',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          solutionText: envelope.command.payload.solutionText.trim(),
+          playerId: envelope.actor.playerId!
+        }
+      })];
+    case 'review_labyrinth_solution':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'labyrinth_solution_reviewed',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          approved: envelope.command.payload.approved
+        }
+      })];
     case 'set_bridge_troll_position':
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
         type: 'bridge_troll_position_changed',

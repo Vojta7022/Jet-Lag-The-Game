@@ -164,6 +164,10 @@ export function formatAutomationLevel(automationLevel: CardDefinition['automatio
 }
 
 export function describeEffectSupport(cardDefinition: CardDefinition): string {
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'labyrinth_challenge')) {
+    return 'Assisted: the hider publishes a maze photo, seekers submit a route, and the hider approves the solution before questions resume.';
+  }
+
   if (cardDefinition.automationLevel === 'authoritative') {
     return 'This card resolves through the current engine path without opening a manual card window.';
   }

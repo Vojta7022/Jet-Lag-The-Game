@@ -1160,6 +1160,7 @@ export function reduceMatchAggregate(
           openedAt: eventEnvelope.occurredAt,
           openedByPlayerId: eventEnvelope.actor.playerId ?? eventEnvelope.actor.actorId,
           resolutionKind: eventEnvelope.event.payload.resolutionKind,
+          labyrinthDrawingWindowMinutes: eventEnvelope.event.payload.labyrinthDrawingWindowMinutes,
           moveOriginStationId: eventEnvelope.event.payload.moveOriginStationId,
           moveOriginStationName: eventEnvelope.event.payload.moveOriginStationName,
           moveDurationSeconds: eventEnvelope.event.payload.moveDurationSeconds,
@@ -1183,6 +1184,13 @@ export function reduceMatchAggregate(
           openingHandCardInstanceIds: eventEnvelope.event.payload.openingHandCardInstanceIds,
           hangman: eventEnvelope.event.payload.resolutionKind === 'hangman_challenge'
             ? { status: 'awaiting_word', guessedLetters: [], incorrectLetters: [] }
+            : undefined,
+          labyrinth: eventEnvelope.event.payload.resolutionKind === 'labyrinth_challenge'
+            ? {
+                status: 'awaiting_maze',
+                drawingWindowMinutes: eventEnvelope.event.payload.labyrinthDrawingWindowMinutes,
+                rejectedAttemptCount: 0
+              }
             : undefined
         },
         hiddenState: eventEnvelope.event.payload.resolutionKind === 'move'
@@ -1233,6 +1241,53 @@ export function reduceMatchAggregate(
             ...base.activeCardResolution.hangman!,
             status: 'ended',
             revealedWord: eventEnvelope.event.payload.revealedWord
+          }
+        }
+      };
+    case 'labyrinth_maze_published':
+      if (base.activeCardResolution?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        activeCardResolution: {
+          ...base.activeCardResolution,
+          labyrinth: {
+            ...base.activeCardResolution.labyrinth!,
+            status: 'solving',
+            mazeAttachmentId: eventEnvelope.event.payload.attachmentId,
+            solutionText: undefined,
+            solutionSubmittedByPlayerId: undefined,
+            solutionSubmittedAt: undefined
+          }
+        }
+      };
+    case 'labyrinth_solution_submitted':
+      if (base.activeCardResolution?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        activeCardResolution: {
+          ...base.activeCardResolution,
+          labyrinth: {
+            ...base.activeCardResolution.labyrinth!,
+            status: 'awaiting_hider_review',
+            solutionText: eventEnvelope.event.payload.solutionText,
+            solutionSubmittedByPlayerId: eventEnvelope.event.payload.playerId,
+            solutionSubmittedAt: eventEnvelope.occurredAt
+          }
+        }
+      };
+    case 'labyrinth_solution_reviewed':
+      if (base.activeCardResolution?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        activeCardResolution: {
+          ...base.activeCardResolution,
+          labyrinth: {
+            ...base.activeCardResolution.labyrinth!,
+            status: eventEnvelope.event.payload.approved ? 'solved' : 'solving',
+            solutionText: eventEnvelope.event.payload.approved ? base.activeCardResolution.labyrinth?.solutionText : undefined,
+            solutionSubmittedByPlayerId: eventEnvelope.event.payload.approved ? base.activeCardResolution.labyrinth?.solutionSubmittedByPlayerId : undefined,
+            solutionSubmittedAt: eventEnvelope.event.payload.approved ? base.activeCardResolution.labyrinth?.solutionSubmittedAt : undefined,
+            rejectedAttemptCount: base.activeCardResolution.labyrinth!.rejectedAttemptCount + (eventEnvelope.event.payload.approved ? 0 : 1)
           }
         }
       };

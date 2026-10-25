@@ -465,6 +465,7 @@ export function buildMatchProjection(
                 : undefined,
             resolutionKind: aggregate.activeCardResolution.resolutionKind,
             openedAt: aggregate.activeCardResolution.openedAt,
+            labyrinthDrawingWindowMinutes: aggregate.activeCardResolution.labyrinthDrawingWindowMinutes,
             moveOriginStationId: aggregate.activeCardResolution.moveOriginStationId,
             moveOriginStationName: aggregate.activeCardResolution.moveOriginStationName,
             moveDurationSeconds: aggregate.activeCardResolution.moveDurationSeconds,
@@ -498,6 +499,9 @@ export function buildMatchProjection(
                     incorrectLetters: state.incorrectLetters
                   };
                 })()
+              : undefined,
+            labyrinth: aggregate.activeCardResolution.labyrinth
+              ? { ...aggregate.activeCardResolution.labyrinth }
               : undefined
           }
         : undefined;

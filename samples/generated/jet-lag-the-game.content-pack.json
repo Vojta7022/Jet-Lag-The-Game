@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T19:03:17.550Z",
+    "importedAt": "2026-10-25T19:56:15.570Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3284,7 +3284,7 @@
       "shortName": "Curse Of The Labyrinth",
       "description": "Spend up to [S10, M20, L30] minutes drawing a solvable maze and send a photo of it to the seekers. You cannot use the internet to research maze designs. The seekers must solve the maze before asking another question.",
       "rulebookGuidanceText": "A solvable maze has an unbroken route from start to finish. The timer starts when drawing the first line, not while gathering materials. The hider may restart the drawing but not the timer, and may not consult the internet or other materials while designing it.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3294,19 +3294,26 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "labyrinth_challenge",
           "description": "Spend up to [S10, M20, L30] minutes drawing a solvable maze and send a photo of it to the seekers. You cannot use the internet to research maze designs. The seekers must solve the maze before asking another question.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Spend up to [S10, M20, L30] minutes drawing a solvable maze and send a photo of it to the seekers. You cannot use the internet to research maze designs. The seekers musts solve the maze before asking another question.",
           "payload": {
-            "workbookName": "Curse Of The Labyrinth"
+            "drawingWindowMinutesByScale": {
+              "small": 10,
+              "medium": 20,
+              "large": 30
+            },
+            "requireHiderApproval": true,
+            "requirePublicMazePhoto": true,
+            "mayRestartDrawingWithoutRestartingTimer": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true,
-        "requiresPhotoUpload": false
+        "requiresManualApproval": false,
+        "requiresPhotoUpload": true
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3317,7 +3324,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

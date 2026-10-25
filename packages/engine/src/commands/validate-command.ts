@@ -51,6 +51,7 @@ function error(
 
 const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'hangman_challenge',
+  'labyrinth_challenge',
   'bridge_troll_challenge',
   'seeker_off_transit_challenge',
   'u_turn_challenge',
@@ -1580,6 +1581,10 @@ export function validateCommandEnvelope(
           : 'Finish the Hangman challenge before closing this card.')];
       }
 
+      if (activeResolution.resolutionKind === 'labyrinth_challenge' && activeResolution.labyrinth?.status !== 'solved') {
+        return [error(envelope.command.type, 'LABYRINTH_CHALLENGE_ACTIVE', 'Publish a maze, have the seekers submit a solution, and approve the solved route before closing this curse.')];
+      }
+
       if (activeResolution.resolutionKind === 'zoologist_challenge') {
         const category = envelope.command.payload.zoologistCategory;
         const attachment = envelope.command.payload.zoologistHiderAttachmentId
@@ -1724,6 +1729,49 @@ export function validateCommandEnvelope(
       }
       if (resolution.hangman?.status !== 'playing') {
         return [error(envelope.command.type, 'HANGMAN_CHALLENGE_NOT_PLAYING', 'The Hangman challenge is not waiting for the seeker team.')];
+      }
+      return [];
+    }
+    case 'publish_labyrinth_maze': {
+      const resolution = aggregate.activeCardResolution;
+      if (resolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || resolution.resolutionKind !== 'labyrinth_challenge') {
+        return [error(envelope.command.type, 'LABYRINTH_NOT_ACTIVE', 'There is no active Curse of the Labyrinth challenge for this card.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const attachment = aggregate.attachments[envelope.command.payload.attachmentId];
+      if ((actorRole !== 'hider' && actorRole !== 'host') ||
+        !attachment || attachment.kind !== 'photo_evidence' ||
+        attachment.linkedCardInstanceId !== resolution.sourceCardInstanceId ||
+        attachment.ownerPlayerId !== envelope.actor.playerId ||
+        attachment.visibilityScope !== 'public_match' ||
+        attachment.captureMetadata.pickerSource !== 'camera') {
+        return [error(envelope.command.type, 'LABYRINTH_MAZE_PHOTO_REQUIRED', 'Take a public camera photo of the hand-drawn maze and attach it to this card before publishing.')];
+      }
+      if (!resolution.labyrinth || !['awaiting_maze', 'solving'].includes(resolution.labyrinth.status)) {
+        return [error(envelope.command.type, 'LABYRINTH_MAZE_CANNOT_BE_PUBLISHED', 'The maze can only be published before a solution is awaiting hider review.')];
+      }
+      return [];
+    }
+    case 'submit_labyrinth_solution': {
+      const resolution = aggregate.activeCardResolution;
+      if (resolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || resolution.resolutionKind !== 'labyrinth_challenge') {
+        return [error(envelope.command.type, 'LABYRINTH_NOT_ACTIVE', 'There is no active Curse of the Labyrinth challenge for this card.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const solutionText = envelope.command.payload.solutionText.trim();
+      if (actorRole !== 'seeker' || resolution.labyrinth?.status !== 'solving' || !resolution.labyrinth.mazeAttachmentId || solutionText.length < 1 || solutionText.length > 2000) {
+        return [error(envelope.command.type, 'LABYRINTH_SOLUTION_INVALID', 'After the hider publishes a maze, a seeker must submit a solution between 1 and 2,000 characters.')];
+      }
+      return [];
+    }
+    case 'review_labyrinth_solution': {
+      const resolution = aggregate.activeCardResolution;
+      if (resolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || resolution.resolutionKind !== 'labyrinth_challenge') {
+        return [error(envelope.command.type, 'LABYRINTH_NOT_ACTIVE', 'There is no active Curse of the Labyrinth challenge for this card.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if ((actorRole !== 'hider' && actorRole !== 'host') || resolution.labyrinth?.status !== 'awaiting_hider_review') {
+        return [error(envelope.command.type, 'LABYRINTH_REVIEW_NOT_READY', 'Only the hider can review a submitted maze solution.')];
       }
       return [];
     }

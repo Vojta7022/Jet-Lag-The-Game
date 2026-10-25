@@ -803,7 +803,7 @@ export function LiveMapInlineActionPanel() {
             />
           </View>
         ) : null}
-        {activeCard || projection?.activeCardResolution?.resolutionKind === 'hangman_challenge' ? (
+        {activeCard || ['hangman_challenge', 'labyrinth_challenge'].includes(projection?.activeCardResolution?.resolutionKind ?? '') ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Open card effect</Text>
             {activeCardBehavior ? (
@@ -816,6 +816,8 @@ export function LiveMapInlineActionPanel() {
             <CardResolutionStatusPanel
               activeCard={activeCard}
               resolution={projection?.activeCardResolution}
+              labyrinthHiderAttachmentId={projection?.activeCardResolution?.labyrinth?.mazeAttachmentId}
+              labyrinthPhotoHint="Open Cards to take and record the maze photo."
               canResolve={canResolveCard}
               resolveDisabledReason={resolveDisabledReason}
               questionCategories={contentPack.questionCategories}
@@ -839,6 +841,24 @@ export function LiveMapInlineActionPanel() {
                 const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
                 if (sourceCardInstanceId) void submitCommand({
                   type: 'end_hangman_challenge', payload: { sourceCardInstanceId }
+                });
+              }}
+              onPublishLabyrinthMaze={(attachmentId) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'publish_labyrinth_maze', payload: { sourceCardInstanceId, attachmentId }
+                });
+              }}
+              onSubmitLabyrinthSolution={(solutionText) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'submit_labyrinth_solution', payload: { sourceCardInstanceId, solutionText }
+                });
+              }}
+              onReviewLabyrinthSolution={(approved) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'review_labyrinth_solution', payload: { sourceCardInstanceId, approved }
                 });
               }}
               onResolve={(questionTemplateIds) => {

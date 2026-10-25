@@ -39,6 +39,8 @@ The base rulebook sets small/medium hiding zones to a 500 m radius and large zon
 
 The scanned base book includes experimental play variants. Keep those distinct from the standard ruleset. The official site also publishes Expansion Pack Vol. 1 as a separate set of reference rules, so expansions should be versioned content rather than silently mixed into the base pack.
 
+Implementation update (2026-10-25): Curse of the Labyrinth now uses an assisted card-resolution flow. The hider publishes a public camera photo of the maze, seekers submit a route, and the hider approves or rejects it; the card window blocks questions until an approved solution. The printed 10/20/30-minute drawing timer remains anchored to the original card-window start across redraws, matching the scan's instruction that restarting the drawing does not restart the timer. The app records the reports but cannot independently verify maze solvability, the correctness of a route, internet use, or on-time photo submission. [source: scanned base rulebook printed p. 56; `tests/engine/cards.test.ts`, `tests/importer/importer.test.ts`, `apps/mobile/tests/evidence-flow.test.ts`]
+
 ## Reference map: taibeled/JetLagHideAndSeek
 
 The supplied site is the GitHub Pages build of [taibeled/JetLagHideAndSeek](https://github.com/taibeled/JetLagHideAndSeek), an MIT-licensed browser map workbench. Its code was cloned to the ignored project `repos/` directory for inspection. The repository README and implementation show:

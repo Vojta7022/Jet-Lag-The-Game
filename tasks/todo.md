@@ -578,3 +578,10 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Track the seekers' shared rebuild: each added rock needs five seconds to count, collapse resets the tower, and reaching the target unlocks questions.
 - [x] Add role-aware hider, seeker, and referee controls across Cards, Questions, and the live map; preserve physical verification as player-attested.
 - [x] Verify five-second timing, collapse/restart, question blocking/unlock, seeker authorization, round reset, both import profiles, full suite (418/418), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Rock contact and physical collapse remain group-attested.
+
+### Completed implementation slice: Curse of the Labyrinth puzzle gate
+
+- [x] Import the scanned assisted effect in both workbook mappings with the scale-specific 10/20/30-minute drawing window and restart-without-resetting-the-timer rule.
+- [x] Require a public camera photo of the hand-drawn maze; let seekers submit their solution and the hider approve or reject it.
+- [x] Keep questions blocked until the hider approves a solution, preserve the original drawing deadline through maze restarts, and add challenge controls to Cards and Live Map.
+- [x] Verify upload ownership/visibility, seeker projection, approval/retry, early-close rejection, both workbook profiles, full suite (421/421), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Maze design, solution correctness, and timer compliance remain human judgments.

@@ -32,6 +32,11 @@ interface CardResolutionStatusPanelProps {
   onResolveGamblersFeetCast?: (dieRoll: number) => void;
   zoologistHiderAttachmentId?: string;
   luxuryCarHiderAttachmentId?: string;
+  labyrinthHiderAttachmentId?: string;
+  labyrinthPhotoHint?: string;
+  onPublishLabyrinthMaze?: (attachmentId: string) => void;
+  onSubmitLabyrinthSolution?: (solutionText: string) => void;
+  onReviewLabyrinthSolution?: (approved: boolean) => void;
   onResolve: (
     questionTemplateIds: string[],
     zoologistSelection?: { category: ZoologistAnimalCategory; hiderAttachmentId: string },
@@ -58,6 +63,8 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [ransomNoteCastingCostConfirmed, setRansomNoteCastingCostConfirmed] = useState(false);
   const [cairnTargetHeight, setCairnTargetHeight] = useState('');
   const [cairnTargetConfirmed, setCairnTargetConfirmed] = useState(false);
+  const [labyrinthSolution, setLabyrinthSolution] = useState('');
+  const [clockNow, setClockNow] = useState(Date.now());
   useEffect(() => {
     setSelectedTemplateIds([]);
     setHangmanWord('');
@@ -74,7 +81,13 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     setRansomNoteCastingCostConfirmed(false);
     setCairnTargetHeight('');
     setCairnTargetConfirmed(false);
+    setLabyrinthSolution('');
   }, [props.resolution?.sourceCardInstanceId]);
+  useEffect(() => {
+    if (props.resolution?.resolutionKind !== 'labyrinth_challenge') return;
+    const timer = setInterval(() => setClockNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [props.resolution?.sourceCardInstanceId, props.resolution?.resolutionKind]);
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
   const discardRequirement = props.resolution?.discardRequirement;
@@ -102,6 +115,14 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const uTurnChallenge = props.resolution?.resolutionKind === 'u_turn_challenge';
   const ransomNoteChallenge = props.resolution?.resolutionKind === 'ransom_note_challenge';
   const cairnChallenge = props.resolution?.resolutionKind === 'cairn_challenge';
+  const labyrinthChallenge = props.resolution?.resolutionKind === 'labyrinth_challenge';
+  const labyrinth = props.resolution?.labyrinth;
+  const labyrinthDrawingDeadline = props.resolution?.openedAt && props.resolution.labyrinthDrawingWindowMinutes
+    ? Date.parse(props.resolution.openedAt) + props.resolution.labyrinthDrawingWindowMinutes * 60_000
+    : undefined;
+  const labyrinthTimeLeftSeconds = labyrinthDrawingDeadline
+    ? Math.max(0, Math.ceil((labyrinthDrawingDeadline - clockNow) / 1000))
+    : undefined;
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const normalizedLuxuryCarMsrp = luxuryCarMsrp.trim();
@@ -121,6 +142,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     (!uTurnChallenge || (uTurnNextStationName.trim().length >= 2 && uTurnPreconditionsConfirmed)) &&
     (!ransomNoteChallenge || ransomNoteCastingCostConfirmed) &&
     (!cairnChallenge || (Number.isSafeInteger(Number(cairnTargetHeight)) && Number(cairnTargetHeight) >= 1 && cairnTargetConfirmed)) &&
+    (!labyrinthChallenge || labyrinth?.status === 'solved') &&
     !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
@@ -386,6 +408,76 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
           <TextInput accessibilityLabel="MSRP currency code" autoCapitalize="characters" maxLength={3} onChangeText={(value) => setLuxuryCarCurrencyCode(value.toUpperCase())} placeholder="USD" style={styles.hangmanInput} value={luxuryCarCurrencyCode} />
           <Text style={styles.metaChip}>{props.luxuryCarHiderAttachmentId ? 'Your public reference-car photo is recorded.' : 'Take and record the reference-car photo below first.'}</Text>
           <Text style={styles.copy}>If the model or year is uncertain, the hider and seekers agree on the comparison details. The app checks the reported price and records the hider’s decision; players verify the actual car and MSRP source.</Text>
+        </View>
+      ) : null}
+
+      {labyrinthChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>LABYRINTH CHALLENGE</Text>
+          <Text style={styles.copy}>
+            The hider has up to {props.resolution?.labyrinthDrawingWindowMinutes ?? 10} minutes to draw and photograph a solvable maze. Restarting the drawing does not restart the timer; the hider must not use the internet or other materials to design it.
+          </Text>
+          {labyrinthTimeLeftSeconds !== undefined ? (
+            <Text style={labyrinthTimeLeftSeconds > 0 ? styles.metaChip : styles.warning}>
+              {labyrinthTimeLeftSeconds > 0
+                ? `Drawing time ${Math.floor(labyrinthTimeLeftSeconds / 60)}:${String(labyrinthTimeLeftSeconds % 60).padStart(2, '0')}`
+                : 'The printed drawing window has elapsed; the group should apply the card rule.'}
+            </Text>
+          ) : null}
+          <Text style={styles.copy}>
+            {labyrinth?.status === 'awaiting_maze'
+              ? 'The hider must publish a public camera photo of the hand-drawn maze.'
+              : labyrinth?.status === 'solving'
+                ? 'Seekers should solve the published maze together and submit their route or answer.'
+                : labyrinth?.status === 'awaiting_hider_review'
+                  ? 'The hider is reviewing the submitted solution.'
+                  : labyrinth?.status === 'solved'
+                    ? 'Maze solved. The hider can close this card and questions can resume.'
+                    : 'Waiting for the challenge state to sync.'}
+          </Text>
+          {props.viewerRole === 'hider' || props.viewerRole === 'host' ? (
+            <>
+              {labyrinth?.status === 'awaiting_maze' || labyrinth?.status === 'solving' ? (
+                <>
+                  <Text style={styles.metaChip}>{props.labyrinthHiderAttachmentId ? 'Maze photo is recorded.' : props.labyrinthPhotoHint ?? 'Take a photo from the Card Evidence section below.'}</Text>
+                  <AppButton
+                    label="Publish Maze to Seekers"
+                    disabled={props.disabled || !props.labyrinthHiderAttachmentId || !props.onPublishLabyrinthMaze}
+                    onPress={() => props.labyrinthHiderAttachmentId && props.onPublishLabyrinthMaze?.(props.labyrinthHiderAttachmentId)}
+                  />
+                </>
+              ) : null}
+              {labyrinth?.status === 'awaiting_hider_review' ? (
+                <>
+                  <Text style={styles.metaChip}>Submitted solution: {labyrinth.solutionText}</Text>
+                  <View style={styles.hangmanGuessRow}>
+                    <AppButton label="Needs another try" disabled={props.disabled || !props.onReviewLabyrinthSolution} onPress={() => props.onReviewLabyrinthSolution?.(false)} />
+                    <AppButton label="Solution is correct" disabled={props.disabled || !props.onReviewLabyrinthSolution} onPress={() => props.onReviewLabyrinthSolution?.(true)} />
+                  </View>
+                </>
+              ) : null}
+            </>
+          ) : null}
+          {props.viewerRole === 'seeker' && labyrinth?.status === 'solving' ? (
+            <>
+              <TextInput
+                accessibilityLabel="Maze solution"
+                multiline
+                onChangeText={setLabyrinthSolution}
+                placeholder="Describe your path through the maze"
+                style={styles.hangmanInput}
+                value={labyrinthSolution}
+              />
+              <AppButton
+                label="Submit maze solution"
+                disabled={props.disabled || !labyrinthSolution.trim() || !props.onSubmitLabyrinthSolution}
+                onPress={() => props.onSubmitLabyrinthSolution?.(labyrinthSolution.trim())}
+              />
+            </>
+          ) : null}
+          {labyrinth?.status === 'solving' && (labyrinth.rejectedAttemptCount ?? 0) > 0 ? (
+            <Text style={styles.warning}>The previous route was not accepted. Seekers may try again.</Text>
+          ) : null}
         </View>
       ) : null}
 

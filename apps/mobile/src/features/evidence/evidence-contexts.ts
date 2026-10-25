@@ -119,6 +119,8 @@ function resolveCardEvidenceContext(args: {
     ? 'zoologist_challenge'
     : args.projection.luxuryCarChallenge
       ? 'luxury_car_challenge'
+      : args.projection.activeCardResolution?.resolutionKind === 'labyrinth_challenge'
+        ? 'labyrinth_challenge'
       : undefined;
   const definition = activeCard
     ? args.contentPack.cards.find((card) => card.cardDefinitionId === activeCard.cardDefinitionId)
@@ -130,9 +132,11 @@ function resolveCardEvidenceContext(args: {
   }
 
   const isPublicPhotoChallenge = definition.effects.some((effect) =>
-    effect.effectType === 'zoologist_challenge' || effect.effectType === 'luxury_car_challenge'
+    effect.effectType === 'labyrinth_challenge' || effect.effectType === 'zoologist_challenge' || effect.effectType === 'luxury_car_challenge'
   );
-  const detail = definition.effects.some((effect) => effect.effectType === 'zoologist_challenge')
+  const detail = definition.effects.some((effect) => effect.effectType === 'labyrinth_challenge')
+    ? 'Take a camera photo of the hand-drawn maze and record it publicly so the seekers can solve it.'
+    : definition.effects.some((effect) => effect.effectType === 'zoologist_challenge')
     ? 'Capture and record a public photo for the Zoologist challenge. Players compare the animal category themselves.'
     : definition.effects.some((effect) => effect.effectType === 'luxury_car_challenge')
       ? 'Capture and record a new public car photo. The hider reviews the model and production-year MSRP.'

@@ -101,6 +101,9 @@ export type DomainEvent =
   | HangmanWordSetEvent
   | HangmanLetterGuessedEvent
   | HangmanChallengeEndedEvent
+  | LabyrinthMazePublishedEvent
+  | LabyrinthSolutionSubmittedEvent
+  | LabyrinthSolutionReviewedEvent
   | BridgeTrollChallengeStartedEvent
   | BridgeTrollPositionChangedEvent
   | SeekerOffTransitRestrictionStartedEvent
@@ -456,7 +459,8 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    labyrinthDrawingWindowMinutes?: number;
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -499,6 +503,21 @@ export interface HangmanLetterGuessedEvent {
 export interface HangmanChallengeEndedEvent {
   type: 'hangman_challenge_ended';
   payload: { sourceCardInstanceId: string; revealedWord: string };
+}
+
+export interface LabyrinthMazePublishedEvent {
+  type: 'labyrinth_maze_published';
+  payload: { sourceCardInstanceId: string; attachmentId: string };
+}
+
+export interface LabyrinthSolutionSubmittedEvent {
+  type: 'labyrinth_solution_submitted';
+  payload: { sourceCardInstanceId: string; solutionText: string; playerId: string };
+}
+
+export interface LabyrinthSolutionReviewedEvent {
+  type: 'labyrinth_solution_reviewed';
+  payload: { sourceCardInstanceId: string; approved: boolean };
 }
 
 export interface BridgeTrollChallengeStartedEvent {

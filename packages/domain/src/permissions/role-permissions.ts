@@ -54,6 +54,8 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'report_cairn_tower_fallen',
   'set_hangman_word',
   'end_hangman_challenge',
+  'publish_labyrinth_maze',
+  'review_labyrinth_solution',
   'complete_cooldown',
   'apply_constraint',
   'update_location'
@@ -80,6 +82,8 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'resolve_gamblers_feet_cast',
   'set_hangman_word',
   'end_hangman_challenge',
+  'publish_labyrinth_maze',
+  'review_labyrinth_solution',
   'answer_question'
 ]);
 
@@ -96,6 +100,7 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'play_card',
   'discard_card',
   'guess_hangman_letter',
+  'submit_labyrinth_solution',
   'set_bridge_troll_position',
   'set_seeker_transit_context',
   'report_u_turn_disembarkation',

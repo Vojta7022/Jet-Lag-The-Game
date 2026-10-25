@@ -173,6 +173,17 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(hiddenHangman.automationLevel, 'assisted');
   assert.equal(hiddenHangman.effects[0]?.effectType, 'hangman_challenge');
   assert.deepEqual(hiddenHangman.effects[0]?.payload, { wordLength: 5, secretScope: 'hider_player' });
+  const labyrinth = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-labyrinth');
+  assert.ok(labyrinth);
+  assert.equal(labyrinth.automationLevel, 'assisted');
+  assert.equal(labyrinth.effects[0]?.effectType, 'labyrinth_challenge');
+  assert.deepEqual(labyrinth.effects[0]?.payload, {
+    drawingWindowMinutesByScale: { small: 10, medium: 20, large: 30 },
+    requireHiderApproval: true,
+    requirePublicMazePhoto: true,
+    mayRestartDrawingWithoutRestartingTimer: true
+  });
+  assert.equal(labyrinth.requirements?.requiresPhotoUpload, true);
   assert.deepEqual(discardDrawThree.effects[0]?.payload, { discardCount: 2, drawCount: 3 });
   assert.match(discardDrawThree.description, /discard 2 cards from your hand, then draw and keep 3 replacement cards/i);
 
@@ -309,6 +320,10 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   assert.equal(luxuryCar?.automationLevel, 'assisted');
   assert.equal(luxuryCar?.effects[0]?.effectType, 'luxury_car_challenge');
   assert.equal(luxuryCar?.requirements?.requiresPhotoUpload, true);
+  const legacyLabyrinth = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-labyrinth');
+  assert.equal(legacyLabyrinth?.automationLevel, 'assisted');
+  assert.equal(legacyLabyrinth?.effects[0]?.effectType, 'labyrinth_challenge');
+  assert.equal(legacyLabyrinth?.requirements?.requiresPhotoUpload, true);
   assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));
   const bridgeTroll = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
   assert.equal(bridgeTroll?.automationLevel, 'assisted');

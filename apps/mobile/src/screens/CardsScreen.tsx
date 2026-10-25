@@ -401,6 +401,19 @@ export function CardsScreen() {
         attachment.kind === 'photo_evidence'
       ).at(-1)?.attachmentId
     : undefined;
+  const labyrinthHiderAttachmentId = projection?.activeCardResolution?.sourceCardInstanceId
+    ? projection.visibleAttachments.find((attachment) =>
+        attachment.attachmentId === projection.activeCardResolution?.labyrinth?.mazeAttachmentId &&
+        attachment.ownerPlayerId === activeMatch?.recipient.playerId &&
+        attachment.visibilityScope === 'public_match' &&
+        attachment.kind === 'photo_evidence'
+      )?.attachmentId ?? projection.visibleAttachments.filter((attachment) =>
+        attachment.linkedCardInstanceId === projection.activeCardResolution?.sourceCardInstanceId &&
+        attachment.ownerPlayerId === activeMatch?.recipient.playerId &&
+        attachment.visibilityScope === 'public_match' &&
+        attachment.kind === 'photo_evidence'
+      ).at(-1)?.attachmentId
+    : undefined;
   const zoologistSeekerAttachmentId = projection?.zoologistChallenge && activeMatch?.recipient.playerId
     ? projection.visibleAttachments.filter((attachment) =>
         attachment.linkedCardInstanceId === projection.zoologistChallenge?.sourceCardInstanceId &&
@@ -1105,6 +1118,7 @@ export function CardsScreen() {
               resolution={projection?.activeCardResolution}
               zoologistHiderAttachmentId={zoologistHiderAttachmentId}
               luxuryCarHiderAttachmentId={luxuryCarHiderAttachmentId}
+              labyrinthHiderAttachmentId={labyrinthHiderAttachmentId}
               canResolve={canResolve}
               resolveDisabledReason={resolveDisabledReason}
               questionCategories={contentPack.questionCategories}
@@ -1128,6 +1142,24 @@ export function CardsScreen() {
                 const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
                 if (sourceCardInstanceId) void submitCommand({
                   type: 'end_hangman_challenge', payload: { sourceCardInstanceId }
+                });
+              }}
+              onPublishLabyrinthMaze={(attachmentId) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'publish_labyrinth_maze', payload: { sourceCardInstanceId, attachmentId }
+                });
+              }}
+              onSubmitLabyrinthSolution={(solutionText) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'submit_labyrinth_solution', payload: { sourceCardInstanceId, solutionText }
+                });
+              }}
+              onReviewLabyrinthSolution={(approved) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'review_labyrinth_solution', payload: { sourceCardInstanceId, approved }
                 });
               }}
               onResolveEndlessTumbleCast={(dieRoll) => {
@@ -1191,6 +1223,7 @@ export function CardsScreen() {
           <EvidenceCapturePanel
             context={cardAttachmentContext}
             cameraOnly={projection?.activeCardResolution?.resolutionKind === 'zoologist_challenge' ||
+              projection?.activeCardResolution?.resolutionKind === 'labyrinth_challenge' ||
               projection?.activeCardResolution?.resolutionKind === 'luxury_car_challenge' ||
               Boolean(projection?.zoologistChallenge) || Boolean(projection?.luxuryCarChallenge)}
             drafts={cardEvidenceDrafts}

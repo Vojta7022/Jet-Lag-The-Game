@@ -296,6 +296,24 @@ test('Zoologist evidence stays public and available after its card window closes
   assert.ok(luxuryContext);
   assert.equal(luxuryContext?.cardInstanceId, 'card:luxury-car');
   assert.equal(luxuryContext?.suggestedVisibilityScope, 'public_match');
+
+  const labyrinthProjection = {
+    visibleQuestions: [],
+    visibleCards: [],
+    visibleAttachments: [],
+    activeCardResolution: {
+      sourceCardInstanceId: 'card:labyrinth',
+      resolutionKind: 'labyrinth_challenge',
+      openedAt: '2026-10-25T12:00:00.000Z',
+      labyrinthDrawingWindowMinutes: 20,
+      labyrinth: { status: 'awaiting_maze', rejectedAttemptCount: 0 }
+    }
+  } as unknown as MatchProjection;
+  const labyrinthContext = buildEvidenceContexts(contentPack, labyrinthProjection, 'hider').find((context) => context.kind === 'card');
+  assert.ok(labyrinthContext);
+  assert.equal(labyrinthContext?.cardInstanceId, 'card:labyrinth');
+  assert.equal(labyrinthContext?.suggestedVisibilityScope, 'public_match');
+  assert.match(labyrinthContext?.detail ?? '', /hand-drawn maze/i);
 });
 
 test('supabase attachment upload command stores durable storage metadata for online evidence', async () => {

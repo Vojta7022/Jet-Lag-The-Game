@@ -152,6 +152,9 @@ export function validateStateForCommand(
     case 'begin_cairn_rock_placement':
     case 'confirm_cairn_rock_stable':
     case 'report_cairn_tower_fallen':
+    case 'publish_labyrinth_maze':
+    case 'submit_labyrinth_solution':
+    case 'review_labyrinth_solution':
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Challenge reports are only available while seekers are searching.')];

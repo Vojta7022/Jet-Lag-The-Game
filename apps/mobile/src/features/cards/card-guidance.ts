@@ -101,6 +101,14 @@ export function buildCardBehaviorModel(cardDefinition: CardDefinition): CardBeha
     };
   }
 
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'labyrinth_challenge')) {
+    return {
+      label: 'Assisted',
+      tone: 'warning',
+      detail: 'The hider publishes a maze photo, seekers submit a route, and the hider approves the solution before questions resume.'
+    };
+  }
+
   if (cardDefinition.automationLevel === 'authoritative') {
     return {
       label: 'Authoritative',

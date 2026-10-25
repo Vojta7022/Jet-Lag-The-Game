@@ -64,6 +64,9 @@ export type DomainCommand =
   | SetHangmanWordCommand
   | GuessHangmanLetterCommand
   | EndHangmanChallengeCommand
+  | PublishLabyrinthMazeCommand
+  | SubmitLabyrinthSolutionCommand
+  | ReviewLabyrinthSolutionCommand
   | SetBridgeTrollPositionCommand
   | SetSeekerTransitContextCommand
   | ReportUTurnDisembarkationCommand
@@ -381,6 +384,21 @@ export interface GuessHangmanLetterCommand {
 export interface EndHangmanChallengeCommand {
   type: 'end_hangman_challenge';
   payload: { sourceCardInstanceId: string };
+}
+
+export interface PublishLabyrinthMazeCommand {
+  type: 'publish_labyrinth_maze';
+  payload: { sourceCardInstanceId: string; attachmentId: string };
+}
+
+export interface SubmitLabyrinthSolutionCommand {
+  type: 'submit_labyrinth_solution';
+  payload: { sourceCardInstanceId: string; solutionText: string };
+}
+
+export interface ReviewLabyrinthSolutionCommand {
+  type: 'review_labyrinth_solution';
+  payload: { sourceCardInstanceId: string; approved: boolean };
 }
 
 export interface SetBridgeTrollPositionCommand {

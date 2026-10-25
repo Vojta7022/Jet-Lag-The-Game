@@ -28,6 +28,112 @@ test('Endless Tumble has a typed roll challenge plan and the selected-scale hit 
   assert.equal(plan.timeBonusMinutes, 20);
 });
 
+test('Labyrinth has a typed puzzle challenge plan with the printed scale drawing window', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('labyrinth'));
+  assert.ok(card);
+  card.effects = [{
+    effectType: 'labyrinth_challenge',
+    description: card.description,
+    automationLevel: 'assisted',
+    payload: {
+      drawingWindowMinutesByScale: { small: 10, medium: 20, large: 30 },
+      requireHiderApproval: true,
+      requirePublicMazePhoto: true
+    }
+  } as never];
+
+  const plan = buildCardResolutionPlan(card, 'medium');
+  assert.equal(plan.kind, 'labyrinth_challenge');
+  assert.equal(plan.activeDurationMinutes, 20);
+});
+
+test('Labyrinth blocks questions until a seeker solution is approved by the hider', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('labyrinth'));
+  assert.ok(card);
+  card.effects = [{
+    effectType: 'labyrinth_challenge', description: card.description, automationLevel: 'assisted',
+    payload: { drawingWindowMinutesByScale: { small: 10, medium: 20, large: 30 }, requirePublicMazePhoto: true, requireHiderApproval: true }
+  } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.selectedScale = 'medium';
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 100), contentPack).aggregate;
+
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'labyrinth_challenge');
+  assert.equal(aggregate.activeCardResolution?.labyrinthDrawingWindowMinutes, 20);
+  assert.equal(aggregate.activeCardResolution?.labyrinth?.status, 'awaiting_maze');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 101), contentPack), /ready/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'upload_attachment', payload: {
+      attachmentId: 'labyrinth:maze-photo', kind: 'photo_evidence', label: 'Hand-drawn maze',
+      visibilityScope: 'public_match', cardInstanceId,
+      captureMetadata: { pickerSource: 'camera' }
+    } }, 102), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'publish_labyrinth_maze', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: 'labyrinth:maze-photo' } }, 103), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.labyrinth?.status, 'solving');
+  assert.equal(aggregate.activeCardResolution?.labyrinth?.mazeAttachmentId, 'labyrinth:maze-photo');
+  const seekerView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'team_private', viewerPlayerId: 'seeker-1', viewerTeamId: 'team-seekers', viewerRole: 'seeker'
+  });
+  assert.equal(seekerView.activeCardResolution?.labyrinth?.mazeAttachmentId, 'labyrinth:maze-photo');
+  assert.ok(seekerView.visibleAttachments.some((attachment) => attachment.attachmentId === 'labyrinth:maze-photo'));
+  const publicView = buildMatchProjection(aggregate, contentPack, { scope: 'public_match', viewerRole: undefined });
+  assert.equal(publicView.activeCardResolution, undefined);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 103.5), contentPack), /publish a maze/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'submit_labyrinth_solution', payload: { sourceCardInstanceId: cardInstanceId, solutionText: 'Start to the east, then follow the upper corridor to the exit.' } }, 104), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.labyrinth?.status, 'awaiting_hider_review');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'review_labyrinth_solution', payload: { sourceCardInstanceId: cardInstanceId, approved: true } }, 104.5), contentPack), /permission/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'review_labyrinth_solution', payload: { sourceCardInstanceId: cardInstanceId, approved: false } }, 105), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.labyrinth?.status, 'solving');
+  assert.equal(aggregate.activeCardResolution?.labyrinth?.rejectedAttemptCount, 1);
+  const openedAtBeforeRestart = aggregate.activeCardResolution?.openedAt;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'upload_attachment', payload: {
+      attachmentId: 'labyrinth:restarted-maze-photo', kind: 'photo_evidence', label: 'Restarted hand-drawn maze',
+      visibilityScope: 'public_match', cardInstanceId,
+      captureMetadata: { pickerSource: 'camera' }
+    } }, 105.5), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'publish_labyrinth_maze', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: 'labyrinth:restarted-maze-photo' } }, 105.75), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.openedAt, openedAtBeforeRestart);
+  assert.equal(aggregate.activeCardResolution?.labyrinthDrawingWindowMinutes, 20);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'submit_labyrinth_solution', payload: { sourceCardInstanceId: cardInstanceId, solutionText: 'Follow the central path to the marked exit.' } }, 106), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'review_labyrinth_solution', payload: { sourceCardInstanceId: cardInstanceId, approved: true } }, 107), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.labyrinth?.status, 'solved');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 108), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution, undefined);
+  assert.equal(aggregate.cardInstances[cardInstanceId]?.zone, 'discard_pile');
+});
+
 test('Endless Tumble casting roll, 30 m seeker roll, question gate, and hit bonus follow the card rule', () => {
   const contentPack = loadEngineTestContentPack();
   const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('endless tumble'));
