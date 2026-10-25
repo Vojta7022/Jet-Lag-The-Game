@@ -5,6 +5,8 @@
 .venv/
 temp/
 .worktrees/
+supabase/.branches/
+supabase/.temp/
 
 # Dependencies
 node_modules/

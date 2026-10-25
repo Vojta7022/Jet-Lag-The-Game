@@ -101,16 +101,49 @@ def require_status(step: str, expected: set[int], result: tuple[int, object]) ->
     return body
 
 
+def value_paths(value: object, targets: set[str], path: str = "$", found: list[str] | None = None) -> list[str]:
+    matches = found if found is not None else []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            value_paths(child, targets, f"{path}.{key}", matches)
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            value_paths(child, targets, f"{path}[{index}]", matches)
+    elif str(value) in targets:
+        matches.append(path)
+    return matches
+
+
 def main() -> None:
     env = local_environment()
     supabase = LocalSupabase(env["API_URL"], env["ANON_KEY"])
     host_token = supabase.sign_in_anonymously()
+    hider_token = supabase.sign_in_anonymously()
     seeker_token = supabase.sign_in_anonymously()
+    removed_token = supabase.sign_in_anonymously()
     outsider_token = supabase.sign_in_anonymously()
     pack = json.loads((ROOT / "samples/generated/jet-lag-the-game.content-pack.json").read_text())
     match_id = "smoke-" + uuid.uuid4().hex[:12]
     host_player_id = "host-" + uuid.uuid4().hex[:8]
+    hider_player_id = "hider-" + uuid.uuid4().hex[:8]
     seeker_player_id = "seeker-" + uuid.uuid4().hex[:8]
+    removed_player_id = "removed-" + uuid.uuid4().hex[:8]
+
+    def command(token: str, name: str, payload: dict[str, object]) -> dict[str, object]:
+        response = require_status(f"{name} command", {200}, supabase.request(
+            "/functions/v1/game-authority",
+            token=token,
+            payload={
+                "operation": "command",
+                "matchId": match_id,
+                "commandId": name + "-" + uuid.uuid4().hex,
+                "command": {"type": name, "payload": payload},
+            },
+        ))
+        if not isinstance(response, dict) or not response.get("result", {}).get("accepted"):
+            detail = response.get("result", {}).get("rejection") if isinstance(response, dict) else None
+            raise SmokeFailure(f"{name} command was rejected: {detail or 'unexpected response'}")
+        return response
 
     created = require_status("Online match create", {200}, supabase.request(
         "/functions/v1/game-authority",
@@ -134,25 +167,157 @@ def main() -> None:
     join_code = created["joinCode"]
     print("PASS: separate authenticated host creates a match and gets a join code")
 
-    joined = require_status("Online match join", {200}, supabase.request(
+    for label, token, player_id in (
+        ("hider", hider_token, hider_player_id),
+        ("seeker", seeker_token, seeker_player_id),
+        ("removed player", removed_token, removed_player_id),
+    ):
+        joined = require_status(f"{label} join", {200}, supabase.request(
+            "/functions/v1/game-authority",
+            token=token,
+            payload={
+                "operation": "join_match",
+                "joinCode": join_code,
+                "commandId": "join-" + uuid.uuid4().hex,
+                "payload": {"playerId": player_id, "displayName": f"Smoke {label.title()}"},
+            },
+        ))
+        if not isinstance(joined, dict) or not joined.get("result", {}).get("accepted"):
+            raise SmokeFailure(f"The separate {label} phone could not join the match.")
+    print("PASS: separately authenticated hider and seeker join by code")
+
+    command(host_token, "remove_match_player", {"playerId": removed_player_id})
+    require_status("Removed member snapshot", {403}, supabase.request(
+        "/functions/v1/game-authority",
+        token=removed_token,
+        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "player_private"},
+    ))
+    print("PASS: host removal immediately revokes a joined member")
+
+    command(host_token, "assign_role", {
+        "targetPlayerId": hider_player_id,
+        "role": "hider",
+        "teamId": "team-hider",
+    })
+    command(host_token, "assign_role", {
+        "targetPlayerId": seeker_player_id,
+        "role": "seeker",
+        "teamId": "team-seeker",
+    })
+    command(host_token, "confirm_roles", {})
+    command(host_token, "set_ruleset", {"rulesetId": "jet-lag-home-game-base"})
+    command(host_token, "confirm_rules", {})
+    command(host_token, "create_map_region", {
+        "regionId": "region-" + uuid.uuid4().hex[:8],
+        "displayName": "Prague smoke region",
+        "regionKind": "city",
+        "featureDatasetRefs": ["osm-core", "transit-registry"],
+        "stationSource": "custom",
+        "customStations": [{
+            "id": "smoke-station",
+            "name": "Smoke Station",
+            "latitude": 50.21,
+            "longitude": 14.21,
+        }],
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[14, 50], [14.4, 50], [14.4, 50.4], [14, 50.4], [14, 50]]],
+        },
+    })
+    command(host_token, "start_match", {})
+    host_state = require_status("Host role-state snapshot", {200}, supabase.request(
+        "/functions/v1/game-authority",
+        token=host_token,
+        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "host_admin"},
+    ))
+    host_projection = host_state.get("sync", {}).get("projectionDelivery", {}).get("projection")
+    if not isinstance(host_projection, dict) or host_state.get("sync", {}).get("projectionScope") != "host_admin":
+        raise SmokeFailure("The host did not receive the active match projection.")
+    current_hider = next((player for player in host_projection.get("players", []) if player.get("role") == "hider"), None)
+    current_seeker = next((player for player in host_projection.get("players", []) if player.get("role") == "seeker"), None)
+    if not current_hider or not current_seeker:
+        raise SmokeFailure("The started round does not have an assigned hider and seeker.")
+    player_sessions = {
+        hider_player_id: hider_token,
+        seeker_player_id: seeker_token,
+    }
+    hider_player_id = current_hider["playerId"]
+    seeker_player_id = current_seeker["playerId"]
+    hider_token = player_sessions[hider_player_id]
+    seeker_token = player_sessions[seeker_player_id]
+    print("PASS: host assigns roles, chooses a map region, and starts the online match")
+    hider_location = {"latitude": 50.21001, "longitude": 14.21001, "accuracyMeters": 5}
+    seeker_location = {"latitude": 50.22, "longitude": 14.22, "accuracyMeters": 5}
+    command(hider_token, "lock_hider_location", hider_location)
+    command(hider_token, "set_hiding_zone", {
+        "stationId": "custom:smoke-station",
+        "stationName": "Smoke Station",
+        "latitude": hider_location["latitude"],
+        "longitude": hider_location["longitude"],
+    })
+    command(hider_token, "update_location", {**hider_location, "source": "device"})
+    command(seeker_token, "update_location", {**seeker_location, "source": "device"})
+    command(host_token, "end_hide_phase", {})
+    question_id = "question:smoke-radar"
+    command(seeker_token, "begin_question_prompt", {})
+    command(seeker_token, "ask_question", {
+        "questionInstanceId": question_id,
+        "templateId": "radar-402",
+        "targetTeamId": "team-hider",
+    })
+    seeker_state = require_status("Seeker question snapshot", {200}, supabase.request(
         "/functions/v1/game-authority",
         token=seeker_token,
-        payload={
-            "operation": "join_match",
-            "joinCode": join_code,
-            "commandId": "join-" + uuid.uuid4().hex,
-            "payload": {"playerId": seeker_player_id, "displayName": "Smoke Seeker"},
-        },
+        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "player_private"},
     ))
-    if not isinstance(joined, dict) or not joined.get("result", {}).get("accepted"):
-        raise SmokeFailure("The separate seeker phone could not join the match.")
-    print("PASS: separate authenticated seeker joins by code")
+    seeker_projection = seeker_state.get("sync", {}).get("projectionDelivery", {}).get("projection")
+    question = next((item for item in seeker_projection.get("visibleQuestions", [])
+                     if item.get("questionInstanceId") == question_id), None) if isinstance(seeker_projection, dict) else None
+    if not question or question.get("status") != "resolved" or not question.get("automaticResolution"):
+        detail = {
+            "status": question.get("status") if question else None,
+            "hasAnswer": bool(question and question.get("answer")),
+            "hasAutomaticProvenance": bool(question and question.get("automaticResolution")),
+            "answerMode": question.get("answerMode") if question else None,
+        }
+        raise SmokeFailure(f"Radar did not resolve automatically from the players' submitted GPS fixes: {detail}.")
+    if not seeker_projection.get("visibleMap", {}).get("history"):
+        raise SmokeFailure("Automatic Radar answer did not add a map deduction for seekers.")
+    print("PASS: online Radar resolves from player GPS and updates the seeker map")
+
+    command(hider_token, "deal_question_reward", {"questionInstanceId": question_id})
+    reward_state = require_status("Hider reward snapshot", {200}, supabase.request(
+        "/functions/v1/game-authority",
+        token=hider_token,
+        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "player_private"},
+    ))
+    reward_projection = reward_state.get("sync", {}).get("projectionDelivery", {}).get("projection")
+    reward_sets = reward_projection.get("pendingQuestionReward", {}).get("sets", []) if isinstance(reward_projection, dict) else []
+    if not reward_sets or not reward_sets[0].get("cardInstanceIds"):
+        raise SmokeFailure("The hider did not receive the Radar card reward draw.")
+    picked_card = reward_sets[0]["cardInstanceIds"][0]
+    command(hider_token, "choose_question_reward", {
+        "questionInstanceId": question_id,
+        "selectedCardInstanceIdsBySet": [[picked_card]],
+    })
+    chosen_state = require_status("Hider chosen-card snapshot", {200}, supabase.request(
+        "/functions/v1/game-authority",
+        token=hider_token,
+        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "player_private"},
+    ))
+    chosen_projection = chosen_state.get("sync", {}).get("projectionDelivery", {}).get("projection")
+    if not isinstance(chosen_projection, dict) or not any(
+        card.get("cardInstanceId") == picked_card and card.get("zone") == "hand"
+        for card in chosen_projection.get("visibleCards", [])
+    ):
+        raise SmokeFailure("The selected reward card did not enter the hider's hand.")
+    print("PASS: hider draws and chooses the printed question card reward in-app")
 
     for label, token, scope in (
-        ("host", host_token, "host_admin"),
+        ("hider", hider_token, "player_private"),
         ("seeker", seeker_token, "player_private"),
     ):
-        response = require_status(f"{label} snapshot", {200}, supabase.request(
+        response = require_status(f"{label} active-round snapshot", {200}, supabase.request(
             "/functions/v1/game-authority",
             token=token,
             payload={"operation": "snapshot", "matchId": match_id, "requestedScope": scope},
@@ -160,7 +325,59 @@ def main() -> None:
         actual_scope = response.get("sync", {}).get("projectionScope") if isinstance(response, dict) else None
         if actual_scope != scope:
             raise SmokeFailure(f"{label} received scope {actual_scope!r}, expected {scope!r}.")
-        print(f"PASS: {label} receives its {scope} projection")
+        projection = response.get("sync", {}).get("projectionDelivery", {}).get("projection")
+        if not isinstance(projection, dict) or projection.get("lifecycleState") != "seek_phase":
+            raise SmokeFailure(f"{label} did not receive the active seek-phase projection.")
+        visible_question = next((item for item in projection.get("visibleQuestions", [])
+                                 if item.get("questionInstanceId") == question_id), None)
+        if not visible_question or visible_question.get("status") != "resolved" or not visible_question.get("automaticResolution"):
+            raise SmokeFailure(f"{label} cannot see the resolved automatic Radar answer.")
+        tracks = projection.get("visibleMovementTracks", [])
+        track_ids = {track.get("playerId") for track in tracks if isinstance(track, dict)}
+        if label == "hider" and seeker_player_id not in track_ids:
+            raise SmokeFailure("Hider projection does not show the seeker's live position.")
+        if label == "seeker":
+            if hider_player_id in track_ids:
+                raise SmokeFailure("Seeker projection leaked the hider's movement track.")
+            coordinate_paths = value_paths(projection, {
+                str(hider_location["latitude"]),
+                str(hider_location["longitude"]),
+            })
+            if coordinate_paths:
+                raise SmokeFailure(f"Seeker projection contains hider coordinate values at {coordinate_paths}.")
+    print("PASS: hider sees the seeker track while the seeker projection excludes the hider GPS fix")
+
+    command(hider_token, "set_final_hiding_spot", {
+        "latitude": hider_location["latitude"],
+        "longitude": hider_location["longitude"],
+        "publiclyAccessible": True,
+        "within3mOfMarkedPath": True,
+    })
+    command(seeker_token, "update_location", {**hider_location, "source": "device", "onTransit": False})
+    endgame_state = require_status("Endgame snapshot", {200}, supabase.request(
+        "/functions/v1/game-authority",
+        token=seeker_token,
+        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "player_private"},
+    ))
+    endgame_projection = endgame_state.get("sync", {}).get("projectionDelivery", {}).get("projection")
+    if not isinstance(endgame_projection, dict) or endgame_projection.get("lifecycleState") != "endgame":
+        raise SmokeFailure("A seeker fix at the hider's final spot did not trigger endgame.")
+    command(seeker_token, "confirm_hider_found", {
+        "latitude": hider_location["latitude"],
+        "longitude": hider_location["longitude"],
+        "visuallyIdentified": True,
+    })
+    completed_state = require_status("Completed round snapshot", {200}, supabase.request(
+        "/functions/v1/game-authority",
+        token=host_token,
+        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "host_admin"},
+    ))
+    completed_projection = completed_state.get("sync", {}).get("projectionDelivery", {}).get("projection")
+    if not isinstance(completed_projection, dict) or completed_projection.get("lifecycleState") != "game_complete":
+        raise SmokeFailure("The found confirmation did not complete and score the round.")
+    if not completed_projection.get("visibleRoundResults"):
+        raise SmokeFailure("The completed round has no visible score record.")
+    print("PASS: the seeker triggers endgame, confirms the find, and records the round score")
 
     denied = require_status("Outsider snapshot", {403}, supabase.request(
         "/functions/v1/game-authority",
@@ -172,7 +389,7 @@ def main() -> None:
     print("PASS: outsider cannot read a match projection")
 
     public_path = f"matches/{match_id}/public_match/public.png"
-    private_path = f"matches/{match_id}/player_private/{host_player_id}/private.png"
+    private_path = f"matches/{match_id}/player_private/{hider_player_id}/private.png"
     minimal_png = b"\x89PNG\r\n\x1a\n"
     require_status("Public evidence upload", {200, 201}, supabase.request(
         "/storage/v1/object/match-attachments/" + public_path,
@@ -189,7 +406,7 @@ def main() -> None:
     require_status("Private evidence upload", {200, 201}, supabase.request(
         "/storage/v1/object/match-attachments/" + private_path,
         payload=minimal_png,
-        token=host_token,
+        token=hider_token,
         content_type="image/png",
     ))
     require_status("Cross-player private evidence read", {400, 403}, supabase.request(
@@ -204,34 +421,34 @@ def main() -> None:
     ))
     print("PASS: player-private evidence is scoped and outsiders cannot upload")
 
-    removed = require_status("Membership removal", {200}, supabase.request(
-        "/functions/v1/game-authority",
-        token=host_token,
-        payload={
-            "operation": "command",
-            "matchId": match_id,
-            "commandId": "remove-" + uuid.uuid4().hex,
-            "command": {"type": "remove_match_player", "payload": {"playerId": seeker_player_id}},
-        },
-    ))
-    if not isinstance(removed, dict) or not removed.get("result", {}).get("accepted"):
-        raise SmokeFailure("Host could not remove the seeker membership.")
-    require_status("Removed member snapshot", {403}, supabase.request(
-        "/functions/v1/game-authority",
-        token=seeker_token,
-        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "player_private"},
-    ))
     require_status("Removed member evidence read", {400, 403}, supabase.request(
         "/storage/v1/object/authenticated/match-attachments/" + public_path,
-        token=seeker_token,
+        token=removed_token,
     ))
-    print("PASS: removing a member revokes match and evidence access")
+    print("PASS: removing a member revokes evidence access")
 
     require_status("Direct anon table access", {401, 403}, supabase.request(
         "/rest/v1/matches?select=matchId",
         token=supabase.anon_key,
     ))
     print("PASS: clients cannot bypass the authority through direct table REST")
+
+    command(host_token, "start_next_round", {"nextHiderPlayerId": seeker_player_id})
+    rotated_state = require_status("Next-round snapshot", {200}, supabase.request(
+        "/functions/v1/game-authority",
+        token=host_token,
+        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "host_admin"},
+    ))
+    rotated_projection = rotated_state.get("sync", {}).get("projectionDelivery", {}).get("projection")
+    if not isinstance(rotated_projection, dict):
+        raise SmokeFailure("The host did not receive the next-round projection.")
+    roles_after_rotation = {
+        player.get("playerId"): player.get("role")
+        for player in rotated_projection.get("players", [])
+    }
+    if rotated_projection.get("lifecycleState") != "hide_phase" or roles_after_rotation.get(seeker_player_id) != "hider":
+        raise SmokeFailure("The completed match did not start its next round with the next hider.")
+    print("PASS: the next hider rotation starts a fresh online round")
 
 
 if __name__ == "__main__":

@@ -28,7 +28,7 @@
 ## Review
 
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
-- The main remaining gap is a tested, reliable multi-phone end-to-end play path. An authenticated Edge Function gateway and atomic revision commit now exist with unit coverage; production deployment, authorization/privacy audit, and cellular field play still need verification. Nearby mode has no LAN transport.
+- `npm run online:smoke` now runs a real local Supabase round using distinct authenticated host, hider, and seeker sessions: role setup, location privacy, automatic Radar/map deduction, in-app reward selection, found/scoring, and round rotation. The local smoke uses synthetic GPS and a host phase advance; hosted deployment, hosted authorization audit, timer/native-GPS behavior, and cellular field play remain unverified. Nearby mode has no LAN transport.
 - The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, one scan-attributed base ruleset, one host-selected-boundary map preset, 11 warnings, and 5 informational import findings. It remains draft content; remaining card warnings still need adjudication.
 - Exact scan files remain in Downloads. They were not copied into or committed to the public project repository.
 - The initial research pass did not run the app or test suite; later web-bundle and typecheck checks were run during implementation.
@@ -187,7 +187,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add explicit Supabase CLI project/function configuration with JWT verification enabled; validate the Edge Function runtime using `deno check` (2026-10-25).
 - [x] Add a follow-up migration that removes the legacy blanket database policies and scopes storage objects to an active match membership plus their public/team/player/host scope. Static policy regression test passes; applying and executing it against a Supabase database is still pending.
 - [x] Apply all seven migrations to a real local Supabase stack and inspect RLS flags, owners, policies, and grants. Fix the security migration so it leaves Supabase-owned `storage.objects` RLS/grants intact while replacing its policies; production-project execution remains pending (2026-10-25).
-- [x] Add `npm run online:smoke` to repeat the real local Auth, create/join, scoped-projection, outsider-denial, Storage-scope, revocation, and direct-table-denial walkthrough; hosted execution and cellular multi-phone play remain open (2026-10-25).
+- [x] Extend `npm run online:smoke` through separate host/hider/seeker sessions, custom boundary setup, role assignment, seeker track visibility, hider-coordinate privacy, automatic Radar answer and map deduction, hider card draw/choice, found/scoring, and next-hider rotation. It uses synthetic GPS and host-advances hide phase; standard timer/native GPS/cellular field validation remain open (2026-10-25).
 - [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
 - [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects.
 - [x] Import the scan-backed Move procedure, reject its use after endgame begins, and source the missing scale durations (Small 10, Medium 20, Large 60 minutes) from the community card transcription; retain provenance in the generated pack.
