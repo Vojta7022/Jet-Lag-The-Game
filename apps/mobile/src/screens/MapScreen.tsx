@@ -1110,12 +1110,51 @@ export function MapScreen() {
                 onClearAll={() => setExcludedRegions(clearSelectedRegions())}
               />
             ) : null}
+            {selectedRegions.length > 0 ? (
+              <View style={styles.setupSection}>
+                <Text style={styles.supportEyebrow}>Custom boundary mask</Text>
+                <Text style={styles.helperCopy}>{drawingMask
+                  ? `Tap at least three points inside the selected play area (${drawnMaskPoints.length} placed), then close the mask.`
+                  : 'Draw an exclusion on the map when administrative boundaries do not match the area you want to play.'}</Text>
+                <View style={styles.scenarioActions}>
+                  {!drawingMask ? (
+                    <AppButton label="Draw Exclusion Mask" tone="secondary" onPress={() => {
+                      setDrawnMaskPoints([]);
+                      setDrawingMask(true);
+                      setScenarioNotice(undefined);
+                    }} />
+                  ) : (
+                    <>
+                      <AppButton label="Undo Point" tone="secondary" disabled={drawnMaskPoints.length === 0} onPress={() => setDrawnMaskPoints((points) => points.slice(0, -1))} />
+                      <AppButton label="Close Mask" disabled={drawnMaskPoints.length < 3} onPress={() => {
+                        try {
+                          const region = buildDrawnExclusionRegion(`Drawn exclusion ${excludedRegions.length + 1}`, drawnMaskPoints);
+                          setExcludedRegions((current) => addRegionToSelection(current, region));
+                          setDrawnMaskPoints([]);
+                          setDrawingMask(false);
+                          setScenarioNotice('Mask added to the draft. Review the cutout before saving or creating the match.');
+                        } catch (error) {
+                          setScenarioNotice(error instanceof Error ? error.message : 'Could not close this mask.');
+                        }
+                      }} />
+                      <AppButton label="Cancel" tone="secondary" onPress={() => {
+                        setDrawnMaskPoints([]);
+                        setDrawingMask(false);
+                      }} />
+                    </>
+                  )}
+                </View>
+              </View>
+            ) : null}
             {compositePreviewRegion || regionSearch.selectedRegion ? (
               <MapCanvas
                 height={Math.max(280, Math.min(Math.round(dimensions.height * 0.5), 560))}
                 maxWidth={dimensions.width - 32}
+                visibleMap={drawingMask ? undefined : projection?.visibleMap}
                 previewRegion={compositePreviewRegion ?? regionSearch.selectedRegion}
-                customOverlays={customOverlays}
+                customOverlays={displayedMapOverlays}
+                selectable={drawingMask}
+                onCoordinateSelect={(coordinate) => setDrawnMaskPoints((points) => [...points, coordinate])}
               />
             ) : null}
             <MapScenarioWorkbench
