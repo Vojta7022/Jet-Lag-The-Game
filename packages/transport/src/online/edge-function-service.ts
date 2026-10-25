@@ -1,5 +1,6 @@
 import type {
   CommandSubmissionResult,
+  ContentPack,
   OnlineAuthSession,
   OnlineCatchUpAccessRequest,
   OnlineCommandRequest,
@@ -44,6 +45,20 @@ export class EdgeFunctionOnlineService implements OnlineTransportService {
     this.anonKey = options.anonKey;
     this.fetcher = options.fetch ?? fetch;
     this.timeoutMs = options.timeoutMs ?? 15_000;
+  }
+
+  async publishContentPack(session: OnlineAuthSession, contentPack: ContentPack): Promise<void> {
+    await this.invoke(session, { operation: 'publish_content_pack', contentPack }, false);
+  }
+
+  async getMatchContentPack(session: OnlineAuthSession, matchId: string): Promise<ContentPack> {
+    const response = await this.invoke(session, { operation: 'get_content_pack', matchId }, true);
+    if (!isRecord(response.contentPack)
+      || typeof response.contentPack.packId !== 'string'
+      || typeof response.contentPack.packVersion !== 'string') {
+      throw new TransportRuntimeError('EDGE_RESPONSE_INVALID', 'The online game service returned an invalid content pack.');
+    }
+    return response.contentPack as unknown as ContentPack;
   }
 
   async submitAuthenticatedCommand(

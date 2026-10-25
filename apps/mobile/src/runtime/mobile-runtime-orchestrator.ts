@@ -589,6 +589,7 @@ export class MobileRuntimeOrchestrator {
     input: CreateMatchInput
   ): Promise<ConnectedMatchResult> {
     const foundation = this.getOrCreateOnlineFoundation();
+    const selectedPack = this.getContentPackByReference(input.contentPackId, input.contentPackVersion);
     const runtimeMode = foundation.runtime?.mode ?? 'online_cloud';
     const authSession = await this.buildOnlineSession(profile);
     const boundProfile = buildBoundOnlineSessionProfile(profile, authSession);
@@ -604,6 +605,8 @@ export class MobileRuntimeOrchestrator {
       recipient,
       authSession
     });
+
+    await foundation.transportService.publishContentPack(authSession, selectedPack);
 
     const createResult = await this.submitCreateMatch(transport, input.matchId, 'online', boundProfile, input.initialScale, input.contentPackId!, input.contentPackVersion!);
     const initialSync = await transport.requestSnapshot({ matchId: input.matchId });
@@ -681,6 +684,8 @@ export class MobileRuntimeOrchestrator {
 
     const joinResult = await this.submitJoinMatch(transport, requestedMatchId!, boundProfile);
     const matchId = isRemote ? joinResult.matchId : requestedMatchId!;
+    const sharedContentPack = await foundation.transportService.getMatchContentPack(authSession, matchId);
+    await this.importContentPackJson(JSON.stringify(sharedContentPack));
     const initialSync = await transport.requestSnapshot({ matchId });
     const projection = initialSync.projectionDelivery.projection;
 

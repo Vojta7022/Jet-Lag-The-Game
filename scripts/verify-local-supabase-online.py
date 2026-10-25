@@ -123,6 +123,7 @@ def main() -> None:
     removed_token = supabase.sign_in_anonymously()
     outsider_token = supabase.sign_in_anonymously()
     pack = json.loads((ROOT / "samples/generated/jet-lag-the-game.content-pack.json").read_text())
+    match_pack = {**pack, "packVersion": "0.2.0", "title": "Online Distribution Smoke Pack"}
     match_id = "smoke-" + uuid.uuid4().hex[:12]
     host_player_id = "host-" + uuid.uuid4().hex[:8]
     hider_player_id = "hider-" + uuid.uuid4().hex[:8]
@@ -145,6 +146,11 @@ def main() -> None:
             raise SmokeFailure(f"{name} command was rejected: {detail or 'unexpected response'}")
         return response
 
+    require_status("Content pack publish", {200}, supabase.request(
+        "/functions/v1/game-authority",
+        token=host_token,
+        payload={"operation": "publish_content_pack", "contentPack": match_pack},
+    ))
     created = require_status("Online match create", {200}, supabase.request(
         "/functions/v1/game-authority",
         token=host_token,
@@ -154,8 +160,8 @@ def main() -> None:
             "commandId": "create-" + uuid.uuid4().hex,
             "payload": {
                 "mode": "online",
-                "contentPackId": pack["packId"],
-                "contentPackVersion": pack["packVersion"],
+                "contentPackId": match_pack["packId"],
+                "contentPackVersion": match_pack["packVersion"],
                 "hostPlayerId": host_player_id,
                 "hostDisplayName": "Smoke Host",
                 "initialScale": "small",
@@ -165,7 +171,7 @@ def main() -> None:
     if not isinstance(created, dict) or not created.get("result", {}).get("accepted") or not created.get("joinCode"):
         raise SmokeFailure("Online match create did not produce an accepted command and join code.")
     join_code = created["joinCode"]
-    print("PASS: separate authenticated host creates a match and gets a join code")
+    print("PASS: host publishes an immutable content pack and creates a match pinned to it")
 
     for label, token, player_id in (
         ("hider", hider_token, hider_player_id),
@@ -184,6 +190,15 @@ def main() -> None:
         ))
         if not isinstance(joined, dict) or not joined.get("result", {}).get("accepted"):
             raise SmokeFailure(f"The separate {label} phone could not join the match.")
+    hider_pack = require_status("Joined hider content pack", {200}, supabase.request(
+        "/functions/v1/game-authority",
+        token=hider_token,
+        payload={"operation": "get_content_pack", "matchId": match_id},
+    ))
+    distributed_pack = hider_pack.get("contentPack") if isinstance(hider_pack, dict) else None
+    if not isinstance(distributed_pack, dict) or distributed_pack.get("packVersion") != "0.2.0" or distributed_pack.get("title") != "Online Distribution Smoke Pack":
+        raise SmokeFailure("A joined phone did not download the exact immutable content pack version selected by the host.")
+    print("PASS: joined players can fetch the match-pinned content pack from the authority")
     print("PASS: separately authenticated hider and seeker join by code")
 
     command(host_token, "remove_match_player", {"playerId": removed_player_id})

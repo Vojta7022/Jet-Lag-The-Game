@@ -25,6 +25,14 @@ export class InMemorySupabaseTableClient implements SupabaseTableClient {
 
   async insert(table: string, rows: unknown[]): Promise<void> {
     const current = this.tables.get(table) ?? [];
+    if (table === 'content_pack_references') {
+      const keys = new Set(current.map((record) => `${record.packId}@${record.packVersion}`));
+      for (const row of rows as Record<string, unknown>[]) {
+        const key = `${row.packId}@${row.packVersion}`;
+        if (keys.has(key)) throw new TransportRuntimeError('UNIQUE_VIOLATION', `Duplicate content pack reference ${key}.`);
+        keys.add(key);
+      }
+    }
     this.tables.set(table, [...current, ...rows.map((row) => ({ ...(row as Record<string, unknown>) }))]);
   }
 

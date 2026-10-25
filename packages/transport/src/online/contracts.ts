@@ -1,5 +1,6 @@
 import type {
   CommandSubmissionResult,
+  ContentPack,
   DomainEventEnvelope,
   MatchAggregate,
   ProjectionRecipient,
@@ -53,6 +54,7 @@ export interface ProjectionRepository {
 
 export interface ContentPackReferenceRepository {
   save(record: ContentPackReferenceRecord): Promise<void>;
+  register(record: ContentPackReferenceRecord): Promise<void>;
   getByPackId(packId: string): Promise<ContentPackReferenceRecord | undefined>;
   getByPackIdAndVersion(packId: string, packVersion: string): Promise<ContentPackReferenceRecord | undefined>;
 }
@@ -130,6 +132,8 @@ export interface OnlineRealtimeFanoutSubscriber {
 export interface OnlineRealtimeFanout extends OnlineRealtimeFanoutPublisher, OnlineRealtimeFanoutSubscriber {}
 
 export interface OnlineTransportService {
+  publishContentPack(session: OnlineAuthSession, contentPack: ContentPack): Promise<void>;
+  getMatchContentPack(session: OnlineAuthSession, matchId: string): Promise<ContentPack>;
   submitAuthenticatedCommand(
     session: OnlineAuthSession,
     request: OnlineCommandRequest

@@ -1,5 +1,6 @@
 import type {
   CommandSubmissionResult,
+  ContentPack,
   DomainCommand,
   MatchMembershipRecord,
   OnlineAuthSession,
@@ -11,6 +12,7 @@ import type { OnlineTransportService } from '../../../packages/transport/src/onl
 import { createOnlineAuthorityHandler } from './runtime.ts';
 
 const MAX_REQUEST_BYTES = 64 * 1024;
+const MAX_CONTENT_PACK_REQUEST_BYTES = 6 * 1024 * 1024;
 const JSON_HEADERS = {
   'content-type': 'application/json; charset=utf-8',
   'access-control-allow-origin': '*',
@@ -45,12 +47,12 @@ function json(status: number, payload: JsonObject): Response {
 
 function errorResponse(error: unknown): Response {
   const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : 'AUTHORITY_ERROR';
-  const status = code === 'PLAYER_ALREADY_JOINED' || code === 'PLAYER_ID_ALREADY_BOUND' || code === 'IDEMPOTENCY_KEY_REUSE' || code === 'MATCH_REVISION_CONFLICT' ? 409
+  const status = code === 'PLAYER_ALREADY_JOINED' || code === 'PLAYER_ID_ALREADY_BOUND' || code === 'IDEMPOTENCY_KEY_REUSE' || code === 'MATCH_REVISION_CONFLICT' || code === 'CONTENT_PACK_VERSION_IMMUTABLE' ? 409
     : code === 'MATCH_MEMBERSHIP_REQUIRED' || code === 'MEMBERSHIP_REMOVED' || code === 'PROJECTION_SCOPE_FORBIDDEN' ? 403
       : code === 'MATCH_NOT_FOUND' ? 404
         : code === 'QUESTION_FEATURE_DATA_UNAVAILABLE' ? 503
-        : code === 'REQUEST_TOO_LARGE' ? 413
-          : code.startsWith('REQUEST_') || code === 'JSON_INVALID' || code === 'IDENTITY_CLAIMS_NOT_ALLOWED' || code === 'OPERATION_UNSUPPORTED' ? 400
+        : code === 'REQUEST_TOO_LARGE' || code === 'CONTENT_PACK_TOO_LARGE' ? 413
+          : code.startsWith('REQUEST_') || code.startsWith('CONTENT_PACK_INVALID') || code === 'CONTENT_PACK_INCOMPATIBLE' || code === 'JSON_INVALID' || code === 'IDENTITY_CLAIMS_NOT_ALLOWED' || code === 'OPERATION_UNSUPPORTED' ? 400
             : 500;
   const knownRequestError = status < 500 || code === 'MATCH_REVISION_CONFLICT' || code === 'QUESTION_FEATURE_DATA_UNAVAILABLE';
   const message = knownRequestError && error instanceof Error ? error.message : 'The game service could not complete this request.';
@@ -130,12 +132,13 @@ function membershipRecord(matchId: string, authUserId: string, playerId: string,
 
 async function readBody(request: Request): Promise<JsonObject> {
   const contentLength = Number(request.headers.get('content-length') ?? 0);
-  if (contentLength > MAX_REQUEST_BYTES) {
-    throw Object.assign(new Error('Request body exceeds the 64 KB limit.'), { code: 'REQUEST_TOO_LARGE' });
+  if (contentLength > MAX_CONTENT_PACK_REQUEST_BYTES) {
+    throw Object.assign(new Error('Request body exceeds the 6 MB limit.'), { code: 'REQUEST_TOO_LARGE' });
   }
   const raw = await request.text();
-  if (new TextEncoder().encode(raw).byteLength > MAX_REQUEST_BYTES) {
-    throw Object.assign(new Error('Request body exceeds the 64 KB limit.'), { code: 'REQUEST_TOO_LARGE' });
+  const bodyBytes = new TextEncoder().encode(raw).byteLength;
+  if (bodyBytes > MAX_CONTENT_PACK_REQUEST_BYTES) {
+    throw Object.assign(new Error('Request body exceeds the 6 MB limit.'), { code: 'REQUEST_TOO_LARGE' });
   }
   let body: unknown;
   try {
@@ -145,6 +148,10 @@ async function readBody(request: Request): Promise<JsonObject> {
   }
   if (!isRecord(body)) {
     throw Object.assign(new Error('Request body must be a JSON object.'), { code: 'REQUEST_INVALID' });
+  }
+  const operationLimit = body.operation === 'publish_content_pack' ? MAX_CONTENT_PACK_REQUEST_BYTES : MAX_REQUEST_BYTES;
+  if (bodyBytes > operationLimit) {
+    throw Object.assign(new Error(`Request body exceeds the ${operationLimit / 1024} KB limit for this operation.`), { code: 'REQUEST_TOO_LARGE' });
   }
   if (hasIdentityClaims(body)) {
     throw Object.assign(new Error('Identity and role are derived from the authenticated session.'), { code: 'IDENTITY_CLAIMS_NOT_ALLOWED' });
@@ -175,6 +182,14 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
     try {
       const body = await readBody(request);
       const operation = requiredString(body.operation, 'operation', 32);
+      if (operation === 'publish_content_pack') {
+        assertAllowedKeys(body, ['operation', 'contentPack']);
+        if (!isRecord(body.contentPack)) {
+          throw Object.assign(new Error('A contentPack object is required.'), { code: 'REQUEST_INVALID' });
+        }
+        await dependencies.service.publishContentPack(makeSession(user.id, '', undefined), body.contentPack as unknown as ContentPack);
+        return json(200, { published: true });
+      }
       if (operation === 'create_match') {
         assertAllowedKeys(body, ['operation', 'matchId', 'commandId', 'occurredAt', 'idempotencyKey', 'payload']);
         const payload = isRecord(body.payload) ? body.payload : undefined;
@@ -236,6 +251,11 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
         throw Object.assign(new Error('Join this match before requesting its data.'), { code: 'MATCH_MEMBERSHIP_REQUIRED' });
       }
       const session = makeSession(user.id, matchId, membership);
+
+      if (operation === 'get_content_pack') {
+        assertAllowedKeys(body, ['operation', 'matchId']);
+        return json(200, { contentPack: await dependencies.service.getMatchContentPack(session, matchId) });
+      }
 
       if (operation === 'command') {
         assertAllowedKeys(body, ['operation', 'matchId', 'commandId', 'occurredAt', 'idempotencyKey', 'clientSequence', 'command']);

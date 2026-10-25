@@ -135,6 +135,7 @@ export interface ContentPackReferenceRecord {
   status: ContentPack['status'];
   sourceFingerprint: ContentPack['sourceFingerprint'];
   compatibilityModes: ContentPack['compatibility']['supportedModes'];
+  contentPack?: ContentPack;
   registeredAt: string;
 }
 

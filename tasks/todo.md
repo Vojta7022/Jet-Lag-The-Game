@@ -233,7 +233,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Preserve and enforce the exact `packVersion` across server records and match projections; register references by ID/version, reject ambiguous creates, and reject a player device missing the match's exact version.
 - [x] Import validated content-pack JSON files up to 5 MB, persist them in the local library, restore them on startup, and include them in the match setup selector.
 - [ ] Apply the migration to the hosted database and validate a cellular multiplayer match with multiple installed versions.
-- [ ] Bundle or distribute additional content variants; players currently need the same pack version installed manually on every device.
+- [x] Distribute the host's immutable, versioned online content pack to each joining device; additional curated variant packs remain to be authored.
+
+### Active implementation slice: distribute the match's pinned content pack
+
+- [x] Publish the host's validated, immutable content-pack JSON before online match creation; the authority rejects same-ID/version content changes.
+- [x] Let an authenticated player fetch only the exact content pack pinned to a match after joining; validate and persist it in the local pack catalog before rendering the match.
+- [x] Verify a clean player device auto-installs a host-selected alternate version; same-ID/version mutations and non-member fetches are rejected. Full suite (399/399), mobile typecheck, Deno Edge Function check, web/iOS/Android Expo exports, and 15-step local Supabase smoke pass (2026-10-25).
 
 ### Completed implementation slice: Move authority timer
 

@@ -138,6 +138,39 @@ test('online authority pins and selects the exact requested content pack version
   );
 });
 
+test('online authority stores an uploaded pack immutably and returns it only to joined match members', async () => {
+  const { contentPack, repositories, realtime } = createOnlineHarness();
+  const runtime = new OnlineAuthorityRuntime({ contentPacks: [contentPack], repositories, realtimeFanout: realtime });
+  const host = makeOnlineSession('pack-host-auth', { defaultPlayerId: 'pack-host' });
+  const alternate: typeof contentPack = {
+    ...contentPack,
+    packId: 'city-sprint-extension',
+    packVersion: '1.0.0',
+    title: 'City Sprint Extension'
+  };
+
+  await runtime.publishContentPack(host, alternate);
+  const created = await runtime.submitAuthenticatedCommand(host, makeOnlineCommandRequest(host, 'uploaded-pack-match', 1, {
+    type: 'create_match',
+    payload: {
+      mode: 'online', contentPackId: alternate.packId, contentPackVersion: alternate.packVersion,
+      hostPlayerId: 'pack-host', hostDisplayName: 'Pack Host', initialScale: 'small'
+    }
+  }));
+  assert.equal(created.accepted, true);
+  const restarted = new OnlineAuthorityRuntime({ contentPacks: [contentPack], repositories, realtimeFanout: realtime });
+  assert.deepEqual(await restarted.getMatchContentPack(host, 'uploaded-pack-match'), alternate);
+
+  await assert.rejects(
+    () => restarted.publishContentPack(host, { ...alternate, title: 'Replaced Pack' }),
+    /already published with different contents/i
+  );
+  await assert.rejects(
+    () => runtime.getMatchContentPack(makeOnlineSession('outsider-auth', { defaultPlayerId: 'outsider' }), 'uploaded-pack-match'),
+    /join this match/i
+  );
+});
+
 test('online authority loads matching features server-side and completes answer plus map deduction atomically', async () => {
   const { contentPack, repositories, realtime } = createOnlineHarness();
   const providerCalls: Array<{ featureClassIds: string[]; regionType: string }> = [];

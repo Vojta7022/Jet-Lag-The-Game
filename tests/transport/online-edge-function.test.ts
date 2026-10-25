@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { OnlineTransportService } from '../../packages/transport/src/online/contracts.ts';
-import type { CommandSubmissionResult, MatchMembershipRecord, OnlineAuthSession } from '../../packages/shared-types/src/index.ts';
+import type { CommandSubmissionResult, ContentPack, MatchMembershipRecord, OnlineAuthSession } from '../../packages/shared-types/src/index.ts';
 import { createGameAuthorityHandler } from '../../supabase/functions/game-authority/index.ts';
 import { loadEngineTestContentPack, makeEnvelope } from '../engine/helpers.ts';
 import {
@@ -21,6 +21,13 @@ function dependencies(now?: () => string) {
   const calls: Array<{ operation: string; session: OnlineAuthSession; payload: unknown }> = [];
   const memberships = new Map<string, MatchMembershipRecord>();
   const service: OnlineTransportService = {
+    async publishContentPack(session, contentPack) {
+      calls.push({ operation: 'publish_content_pack', session, payload: contentPack });
+    },
+    async getMatchContentPack(session, matchId) {
+      calls.push({ operation: 'get_match_content_pack', session, payload: matchId });
+      return loadEngineTestContentPack();
+    },
     async submitAuthenticatedCommand(session, request) {
       calls.push({ operation: 'command', session, payload: request });
       return { accepted: true, matchId: request.matchId, commandId: request.commandId } as CommandSubmissionResult;
@@ -95,6 +102,48 @@ test('game authority timestamps commands on the server instead of trusting the p
 
   assert.equal((calls[0]?.payload as { occurredAt?: string }).occurredAt, serverTime);
   assert.equal((calls[1]?.payload as { occurredAt?: string }).occurredAt, serverTime);
+});
+
+test('game authority publishes the selected content pack before creating the online match', async () => {
+  const { handler, calls } = dependencies();
+  const pack = { ...loadEngineTestContentPack(), title: 'A'.repeat(70_000) };
+  const published = await handler(request({ operation: 'publish_content_pack', contentPack: pack }, 'valid-token'));
+  const created = await handler(request({
+    operation: 'create_match',
+    matchId: 'uploaded-pack-match',
+    commandId: 'uploaded-pack-create',
+    payload: {
+      mode: 'online', contentPackId: pack.packId, contentPackVersion: pack.packVersion,
+      hostPlayerId: 'host-uploaded', hostDisplayName: 'Host'
+    },
+  }, 'valid-token'));
+
+  assert.equal(published.status, 200);
+  assert.equal(created.status, 200);
+  assert.equal(calls[0]?.operation, 'publish_content_pack');
+  assert.deepEqual(calls[0]?.payload, pack);
+  assert.equal(calls[1]?.operation, 'command');
+});
+
+test('the gateway keeps the normal request limit for non-pack operations', async () => {
+  const { handler } = dependencies();
+  const response = await handler(request({ operation: 'snapshot', matchId: 'm1', extra: 'x'.repeat(70_000) }, 'valid-token'));
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).code, 'REQUEST_TOO_LARGE');
+});
+
+test('joined players can fetch the exact match content pack through the authenticated gateway', async () => {
+  const { handler, calls } = dependencies();
+  await handler(request({
+    operation: 'join_match', joinCode: 'AB12CD', commandId: 'join-pack-match',
+    payload: { playerId: 'joining-player', displayName: 'Joining Player' }
+  }, 'second-token'));
+  const response = await handler(request({ operation: 'get_content_pack', matchId: 'm1' }, 'second-token'));
+  const body = await response.json() as { contentPack?: ContentPack };
+
+  assert.equal(response.status, 200);
+  assert.equal(body.contentPack?.packId, 'jet-lag-the-game-seed');
+  assert.equal(calls.at(-1)?.operation, 'get_match_content_pack');
 });
 
 function request(body: unknown, token?: string): Request {

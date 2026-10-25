@@ -24,6 +24,7 @@ import type {
   TransportSubscription
 } from '../../../shared-types/src/index.ts';
 import { reduceMatchAggregate } from '../../../engine/src/index.ts';
+import { validateContentPack } from '../../../content-import/src/validation.ts';
 
 import { TransportRuntimeError } from '../errors.ts';
 import { EngineCommandGateway } from '../engine-command-gateway.ts';
@@ -108,6 +109,65 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     this.contentPacksByIdAndVersion = new Map(
       options.contentPacks.map((contentPack) => [`${contentPack.packId}@${contentPack.packVersion}`, contentPack])
     );
+  }
+
+  async publishContentPack(session: OnlineAuthSession, contentPack: ContentPack): Promise<void> {
+    if (!session.authUserId) {
+      throw new TransportRuntimeError('AUTH_REQUIRED', 'A signed-in player is required to publish a match content pack.');
+    }
+    this.validatePublishedContentPack(contentPack);
+    const key = `${contentPack.packId}@${contentPack.packVersion}`;
+    const inMemoryPack = this.contentPacksByIdAndVersion.get(key);
+    if (inMemoryPack && JSON.stringify(inMemoryPack) !== JSON.stringify(contentPack)) {
+      throw new TransportRuntimeError('CONTENT_PACK_VERSION_IMMUTABLE', `Content pack "${key}" is already published with different contents.`);
+    }
+    await this.repositories.contentPackReferences.register({
+      packId: contentPack.packId,
+      packVersion: contentPack.packVersion,
+      title: contentPack.title,
+      status: contentPack.status,
+      sourceFingerprint: contentPack.sourceFingerprint,
+      compatibilityModes: contentPack.compatibility.supportedModes,
+      contentPack,
+      registeredAt: new Date().toISOString()
+    });
+    this.contentPacksByIdAndVersion.set(key, contentPack);
+  }
+
+  async getMatchContentPack(session: OnlineAuthSession, matchId: string): Promise<ContentPack> {
+    const aggregate = await this.loadAggregate(matchId);
+    if (!aggregate) {
+      throw new TransportRuntimeError('MATCH_NOT_FOUND', `No match with id "${matchId}" is available.`);
+    }
+    const isMatchMember = session.memberships.some((membership) => membership.matchId === matchId)
+      || Boolean(session.defaultPlayerId && aggregate.players[session.defaultPlayerId]);
+    if (!session.serviceRole && !isMatchMember) {
+      throw new TransportRuntimeError('MATCH_MEMBERSHIP_REQUIRED', 'Join this match before requesting its content pack.');
+    }
+    await this.sessionBinder.bindRecipient(session, { matchId }, aggregate);
+    return this.resolveContentPack(aggregate);
+  }
+
+  private validatePublishedContentPack(contentPack: ContentPack): void {
+    if (!contentPack || typeof contentPack !== 'object') {
+      throw new TransportRuntimeError('CONTENT_PACK_INVALID', 'The published content pack must be a JSON object.');
+    }
+    if (new TextEncoder().encode(JSON.stringify(contentPack)).byteLength > 5 * 1024 * 1024) {
+      throw new TransportRuntimeError('CONTENT_PACK_TOO_LARGE', 'Content pack JSON must be smaller than 5 MB.');
+    }
+    let issues;
+    try {
+      issues = validateContentPack(contentPack);
+    } catch (error) {
+      throw new TransportRuntimeError('CONTENT_PACK_INVALID', error instanceof Error ? error.message : 'Content pack structure is invalid.');
+    }
+    const blocking = issues.filter((issue) => issue.blocking || issue.severity === 'error');
+    if (blocking.length > 0) {
+      throw new TransportRuntimeError('CONTENT_PACK_INVALID', `Content pack validation failed: ${blocking.map((issue) => issue.message).join(' ')}`);
+    }
+    if (!Array.isArray(contentPack.compatibility?.supportedModes) || !contentPack.compatibility.supportedModes.includes('online')) {
+      throw new TransportRuntimeError('CONTENT_PACK_INCOMPATIBLE', 'This content pack does not support online matches.');
+    }
   }
 
   async submitAuthenticatedCommand(
@@ -507,9 +567,17 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     }
 
     const installedPacks = [...this.contentPacksByIdAndVersion.values()].filter((candidate) => candidate.packId === packId);
-    const contentPack = requestedVersion
+    let contentPack = requestedVersion
       ? this.contentPacksByIdAndVersion.get(`${packId}@${requestedVersion}`)
       : installedPacks.length === 1 ? installedPacks[0] : undefined;
+    if (!contentPack && requestedVersion) {
+      const registered = await this.repositories.contentPackReferences.getByPackIdAndVersion(packId, requestedVersion);
+      if (registered?.contentPack) {
+        this.validatePublishedContentPack(registered.contentPack);
+        contentPack = registered.contentPack;
+        this.contentPacksByIdAndVersion.set(`${packId}@${requestedVersion}`, contentPack);
+      }
+    }
     if (!contentPack) {
       const versionInstalled = installedPacks.length > 0;
       throw new TransportRuntimeError(
@@ -533,6 +601,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
         status: contentPack.status,
         sourceFingerprint: contentPack.sourceFingerprint,
         compatibilityModes: contentPack.compatibility.supportedModes,
+        contentPack,
         registeredAt: new Date().toISOString()
       });
     }

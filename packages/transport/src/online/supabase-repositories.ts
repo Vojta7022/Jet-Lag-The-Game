@@ -133,11 +133,40 @@ export class SupabaseContentPackReferenceRepository implements ContentPackRefere
   }
 
   async save(record: ContentPackReferenceRecord): Promise<void> {
+    const existing = await this.getByPackIdAndVersion(record.packId, record.packVersion);
+    if (existing?.contentPack && record.contentPack && JSON.stringify(existing.contentPack) !== JSON.stringify(record.contentPack)) {
+      throw new TransportRuntimeError('CONTENT_PACK_VERSION_IMMUTABLE', `Content pack "${record.packId}@${record.packVersion}" is already published with different contents.`);
+    }
     await this.client.upsert(
       CONTENT_PACK_REFS_TABLE,
       record as unknown as Record<string, unknown>,
       ['packId', 'packVersion']
     );
+  }
+
+  async register(record: ContentPackReferenceRecord): Promise<void> {
+    const existing = await this.getByPackIdAndVersion(record.packId, record.packVersion);
+    if (existing) {
+      if (existing.sourceFingerprint !== record.sourceFingerprint) {
+        throw new TransportRuntimeError('CONTENT_PACK_VERSION_IMMUTABLE', `Content pack "${record.packId}@${record.packVersion}" is already registered with a different source fingerprint.`);
+      }
+      if (existing.contentPack && JSON.stringify(existing.contentPack) !== JSON.stringify(record.contentPack)) {
+        throw new TransportRuntimeError('CONTENT_PACK_VERSION_IMMUTABLE', `Content pack "${record.packId}@${record.packVersion}" is already published with different contents.`);
+      }
+      if (!existing.contentPack) await this.save(record);
+      return;
+    }
+
+    try {
+      await this.client.insert(CONTENT_PACK_REFS_TABLE, [record as unknown as Record<string, unknown>]);
+    } catch {
+      const raced = await this.getByPackIdAndVersion(record.packId, record.packVersion);
+      if (raced?.contentPack && JSON.stringify(raced.contentPack) === JSON.stringify(record.contentPack)) return;
+      throw new TransportRuntimeError(
+        'CONTENT_PACK_VERSION_IMMUTABLE',
+        `Content pack "${record.packId}@${record.packVersion}" could not be published immutably.`
+      );
+    }
   }
 
   async getByPackId(packId: string): Promise<ContentPackReferenceRecord | undefined> {
