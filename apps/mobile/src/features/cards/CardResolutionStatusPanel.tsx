@@ -31,7 +31,12 @@ interface CardResolutionStatusPanelProps {
   onResolveEndlessTumbleCast?: (dieRoll: number) => void;
   onResolveGamblersFeetCast?: (dieRoll: number) => void;
   zoologistHiderAttachmentId?: string;
-  onResolve: (questionTemplateIds: string[], zoologistSelection?: { category: ZoologistAnimalCategory; hiderAttachmentId: string }) => void;
+  luxuryCarHiderAttachmentId?: string;
+  onResolve: (
+    questionTemplateIds: string[],
+    zoologistSelection?: { category: ZoologistAnimalCategory; hiderAttachmentId: string },
+    luxuryCarSelection?: { hiderAttachmentId: string; description: string; productionYear: number; msrpCents: number; currencyCode: string }
+  ) => void;
 }
 
 export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps) {
@@ -41,6 +46,10 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [endlessTumbleCastRoll, setEndlessTumbleCastRoll] = useState<number | undefined>();
   const [gamblersFeetCastRoll, setGamblersFeetCastRoll] = useState<number | undefined>();
   const [zoologistCategory, setZoologistCategory] = useState<ZoologistAnimalCategory | undefined>();
+  const [luxuryCarDescription, setLuxuryCarDescription] = useState('');
+  const [luxuryCarProductionYear, setLuxuryCarProductionYear] = useState('');
+  const [luxuryCarMsrp, setLuxuryCarMsrp] = useState('');
+  const [luxuryCarCurrencyCode, setLuxuryCarCurrencyCode] = useState('USD');
   useEffect(() => {
     setSelectedTemplateIds([]);
     setHangmanWord('');
@@ -48,6 +57,10 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     setEndlessTumbleCastRoll(undefined);
     setGamblersFeetCastRoll(undefined);
     setZoologistCategory(undefined);
+    setLuxuryCarDescription('');
+    setLuxuryCarProductionYear('');
+    setLuxuryCarMsrp('');
+    setLuxuryCarCurrencyCode('USD');
   }, [props.resolution?.sourceCardInstanceId]);
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
@@ -72,12 +85,23 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const endlessTumbleChallenge = props.resolution?.resolutionKind === 'endless_tumble_challenge';
   const gamblersFeetChallenge = props.resolution?.resolutionKind === 'gamblers_feet_challenge';
   const zoologistChallenge = props.resolution?.resolutionKind === 'zoologist_challenge';
+  const luxuryCarChallenge = props.resolution?.resolutionKind === 'luxury_car_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
+  const normalizedLuxuryCarMsrp = luxuryCarMsrp.trim();
+  const luxuryCarMsrpCents = Number(normalizedLuxuryCarMsrp) * 100;
+  const luxuryCarFormValid = Boolean(
+    props.luxuryCarHiderAttachmentId && luxuryCarDescription.trim().length >= 2 &&
+    /^(18[89]\d|19\d{2}|20\d{2}|2100)$/.test(luxuryCarProductionYear) &&
+    /^\d+(?:\.\d{1,2})?$/.test(normalizedLuxuryCarMsrp) &&
+    Number.isSafeInteger(luxuryCarMsrpCents) && luxuryCarMsrpCents > 0 &&
+    /^[A-Z]{3}$/.test(luxuryCarCurrencyCode.trim().toUpperCase())
+  );
   const canSubmit = props.canResolve &&
     (!questionSelectionRequired || selectedTemplateIds.length === requiredQuestionCount) &&
     (!hangmanChallenge || hangman?.status === 'solved' || hangman?.status === 'ended') &&
     (!zoologistChallenge || (Boolean(zoologistCategory) && Boolean(props.zoologistHiderAttachmentId))) &&
+    (!luxuryCarChallenge || luxuryCarFormValid) &&
     !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
@@ -333,6 +357,19 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         </View>
       ) : null}
 
+      {luxuryCarChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>LUXURY CAR COMPARISON</Text>
+          <Text style={styles.copy}>Photograph a car and enter its production-year MSRP. Seekers must find a car with a higher MSRP in the same currency. Compare the original MSRP only; ignore paid upgrades and modifications.</Text>
+          <TextInput accessibilityLabel="Hider car description" onChangeText={setLuxuryCarDescription} placeholder="Make and model" style={styles.hangmanInput} value={luxuryCarDescription} />
+          <TextInput accessibilityLabel="Hider car production year" keyboardType="number-pad" maxLength={4} onChangeText={setLuxuryCarProductionYear} placeholder="Production year" style={styles.hangmanInput} value={luxuryCarProductionYear} />
+          <TextInput accessibilityLabel="Hider car MSRP" keyboardType="decimal-pad" onChangeText={setLuxuryCarMsrp} placeholder="MSRP (e.g. 42000.00)" style={styles.hangmanInput} value={luxuryCarMsrp} />
+          <TextInput accessibilityLabel="MSRP currency code" autoCapitalize="characters" maxLength={3} onChangeText={(value) => setLuxuryCarCurrencyCode(value.toUpperCase())} placeholder="USD" style={styles.hangmanInput} value={luxuryCarCurrencyCode} />
+          <Text style={styles.metaChip}>{props.luxuryCarHiderAttachmentId ? 'Your public reference-car photo is recorded.' : 'Take and record the reference-car photo below first.'}</Text>
+          <Text style={styles.copy}>If the model or year is uncertain, the hider and seekers agree on the comparison details. The app checks the reported price and records the hider’s decision; players verify the actual car and MSRP source.</Text>
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Next step</Text>
         <Text style={styles.copy}>{guidance.nextStep}</Text>
@@ -347,6 +384,15 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
           questionSelectionRequired ? selectedTemplateIds : [],
           zoologistChallenge && zoologistCategory && props.zoologistHiderAttachmentId
             ? { category: zoologistCategory, hiderAttachmentId: props.zoologistHiderAttachmentId }
+            : undefined,
+          luxuryCarChallenge && luxuryCarFormValid && props.luxuryCarHiderAttachmentId
+            ? {
+                hiderAttachmentId: props.luxuryCarHiderAttachmentId,
+                description: luxuryCarDescription.trim(),
+                productionYear: Number(luxuryCarProductionYear),
+                msrpCents: luxuryCarMsrpCents,
+                currencyCode: luxuryCarCurrencyCode.trim().toUpperCase()
+              }
             : undefined
         )}
         disabled={!canSubmit || props.disabled}

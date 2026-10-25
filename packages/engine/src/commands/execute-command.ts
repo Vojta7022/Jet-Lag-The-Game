@@ -1609,6 +1609,20 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'luxury_car_challenge') {
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'luxury_car_challenge_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            hiderAttachmentId: envelope.command.payload.luxuryCarHiderAttachmentId!,
+            hiderCarDescription: envelope.command.payload.luxuryCarDescription!.trim(),
+            hiderProductionYear: envelope.command.payload.luxuryCarProductionYear!,
+            hiderMsrpCents: envelope.command.payload.luxuryCarMsrpCents!,
+            currencyCode: envelope.command.payload.luxuryCarCurrencyCode!
+          }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'move' && aggregate!.lifecycleState === 'hide_phase') {
         const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide' && timer.status === 'paused');
         if (hideTimer) {
@@ -1873,6 +1887,26 @@ function eventsForCommand(
           sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
           playerId: envelope.actor.playerId!,
           attachmentId: envelope.command.payload.attachmentId
+        }
+      })];
+    case 'report_luxury_car_candidate':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'luxury_car_candidate_reported',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          attachmentId: envelope.command.payload.attachmentId,
+          playerId: envelope.actor.playerId!,
+          carDescription: envelope.command.payload.carDescription.trim(),
+          productionYear: envelope.command.payload.productionYear,
+          msrpCents: envelope.command.payload.msrpCents
+        }
+      })];
+    case 'decide_luxury_car_candidate':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'luxury_car_candidate_decided',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          accepted: envelope.command.payload.accepted
         }
       })];
     case 'complete_cooldown':

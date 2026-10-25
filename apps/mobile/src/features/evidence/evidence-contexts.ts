@@ -108,20 +108,35 @@ function resolveCardEvidenceContext(args: {
   role: MatchRole;
 }): EvidenceContextViewModel | undefined {
   const cardInstanceId = args.projection.activeCardResolution?.sourceCardInstanceId ??
-    args.projection.zoologistChallenge?.sourceCardInstanceId;
+    args.projection.zoologistChallenge?.sourceCardInstanceId ??
+    args.projection.luxuryCarChallenge?.sourceCardInstanceId;
   if (!cardInstanceId) {
     return undefined;
   }
 
   const activeCard = findVisibleCard(args.projection, cardInstanceId);
+  const challengeEffectType = args.projection.zoologistChallenge
+    ? 'zoologist_challenge'
+    : args.projection.luxuryCarChallenge
+      ? 'luxury_car_challenge'
+      : undefined;
   const definition = activeCard
     ? args.contentPack.cards.find((card) => card.cardDefinitionId === activeCard.cardDefinitionId)
-    : args.contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === 'zoologist_challenge'));
+    : challengeEffectType
+      ? args.contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === challengeEffectType))
+      : undefined;
   if (!definition || !cardRequiresPhotoEvidence(definition)) {
     return undefined;
   }
 
-  const isZoologist = definition.effects.some((effect) => effect.effectType === 'zoologist_challenge');
+  const isPublicPhotoChallenge = definition.effects.some((effect) =>
+    effect.effectType === 'zoologist_challenge' || effect.effectType === 'luxury_car_challenge'
+  );
+  const detail = definition.effects.some((effect) => effect.effectType === 'zoologist_challenge')
+    ? 'Capture and record a public photo for the Zoologist challenge. Players compare the animal category themselves.'
+    : definition.effects.some((effect) => effect.effectType === 'luxury_car_challenge')
+      ? 'Capture and record a new public car photo. The hider reviews the model and production-year MSRP.'
+      : 'Pick or capture supporting media, then record the attachment metadata honestly before the referee closes the card window.';
 
   const attachments = args.projection.visibleAttachments.filter(
     (attachment) => attachment.linkedCardInstanceId === cardInstanceId
@@ -131,15 +146,13 @@ function resolveCardEvidenceContext(args: {
     contextId: `card:${cardInstanceId}`,
     kind: 'card',
     title: `Card Evidence: ${definition.name}`,
-    detail: isZoologist
-      ? 'Capture and record a public photo for the Zoologist challenge. Players compare the animal category themselves.'
-      : 'Pick or capture supporting media, then record the attachment metadata honestly before the referee closes the card window.',
+    detail,
     cardInstanceId,
-    suggestedVisibilityScope: isZoologist ? 'public_match' : resolveSuggestedEvidenceScope({
+    suggestedVisibilityScope: isPublicPhotoChallenge ? 'public_match' : resolveSuggestedEvidenceScope({
       role: args.role,
       teamId: activeCard?.holderType === 'team' ? activeCard?.holderId : undefined
     }),
-    teamId: isZoologist ? undefined : activeCard?.holderType === 'team' ? activeCard?.holderId : undefined,
+    teamId: isPublicPhotoChallenge ? undefined : activeCard?.holderType === 'team' ? activeCard?.holderId : undefined,
     attachments
   };
 }

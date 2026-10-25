@@ -277,6 +277,25 @@ test('Zoologist evidence stays public and available after its card window closes
   assert.equal(seekerContext?.suggestedVisibilityScope, 'public_match');
   assert.equal(hostContext?.suggestedVisibilityScope, 'public_match');
   assert.match(seekerContext?.detail ?? '', /players compare the animal category/i);
+
+  const luxuryProjection = {
+    visibleQuestions: [],
+    visibleCards: [],
+    visibleAttachments: [],
+    luxuryCarChallenge: {
+      sourceCardInstanceId: 'card:luxury-car',
+      hiderAttachmentId: 'attachment:hider-car',
+      hiderCarDescription: '2020 Model X',
+      hiderProductionYear: 2020,
+      hiderMsrpCents: 8000000,
+      currencyCode: 'USD',
+      activatedAt: '2026-10-25T12:00:00.000Z'
+    }
+  } as unknown as MatchProjection;
+  const luxuryContext = buildEvidenceContexts(contentPack, luxuryProjection, 'seeker').find((context) => context.kind === 'card');
+  assert.ok(luxuryContext);
+  assert.equal(luxuryContext?.cardInstanceId, 'card:luxury-car');
+  assert.equal(luxuryContext?.suggestedVisibilityScope, 'public_match');
 });
 
 test('supabase attachment upload command stores durable storage metadata for online evidence', async () => {

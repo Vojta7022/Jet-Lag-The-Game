@@ -57,7 +57,8 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'endless_tumble_challenge',
   'lemon_phylactery_challenge',
   'egg_partner_challenge',
-  'zoologist_challenge'
+  'zoologist_challenge',
+  'luxury_car_challenge'
 ]);
 
 function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boolean {
@@ -69,6 +70,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.lemonPhylacteryChallenge ||
     (aggregate.eggPartnerChallenge && !aggregate.eggPartnerChallenge.eggAcquiredAt) ||
     aggregate.zoologistChallenge ||
+    aggregate.luxuryCarChallenge ||
     (aggregate.activeCardResolution?.resolutionKind &&
       QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
   );
@@ -865,6 +867,9 @@ export function validateCommandEnvelope(
           return [error(envelope.command.type, 'ZOOLOGIST_EVIDENCE_REQUIRED', 'Every seeker must submit a photo of a wild animal in the hider’s chosen category before the next question.')];
         }
       }
+      if (aggregate.luxuryCarChallenge) {
+        return [error(envelope.command.type, 'LUXURY_CAR_EVIDENCE_REQUIRED', 'The hider must accept a seeker photo and higher production-year MSRP before the next question.')];
+      }
       if (aggregate.seekerOffTransitRestriction) {
         const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
         const statuses = seekerTeam?.memberPlayerIds.map((playerId) =>
@@ -1563,6 +1568,21 @@ export function validateCommandEnvelope(
         }
       }
 
+      if (activeResolution.resolutionKind === 'luxury_car_challenge') {
+        const { luxuryCarHiderAttachmentId, luxuryCarDescription, luxuryCarProductionYear, luxuryCarMsrpCents, luxuryCarCurrencyCode } = envelope.command.payload;
+        const attachment = luxuryCarHiderAttachmentId ? aggregate.attachments[luxuryCarHiderAttachmentId] : undefined;
+        if (!attachment || attachment.kind !== 'photo_evidence' ||
+          attachment.linkedCardInstanceId !== activeResolution.sourceCardInstanceId ||
+          attachment.ownerPlayerId !== envelope.actor.playerId ||
+          attachment.visibilityScope !== 'public_match' || attachment.captureMetadata.pickerSource !== 'camera' ||
+          typeof luxuryCarDescription !== 'string' || luxuryCarDescription.trim().length < 2 || luxuryCarDescription.trim().length > 120 ||
+          !Number.isInteger(luxuryCarProductionYear) || luxuryCarProductionYear! < 1886 || luxuryCarProductionYear! > 2100 ||
+          !Number.isSafeInteger(luxuryCarMsrpCents) || luxuryCarMsrpCents! <= 0 ||
+          typeof luxuryCarCurrencyCode !== 'string' || !/^[A-Z]{3}$/.test(luxuryCarCurrencyCode)) {
+          return [error(envelope.command.type, 'LUXURY_CAR_REFERENCE_INVALID', 'Record a public camera photo, car description, production year, positive MSRP, and three-letter currency code before closing the card.')];
+        }
+      }
+
       if (activeResolution.resolutionKind === 'move') {
         if (
           typeof activeResolution.moveDurationSeconds === 'number' &&
@@ -1940,6 +1960,50 @@ export function validateCommandEnvelope(
         attachment.captureMetadata.pickerSource !== 'camera' ||
         Date.parse(attachment.createdAt) < Date.parse(challenge.activatedAt)) {
         return [error(envelope.command.type, 'ZOOLOGIST_PHOTO_REQUIRED', 'Take a new photo after the challenge starts, then record your public camera evidence for this card.')];
+      }
+      return [];
+    }
+    case 'report_luxury_car_candidate': {
+      const challenge = aggregate.luxuryCarChallenge;
+      const payload = envelope.command.payload;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const attachment = aggregate.attachments[payload.attachmentId];
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      if (!challenge || challenge.sourceCardInstanceId !== payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'LUXURY_CAR_NOT_ACTIVE', 'There is no active Luxury Car comparison.')];
+      }
+      if (challenge.candidate) {
+        return [error(envelope.command.type, 'LUXURY_CAR_CANDIDATE_PENDING', 'The hider must accept or reject the current car before another can be submitted.')];
+      }
+      if (challenge.usedAttachmentIds.includes(payload.attachmentId)) {
+        return [error(envelope.command.type, 'LUXURY_CAR_PHOTO_ALREADY_USED', 'Take a different car photo after the hider rejects an attempt.')];
+      }
+      if (!envelope.actor.playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(envelope.actor.playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'A seeker must submit the candidate car from their own player account.')];
+      }
+      if (!attachment || attachment.kind !== 'photo_evidence' || attachment.linkedCardInstanceId !== challenge.sourceCardInstanceId ||
+        attachment.ownerPlayerId !== envelope.actor.playerId || attachment.visibilityScope !== 'public_match' ||
+        attachment.captureMetadata.pickerSource !== 'camera' || Date.parse(attachment.createdAt) < Date.parse(challenge.activatedAt)) {
+        return [error(envelope.command.type, 'LUXURY_CAR_PHOTO_REQUIRED', 'Take and record a new public camera photo after the challenge starts.')];
+      }
+      if (typeof payload.carDescription !== 'string' || payload.carDescription.trim().length < 2 || payload.carDescription.trim().length > 120 ||
+        !Number.isInteger(payload.productionYear) || payload.productionYear < 1886 || payload.productionYear > 2100 ||
+        !Number.isSafeInteger(payload.msrpCents) || payload.msrpCents <= challenge.hiderMsrpCents) {
+        return [error(envelope.command.type, 'LUXURY_CAR_PRICE_NOT_HIGHER', `Enter the photographed car and a production-year MSRP higher than ${challenge.currencyCode} ${(challenge.hiderMsrpCents / 100).toFixed(2)}.`)];
+      }
+      return [];
+    }
+    case 'decide_luxury_car_candidate': {
+      const challenge = aggregate.luxuryCarChallenge;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || !challenge.candidate) {
+        return [error(envelope.command.type, 'LUXURY_CAR_CANDIDATE_REQUIRED', 'There is no seeker car awaiting the hider’s review.')];
+      }
+      if (actorRole !== 'hider' && actorRole !== 'host' && actorRole !== 'system') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'The hider or host referee must review the seeker’s car and MSRP.')];
+      }
+      if (typeof envelope.command.payload.accepted !== 'boolean') {
+        return [error(envelope.command.type, 'LUXURY_CAR_DECISION_INVALID', 'Choose whether the seeker’s photographed car and MSRP are accepted.')];
       }
       return [];
     }

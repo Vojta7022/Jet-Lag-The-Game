@@ -16,6 +16,7 @@ import {
   CardResolutionStatusPanel,
   EggPartnerChallengePanel,
   JammedDoorChallengePanel,
+  LuxuryCarChallengePanel,
   CardZoneSection,
   buildQuestionResponseCardReason,
   buildCardFlowBootstrapCommands,
@@ -389,9 +390,25 @@ export function CardsScreen() {
         attachment.kind === 'photo_evidence'
       ).at(-1)?.attachmentId
     : undefined;
+  const luxuryCarHiderAttachmentId = projection?.activeCardResolution?.sourceCardInstanceId
+    ? projection.visibleAttachments.filter((attachment) =>
+        attachment.linkedCardInstanceId === projection.activeCardResolution?.sourceCardInstanceId &&
+        attachment.ownerPlayerId === activeMatch?.recipient.playerId &&
+        attachment.visibilityScope === 'public_match' &&
+        attachment.kind === 'photo_evidence'
+      ).at(-1)?.attachmentId
+    : undefined;
   const zoologistSeekerAttachmentId = projection?.zoologistChallenge && activeMatch?.recipient.playerId
     ? projection.visibleAttachments.filter((attachment) =>
         attachment.linkedCardInstanceId === projection.zoologistChallenge?.sourceCardInstanceId &&
+        attachment.ownerPlayerId === activeMatch.recipient.playerId &&
+        attachment.visibilityScope === 'public_match' &&
+        attachment.kind === 'photo_evidence'
+      ).at(-1)?.attachmentId
+    : undefined;
+  const luxuryCarSeekerAttachmentId = projection?.luxuryCarChallenge && activeMatch?.recipient.playerId
+    ? projection.visibleAttachments.filter((attachment) =>
+        attachment.linkedCardInstanceId === projection.luxuryCarChallenge?.sourceCardInstanceId &&
         attachment.ownerPlayerId === activeMatch.recipient.playerId &&
         attachment.visibilityScope === 'public_match' &&
         attachment.kind === 'photo_evidence'
@@ -522,6 +539,25 @@ export function CardsScreen() {
               })}
             />
           ) : null}
+        </Panel>
+      ) : null}
+
+      {projection?.luxuryCarChallenge ? (
+        <Panel title="Curse of the Luxury Car" subtitle="Find a more expensive car and agree on its production-year MSRP." tone="accent">
+          <LuxuryCarChallengePanel
+            challenge={projection.luxuryCarChallenge}
+            viewerRole={viewerRole}
+            photoAttachmentId={luxuryCarSeekerAttachmentId}
+            disabled={state.loadState === 'loading'}
+            onSubmit={(candidate) => void submitCommand({
+              type: 'report_luxury_car_candidate',
+              payload: { sourceCardInstanceId: projection.luxuryCarChallenge!.sourceCardInstanceId, ...candidate }
+            })}
+            onDecide={(accepted) => void submitCommand({
+              type: 'decide_luxury_car_candidate',
+              payload: { sourceCardInstanceId: projection.luxuryCarChallenge!.sourceCardInstanceId, accepted }
+            })}
+          />
         </Panel>
       ) : null}
 
@@ -1018,6 +1054,7 @@ export function CardsScreen() {
               copiedCard={copiedCard}
               resolution={projection?.activeCardResolution}
               zoologistHiderAttachmentId={zoologistHiderAttachmentId}
+              luxuryCarHiderAttachmentId={luxuryCarHiderAttachmentId}
               canResolve={canResolve}
               resolveDisabledReason={resolveDisabledReason}
               questionCategories={contentPack.questionCategories}
@@ -1055,7 +1092,7 @@ export function CardsScreen() {
                   type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId, dieRoll }
                 });
               }}
-              onResolve={(questionTemplateIds, zoologistSelection) => {
+              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -1069,6 +1106,13 @@ export function CardsScreen() {
                     ...(zoologistSelection ? {
                       zoologistCategory: zoologistSelection.category,
                       zoologistHiderAttachmentId: zoologistSelection.hiderAttachmentId
+                    } : {}),
+                    ...(luxuryCarSelection ? {
+                      luxuryCarHiderAttachmentId: luxuryCarSelection.hiderAttachmentId,
+                      luxuryCarDescription: luxuryCarSelection.description,
+                      luxuryCarProductionYear: luxuryCarSelection.productionYear,
+                      luxuryCarMsrpCents: luxuryCarSelection.msrpCents,
+                      luxuryCarCurrencyCode: luxuryCarSelection.currencyCode
                     } : {})
                   }
                 });
@@ -1085,7 +1129,9 @@ export function CardsScreen() {
         >
           <EvidenceCapturePanel
             context={cardAttachmentContext}
-            cameraOnly={projection?.activeCardResolution?.resolutionKind === 'zoologist_challenge' || Boolean(projection?.zoologistChallenge)}
+            cameraOnly={projection?.activeCardResolution?.resolutionKind === 'zoologist_challenge' ||
+              projection?.activeCardResolution?.resolutionKind === 'luxury_car_challenge' ||
+              Boolean(projection?.zoologistChallenge) || Boolean(projection?.luxuryCarChallenge)}
             drafts={cardEvidenceDrafts}
             visibleAttachments={activeCardEvidenceContext?.attachments ?? []}
             disabled={

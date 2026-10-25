@@ -145,6 +145,8 @@ export function validateStateForCommand(
     case 'report_egg_partner_member_lost':
     case 'report_jammed_door_roll':
     case 'report_zoologist_evidence':
+    case 'report_luxury_car_candidate':
+    case 'decide_luxury_car_candidate':
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Lemon contact can only be updated while seekers are searching.')];
@@ -184,6 +186,7 @@ export function validateStateForCommand(
         : isSeekPhaseState(aggregate, 'awaiting_question_answer') ||
         isSeekPhaseState(aggregate, 'awaiting_card_resolution') ||
         Boolean(aggregate.zoologistChallenge) ||
+        Boolean(aggregate.luxuryCarChallenge) ||
         isLifecycleState(aggregate, 'endgame') ||
         isLifecycleState(aggregate, 'game_complete')
         ? []

@@ -410,7 +410,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -534,6 +534,25 @@ export interface ZoologistChallengeModel {
   activatedAt: string;
 }
 
+export interface LuxuryCarChallengeModel {
+  sourceCardInstanceId: string;
+  hiderAttachmentId: string;
+  hiderCarDescription: string;
+  hiderProductionYear: number;
+  hiderMsrpCents: number;
+  currencyCode: string;
+  activatedAt: string;
+  usedAttachmentIds: string[];
+  candidate?: {
+    attachmentId: string;
+    submittedByPlayerId: string;
+    carDescription: string;
+    productionYear: number;
+    msrpCents: number;
+    submittedAt: string;
+  };
+}
+
 export interface MatchAggregate {
   matchId: string;
   mode: MatchMode;
@@ -572,6 +591,7 @@ export interface MatchAggregate {
   eggPartnerChallenge?: EggPartnerChallengeModel;
   jammedDoorChallenge?: JammedDoorChallengeModel;
   zoologistChallenge?: ZoologistChallengeModel;
+  luxuryCarChallenge?: LuxuryCarChallengeModel;
   awardedCurseBonusMinutes?: number;
   hiderHandLimitBonus?: number;
   disabledQuestionTemplateIds?: string[];

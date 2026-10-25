@@ -544,3 +544,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Require public card-linked camera attachments, reject seeker evidence captured before challenge activation, and block the next question until every active seeker submits.
 - [x] Add hider category/photo setup, seeker photo reporting, public evidence review, and camera-only capture guidance in the card flow.
 - [x] Verify both workbook mappings, engine gates/permissions/round reset, public evidence contexts, full suite (413/413), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). Binary persistence depends on the active attachment-storage mode.
+
+### Completed implementation slice: Curse of the Luxury Car comparison
+
+- [x] Import the scanned assisted effect for both workbook profiles, including base rulebook p. 50 MSRP guidance.
+- [x] Record the hider's photographed car and production-year MSRP, then allow a seeker to submit a new public camera photo and higher MSRP claim.
+- [x] Keep questions blocked until the hider accepts the seeker's car evidence; require a different photo after rejection.
+- [x] Add hider, seeker, and referee UI for photo capture, MSRP entry, comparison, and adjudication; retain public evidence context after the card window closes.
+- [x] Verify evidence ownership/freshness, strict MSRP comparison, rejection/retry, authorization, round reset, both import profiles, full suite (415/415), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). Model/year and MSRP source remain team-adjudicated where uncertain.

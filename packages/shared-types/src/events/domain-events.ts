@@ -123,6 +123,9 @@ export type DomainEvent =
   | JammedDoorRollReportedEvent
   | ZoologistChallengeStartedEvent
   | ZoologistEvidenceReportedEvent
+  | LuxuryCarChallengeStartedEvent
+  | LuxuryCarCandidateReportedEvent
+  | LuxuryCarCandidateDecidedEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -444,7 +447,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -616,6 +619,35 @@ export interface ZoologistChallengeStartedEvent {
 export interface ZoologistEvidenceReportedEvent {
   type: 'zoologist_evidence_reported';
   payload: { sourceCardInstanceId: string; playerId: string; attachmentId: string };
+}
+
+export interface LuxuryCarChallengeStartedEvent {
+  type: 'luxury_car_challenge_started';
+  payload: {
+    sourceCardInstanceId: string;
+    hiderAttachmentId: string;
+    hiderCarDescription: string;
+    hiderProductionYear: number;
+    hiderMsrpCents: number;
+    currencyCode: string;
+  };
+}
+
+export interface LuxuryCarCandidateReportedEvent {
+  type: 'luxury_car_candidate_reported';
+  payload: {
+    sourceCardInstanceId: string;
+    attachmentId: string;
+    playerId: string;
+    carDescription: string;
+    productionYear: number;
+    msrpCents: number;
+  };
+}
+
+export interface LuxuryCarCandidateDecidedEvent {
+  type: 'luxury_car_candidate_decided';
+  payload: { sourceCardInstanceId: string; accepted: boolean };
 }
 
 export interface QuestionTemplatesDisabledEvent {

@@ -204,6 +204,10 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(zoologist?.automationLevel, 'assisted');
   assert.equal(zoologist?.effects[0]?.effectType, 'zoologist_challenge');
   assert.equal(zoologist?.requirements?.requiresPhotoUpload, true);
+  const luxuryCar = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-luxury-car');
+  assert.equal(luxuryCar?.automationLevel, 'assisted');
+  assert.equal(luxuryCar?.effects[0]?.effectType, 'luxury_car_challenge');
+  assert.equal(luxuryCar?.requirements?.requiresPhotoUpload, true);
   assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));
   assert.ok(curses.every((card) => card.sourceProvenance.some((source) =>
     source.sourceFileName.startsWith('Scanned base rulebook, printed p.')
@@ -287,6 +291,10 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   assert.equal(zoologist?.automationLevel, 'assisted');
   assert.equal(zoologist?.effects[0]?.effectType, 'zoologist_challenge');
   assert.equal(zoologist?.requirements?.requiresPhotoUpload, true);
+  const luxuryCar = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-luxury-car');
+  assert.equal(luxuryCar?.automationLevel, 'assisted');
+  assert.equal(luxuryCar?.effects[0]?.effectType, 'luxury_car_challenge');
+  assert.equal(luxuryCar?.requirements?.requiresPhotoUpload, true);
   assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));
   const bridgeTroll = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
   assert.equal(bridgeTroll?.automationLevel, 'assisted');

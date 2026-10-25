@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T18:14:10.012Z",
+    "importedAt": "2026-10-25T18:24:35.253Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2375,7 +2375,7 @@
       "shortName": "Curse Of The Luxury Car",
       "description": "Take a photo of a car. The seekers must take a photo of a more expensive car before asking another question.",
       "rulebookGuidanceText": "The submitted photo must show enough of the car to identify it, and seekers must agree that it is the claimed car. Compare MSRP for the production year, ignoring paid upgrades and modifications. If model or year is uncertain, both sides agree which one to use.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -2385,9 +2385,9 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "luxury_car_challenge",
           "description": "Take a photo of a car. The seekers must take a photo of a more expensive car before asking another question.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Take a photo of a car. The seekers must take a photo of a more expensive car before asking another question.",
           "payload": {
             "workbookName": "Curse Of The Luxury Car"
@@ -2396,8 +2396,8 @@
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true,
-        "requiresPhotoUpload": false
+        "requiresManualApproval": false,
+        "requiresPhotoUpload": true
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2408,7 +2408,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

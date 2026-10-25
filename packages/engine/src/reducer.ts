@@ -306,6 +306,7 @@ export function reduceMatchAggregate(
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
+        luxuryCarChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         cardInstances: Object.fromEntries(
           eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
@@ -345,6 +346,7 @@ export function reduceMatchAggregate(
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
+        luxuryCarChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         disabledQuestionTemplateIds: [],
         disabledQuestionCategoryId: undefined,
@@ -741,6 +743,49 @@ export function reduceMatchAggregate(
       return {
         ...base,
         zoologistChallenge: complete ? undefined : { ...challenge, attachmentIdBySeekerPlayerId }
+      };
+    }
+    case 'luxury_car_challenge_started':
+      return {
+        ...base,
+        luxuryCarChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          hiderAttachmentId: eventEnvelope.event.payload.hiderAttachmentId,
+          hiderCarDescription: eventEnvelope.event.payload.hiderCarDescription,
+          hiderProductionYear: eventEnvelope.event.payload.hiderProductionYear,
+          hiderMsrpCents: eventEnvelope.event.payload.hiderMsrpCents,
+          currencyCode: eventEnvelope.event.payload.currencyCode,
+          activatedAt: eventEnvelope.occurredAt,
+          usedAttachmentIds: []
+        }
+      };
+    case 'luxury_car_candidate_reported': {
+      const challenge = base.luxuryCarChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        luxuryCarChallenge: {
+          ...challenge,
+          usedAttachmentIds: [...challenge.usedAttachmentIds, eventEnvelope.event.payload.attachmentId],
+          candidate: {
+            attachmentId: eventEnvelope.event.payload.attachmentId,
+            submittedByPlayerId: eventEnvelope.event.payload.playerId,
+            carDescription: eventEnvelope.event.payload.carDescription,
+            productionYear: eventEnvelope.event.payload.productionYear,
+            msrpCents: eventEnvelope.event.payload.msrpCents,
+            submittedAt: eventEnvelope.occurredAt
+          }
+        }
+      };
+    }
+    case 'luxury_car_candidate_decided': {
+      const challenge = base.luxuryCarChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        luxuryCarChallenge: eventEnvelope.event.payload.accepted
+          ? undefined
+          : { ...challenge, candidate: undefined }
       };
     }
     case 'question_response_expired': {

@@ -78,6 +78,8 @@ export type DomainCommand =
   | ReportEggPartnerMemberLostCommand
   | ReportJammedDoorRollCommand
   | ReportZoologistEvidenceCommand
+  | ReportLuxuryCarCandidateCommand
+  | DecideLuxuryCarCandidateCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -346,6 +348,11 @@ export interface ResolveCardWindowCommand {
     questionTemplateIds?: string[];
     zoologistCategory?: import('../domain/match.ts').ZoologistAnimalCategory;
     zoologistHiderAttachmentId?: string;
+    luxuryCarHiderAttachmentId?: string;
+    luxuryCarDescription?: string;
+    luxuryCarProductionYear?: number;
+    luxuryCarMsrpCents?: number;
+    luxuryCarCurrencyCode?: string;
   };
 }
 
@@ -439,6 +446,22 @@ export interface ReportJammedDoorRollCommand {
 export interface ReportZoologistEvidenceCommand {
   type: 'report_zoologist_evidence';
   payload: { sourceCardInstanceId: string; attachmentId: string };
+}
+
+export interface ReportLuxuryCarCandidateCommand {
+  type: 'report_luxury_car_candidate';
+  payload: {
+    sourceCardInstanceId: string;
+    attachmentId: string;
+    carDescription: string;
+    productionYear: number;
+    msrpCents: number;
+  };
+}
+
+export interface DecideLuxuryCarCandidateCommand {
+  type: 'decide_luxury_car_candidate';
+  payload: { sourceCardInstanceId: string; accepted: boolean };
 }
 
 export interface CompleteCooldownCommand {

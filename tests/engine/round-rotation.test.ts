@@ -101,6 +101,24 @@ test('starting the next round rotates the hider, resets round state and deck, an
     attachmentIdBySeekerPlayerId: {},
     activatedAt: found.createdAt
   };
+  found.luxuryCarChallenge = {
+    sourceCardInstanceId: 'luxury-car-instance',
+    hiderAttachmentId: 'attachment:hider-car',
+    hiderCarDescription: '2020 Model X',
+    hiderProductionYear: 2020,
+    hiderMsrpCents: 8000000,
+    currencyCode: 'USD',
+    activatedAt: found.createdAt,
+    usedAttachmentIds: ['attachment:seeker-car'],
+    candidate: {
+      attachmentId: 'attachment:seeker-car',
+      submittedByPlayerId: 'hider-1',
+      carDescription: '2022 Sedan',
+      productionYear: 2022,
+      msrpCents: 9000000,
+      submittedAt: found.createdAt
+    }
+  };
   const started = executeCommand(found, makeEnvelope(found.matchId,
     { actorId: 'host-1', playerId: 'host-1', role: 'host' },
     { type: 'start_next_round', payload: { nextHiderPlayerId: 'seeker-1' } },
@@ -117,6 +135,7 @@ test('starting the next round rotates the hider, resets round state and deck, an
   assert.equal(next.disabledQuestionCategorySourceCardInstanceId, undefined);
   assert.equal(next.seekerOffTransitRestriction, undefined);
   assert.equal(next.zoologistChallenge, undefined);
+  assert.equal(next.luxuryCarChallenge, undefined);
   assert.equal(next.roleAssignments['seeker-1']?.role, 'hider');
   assert.equal(next.roleAssignments['hider-1']?.role, 'seeker');
   assert.deepEqual(next.teams['team-hider']?.memberPlayerIds, ['seeker-1']);

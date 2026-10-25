@@ -1214,3 +1214,120 @@ test('Zoologist blocks questions until every seeker links their own public photo
   }
   assert.equal(state.zoologistChallenge, undefined);
 });
+
+test('Curse of the Luxury Car opens a typed MSRP photo-comparison plan', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('luxury car'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'luxury_car_challenge', description: card.description, automationLevel: 'assisted' } as never];
+
+  assert.equal(buildCardResolutionPlan(card, 'medium').kind, 'luxury_car_challenge');
+});
+
+test('Luxury Car requires a fresh higher-MSRP seeker photo and hider approval before questions resume', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('luxury car'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'luxury_car_challenge', description: card.description, automationLevel: 'assisted' } as never];
+  let state = setupMatchToSeekReady(contentPack);
+  const cardInstanceId = moveCardToTeamHand(state, card.cardDefinitionId, 'team-hider');
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+
+  const upload = (playerId: string, role: 'hider' | 'seeker', attachmentId: string, at: number) => executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: playerId, playerId, role },
+    { type: 'upload_attachment', payload: {
+      attachmentId,
+      kind: 'photo_evidence',
+      label: 'Car photo',
+      visibilityScope: 'public_match',
+      cardInstanceId,
+      captureMetadata: { pickerSource: 'camera' }
+    } }, at), contentPack).aggregate;
+
+  state = upload('hider-1', 'hider', 'luxury:hider-car', 71);
+  state = upload('seeker-1', 'seeker', 'luxury:stale-seeker-car', 71.5);
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: {
+      sourceCardInstanceId: cardInstanceId,
+      luxuryCarHiderAttachmentId: 'luxury:hider-car',
+      luxuryCarDescription: '2020 Model X',
+      luxuryCarProductionYear: 2020,
+      luxuryCarMsrpCents: 8000000,
+      luxuryCarCurrencyCode: 'USD'
+    } }, 72), contentPack).aggregate;
+  assert.equal(state.luxuryCarChallenge?.hiderMsrpCents, 8000000);
+  assert.throws(() => executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_luxury_car_candidate', payload: {
+      sourceCardInstanceId: cardInstanceId,
+      attachmentId: 'luxury:stale-seeker-car',
+      carDescription: '2022 Sedan',
+      productionYear: 2022,
+      msrpCents: 9000000
+    } }, 72.5), contentPack), /take and record a new public camera photo after the challenge starts/i);
+
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 73), contentPack).aggregate;
+  state = upload('seeker-1', 'seeker', 'luxury:seeker-car', 74);
+  assert.throws(() => executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_luxury_car_candidate', payload: {
+      sourceCardInstanceId: cardInstanceId,
+      attachmentId: 'luxury:seeker-car',
+      carDescription: '2022 Sedan',
+      productionYear: 2022,
+      msrpCents: 7999999
+    } }, 75), contentPack), /production-year MSRP higher than USD 80000.00/i);
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_luxury_car_candidate', payload: {
+      sourceCardInstanceId: cardInstanceId,
+      attachmentId: 'luxury:seeker-car',
+      carDescription: '2022 Sedan',
+      productionYear: 2022,
+      msrpCents: 9000000
+    } }, 76), contentPack).aggregate;
+  assert.throws(() => executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:luxury-blocked', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider'
+    } }, 77), contentPack), /hider must accept/i);
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'decide_luxury_car_candidate', payload: { sourceCardInstanceId: cardInstanceId, accepted: false } }, 78), contentPack).aggregate;
+  assert.equal(state.luxuryCarChallenge?.candidate, undefined);
+  assert.throws(() => executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_luxury_car_candidate', payload: {
+      sourceCardInstanceId: cardInstanceId,
+      attachmentId: 'luxury:seeker-car',
+      carDescription: '2022 Sedan',
+      productionYear: 2022,
+      msrpCents: 9000000
+    } }, 78.5), contentPack), /take a different car photo after the hider rejects an attempt/i);
+
+  state = upload('seeker-1', 'seeker', 'luxury:seeker-car-2', 79);
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_luxury_car_candidate', payload: {
+      sourceCardInstanceId: cardInstanceId,
+      attachmentId: 'luxury:seeker-car-2',
+      carDescription: '2023 Coupe',
+      productionYear: 2023,
+      msrpCents: 9200000
+    } }, 80), contentPack).aggregate;
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'decide_luxury_car_candidate', payload: { sourceCardInstanceId: cardInstanceId, accepted: true } }, 81), contentPack).aggregate;
+  assert.equal(state.luxuryCarChallenge, undefined);
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:luxury-unlocked', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider'
+    } }, 82), contentPack).aggregate;
+  assert.equal(state.activeQuestionInstanceId, 'question:luxury-unlocked');
+});
