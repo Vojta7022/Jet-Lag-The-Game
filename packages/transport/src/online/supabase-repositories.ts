@@ -28,6 +28,15 @@ const PROJECTIONS_TABLE = 'match_projections';
 const CONTENT_PACK_REFS_TABLE = 'content_pack_references';
 const MEMBERSHIPS_TABLE = 'match_memberships';
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value).sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries.map(([key, child]) => `${JSON.stringify(key)}:${canonicalJson(child)}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'undefined';
+}
+
 export class SupabaseMatchRepository implements MatchRepository {
   private readonly client: SupabaseTableClient;
 
@@ -134,7 +143,7 @@ export class SupabaseContentPackReferenceRepository implements ContentPackRefere
 
   async save(record: ContentPackReferenceRecord): Promise<void> {
     const existing = await this.getByPackIdAndVersion(record.packId, record.packVersion);
-    if (existing?.contentPack && record.contentPack && JSON.stringify(existing.contentPack) !== JSON.stringify(record.contentPack)) {
+    if (existing?.contentPack && record.contentPack && canonicalJson(existing.contentPack) !== canonicalJson(record.contentPack)) {
       throw new TransportRuntimeError('CONTENT_PACK_VERSION_IMMUTABLE', `Content pack "${record.packId}@${record.packVersion}" is already published with different contents.`);
     }
     await this.client.upsert(
@@ -150,7 +159,7 @@ export class SupabaseContentPackReferenceRepository implements ContentPackRefere
       if (existing.sourceFingerprint !== record.sourceFingerprint) {
         throw new TransportRuntimeError('CONTENT_PACK_VERSION_IMMUTABLE', `Content pack "${record.packId}@${record.packVersion}" is already registered with a different source fingerprint.`);
       }
-      if (existing.contentPack && JSON.stringify(existing.contentPack) !== JSON.stringify(record.contentPack)) {
+      if (existing.contentPack && canonicalJson(existing.contentPack) !== canonicalJson(record.contentPack)) {
         throw new TransportRuntimeError('CONTENT_PACK_VERSION_IMMUTABLE', `Content pack "${record.packId}@${record.packVersion}" is already published with different contents.`);
       }
       if (!existing.contentPack) await this.save(record);
@@ -161,7 +170,7 @@ export class SupabaseContentPackReferenceRepository implements ContentPackRefere
       await this.client.insert(CONTENT_PACK_REFS_TABLE, [record as unknown as Record<string, unknown>]);
     } catch {
       const raced = await this.getByPackIdAndVersion(record.packId, record.packVersion);
-      if (raced?.contentPack && JSON.stringify(raced.contentPack) === JSON.stringify(record.contentPack)) return;
+      if (raced?.contentPack && canonicalJson(raced.contentPack) === canonicalJson(record.contentPack)) return;
       throw new TransportRuntimeError(
         'CONTENT_PACK_VERSION_IMMUTABLE',
         `Content pack "${record.packId}@${record.packVersion}" could not be published immutably.`

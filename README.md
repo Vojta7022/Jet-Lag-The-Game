@@ -58,6 +58,7 @@ Cross-platform mobile app and rules engine for running a configurable transit-ba
 - `npm run test` - all tests.
 - `npm run test:engine`, `test:geo`, `test:transport`, `test:mobile` - focused tests.
 - `npm run mobile:typecheck` - mobile TypeScript check.
+- `npm run online:smoke` - exercise a host, hider, and seeker against the running local Supabase stack, including scoped projections, authoritative Radar, reward selection, scoring, storage access, and hider rotation.
 
 The full test suite also uses Python `openpyxl` for workbook importer tests. Create a local environment once with `python3 -m venv .venv`, then install `requirements-dev.txt` into it and run tests with `.venv/bin` at the front of `PATH`.
 

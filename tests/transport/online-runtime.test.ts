@@ -171,6 +171,34 @@ test('online authority stores an uploaded pack immutably and returns it only to 
   );
 });
 
+test('published content packs remain idempotent when Supabase JSONB reorders object keys', async () => {
+  const { contentPack, repositories, runtime, tableClient } = createOnlineHarness();
+  const host = makeOnlineSession('jsonb-pack-host', { serviceRole: true });
+  await runtime.publishContentPack(host, contentPack);
+
+  function sortObjectKeys(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(sortObjectKeys);
+    if (!value || typeof value !== 'object') return value;
+    return Object.fromEntries(Object.entries(value)
+      .sort(([left], [right]) => right.localeCompare(left))
+      .map(([key, child]) => [key, sortObjectKeys(child)]));
+  }
+
+  const stored = await tableClient.selectOne<Record<string, unknown>>('content_pack_references', {
+    packId: contentPack.packId,
+    packVersion: contentPack.packVersion
+  });
+  assert.ok(stored);
+  stored.contentPack = sortObjectKeys(stored.contentPack);
+  const persistedRecord = await repositories.contentPackReferences.getByPackIdAndVersion(
+    contentPack.packId,
+    contentPack.packVersion
+  );
+  assert.ok(persistedRecord);
+
+  await repositories.contentPackReferences.register({ ...persistedRecord, contentPack });
+});
+
 test('online authority loads matching features server-side and completes answer plus map deduction atomically', async () => {
   const { contentPack, repositories, realtime } = createOnlineHarness();
   const providerCalls: Array<{ featureClassIds: string[]; regionType: string }> = [];

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shlex
 import subprocess
@@ -17,6 +18,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class SmokeFailure(RuntimeError):
     pass
+
+
+def create_smoke_pack(pack: dict[str, object]) -> dict[str, object]:
+    fingerprint = hashlib.sha256(
+        json.dumps(pack, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()[:16]
+    return {
+        **pack,
+        "packId": f"jet-lag-online-smoke-{fingerprint}",
+        "packVersion": "0.2.0",
+        "title": "Online Distribution Smoke Pack",
+    }
 
 
 def local_environment() -> dict[str, str]:
@@ -123,7 +136,7 @@ def main() -> None:
     removed_token = supabase.sign_in_anonymously()
     outsider_token = supabase.sign_in_anonymously()
     pack = json.loads((ROOT / "samples/generated/jet-lag-the-game.content-pack.json").read_text())
-    match_pack = {**pack, "packVersion": "0.2.0", "title": "Online Distribution Smoke Pack"}
+    match_pack = create_smoke_pack(pack)
     match_id = "smoke-" + uuid.uuid4().hex[:12]
     host_player_id = "host-" + uuid.uuid4().hex[:8]
     hider_player_id = "hider-" + uuid.uuid4().hex[:8]
