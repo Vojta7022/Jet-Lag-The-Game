@@ -479,6 +479,7 @@ export function LiveMapInlineActionPanel() {
         <LiveMapInfoChips
           items={[
             { label: 'Live clue', value: activeQuestionTemplate.name, tone: 'warning' },
+            ...(activeQuestion.ransomNoteText ? [{ label: 'Approved cut-out wording', value: activeQuestion.ransomNoteText, tone: 'warning' as const }] : []),
             {
               label: 'Timer',
               value: activeQuestionTimerSeconds !== undefined ? formatCountdown(activeQuestionTimerSeconds) : 'Waiting'
