@@ -91,6 +91,9 @@ export type DomainCommand =
   | ReviewBirdGuideVideoCommand
   | ReportMediocreTravelSouvenirCommand
   | CompleteMediocreTravelAgentCommand
+  | SubmitImpressionableConsumerTargetCommand
+  | ReviewImpressionableConsumerTargetCommand
+  | CompleteImpressionableConsumerChallengeCommand
   | ConfirmEggPartnerAcquiredCommand
   | ReportEggPartnerMemberLostCommand
   | ReportJammedDoorRollCommand
@@ -384,6 +387,7 @@ export interface ResolveCardWindowCommand {
     mediocreTravelAgentLatitude?: number;
     mediocreTravelAgentLongitude?: number;
     mediocreTravelAgentPublicAccessAttested?: boolean;
+  impressionableConsumerMinimumAdDistanceMeters?: number;
   };
 }
 
@@ -547,6 +551,32 @@ export interface ReportMediocreTravelSouvenirCommand {
 
 export interface CompleteMediocreTravelAgentCommand {
   type: 'complete_mediocre_travel_agent';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface SubmitImpressionableConsumerTargetCommand {
+  type: 'submit_impressionable_consumer_target';
+  payload: {
+    sourceCardInstanceId: string;
+    advertisementName: string;
+    advertisementLatitude: number;
+    advertisementLongitude: number;
+    advertisementOutdoorsAttested: true;
+    targetName: string;
+    targetLatitude: number;
+    targetLongitude: number;
+    action: 'enter_location' | 'buy_product_or_service';
+    targetIsBusinessAttested: true;
+  };
+}
+
+export interface ReviewImpressionableConsumerTargetCommand {
+  type: 'review_impressionable_consumer_target';
+  payload: { sourceCardInstanceId: string; approved: boolean };
+}
+
+export interface CompleteImpressionableConsumerChallengeCommand {
+  type: 'complete_impressionable_consumer_challenge';
   payload: { sourceCardInstanceId: string };
 }
 

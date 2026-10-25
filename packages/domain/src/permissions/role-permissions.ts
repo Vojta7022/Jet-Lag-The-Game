@@ -48,6 +48,8 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'review_bird_guide_video',
   'report_mediocre_travel_souvenir',
   'complete_mediocre_travel_agent',
+  'review_impressionable_consumer_target',
+  'complete_impressionable_consumer_challenge',
   'confirm_egg_partner_acquired',
   'report_egg_partner_member_lost',
   'report_jammed_door_roll',
@@ -91,6 +93,7 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'review_labyrinth_solution',
   'review_unguided_tourist_photo',
   'review_bird_guide_video',
+  'review_impressionable_consumer_target',
   'answer_question'
 ]);
 
@@ -123,6 +126,8 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'submit_bird_guide_video',
   'report_mediocre_travel_souvenir',
   'complete_mediocre_travel_agent',
+  'submit_impressionable_consumer_target',
+  'complete_impressionable_consumer_challenge',
   'confirm_egg_partner_acquired',
   'report_egg_partner_member_lost',
   'report_jammed_door_roll',

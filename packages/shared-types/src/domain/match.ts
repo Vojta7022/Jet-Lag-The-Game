@@ -411,7 +411,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'mediocre_travel_agent_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'mediocre_travel_agent_challenge' | 'impressionable_consumer_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -436,6 +436,7 @@ export interface CardResolutionWindow {
   mediocreTravelAgentHiderBonusMinutes?: number;
   mediocreTravelAgentRequiredPhotoCount?: number;
   mediocreTravelAgentTransitStatusByPlayerId?: Record<string, { onTransitOrAtStation: boolean; updatedAt: string }>;
+  impressionableConsumerMinimumAdDistanceMeters?: number;
   moveOriginStationId?: string;
   moveOriginStationName?: string;
   moveDurationSeconds?: number;
@@ -599,6 +600,29 @@ export interface MediocreTravelAgentChallengeModel {
   completedAt?: string;
 }
 
+export interface ImpressionableConsumerChallengeModel {
+  sourceCardInstanceId: string;
+  minimumAdvertisementDistanceMeters: number;
+  requiredSeekerPlayerIds: string[];
+  startedAt: string;
+  target?: {
+    advertisementName: string;
+    advertisementLatitude: number;
+    advertisementLongitude: number;
+    targetName: string;
+    targetLatitude: number;
+    targetLongitude: number;
+    action: 'enter_location' | 'buy_service';
+    submittedByPlayerId: string;
+    submittedAt: string;
+    reviewedAt?: string;
+    reviewApproved?: boolean;
+    rejectedAttemptCount: number;
+  };
+  completedAtByPlayerId: Record<string, string>;
+  completedAt?: string;
+}
+
 export interface EggPartnerChallengeModel {
   sourceCardInstanceId: string;
   activatedAt: string;
@@ -701,6 +725,7 @@ export interface MatchAggregate {
   unguidedTouristChallenge?: UnguidedTouristChallengeModel;
   birdGuideChallenge?: BirdGuideChallengeModel;
   mediocreTravelAgentChallenge?: MediocreTravelAgentChallengeModel;
+  impressionableConsumerChallenge?: ImpressionableConsumerChallengeModel;
   eggPartnerChallenge?: EggPartnerChallengeModel;
   jammedDoorChallenge?: JammedDoorChallengeModel;
   zoologistChallenge?: ZoologistChallengeModel;

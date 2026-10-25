@@ -311,6 +311,7 @@ export function reduceMatchAggregate(
         unguidedTouristChallenge: undefined,
         birdGuideChallenge: undefined,
         mediocreTravelAgentChallenge: undefined,
+        impressionableConsumerChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -358,6 +359,7 @@ export function reduceMatchAggregate(
         unguidedTouristChallenge: undefined,
         birdGuideChallenge: undefined,
         mediocreTravelAgentChallenge: undefined,
+        impressionableConsumerChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -907,6 +909,38 @@ export function reduceMatchAggregate(
         stayStartedAtByPlayerId: {},
         transitStatusByPlayerId: eventEnvelope.event.payload.transitStatusByPlayerId
       } };
+    case 'impressionable_consumer_started':
+      return { ...base, impressionableConsumerChallenge: {
+        ...eventEnvelope.event.payload,
+        startedAt: eventEnvelope.occurredAt,
+        completedAtByPlayerId: {}
+      } };
+    case 'impressionable_consumer_target_submitted': {
+      const challenge = base.impressionableConsumerChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return { ...base, impressionableConsumerChallenge: { ...challenge, target: {
+        ...eventEnvelope.event.payload,
+        submittedAt: eventEnvelope.occurredAt,
+        rejectedAttemptCount: (challenge.target?.rejectedAttemptCount ?? 0) + (challenge.target?.reviewApproved === false ? 1 : 0)
+      } } };
+    }
+    case 'impressionable_consumer_target_reviewed': {
+      const challenge = base.impressionableConsumerChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId || !challenge.target) return base;
+      return { ...base, impressionableConsumerChallenge: { ...challenge, target: {
+        ...challenge.target,
+        reviewedAt: eventEnvelope.occurredAt,
+        reviewApproved: eventEnvelope.event.payload.approved
+      } } };
+    }
+    case 'impressionable_consumer_visit_reported': {
+      const challenge = base.impressionableConsumerChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const completedAtByPlayerId = { ...challenge.completedAtByPlayerId, [eventEnvelope.event.payload.playerId]: eventEnvelope.occurredAt };
+      const complete = challenge.requiredSeekerPlayerIds.every((playerId) => completedAtByPlayerId[playerId]);
+      return { ...base, impressionableConsumerChallenge: { ...challenge, completedAtByPlayerId,
+        completedAt: complete ? eventEnvelope.occurredAt : challenge.completedAt } };
+    }
     case 'mediocre_travel_agent_completed': {
       const challenge = base.mediocreTravelAgentChallenge;
       if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
@@ -1340,6 +1374,7 @@ export function reduceMatchAggregate(
           mediocreTravelAgentStayMinutes: eventEnvelope.event.payload.mediocreTravelAgentStayMinutes,
           mediocreTravelAgentHiderBonusMinutes: eventEnvelope.event.payload.mediocreTravelAgentHiderBonusMinutes,
           mediocreTravelAgentRequiredPhotoCount: eventEnvelope.event.payload.mediocreTravelAgentRequiredPhotoCount,
+          impressionableConsumerMinimumAdDistanceMeters: eventEnvelope.event.payload.impressionableConsumerMinimumAdDistanceMeters,
           rightTurnDeadEndDistanceMeters: eventEnvelope.event.payload.rightTurnDeadEndDistanceMeters,
           uTurnAlternateTransitWindowMinutes: eventEnvelope.event.payload.uTurnAlternateTransitWindowMinutes,
           jammedDoorRetryCooldownMinutes: eventEnvelope.event.payload.jammedDoorRetryCooldownMinutes,

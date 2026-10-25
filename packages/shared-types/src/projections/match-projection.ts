@@ -239,7 +239,7 @@ export interface MatchProjection {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
     openedAt?: string;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'mediocre_travel_agent_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'mediocre_travel_agent_challenge' | 'impressionable_consumer_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     hangman?: {
       status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
       secretWord?: string;
@@ -280,6 +280,7 @@ export interface MatchProjection {
     mediocreTravelAgentHiderBonusMinutes?: number;
     mediocreTravelAgentRequiredPhotoCount?: number;
     mediocreTravelAgentTransitStatusByPlayerId?: Record<string, { onTransitOrAtStation: boolean; updatedAt: string }>;
+    impressionableConsumerMinimumAdDistanceMeters?: number;
     uTurnAlternateTransitWindowMinutes?: number;
     jammedDoorRetryCooldownMinutes?: number;
     jammedDoorMinimumTotal?: number;
@@ -407,6 +408,28 @@ export interface MatchProjection {
     souvenirLostAt?: string;
     souvenirLostReportedByPlayerId?: string;
     bonusAwardedAt?: string;
+    completedAt?: string;
+  };
+  impressionableConsumerChallenge?: {
+    sourceCardInstanceId: string;
+    minimumAdvertisementDistanceMeters: number;
+    requiredSeekerPlayerIds: string[];
+    startedAt: string;
+    target?: {
+      advertisementName: string;
+      advertisementLatitude: number;
+      advertisementLongitude: number;
+      targetName: string;
+      targetLatitude: number;
+      targetLongitude: number;
+      action: 'enter_location' | 'buy_service';
+      submittedByPlayerId: string;
+      submittedAt: string;
+      reviewedAt?: string;
+      reviewApproved?: boolean;
+      rejectedAttemptCount: number;
+    };
+    completedAtByPlayerId: Record<string, string>;
     completedAt?: string;
   };
   eggPartnerChallenge?: {

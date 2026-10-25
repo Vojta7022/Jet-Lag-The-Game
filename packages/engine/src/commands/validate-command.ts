@@ -55,6 +55,7 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'unguided_tourist_challenge',
   'bird_guide_challenge',
   'mediocre_travel_agent_challenge',
+  'impressionable_consumer_challenge',
   'bridge_troll_challenge',
   'seeker_off_transit_challenge',
   'u_turn_challenge',
@@ -84,6 +85,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.unguidedTouristChallenge ||
     aggregate.birdGuideChallenge ||
     (aggregate.mediocreTravelAgentChallenge && !aggregate.mediocreTravelAgentChallenge.completedAt) ||
+    (aggregate.impressionableConsumerChallenge && !aggregate.impressionableConsumerChallenge.completedAt) ||
     (aggregate.activeCardResolution?.resolutionKind &&
       QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
   );
@@ -559,6 +561,10 @@ export function validateCommandEnvelope(
 
   if (envelope.command.type === 'begin_question_prompt' && aggregate.mediocreTravelAgentChallenge && !aggregate.mediocreTravelAgentChallenge.completedAt) {
     return [error(envelope.command.type, 'QUESTION_BLOCKED_BY_CURSE', 'Seekers are not ready to ask questions until they finish the trip, wait, send three photos, and obtain the souvenir.')];
+  }
+
+  if (envelope.command.type === 'begin_question_prompt' && aggregate.impressionableConsumerChallenge && !aggregate.impressionableConsumerChallenge.completedAt) {
+    return [error(envelope.command.type, 'QUESTION_BLOCKED_BY_CURSE', 'Seekers are not ready to ask questions until they complete the approved advertisement challenge.')];
   }
 
   switch (envelope.command.type) {
@@ -1972,6 +1978,70 @@ export function validateCommandEnvelope(
       }
       if (!challenge.souvenirAcquiredAt) {
         return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_SOUVENIR_REQUIRED', 'The seekers must acquire a physical souvenir before finishing the trip.')];
+      }
+      return [];
+    }
+    case 'submit_impressionable_consumer_target': {
+      const challenge = aggregate.impressionableConsumerChallenge;
+      const payload = envelope.command.payload;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId || challenge.completedAt) {
+        return [error(envelope.command.type, 'IMPRESSIONABLE_CONSUMER_NOT_ACTIVE', 'There is no active Impressionable Consumer challenge.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const seekerIds = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.memberPlayerIds ?? [];
+      if (actorRole !== 'host' && (!envelope.actor.playerId || actorRole !== 'seeker' || !seekerIds.includes(envelope.actor.playerId))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'A seeker must submit the advertised place or product from their seeker account.')];
+      }
+      if (challenge.target?.reviewApproved === true || !payload.advertisementName.trim() || payload.advertisementName.trim().length > 120 ||
+        !payload.targetName.trim() || payload.targetName.trim().length > 120 || payload.advertisementOutdoorsAttested !== true ||
+        payload.targetIsBusinessAttested !== true || !['enter_location', 'buy_product_or_service'].includes(payload.action) ||
+        !Number.isFinite(payload.advertisementLatitude) || Math.abs(payload.advertisementLatitude) > 90 ||
+        !Number.isFinite(payload.advertisementLongitude) || Math.abs(payload.advertisementLongitude) > 180 ||
+        !Number.isFinite(payload.targetLatitude) || Math.abs(payload.targetLatitude) > 90 ||
+        !Number.isFinite(payload.targetLongitude) || Math.abs(payload.targetLongitude) > 180) {
+        return [error(envelope.command.type, 'IMPRESSIONABLE_CONSUMER_TARGET_INVALID', 'Name the outdoor advertisement and advertised business, confirm it was found outdoors, and choose whether the seekers must enter or buy.')];
+      }
+      if (aggregate.mapRegion && (!pointInGeometry([payload.advertisementLongitude, payload.advertisementLatitude], aggregate.mapRegion.boundaryGeometry) ||
+        !pointInGeometry([payload.targetLongitude, payload.targetLatitude], aggregate.mapRegion.boundaryGeometry))) {
+        return [error(envelope.command.type, 'IMPRESSIONABLE_CONSUMER_OUTSIDE_REGION', 'Both the advertisement and its advertised business must be inside the playable region.')];
+      }
+      const distance = distanceMeters([payload.advertisementLongitude, payload.advertisementLatitude], [payload.targetLongitude, payload.targetLatitude]);
+      if (distance < challenge.minimumAdvertisementDistanceMeters) {
+        return [error(envelope.command.type, 'IMPRESSIONABLE_CONSUMER_AD_TOO_CLOSE', `Find an outdoor advertisement at least ${challenge.minimumAdvertisementDistanceMeters} m from the advertised business.`)];
+      }
+      return [];
+    }
+    case 'review_impressionable_consumer_target': {
+      const challenge = aggregate.impressionableConsumerChallenge;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || !challenge.target || challenge.target.reviewApproved !== undefined) {
+        return [error(envelope.command.type, 'IMPRESSIONABLE_CONSUMER_REVIEW_NOT_READY', 'There is no new advertised target to review.')];
+      }
+      if (actorRole !== 'host' && actorRole !== 'hider') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider or referee can review the advertised target.')];
+      }
+      return [];
+    }
+    case 'complete_impressionable_consumer_challenge': {
+      const challenge = aggregate.impressionableConsumerChallenge;
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || challenge.completedAt ||
+        !challenge.target || challenge.target.reviewApproved !== true) {
+        return [error(envelope.command.type, 'IMPRESSIONABLE_CONSUMER_TARGET_NOT_APPROVED', 'The hider must approve an eligible outdoor advertisement and its business before the seekers visit.')];
+      }
+      if (!playerId || actorRole !== 'seeker' || !challenge.requiredSeekerPlayerIds.includes(playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must report their own entry or purchase from their seeker account.')];
+      }
+      if (challenge.completedAtByPlayerId[playerId]) {
+        return [error(envelope.command.type, 'IMPRESSIONABLE_CONSUMER_ALREADY_REPORTED', 'You already reported completing this visit.')];
+      }
+      const sample = [...aggregate.locationSamples].reverse().find((candidate) => candidate.playerId === playerId);
+      const now = Date.parse(envelope.occurredAt);
+      if (!sample || sample.source !== 'device' || typeof sample.accuracyMeters !== 'number' || sample.accuracyMeters > 50 ||
+        now - Date.parse(sample.recordedAt) < 0 || now - Date.parse(sample.recordedAt) > 30_000 ||
+        distanceMeters([sample.longitude, sample.latitude], [challenge.target.targetLongitude, challenge.target.targetLatitude]) > 50) {
+        return [error(envelope.command.type, 'IMPRESSIONABLE_CONSUMER_ARRIVAL_NOT_CONFIRMED', 'A fresh phone fix must place you at the approved business to attest entry or receipt of the purchase.')];
       }
       return [];
     }

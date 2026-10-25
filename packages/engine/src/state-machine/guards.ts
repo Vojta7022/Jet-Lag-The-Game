@@ -167,6 +167,9 @@ export function validateStateForCommand(
     case 'report_right_turn_route_choice':
     case 'report_mediocre_travel_souvenir':
     case 'complete_mediocre_travel_agent':
+    case 'submit_impressionable_consumer_target':
+    case 'review_impressionable_consumer_target':
+    case 'complete_impressionable_consumer_challenge':
     case 'confirm_unguided_tourist_outdoors':
     case 'submit_unguided_tourist_photo':
     case 'review_unguided_tourist_photo':

@@ -382,6 +382,40 @@ test('Mediocre Travel Agent tracks a shared trip, photo evidence, souvenir, and 
     { type: 'report_mediocre_travel_souvenir', payload: { sourceCardInstanceId: cardInstanceId, status: 'lost' } }, 415), contentPack), /already reported/i);
 });
 
+test('Impressionable Consumer has a typed assisted plan for its scanned 30 m advertisement rule', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('impressionable consumer'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'impressionable_consumer_challenge', description: card.description, automationLevel: 'assisted', payload: { minimumAdvertisementDistanceMeters: 30, requireOutdoorAdvertisement: true, requireHiderReview: true } } as never];
+  const plan = buildCardResolutionPlan(card, 'small');
+  assert.equal(plan.kind, 'impressionable_consumer_challenge');
+  assert.equal(plan.minimumAdvertisementDistanceMeters, 30);
+});
+
+test('Impressionable Consumer gates questions until hider-approved advertisement, target visit, and purchase/entry attestations', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('impressionable consumer'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'impressionable_consumer_challenge', description: card.description, automationLevel: 'assisted', payload: { minimumAdvertisementDistanceMeters: 30, requireOutdoorAdvertisement: true, requireHiderReview: true } } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.locationSamples = [{ sampleId: 'consumer:origin', playerId: 'seeker-1', role: 'seeker', teamId: 'team-seeker', latitude: 50, longitude: 14, accuracyMeters: 8, source: 'device', recordedAt: '2026-01-01T00:00:49.000Z' }];
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 50), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 51), contentPack).aggregate;
+  assert.ok(aggregate.impressionableConsumerChallenge);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'begin_question_prompt', payload: {} }, 52), contentPack), /approved advertisement challenge/i);
+  const target = { sourceCardInstanceId: cardInstanceId, advertisementName: 'Street poster for Cafe', advertisementLatitude: 50.001, advertisementLongitude: 14, advertisementOutdoorsAttested: true as const, targetName: 'Cafe', targetLatitude: 50.003, targetLongitude: 14, action: 'buy_product_or_service' as const, targetIsBusinessAttested: true as const };
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'submit_impressionable_consumer_target', payload: { ...target, advertisementLatitude: 50.0029, advertisementLongitude: 14 } }, 52.5), contentPack), /at least 30 m/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'submit_impressionable_consumer_target', payload: target }, 53), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'complete_impressionable_consumer_challenge', payload: { sourceCardInstanceId: cardInstanceId } }, 54), contentPack), /hider must approve/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'review_impressionable_consumer_target', payload: { sourceCardInstanceId: cardInstanceId, approved: true } }, 55), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'update_location', payload: { playerId: 'seeker-1', latitude: 50.003, longitude: 14, accuracyMeters: 9, source: 'device' } }, 56), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'complete_impressionable_consumer_challenge', payload: { sourceCardInstanceId: cardInstanceId } }, 57), contentPack).aggregate;
+  assert.ok(aggregate.impressionableConsumerChallenge?.completedAt);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'begin_question_prompt', payload: {} }, 58), contentPack).aggregate;
+  assert.equal(aggregate.seekPhaseSubstate, 'awaiting_question_selection');
+});
+
 test('Labyrinth blocks questions until a seeker solution is approved by the hider', () => {
   const contentPack = loadEngineTestContentPack();
   const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('labyrinth'));

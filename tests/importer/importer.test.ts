@@ -184,6 +184,15 @@ test('the workbook importer creates a normalized draft content pack', () => {
     mayRestartDrawingWithoutRestartingTimer: true
   });
   assert.equal(labyrinth.requirements?.requiresPhotoUpload, true);
+  const impressionableConsumer = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-impressionable-consumer');
+  assert.equal(impressionableConsumer?.automationLevel, 'assisted');
+  assert.equal(impressionableConsumer?.effects[0]?.effectType, 'impressionable_consumer_challenge');
+  assert.deepEqual(impressionableConsumer?.effects[0]?.payload, {
+    minimumAdvertisementDistanceMeters: 30,
+    requireOutdoorAdvertisement: true,
+    requireHiderReview: true
+  });
+  assert.match(String(impressionableConsumer?.rulebookGuidanceText), /public places such as parks do not count/i);
   assert.deepEqual(discardDrawThree.effects[0]?.payload, { discardCount: 2, drawCount: 3 });
   assert.match(discardDrawThree.description, /discard 2 cards from your hand, then draw and keep 3 replacement cards/i);
 
@@ -363,6 +372,14 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   assert.equal(legacyLabyrinth?.automationLevel, 'assisted');
   assert.equal(legacyLabyrinth?.effects[0]?.effectType, 'labyrinth_challenge');
   assert.equal(legacyLabyrinth?.requirements?.requiresPhotoUpload, true);
+  const legacyImpressionableConsumer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-impressionable-consumer');
+  assert.equal(legacyImpressionableConsumer?.automationLevel, 'assisted');
+  assert.equal(legacyImpressionableConsumer?.effects[0]?.effectType, 'impressionable_consumer_challenge');
+  assert.deepEqual(legacyImpressionableConsumer?.effects[0]?.payload, {
+    minimumAdvertisementDistanceMeters: 30,
+    requireOutdoorAdvertisement: true,
+    requireHiderReview: true
+  });
   assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));
   const bridgeTroll = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
   assert.equal(bridgeTroll?.automationLevel, 'assisted');

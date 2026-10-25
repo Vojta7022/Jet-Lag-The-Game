@@ -140,6 +140,10 @@ export type DomainEvent =
   | MediocreTravelAgentStartedEvent
   | MediocreTravelAgentCompletedEvent
   | MediocreTravelSouvenirReportedEvent
+  | ImpressionableConsumerStartedEvent
+  | ImpressionableConsumerTargetSubmittedEvent
+  | ImpressionableConsumerTargetReviewedEvent
+  | ImpressionableConsumerVisitReportedEvent
   | EggPartnerChallengeStartedEvent
   | EggPartnerAcquiredEvent
   | EggPartnerMemberLostEvent
@@ -471,7 +475,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'mediocre_travel_agent_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'mediocre_travel_agent_challenge' | 'impressionable_consumer_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     labyrinthDrawingWindowMinutes?: number;
     moveOriginStationId?: string;
     moveOriginStationName?: string;
@@ -494,6 +498,7 @@ export interface CardResolutionOpenedEvent {
     mediocreTravelAgentStayMinutes?: number;
     mediocreTravelAgentHiderBonusMinutes?: number;
     mediocreTravelAgentRequiredPhotoCount?: number;
+    impressionableConsumerMinimumAdDistanceMeters?: number;
     uTurnAlternateTransitWindowMinutes?: number;
     jammedDoorRetryCooldownMinutes?: number;
     jammedDoorMinimumTotal?: number;
@@ -750,6 +755,36 @@ export interface MediocreTravelAgentCompletedEvent {
 export interface MediocreTravelSouvenirReportedEvent {
   type: 'mediocre_travel_souvenir_reported';
   payload: { sourceCardInstanceId: string; status: 'acquired' | 'lost'; playerId: string; bonusMinutesAwarded: number };
+}
+
+export interface ImpressionableConsumerStartedEvent {
+  type: 'impressionable_consumer_started';
+  payload: { sourceCardInstanceId: string; minimumAdvertisementDistanceMeters: number; requiredSeekerPlayerIds: string[] };
+}
+
+export interface ImpressionableConsumerTargetSubmittedEvent {
+  type: 'impressionable_consumer_target_submitted';
+  payload: {
+    sourceCardInstanceId: string;
+    advertisementName: string;
+    advertisementLatitude: number;
+    advertisementLongitude: number;
+    targetName: string;
+    targetLatitude: number;
+    targetLongitude: number;
+    action: 'enter_location' | 'buy_product_or_service';
+    submittedByPlayerId: string;
+  };
+}
+
+export interface ImpressionableConsumerTargetReviewedEvent {
+  type: 'impressionable_consumer_target_reviewed';
+  payload: { sourceCardInstanceId: string; approved: boolean };
+}
+
+export interface ImpressionableConsumerVisitReportedEvent {
+  type: 'impressionable_consumer_visit_reported';
+  payload: { sourceCardInstanceId: string; playerId: string; completedAt: string };
 }
 
 export interface EggPartnerChallengeStartedEvent {

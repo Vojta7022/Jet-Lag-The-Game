@@ -1402,6 +1402,7 @@ function eventsForCommand(
               mediocreTravelAgentStayMinutes: resolutionPlan.kind === 'mediocre_travel_agent_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               mediocreTravelAgentHiderBonusMinutes: resolutionPlan.kind === 'mediocre_travel_agent_challenge' ? resolutionPlan.timeBonusMinutes : undefined,
               mediocreTravelAgentRequiredPhotoCount: resolutionPlan.kind === 'mediocre_travel_agent_challenge' ? resolutionPlan.requiredPhotoCount : undefined,
+              impressionableConsumerMinimumAdDistanceMeters: resolutionPlan.kind === 'impressionable_consumer_challenge' ? resolutionPlan.minimumAdvertisementDistanceMeters : undefined,
               uTurnAlternateTransitWindowMinutes: resolutionPlan.kind === 'u_turn_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorDurationMinutes: resolutionPlan.kind === 'jammed_door_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorRetryCooldownMinutes: resolutionPlan.doorwayRetryCooldownMinutes,
@@ -1622,6 +1623,18 @@ function eventsForCommand(
             requiredPhotoCount: activeResolution.mediocreTravelAgentRequiredPhotoCount ?? 3,
             requiredSeekerPlayerIds: seekerTeam?.memberPlayerIds ?? [],
             transitStatusByPlayerId: activeResolution.mediocreTravelAgentTransitStatusByPlayerId ?? {}
+          }
+        }));
+      }
+
+      if (activeResolution?.resolutionKind === 'impressionable_consumer_challenge') {
+        const seekerTeam = Object.values(aggregate!.teams).find((team) => team.side === 'seeker');
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'impressionable_consumer_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            minimumAdvertisementDistanceMeters: activeResolution.impressionableConsumerMinimumAdDistanceMeters ?? 30,
+            requiredSeekerPlayerIds: seekerTeam?.memberPlayerIds ?? []
           }
         }));
       }
@@ -2038,6 +2051,20 @@ function eventsForCommand(
     case 'complete_mediocre_travel_agent':
       return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
         type: 'mediocre_travel_agent_completed', payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId }
+      })];
+    case 'submit_impressionable_consumer_target':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'impressionable_consumer_target_submitted',
+        payload: { ...envelope.command.payload, submittedByPlayerId: envelope.actor.playerId! }
+      })];
+    case 'review_impressionable_consumer_target':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'impressionable_consumer_target_reviewed', payload: envelope.command.payload
+      })];
+    case 'complete_impressionable_consumer_challenge':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'impressionable_consumer_visit_reported',
+        payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId, playerId: envelope.actor.playerId!, completedAt: envelope.occurredAt }
       })];
     case 'confirm_egg_partner_acquired':
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
