@@ -132,6 +132,14 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Resolve closer/further from fresh locations to the same nearest mapped country border and apply the corresponding map deduction.
 - [x] Show connected-only player guidance and retain manual handling when coverage is incomplete; verify scanned p. 24, enclave/provider tests, engine answer/map test, focused suite, full suite, and mobile typecheck (2026-10-25).
 
+### Completed implementation slice: named Body of Water Measuring
+
+- [x] Reconcile the scanned p. 25 definition: named map water body, excluding pools.
+- [x] Load named OSM water and reservoir areas, exclude pools, preserve multipolygon holes, and calculate distance to polygon boundary (zero when a player is inside the water area).
+- [x] Keep incomplete named water geometry and unsupported linear-only water features on manual handling; update player guidance and rule/data notes.
+- [x] Verify provider, polygon distance, automatic answer/map constraint, and mobile guidance tests; full suite passes (322), mobile typecheck passes, and `git diff --check` is clean. The first full-suite attempt lacked `openpyxl` in the shell environment; rerunning with `PYTHONPATH=temp/deps` passed (2026-10-25).
+- [ ] Verify a bounded regional water query against live Overpass; attempted Máchovo jezero query timed out (2026-10-25), so no live coverage claim is made.
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.

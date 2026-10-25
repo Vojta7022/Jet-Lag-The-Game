@@ -275,6 +275,9 @@ export function describeExpectedAnswerGuidance(
       }
       return 'When connected, the app compares both fresh locations against OpenStreetMap administrative boundaries and narrows the map to that division. If the required level is missing or GPS overlaps a border, it asks for a manual ruling.';
     }
+    if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-body-of-water')) {
+      return 'When connected, the app compares both fresh locations to the nearest mapped named water area and narrows the search map using its boundary. Swimming pools are excluded; incomplete water shapes stay manual.';
+    }
     if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'an-international-border')) {
       return 'When connected, the app compares both fresh locations with mapped international borders inside the playable map, including borders around enclaves, then narrows the search map. Missing or ambiguous border data stays manual.';
     }

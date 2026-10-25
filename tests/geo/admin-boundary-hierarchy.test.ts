@@ -71,6 +71,22 @@ test('measures location uncertainty against the selected administrative border',
   assert.ok(distanceToAdministrativeBoundaryMeters([0.99999, 0], state)! < 2);
 });
 
+test('distance to a mapped water area is zero when the location is inside its polygon', () => {
+  const lake = {
+    geometrySupport: 'polygon' as const,
+    geometry: {
+      type: 'MultiPolygon' as const,
+      coordinates: [[
+        [[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]],
+        [[0.8, 0.8], [1.2, 0.8], [1.2, 1.2], [0.8, 1.2], [0.8, 0.8]]
+      ]]
+    }
+  };
+
+  assert.equal(distanceToFeatureMeters([0.5, 0.5], lake), 0);
+  assert.ok(distanceToFeatureMeters([1, 1], lake)! > 20_000);
+});
+
 test('builds measuring targets only from ways shared by divisions at the requested level', () => {
   const features = [
     administrativeArea(40, 4, 'West State', [

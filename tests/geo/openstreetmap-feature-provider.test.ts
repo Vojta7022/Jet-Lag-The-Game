@@ -208,6 +208,60 @@ test('OpenStreetMap provider includes shared country borders and enclave edges a
   );
 });
 
+test('OpenStreetMap provider loads named water shapes, excludes pools, and preserves relation holes', async () => {
+  let submittedQuery = '';
+  const ring = (minX: number, minY: number, maxX: number, maxY: number) => [
+    { lon: minX, lat: minY }, { lon: maxX, lat: minY }, { lon: maxX, lat: maxY },
+    { lon: minX, lat: maxY }, { lon: minX, lat: minY }
+  ];
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [
+        { type: 'way', id: 301, nodes: [1, 2, 3, 4, 1], geometry: ring(0.2, 0.2, 0.4, 0.4), tags: { natural: 'water', water: 'lake', name: 'Blue Lake' } },
+        { type: 'way', id: 302, nodes: [5, 6, 7, 8, 5], geometry: ring(0.5, 0.5, 0.6, 0.6), tags: { natural: 'water', water: 'pool', leisure: 'swimming_pool', name: 'Garden Pool' } },
+        { type: 'relation', id: 303, tags: { type: 'multipolygon', natural: 'water', water: 'lake', name: 'Island Lake' }, members: [
+          { type: 'way', ref: 30, role: 'outer', geometry: ring(0.65, 0.2, 0.85, 0.4) },
+          { type: 'way', ref: 31, role: 'inner', geometry: ring(0.7, 0.25, 0.75, 0.3) }
+        ] }
+      ] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-body-of-water'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.ok(dataset);
+  assert.match(submittedQuery, /natural.*water/);
+  assert.match(submittedQuery, /out geom tags/);
+  assert.deepEqual(dataset.features.map((feature) => feature.label).sort(), ['Blue Lake', 'Island Lake']);
+  const blueLake = dataset.features.find((feature) => feature.label === 'Blue Lake');
+  const islandLake = dataset.features.find((feature) => feature.label === 'Island Lake');
+  assert.equal(blueLake?.geometry?.type, 'Polygon');
+  assert.equal(islandLake?.geometry?.type, 'MultiPolygon');
+  assert.equal(islandLake?.geometry?.type === 'MultiPolygon'
+    ? islandLake.geometry.coordinates[0]?.length : 0, 2);
+});
+
+test('OpenStreetMap water provider refuses automatic data when a named area boundary is incomplete', async () => {
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async () => new Response(JSON.stringify({ elements: [{
+      type: 'relation', id: 401,
+      tags: { type: 'multipolygon', natural: 'water', water: 'lake', name: 'Incomplete Lake' },
+      members: [{ type: 'way', ref: 40, role: 'outer', geometry: [{ lon: 0, lat: 0 }, { lon: 1, lat: 1 }] }]
+    }] }), { status: 200 })
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-body-of-water'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.equal(dataset, undefined);
+});
+
 test('OpenStreetMap provider maps the printed Tentacles place classes and leaves metro lines unsupported', async () => {
   const submittedQueries: string[] = [];
   const provider = new OpenStreetMapQuestionFeatureProvider({

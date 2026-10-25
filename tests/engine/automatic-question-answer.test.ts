@@ -356,6 +356,56 @@ test('International Border Measuring compares both fixes to a shared country bor
   assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
 });
 
+test('Body of Water Measuring compares distance to the named water boundary and updates the map', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.78,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.1, longitude: 103.792,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test-water-shape-v1',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [{
+      featureId: 'osm:way/301', featureClassId: 'a-body-of-water', label: 'Blue Lake',
+      longitude: 103.8025, latitude: 1.1, geometrySupport: 'polygon' as const, coverage: 'approximate' as const,
+      geometry: { type: 'Polygon' as const, coordinates: [[
+        [103.795, 1.095], [103.81, 1.095], [103.81, 1.105], [103.795, 1.105], [103.795, 1.095]
+      ]] }
+    }]
+  };
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: {
+        questionInstanceId: 'question:auto-body-of-water',
+        templateId: 'measuring-a-body-of-water',
+        targetTeamId: 'team-hider'
+      }
+    }, 16), contentPack, dataset);
+
+  const question = result.aggregate.questionInstances['question:auto-body-of-water'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.value, 'closer');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:way/301');
+  const constraint = Object.values(result.aggregate.constraints).find(
+    (item) => item.sourceQuestionInstanceId === 'question:auto-body-of-water'
+  );
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.equal('featureData' in (constraint?.metadata ?? {}), false);
+  assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
+});
+
 test('Station-name-length Matching compares nearest names by character count and clips by that same rule', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);

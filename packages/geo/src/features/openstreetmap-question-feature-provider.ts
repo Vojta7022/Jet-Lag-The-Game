@@ -4,9 +4,15 @@ import type {
   QuestionFeatureRecordModel
 } from '../../../shared-types/src/index.ts';
 
-import { geometryBoundingBox, pointInGeometry } from '../geometry/geojson.ts';
+import {
+  geometryBoundingBox,
+  pointInGeometry,
+  polygonRingsFromGeometry,
+  representativePointFromGeometry
+} from '../geometry/geojson.ts';
 import {
   assembleAdministrativeBoundary,
+  assembleAreaGeometry,
   buildSharedAdministrativeBorders,
   buildSharedAdministrativeBordersAtLevel,
   lineGeometryIntersectsPolygon
@@ -35,7 +41,7 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-question-features-v4';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v5';
 const OSM_REQUEST_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   accept: 'application/json',
@@ -45,6 +51,8 @@ const ADMIN_FEATURE_CLASS_IDS = /^(?:[1-4](?:st|nd|rd|th)-admin-)/;
 const ADMIN_BORDER_FEATURE_CLASS = /^a-([1-4])(?:st|nd|rd|th)-admin-border-/;
 const INTERNATIONAL_BORDER_FEATURE_CLASS = 'an-international-border';
 const STREET_PATH_FEATURE_CLASS = 'street-or-path';
+const BODY_OF_WATER_FEATURE_CLASS = 'a-body-of-water';
+const EXCLUDED_POOL_TAGS = new Set(['pool', 'swimming_pool']);
 const NON_WALKABLE_OR_INACTIVE_HIGHWAYS = new Set([
   'abandoned', 'construction', 'corridor', 'elevator', 'planned', 'platform', 'proposed', 'razed'
 ]);
@@ -94,6 +102,7 @@ const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
 export function hasOpenStreetMapFeatureClass(featureClassId: string): boolean {
   return Object.hasOwn(SELECTORS_BY_FEATURE_CLASS, featureClassId) ||
     featureClassId === STREET_PATH_FEATURE_CLASS ||
+    featureClassId === BODY_OF_WATER_FEATURE_CLASS ||
     featureClassId === INTERNATIONAL_BORDER_FEATURE_CLASS ||
     ADMIN_FEATURE_CLASS_IDS.test(featureClassId) || ADMIN_BORDER_FEATURE_CLASS.test(featureClassId);
 }
@@ -128,6 +137,14 @@ function streetPathQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingB
   return `[out:json][timeout:25];way["highway"](${box.minLat},${box.minLon},${box.maxLat},${box.maxLon});out body geom;`;
 }
 
+function bodyOfWaterQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
+  const bbox = `(${box.minLat},${box.minLon},${box.maxLat},${box.maxLon})`;
+  const selectors = [['natural', 'water'], ['landuse', 'reservoir']];
+  const clauses = selectors.flatMap(([key, value]) => ['way', 'relation'].map((element) =>
+    `${element}["${key}"="${value}"]["name"]${bbox};`));
+  return `[out:json][timeout:25];(${clauses.join('')});out geom tags;`;
+}
+
 interface OverpassElement {
   type?: unknown;
   id?: unknown;
@@ -136,7 +153,94 @@ interface OverpassElement {
   center?: { lat?: unknown; lon?: unknown };
   nodes?: unknown;
   geometry?: unknown;
+  members?: unknown;
   tags?: Record<string, unknown>;
+}
+
+function geometryCoordinates(raw: unknown): [number, number][] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((point) => {
+    if (!point || typeof point !== 'object') return [];
+    const coordinate = point as { lon?: unknown; lat?: unknown };
+    return typeof coordinate.lon === 'number' && Number.isFinite(coordinate.lon) &&
+      typeof coordinate.lat === 'number' && Number.isFinite(coordinate.lat)
+      ? [[coordinate.lon, coordinate.lat] as [number, number]]
+      : [];
+  });
+}
+
+function waterGeometryIntersectsRegion(geometry: GeoJsonGeometryModel, region: GeoJsonGeometryModel): boolean {
+  if (geometry.type === 'LineString' || geometry.type === 'MultiLineString') {
+    return lineGeometryIntersectsPolygon(geometry, region);
+  }
+  const waterPolygons = polygonRingsFromGeometry(geometry);
+  if (waterPolygons.some((polygon) => polygon[0]?.some((point) => pointInGeometry(point, region)))) return true;
+  const regionPolygons = polygonRingsFromGeometry(region);
+  if (regionPolygons.some((polygon) => polygon[0]?.some((point) => pointInGeometry(point, geometry)))) return true;
+  return waterPolygons.some((polygon) => polygon.some((ring) =>
+    lineGeometryIntersectsPolygon({ type: 'LineString', coordinates: ring }, region)));
+}
+
+function bodyOfWaterFeatures(
+  elements: unknown[],
+  regionGeometry: GeoJsonGeometryModel
+): { features: QuestionFeatureRecordModel[]; complete: boolean } {
+  const features: QuestionFeatureRecordModel[] = [];
+  let complete = true;
+  for (const raw of elements) {
+    if (!raw || typeof raw !== 'object') continue;
+    const element = raw as OverpassElement;
+    if ((element.type !== 'way' && element.type !== 'relation') || typeof element.id !== 'number') continue;
+    const tags = element.tags ?? {};
+    const isWater = tags.natural === 'water' || tags.landuse === 'reservoir';
+    if (!isWater || tags.leisure === 'swimming_pool' || EXCLUDED_POOL_TAGS.has(String(tags.water ?? ''))) continue;
+    const label = [tags.name, tags['name:en'], tags.official_name]
+      .find((value) => typeof value === 'string' && value.trim());
+    if (typeof label !== 'string') continue;
+
+    let geometry: GeoJsonGeometryModel | undefined;
+    if (element.type === 'way') {
+      const line = geometryCoordinates(element.geometry);
+      if (line.length >= 4 && line[0]![0] === line.at(-1)![0] && line[0]![1] === line.at(-1)![1]) {
+        geometry = { type: 'Polygon', coordinates: [line] };
+      }
+    } else if (Array.isArray(element.members)) {
+      const outerWays: [number, number][][] = [];
+      const innerWays: [number, number][][] = [];
+      for (const memberValue of element.members) {
+        if (!memberValue || typeof memberValue !== 'object') continue;
+        const member = memberValue as { type?: unknown; role?: unknown; geometry?: unknown };
+        if (member.type !== 'way' || (member.role !== 'outer' && member.role !== 'inner')) continue;
+        const line = geometryCoordinates(member.geometry);
+        if (line.length < 2) continue;
+        if (member.role === 'outer') outerWays.push(line);
+        else innerWays.push(line);
+      }
+      geometry = assembleAreaGeometry(outerWays, innerWays);
+    }
+    if (!geometry) {
+      complete = false;
+      continue;
+    }
+    if (!waterGeometryIntersectsRegion(geometry, regionGeometry)) continue;
+    const representative = representativePointFromGeometry(geometry);
+    if (!representative) {
+      complete = false;
+      continue;
+    }
+    features.push({
+      featureId: `osm:${element.type}/${element.id}`,
+      featureClassId: BODY_OF_WATER_FEATURE_CLASS,
+      label: label.trim(),
+      longitude: representative[0],
+      latitude: representative[1],
+      geometry,
+      geometrySupport: geometry.type === 'Polygon' || geometry.type === 'MultiPolygon' ? 'polygon' : 'line',
+      coverage: 'approximate',
+      properties: { osmType: element.type, osmId: element.id, water: tags.water, waterway: tags.waterway }
+    });
+  }
+  return { features, complete };
 }
 
 interface StreetWay {
@@ -390,6 +494,24 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
     }
 
     for (const featureClassId of featureClassIds) {
+      if (featureClassId === BODY_OF_WATER_FEATURE_CLASS) {
+        const response = await this.fetcher(this.endpoint, {
+          method: 'POST',
+          headers: OSM_REQUEST_HEADERS,
+          body: `data=${encodeURIComponent(bodyOfWaterQueryFor(box))}`,
+          signal: AbortSignal.timeout(30_000)
+        });
+        if (!response.ok) throw new Error(`OpenStreetMap water lookup failed with HTTP ${response.status}.`);
+        const raw = await response.text();
+        if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap water data exceeds the 8 MB safety limit.');
+        const parsed = JSON.parse(raw) as { elements?: unknown };
+        if (!Array.isArray(parsed.elements)) throw new Error('OpenStreetMap water response did not contain elements.');
+        if (parsed.elements.length > this.maxElements) throw new Error(`OpenStreetMap returned more than ${this.maxElements} named water features for this question.`);
+        const water = bodyOfWaterFeatures(parsed.elements, request.regionGeometry);
+        if (!water.complete) return undefined;
+        for (const feature of water.features) featuresById.set(feature.featureId, feature);
+        continue;
+      }
       if (featureClassId === STREET_PATH_FEATURE_CLASS) {
         const response = await this.fetcher(this.endpoint, {
           method: 'POST',
@@ -433,7 +555,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
     if (featureClassIds.every((featureClassId) =>
       !SELECTORS_BY_FEATURE_CLASS[featureClassId] && !ADMIN_FEATURE_CLASS_IDS.test(featureClassId) &&
       !ADMIN_BORDER_FEATURE_CLASS.test(featureClassId) && featureClassId !== STREET_PATH_FEATURE_CLASS &&
-      featureClassId !== INTERNATIONAL_BORDER_FEATURE_CLASS)) return undefined;
+      featureClassId !== INTERNATIONAL_BORDER_FEATURE_CLASS && featureClassId !== BODY_OF_WATER_FEATURE_CLASS)) return undefined;
     return {
       source: 'OpenStreetMap',
       sourceUrl: OSM_COPYRIGHT_URL,

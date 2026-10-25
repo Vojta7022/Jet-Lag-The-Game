@@ -92,6 +92,13 @@ function areaGeometry(outerRings: Ring[], innerRings: Ring[]): GeoJsonGeometryMo
   return { type: 'MultiPolygon', coordinates: polygons };
 }
 
+export function assembleAreaGeometry(
+  outerWays: [number, number][][],
+  innerWays: [number, number][][] = []
+): GeoJsonGeometryModel | undefined {
+  return areaGeometry(stitchRings(outerWays), stitchRings(innerWays));
+}
+
 export function assembleAdministrativeBoundary(element: unknown): QuestionFeatureRecordModel | undefined {
   if (!element || typeof element !== 'object') return undefined;
   const boundary = element as BoundaryElement;
@@ -328,6 +335,7 @@ export function distanceToFeatureMeters(
     return distanceToCoordinateLinesMeters(point, segments);
   }
   if (feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon') {
+    if (pointInGeometry(point, feature.geometry)) return 0;
     const rings = polygonRingsFromGeometry(feature.geometry).flat();
     return distanceToCoordinateLinesMeters(point, rings);
   }

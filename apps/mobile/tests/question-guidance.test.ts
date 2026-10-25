@@ -326,6 +326,26 @@ test('question guidance describes mapped international-border Measuring and encl
   assert.match(describeExpectedAnswerGuidance(template, category), /enclaves/i);
 });
 
+test('question guidance describes named water-shape Measuring and excludes swimming pools', () => {
+  const category = createCategory({
+    categoryId: 'measuring',
+    name: 'Measuring',
+    resolverKind: 'comparative_distance',
+    promptTemplate: 'Compared to me, are you closer to or further from _____?',
+    defaultConstraintRefs: ['comparative-distance']
+  });
+  const template = createTemplate({
+    templateId: 'measuring-a-body-of-water',
+    categoryId: 'measuring',
+    name: 'A Body of Water',
+    featureClassRefs: [{ featureClassId: 'a-body-of-water', label: 'A Body of Water', rawLabel: 'A Body of Water' }],
+    constraintRefs: ['comparative-distance']
+  });
+
+  assert.match(describeExpectedAnswerGuidance(template, category), /named water area/i);
+  assert.match(describeExpectedAnswerGuidance(template, category), /swimming pools/i);
+});
+
 test('Tentacles guidance explains the seeker-anchored reach and automatic closest-place answer', () => {
   const category = createCategory({
     categoryId: 'tentacles',

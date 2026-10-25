@@ -219,6 +219,9 @@ export function describeTemplateSupport(args: {
         if ((args.template.featureClassRefs ?? []).some((feature) => /^(?:[1-4](?:st|nd|rd|th)-admin-)/.test(feature.featureClassId))) {
           return 'The app checks fresh player locations against OpenStreetMap administrative boundaries when connected; missing or ambiguous divisions stay manual';
         }
+        if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-body-of-water')) {
+          return 'The app compares fresh player locations to mapped named water shapes when connected; swimming pools and incomplete shapes stay out of automatic answers';
+        }
         if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'an-international-border')) {
           return 'The app compares fresh player locations to mapped country borders, including enclave boundaries, when connected; missing or incomplete border data stays manual';
         }
