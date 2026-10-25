@@ -397,5 +397,6 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Load transit station features from the match's playable boundary on the online authority before accepting `set_hiding_zone`.
 - [x] Verify submitted station OSM identity, normalized name, and coordinates against the authority snapshot; reject missing or mismatched server data.
 - [x] Include mapped tram stops and public transport stations in the trusted station lookup, consistent with the map picker.
+- [x] Accept custom stations only when their ID, name, and coordinates match the host-saved map configuration; skip external map lookup for custom-only maps and picks.
 - [x] Keep the single-device referee path usable with local station selection when external map data is unavailable.
-- [x] Verify mismatch rejection and trusted lookup dispatch; full suite passes (354/354), mobile typecheck passes, and `git diff --check` is clean (2026-10-25).
+- [x] Verify OSM/custom station paths and source selection; full suite and mobile typecheck pass (2026-10-25).

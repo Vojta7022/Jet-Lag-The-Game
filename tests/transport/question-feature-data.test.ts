@@ -36,3 +36,28 @@ test('authority loads its own transit station snapshot before accepting a hiding
   assert.deepEqual(request?.featureClassIds, ['rail-station']);
   assert.deepEqual(request?.regionGeometry, aggregate.mapRegion?.boundaryGeometry);
 });
+
+test('authority uses the saved custom station source without an external map lookup', async () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToHidePhase(contentPack);
+  aggregate.mode = 'online';
+  aggregate.mapRegion = { ...aggregate.mapRegion!, stationSource: 'custom' };
+  let calls = 0;
+  const result = await loadQuestionFeatureDataset({
+    aggregate,
+    contentPack,
+    envelope: makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, {
+      type: 'set_hiding_zone',
+      payload: { stationId: 'custom:imported:one', stationName: 'Custom Stop', latitude: 0, longitude: 0 }
+    } as never, 2),
+    provider: {
+      async load() {
+        calls += 1;
+        return undefined;
+      }
+    }
+  });
+
+  assert.equal(result, undefined);
+  assert.equal(calls, 0);
+});

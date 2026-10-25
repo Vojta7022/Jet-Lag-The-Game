@@ -642,10 +642,27 @@ export function validateCommandEnvelope(
       if (!stationId.trim() || !stationName.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
         return [error(envelope.command.type, 'INVALID_HIDING_ZONE', 'Choose a named transit station with valid coordinates.')];
       }
-      if (aggregate.mode === 'online' && !questionFeatureDataset) {
+      const stationSource = aggregate.mapRegion?.stationSource ?? 'osm';
+      const isCustomStation = stationId.startsWith('custom:');
+      if (!isCustomStation && stationSource === 'custom') {
+        return [error(envelope.command.type, 'STATION_SOURCE_MISMATCH', 'This map uses custom stations only. Choose one from the shared station list.')];
+      }
+      if (isCustomStation) {
+        const customStation = stationSource !== 'osm'
+          ? aggregate.mapRegion?.customStations?.find((candidate) => stationId === `custom:${candidate.id}`)
+          : undefined;
+        const sameName = customStation?.name.normalize('NFKC').trim().toLocaleLowerCase() ===
+          stationName.normalize('NFKC').trim().toLocaleLowerCase();
+        const samePoint = customStation && distanceMeters(
+          [longitude, latitude], [customStation.longitude, customStation.latitude]
+        ) <= 5;
+        if (!customStation || !sameName || !samePoint) {
+          return [error(envelope.command.type, 'UNVERIFIED_HIDING_STATION', 'Choose a custom transit station saved in the shared map settings.')];
+        }
+      } else if (stationSource !== 'custom' && aggregate.mode === 'online' && !questionFeatureDataset) {
         return [error(envelope.command.type, 'STATION_DATA_UNAVAILABLE', 'The authority could not verify this transit station. Try again when map data is available.')];
       }
-      if (questionFeatureDataset) {
+      if (!isCustomStation && stationSource !== 'custom' && questionFeatureDataset) {
         const trustedStation = questionFeatureDataset.features.find((feature) =>
           feature.featureClassId === 'rail-station' && feature.featureId === `osm:${stationId}`
         );

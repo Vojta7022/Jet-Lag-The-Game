@@ -71,6 +71,30 @@ test('hiding zone must match the authority loaded transit station', () => {
   }, command, 30), contentPack, dataset), /authority-verified map data/);
 });
 
+test('online hiding zones may use a custom station saved in the authoritative map region', () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToHidePhase(contentPack, 'medium');
+  aggregate.mode = 'online';
+  const point = representativePointFromGeometry(aggregate.mapRegion?.boundaryGeometry);
+  assert.ok(point);
+  aggregate.mapRegion = {
+    ...aggregate.mapRegion!,
+    stationSource: 'custom',
+    customStations: [{ id: 'imported:one', name: 'Custom Stop', latitude: point[1], longitude: point[0] }]
+  };
+
+  const result = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, {
+    type: 'set_hiding_zone',
+    payload: {
+      stationId: 'custom:imported:one', stationName: 'Custom Stop', latitude: point[1], longitude: point[0]
+    }
+  } as never, 31), contentPack);
+
+  assert.equal(result.aggregate.hiddenState.hidingZone?.stationId, 'custom:imported:one');
+});
+
 test('station-centered zone is private from seekers and visible to hider and referee', () => {
   const contentPack = loadEngineTestContentPack();
   const aggregate = setupMatchToHidePhase(contentPack, 'large');

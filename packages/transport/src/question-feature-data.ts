@@ -16,7 +16,10 @@ export async function loadQuestionFeatureDataset(args: {
   const command = args.envelope.command;
   if (!args.aggregate?.mapRegion) return undefined;
   if (command.type === 'set_hiding_zone') {
-    if (args.aggregate.mode !== 'online' || !args.provider) return undefined;
+    const stationSource = args.aggregate.mapRegion.stationSource ?? 'osm';
+    if (args.aggregate.mode !== 'online' || !args.provider || stationSource === 'custom' || command.payload.stationId.startsWith('custom:')) {
+      return undefined;
+    }
     try {
       return await args.provider.load({
         featureClassIds: ['rail-station'],
