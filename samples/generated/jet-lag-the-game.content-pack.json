@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T15:28:34.280Z",
+    "importedAt": "2026-10-25T15:48:59.233Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2597,7 +2597,7 @@
       "shortName": "Curse Of Water Weight",
       "description": "Seeker(s) must acquire and carry at least 2 liters of liquid per seeker for the rest of your run. They cannot ask another question until they have acquired the liquid. The water may be distributed between seeker as they see fit. If the liquid is lost or abandoned at any point the hider is awarded a [S30, M30, L60] minute bonus",
       "rulebookGuidanceText": "Liquid already being carried when the curse is played does not count. It may be split between any number of containers and passed between seekers. Seekers may set it down while stationary or on transit; it is abandoned when it is no longer within 3 m of any seeker. Award the hider’s bonus immediately when that happens. A qualifying body of water need not be natural, but cannot be a pool and must be large enough to appear on the map.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -2607,18 +2607,24 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "water_weight_challenge",
           "description": "Seeker(s) must acquire and carry at least 2 liters of liquid per seeker for the rest of your run. They cannot ask another question until they have acquired the liquid. The water may be distributed between seeker as they see fit. If the liquid is lost or abandoned at any point the hider is awarded a [S30, M30, L60] minute bonus",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Seeker(s) must acquire and carry at least 2 liters of liquid per seeker for the rest of your run. They cannot ask another question until they have acquired the liquid. The water may be distributed between seeker as they see fit. If the liquid is lost or abandoned at any point the hider is awarded a [S30, M30, L60] minute bonus",
           "payload": {
-            "workbookName": "Curse Of Water Weight"
+            "requiredLitersPerSeeker": 2,
+            "abandonRadiusMeters": 3,
+            "minutesByScale": {
+              "small": 30,
+              "medium": 30,
+              "large": 60
+            }
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2629,7 +2635,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

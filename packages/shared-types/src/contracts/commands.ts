@@ -66,6 +66,8 @@ export type DomainCommand =
   | EndHangmanChallengeCommand
   | SetBridgeTrollPositionCommand
   | SetSeekerTransitContextCommand
+  | ConfirmWaterWeightLiquidAcquiredCommand
+  | ReportWaterWeightLiquidLostCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -358,6 +360,16 @@ export interface SetBridgeTrollPositionCommand {
 export interface SetSeekerTransitContextCommand {
   type: 'set_seeker_transit_context';
   payload: { sourceCardInstanceId: string; onTransitOrAtStation: boolean };
+}
+
+export interface ConfirmWaterWeightLiquidAcquiredCommand {
+  type: 'confirm_water_weight_liquid_acquired';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface ReportWaterWeightLiquidLostCommand {
+  type: 'report_water_weight_liquid_lost';
+  payload: { sourceCardInstanceId: string };
 }
 
 export interface CompleteCooldownCommand {

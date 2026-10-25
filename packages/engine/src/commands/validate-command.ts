@@ -843,6 +843,9 @@ export function validateCommandEnvelope(
           return [error(envelope.command.type, 'URBAN_EXPLORER_TRANSIT_RESTRICTED', 'Seekers cannot ask while anyone is on transit or at a train station.')];
         }
       }
+      if (aggregate.waterWeightChallenge && !aggregate.waterWeightChallenge.liquidAcquiredAt) {
+        return [error(envelope.command.type, 'WATER_WEIGHT_LIQUID_REQUIRED', 'Seekers must confirm they acquired the required new liquid before asking another question.')];
+      }
 
       const category = getQuestionCategory(contentPack, template.categoryId);
       if (!category) {
@@ -1603,6 +1606,38 @@ export function validateCommandEnvelope(
       const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
       if (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId)) {
         return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must update their own transit status from their seeker account.')];
+      }
+      return [];
+    }
+    case 'confirm_water_weight_liquid_acquired': {
+      const challenge = aggregate.waterWeightChallenge;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'WATER_WEIGHT_NOT_ACTIVE', 'There is no active Water Weight challenge.')];
+      }
+      if (challenge.liquidAcquiredAt) {
+        return [error(envelope.command.type, 'WATER_WEIGHT_ALREADY_ACQUIRED', 'The seekers have already confirmed that they acquired the required liquid.')];
+      }
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      if (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may confirm the team acquired its required liquid.')];
+      }
+      return [];
+    }
+    case 'report_water_weight_liquid_lost': {
+      const challenge = aggregate.waterWeightChallenge;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'WATER_WEIGHT_NOT_ACTIVE', 'There is no active Water Weight challenge.')];
+      }
+      if (!challenge.liquidAcquiredAt) {
+        return [error(envelope.command.type, 'WATER_WEIGHT_LIQUID_NOT_ACQUIRED', 'The required liquid has not been acquired yet.')];
+      }
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      if (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may report that the team liquid was lost or abandoned.')];
       }
       return [];
     }

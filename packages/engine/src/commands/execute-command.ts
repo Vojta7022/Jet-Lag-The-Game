@@ -867,7 +867,9 @@ function eventsForCommand(
       }).length;
       const heldBonusMinutes = heldTimeBonuses.reduce((total, minutes) => total + minutes, 0);
       const copiedBonusMinutes = duplicateCount > 0 ? Math.max(0, ...heldTimeBonuses) * duplicateCount : 0;
-      const timeBonusSeconds = (heldBonusMinutes + copiedBonusMinutes) * 60;
+      const curseBonusMinutes = aggregate!.awardedCurseBonusMinutes ?? 0;
+      const curseBonusSeconds = curseBonusMinutes * 60;
+      const timeBonusSeconds = (heldBonusMinutes + copiedBonusMinutes) * 60 + curseBonusSeconds;
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
           type: 'hider_found',
@@ -879,6 +881,7 @@ function eventsForCommand(
               foundAt: envelope.occurredAt,
               survivalSeconds,
               timeBonusSeconds,
+              curseBonusSeconds,
               finalHidingTimeSeconds: survivalSeconds + timeBonusSeconds,
               finalHidingSpot: aggregate!.hiddenState.finalHidingSpot
                 ? {
@@ -1549,6 +1552,16 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'water_weight_challenge') {
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+          type: 'water_weight_challenge_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            hiderBonusMinutes: activeResolution.timeBonusMinutes ?? 0
+          }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'move' && aggregate!.lifecycleState === 'hide_phase') {
         const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide' && timer.status === 'paused');
         if (hideTimer) {
@@ -1630,6 +1643,25 @@ function eventsForCommand(
           onTransitOrAtStation: envelope.command.payload.onTransitOrAtStation
         }
       })];
+    case 'confirm_water_weight_liquid_acquired':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'water_weight_liquid_acquired',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          playerId: envelope.actor.playerId!
+        }
+      })];
+    case 'report_water_weight_liquid_lost': {
+      const challenge = aggregate!.waterWeightChallenge!;
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'water_weight_liquid_lost',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          playerId: envelope.actor.playerId!,
+          bonusMinutesAwarded: challenge.bonusAwardedAt ? 0 : challenge.hiderBonusMinutes
+        }
+      })];
+    }
     case 'complete_cooldown':
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {

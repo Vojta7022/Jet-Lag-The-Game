@@ -332,9 +332,11 @@ export interface RoundResultModel {
   foundAt: string;
   /** Real elapsed hiding time, with pauses removed and before held time bonuses. */
   survivalSeconds: number;
-  /** Scale-adjusted value of time bonus cards still in the hider's hand at capture. */
+  /** Time bonuses from held cards and completed curse penalties at capture. */
   timeBonusSeconds?: number;
-  /** Survival time plus the time bonus cards retained at capture. */
+  /** Printed time bonus awarded by a curse challenge. */
+  curseBonusSeconds?: number;
+  /** Survival time plus all printed time bonuses at capture. */
   finalHidingTimeSeconds?: number;
   /** Publicly revealed at capture; it becomes the next round's starting point. */
   finalHidingSpot?: {
@@ -408,7 +410,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -450,6 +452,16 @@ export interface SeekerOffTransitRestrictionModel {
   statusByPlayerId: Record<string, { onTransitOrAtStation: boolean; updatedAt: string }>;
 }
 
+export interface WaterWeightChallengeModel {
+  sourceCardInstanceId: string;
+  activatedAt: string;
+  hiderBonusMinutes: number;
+  liquidAcquiredAt?: string;
+  liquidAcquiredByPlayerId?: string;
+  lastLossReportedAt?: string;
+  bonusAwardedAt?: string;
+}
+
 export interface MatchAggregate {
   matchId: string;
   mode: MatchMode;
@@ -481,6 +493,8 @@ export interface MatchAggregate {
   activeCardResolution?: CardResolutionWindow;
   bridgeTrollChallenge?: BridgeTrollChallengeModel;
   seekerOffTransitRestriction?: SeekerOffTransitRestrictionModel;
+  waterWeightChallenge?: WaterWeightChallengeModel;
+  awardedCurseBonusMinutes?: number;
   hiderHandLimitBonus?: number;
   disabledQuestionTemplateIds?: string[];
   disabledQuestionCategoryId?: string;

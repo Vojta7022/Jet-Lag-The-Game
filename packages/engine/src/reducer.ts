@@ -299,6 +299,8 @@ export function reduceMatchAggregate(
         teams: Object.fromEntries(eventEnvelope.event.payload.teams.map((team) => [team.teamId, team])),
         hiderRotationOrder: eventEnvelope.event.payload.hiderRotationOrder,
         seekerOffTransitRestriction: undefined,
+        waterWeightChallenge: undefined,
+        awardedCurseBonusMinutes: 0,
         cardInstances: Object.fromEntries(
           eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
         ),
@@ -330,6 +332,8 @@ export function reduceMatchAggregate(
         activeQuestionInstanceId: undefined,
         activeCardResolution: undefined,
         seekerOffTransitRestriction: undefined,
+        waterWeightChallenge: undefined,
+        awardedCurseBonusMinutes: 0,
         disabledQuestionTemplateIds: [],
         disabledQuestionCategoryId: undefined,
         disabledQuestionCategorySourceCardInstanceId: undefined,
@@ -519,6 +523,44 @@ export function reduceMatchAggregate(
             }
           }
         }
+      };
+    }
+    case 'water_weight_challenge_started':
+      return {
+        ...base,
+        waterWeightChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt,
+          hiderBonusMinutes: eventEnvelope.event.payload.hiderBonusMinutes
+        }
+      };
+    case 'water_weight_liquid_acquired': {
+      const challenge = base.waterWeightChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        waterWeightChallenge: {
+          ...challenge,
+          liquidAcquiredAt: eventEnvelope.occurredAt,
+          liquidAcquiredByPlayerId: eventEnvelope.event.payload.playerId
+        }
+      };
+    }
+    case 'water_weight_liquid_lost': {
+      const challenge = base.waterWeightChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        waterWeightChallenge: {
+          ...challenge,
+          liquidAcquiredAt: undefined,
+          liquidAcquiredByPlayerId: undefined,
+          lastLossReportedAt: eventEnvelope.occurredAt,
+          bonusAwardedAt: eventEnvelope.event.payload.bonusMinutesAwarded > 0
+            ? eventEnvelope.occurredAt
+            : challenge.bonusAwardedAt
+        },
+        awardedCurseBonusMinutes: (base.awardedCurseBonusMinutes ?? 0) + eventEnvelope.event.payload.bonusMinutesAwarded
       };
     }
     case 'question_response_expired': {

@@ -139,7 +139,7 @@ export function LiveEndgameControls() {
           <Text style={styles.resultCaption}>FINAL HIDING TIME</Text>
         </View>
         {result?.timeBonusSeconds ? (
-          <Text style={styles.helper}>Includes {formatSurvivalTime(result.timeBonusSeconds)} from time bonuses held at capture, including Duplicate copies.</Text>
+          <Text style={styles.helper}>Includes {formatSurvivalTime(result.timeBonusSeconds)} in total bonuses: held cards and Duplicate copies{result.curseBonusSeconds ? `, plus ${formatSurvivalTime(result.curseBonusSeconds)} from a completed curse` : ''}.</Text>
         ) : null}
         {matchFinished ? (
           <View style={styles.actionGroup}>

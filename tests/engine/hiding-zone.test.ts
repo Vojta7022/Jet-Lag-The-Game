@@ -318,6 +318,14 @@ test('finding requires a visual confirmation and seeker coordinates within two m
     ...aggregate.cardInstances[discardedTimeBonusCardId]!,
     zone: 'discard_pile'
   };
+  aggregate.waterWeightChallenge = {
+    sourceCardInstanceId: 'curse-water-weight',
+    activatedAt: aggregate.updatedAt,
+    hiderBonusMinutes: 30,
+    liquidAcquiredAt: aggregate.updatedAt,
+    bonusAwardedAt: aggregate.updatedAt
+  };
+  aggregate.awardedCurseBonusMinutes = 30;
   const foundAt = makeEnvelope(aggregate.matchId, {
     actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
   }, {
@@ -333,8 +341,9 @@ test('finding requires a visual confirmation and seeker coordinates within two m
   assert.equal(found.roundResults?.at(-1)?.survivalSeconds, expectedSurvival);
   const heldTimeBonus = contentPack.cards.find((card) => card.cardDefinitionId === aggregate.cardInstances[heldTimeBonusCardId]!.cardDefinitionId);
   const expectedBonusSeconds = Number((heldTimeBonus?.effects[0]?.payload as { minutesByScale?: Record<string, number> } | undefined)?.minutesByScale?.[aggregate.selectedScale ?? 'small'] ?? 0) * 60;
-  assert.equal(found.roundResults?.at(-1)?.timeBonusSeconds, expectedBonusSeconds * 2);
-  assert.equal(found.roundResults?.at(-1)?.finalHidingTimeSeconds, expectedSurvival + expectedBonusSeconds * 2);
+  assert.equal(found.roundResults?.at(-1)?.curseBonusSeconds, 30 * 60);
+  assert.equal(found.roundResults?.at(-1)?.timeBonusSeconds, expectedBonusSeconds * 2 + 30 * 60);
+  assert.equal(found.roundResults?.at(-1)?.finalHidingTimeSeconds, expectedSurvival + expectedBonusSeconds * 2 + 30 * 60);
 });
 
 test('hiding-zone command rejects stations outside the map and rejects seeker access', () => {

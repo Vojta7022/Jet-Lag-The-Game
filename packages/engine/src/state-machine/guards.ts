@@ -127,6 +127,11 @@ export function validateStateForCommand(
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Transit status can only be updated while seekers are searching.')];
+    case 'confirm_water_weight_liquid_acquired':
+    case 'report_water_weight_liquid_lost':
+      return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Water Weight status can only be updated while seekers are searching.')];
     case 'ask_question':
       return isSeekPhaseState(aggregate, 'awaiting_question_selection') ||
         (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'awaiting_question_selection')

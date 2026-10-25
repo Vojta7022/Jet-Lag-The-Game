@@ -87,6 +87,7 @@ export function LiveMapInlineActionPanel() {
     seekerOffTransitRestriction && seekerPlayers.length > 0 &&
     seekerPlayers.every((player) => seekerTransitStatuses[player.playerId]?.onTransitOrAtStation === false)
   );
+  const waterWeightChallenge = projection?.waterWeightChallenge;
 
   const categoryViewModels = useMemo(
     () => buildQuestionCategoryViewModels(contentPack),
@@ -241,6 +242,7 @@ export function LiveMapInlineActionPanel() {
       readyTemplate &&
       inSeekOrEndgame &&
       (!seekerOffTransitRestriction || allSeekersOffTransit) &&
+      (!waterWeightChallenge || waterWeightChallenge.liquidAcquiredAt) &&
       (activeQuestionSubstate === 'ready' || activeQuestionSubstate === 'awaiting_question_selection')
   );
   const canAnswerQuestion = Boolean(
@@ -449,6 +451,30 @@ export function LiveMapInlineActionPanel() {
                 />
               );
             })() : null}
+          </View>
+        ) : null}
+        {waterWeightChallenge ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>WATER WEIGHT · TEAM SUPPLY</Text>
+            <FactList items={[
+              { label: 'Required liquid', value: waterWeightChallenge.liquidAcquiredAt ? 'Acquired · questions unlocked' : 'Not acquired · questions blocked' },
+              { label: 'Hider bonus', value: waterWeightChallenge.bonusAwardedAt ? `${waterWeightChallenge.hiderBonusMinutes} minutes awarded` : `${waterWeightChallenge.hiderBonusMinutes} minutes if lost or abandoned` },
+              { label: 'Curse bonus earned this round', value: `${projection?.awardedCurseBonusMinutes ?? 0} minutes` }
+            ]} />
+            {viewerRole === 'seeker' ? (
+              <AppButton
+                label={waterWeightChallenge.liquidAcquiredAt ? 'Report liquid lost or abandoned' : 'Confirm the team acquired 2 L per seeker'}
+                tone="secondary"
+                disabled={state.loadState === 'loading'}
+                onPress={() => void submitCommand({
+                  type: waterWeightChallenge.liquidAcquiredAt
+                    ? 'report_water_weight_liquid_lost'
+                    : 'confirm_water_weight_liquid_acquired',
+                  payload: { sourceCardInstanceId: waterWeightChallenge.sourceCardInstanceId }
+                })}
+              />
+            ) : null}
+            <Text style={styles.copy}>New liquid only. The seekers may share containers; if set down, it is abandoned when every seeker is more than 3 m away. Report physical acquisition and loss from the seeker team.</Text>
           </View>
         ) : null}
         <LiveMapInfoChips

@@ -216,6 +216,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
 - [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects.
 - [x] Implement Urban Explorer as an assisted per-seeker transit/station status gate, preserve it until hider rotation, and reset it on the next round. Physical status remains player-attested. [base rulebook scan, printed p. 56; `tests/engine/cards.test.ts`, checked 2026-10-25]
+- [x] Implement Curse of Water Weight as an assisted seek-team supply status: gate questions until the seekers attest they acquired the required new liquid, award the printed scale bonus the first time it is lost/abandoned, and include that award in round scoring. Preserve the scan-derived 3 m proximity rule as player-attested because separated containers do not have individually tracked positions.
 - [x] Import the scan-backed Move procedure, reject its use after endgame begins, and source the missing scale durations (Small 10, Medium 20, Large 60 minutes) from the community card transcription; retain provenance in the generated pack.
 - [x] Implement Move's scan-backed round flow: pause seeker actions, reveal the original station, discard the rest of the hider hand, let only the hider relocate to a different in-boundary station, require arrival before closing, and exclude the Move interval from final survival scoring.
 - [x] Enforce the scale-specific Move duration as an authority-side minimum, show a live countdown, and require the hider to arrive at a different station before closing the window. The scan/workbook omit the duration values; the generated pack records the secondary transcription source.
@@ -447,6 +448,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - Photo questions now support the scanned ordinary-play case where the requested subject does not exist in the hiding zone: the hider may submit a null answer, resolve without a map deduction, and still take the card reward. The control is available in both Question Center and the inline live-map answer flow; non-photo questions reject it. [base rulebook scan p. 32; `tests/engine/endgame-questions.test.ts`]
 - All 18 Photos prompts now show the relevant scan-derived specification in question selection and answer entry, with source pages in generated provenance; conflicting workbook requirement text is omitted from the player view. Several wrong workbook units/conditions were corrected from the printed pages. [base rulebook scan, printed pp. 32–35; `tests/importer/importer.test.ts`; `apps/mobile/tests/question-guidance.test.ts`]
 - Hidden Hangman is now an assisted card with a hider-private five-letter word, public seeker guesses/misses and masked progress, role-specific inputs on Cards and Live Map, and an authority gate that blocks app movement/location updates and questions until solve or hider-confirmed game end. Hider team/player projections retain the secret; seeker projections do not receive it before completion. Full suite 332/332, mobile typecheck, and Expo web/iOS/Android exports passed. The group still applies its own Hangman loss rule and confirms actual transit boarding because the scan gives no incorrect-guess limit or onboard control. [base rulebook scan p. 56; `tests/engine/cards.test.ts`; checked 2026-10-25]
+
+### Completed implementation slice: Curse of Water Weight
+
+- [x] Type the scanned effect and scale bonus in both workbook mappings; regenerate the draft pack.
+- [x] Start a persistent per-run challenge when the card resolves; seeker reports control new-liquid acquisition and loss, with an authority-enforced question gate and one-time bonus per challenge.
+- [x] Carry curse awards into the final round score, including hider-facing and seeker-facing status in Question Center and Live Map.
+- [x] Verify scan-derived importer values, acquisition/loss/question rules, scoring, full suite (395/395), mobile typecheck, Expo web/iOS/Android exports, and `git diff --check` (2026-10-25).
 
 ### Completed implementation slice: crossing administrative-region subtraction
 

@@ -59,6 +59,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const hangmanChallenge = props.resolution?.resolutionKind === 'hangman_challenge';
   const bridgeTrollChallenge = props.resolution?.resolutionKind === 'bridge_troll_challenge';
   const seekerOffTransitChallenge = props.resolution?.resolutionKind === 'seeker_off_transit_challenge';
+  const waterWeightChallenge = props.resolution?.resolutionKind === 'water_weight_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const canSubmit = props.canResolve &&
@@ -159,6 +160,14 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             <Text style={styles.sectionTitle}>URBAN EXPLORER</Text>
             <Text style={styles.copy}>
               Close this card window to activate the restriction. Until the hider run ends, each seeker must update their own status; questions remain blocked while anyone is on transit, on a station platform, or in a station building.
+            </Text>
+          </View>
+        ) : null}
+        {waterWeightChallenge ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>WATER WEIGHT</Text>
+            <Text style={styles.copy}>
+              Close this window to activate the seeker supply requirement. Seekers must acquire new liquid totaling 2 liters per seeker before they can ask another question. If it is lost or abandoned, the hider receives {props.resolution?.timeBonusMinutes ?? 0} minutes added to the final score. The seekers report acquisition and loss; when set down, liquid is abandoned only when all seekers are more than 3 m away.
             </Text>
           </View>
         ) : null}

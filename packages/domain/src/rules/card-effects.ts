@@ -12,7 +12,7 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge';
+  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
@@ -127,6 +127,14 @@ export function buildCardResolutionPlan(
 
   if (cardDefinition.effects.some((effect) => effect.effectType === 'seeker_off_transit_challenge')) {
     return { kind: 'seeker_off_transit_challenge', discardRequirement: getCardDiscardRequirement(cardDefinition) };
+  }
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'water_weight_challenge')) {
+    return {
+      kind: 'water_weight_challenge',
+      discardRequirement: getCardDiscardRequirement(cardDefinition),
+      timeBonusMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale)
+    };
   }
 
   if (cardDefinition.kind === 'time_bonus') {

@@ -250,6 +250,101 @@ test('Urban Explorer blocks questions until every seeker confirms they are off t
   assert.equal(askQuestion(82).lifecycleState, 'seek_phase');
 });
 
+test('Water Weight opens an assisted supply challenge with its printed scale-specific bonus', () => {
+  const contentPack = loadEngineTestContentPack();
+  const waterWeight = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');
+  assert.ok(waterWeight);
+  waterWeight.castingCost = [];
+  waterWeight.effects = waterWeight.effects.map((effect) => ({
+    ...effect,
+    effectType: 'water_weight_challenge',
+    automationLevel: 'assisted',
+    payload: { minutesByScale: { small: 30, medium: 30, large: 60 } }
+  }));
+  const aggregate = setupMatchToSeekReady(contentPack, 'small');
+  const cardInstanceId = moveCardToTeamHand(aggregate, waterWeight.cardDefinitionId, 'team-hider');
+
+  const played = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+
+  assert.equal(played.activeCardResolution?.resolutionKind, 'water_weight_challenge');
+  assert.equal(played.activeCardResolution?.timeBonusMinutes, 30);
+});
+
+test('Water Weight blocks questions until acquisition and awards its scale bonus on the first loss report', () => {
+  const contentPack = loadEngineTestContentPack();
+  const waterWeight = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');
+  assert.ok(waterWeight);
+  waterWeight.castingCost = [];
+  waterWeight.effects = waterWeight.effects.map((effect) => ({
+    ...effect,
+    effectType: 'water_weight_challenge',
+    automationLevel: 'assisted',
+    payload: { requiredLitersPerSeeker: 2, abandonRadiusMeters: 3, minutesByScale: { small: 30, medium: 30, large: 60 } }
+  }));
+  let aggregate = setupMatchToSeekReady(contentPack, 'large');
+  const cardInstanceId = moveCardToTeamHand(aggregate, waterWeight.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 71), contentPack).aggregate;
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 72), contentPack).aggregate;
+  const ask = () => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:water-weight',
+      templateId: 'matching-commercial-airport',
+      targetTeamId: 'team-hider'
+    } }, 73), contentPack);
+  assert.throws(ask, /acquired the required new liquid/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'confirm_water_weight_liquid_acquired', payload: { sourceCardInstanceId: cardInstanceId } } as never, 73), contentPack), /does not have permission/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'confirm_water_weight_liquid_acquired', payload: { sourceCardInstanceId: cardInstanceId } } as never, 74), contentPack).aggregate;
+  assert.equal(aggregate.waterWeightChallenge?.liquidAcquiredAt, '2026-01-01T00:01:14.000Z');
+  assert.equal(ask().aggregate.seekPhaseSubstate, 'awaiting_question_answer');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_water_weight_liquid_lost', payload: { sourceCardInstanceId: cardInstanceId } } as never, 75), contentPack).aggregate;
+  assert.equal(aggregate.waterWeightChallenge?.liquidAcquiredAt, undefined);
+  assert.equal(aggregate.waterWeightChallenge?.bonusAwardedAt, '2026-01-01T00:01:15.000Z');
+  assert.equal(aggregate.waterWeightChallenge?.hiderBonusMinutes, 60);
+  assert.equal(aggregate.awardedCurseBonusMinutes, 60);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'confirm_water_weight_liquid_acquired', payload: { sourceCardInstanceId: cardInstanceId } } as never, 76), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_water_weight_liquid_lost', payload: { sourceCardInstanceId: cardInstanceId } } as never, 77), contentPack).aggregate;
+  assert.equal(aggregate.awardedCurseBonusMinutes, 60);
+  assert.throws(() => executeCommand({
+    ...aggregate,
+    seekPhaseSubstate: 'awaiting_question_selection',
+    activeQuestionInstanceId: undefined
+  }, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:water-weight-after-loss',
+      templateId: 'matching-commercial-airport',
+      targetTeamId: 'team-hider'
+    } }, 78), contentPack), /acquired the required new liquid/i);
+  const hiderView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'team_private', viewerPlayerId: 'hider-1', viewerTeamId: 'team-hider', viewerRole: 'hider'
+  });
+  assert.equal(hiderView.waterWeightChallenge?.bonusAwardedAt, '2026-01-01T00:01:15.000Z');
+});
+
 test('Hidden Hangman tracks a private five-letter word and public seeker guesses until solved', () => {
   const contentPack = loadEngineTestContentPack();
   const hangmanDefinition = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-hidden-hangman');

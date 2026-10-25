@@ -521,6 +521,8 @@ export function buildMatchProjection(
     activeCardResolution,
     bridgeTrollChallenge: aggregate.bridgeTrollChallenge,
     seekerOffTransitRestriction: aggregate.seekerOffTransitRestriction,
+    waterWeightChallenge: aggregate.waterWeightChallenge,
+    awardedCurseBonusMinutes: aggregate.awardedCurseBonusMinutes ?? 0,
     disabledQuestionTemplateIds: aggregate.disabledQuestionTemplateIds ?? [],
     disabledQuestionCategoryId: aggregate.disabledQuestionCategoryId,
     questionRewardDrawBonus:

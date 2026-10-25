@@ -210,6 +210,15 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.match(String(urbanExplorer?.rulebookGuidanceText), /questions already asked.*still need an answer/i);
   assert.equal(urbanExplorer?.automationLevel, 'assisted');
   assert.equal(urbanExplorer?.effects[0]?.effectType, 'seeker_off_transit_challenge');
+  const waterWeight = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');
+  assert.equal(waterWeight?.automationLevel, 'assisted');
+  assert.equal(waterWeight?.effects[0]?.effectType, 'water_weight_challenge');
+  assert.deepEqual(waterWeight?.effects[0]?.payload, {
+    requiredLitersPerSeeker: 2,
+    abandonRadiusMeters: 3,
+    minutesByScale: { small: 30, medium: 30, large: 60 }
+  });
+  assert.equal(waterWeight?.requirements?.requiresManualApproval, false);
 
   const hiderDeck = result.pack.decks.find((deck) => deck.deckId === 'hider-main');
   assert.ok(hiderDeck);
@@ -228,6 +237,9 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   const urbanExplorer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
   assert.equal(urbanExplorer?.automationLevel, 'assisted');
   assert.equal(urbanExplorer?.effects[0]?.effectType, 'seeker_off_transit_challenge');
+  const waterWeight = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');
+  assert.equal(waterWeight?.automationLevel, 'assisted');
+  assert.equal(waterWeight?.effects[0]?.effectType, 'water_weight_challenge');
   const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
   assert.equal(photoTemplates.length, 18);
   assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));

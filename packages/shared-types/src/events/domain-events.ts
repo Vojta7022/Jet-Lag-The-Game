@@ -105,6 +105,9 @@ export type DomainEvent =
   | BridgeTrollPositionChangedEvent
   | SeekerOffTransitRestrictionStartedEvent
   | SeekerTransitContextChangedEvent
+  | WaterWeightChallengeStartedEvent
+  | WaterWeightLiquidAcquiredEvent
+  | WaterWeightLiquidLostEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -426,7 +429,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -482,6 +485,21 @@ export interface SeekerOffTransitRestrictionStartedEvent {
 export interface SeekerTransitContextChangedEvent {
   type: 'seeker_transit_context_changed';
   payload: { sourceCardInstanceId: string; playerId: string; onTransitOrAtStation: boolean };
+}
+
+export interface WaterWeightChallengeStartedEvent {
+  type: 'water_weight_challenge_started';
+  payload: { sourceCardInstanceId: string; hiderBonusMinutes: number };
+}
+
+export interface WaterWeightLiquidAcquiredEvent {
+  type: 'water_weight_liquid_acquired';
+  payload: { sourceCardInstanceId: string; playerId: string };
+}
+
+export interface WaterWeightLiquidLostEvent {
+  type: 'water_weight_liquid_lost';
+  payload: { sourceCardInstanceId: string; playerId: string; bonusMinutesAwarded: number };
 }
 
 export interface QuestionTemplatesDisabledEvent {

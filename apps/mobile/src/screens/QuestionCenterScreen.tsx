@@ -455,6 +455,7 @@ export function QuestionCenterScreen() {
     seekerOffTransitRestriction && bridgeTrollSeekers.length > 0 &&
     bridgeTrollSeekers.every((player) => seekerTransitStatuses[player.playerId]?.onTransitOrAtStation === false)
   );
+  const waterWeightChallenge = projection?.waterWeightChallenge;
   const canAskQuestion = Boolean(
     activeMatch &&
       capabilities.canAskQuestions &&
@@ -463,6 +464,7 @@ export function QuestionCenterScreen() {
       !selectedQuestionIsDisabled &&
       (!bridgeTrollChallenge || bridgeTrollReady) &&
       (!seekerOffTransitRestriction || allSeekersOffTransit) &&
+      (!waterWeightChallenge || waterWeightChallenge.liquidAcquiredAt) &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
   const canAnswerQuestion = Boolean(
@@ -865,6 +867,56 @@ export function QuestionCenterScreen() {
           })() : null}
           <Text style={styles.helper}>
             Update your status whenever your situation changes. The app requires every seeker to confirm they are off transit and clear of station platforms/buildings before allowing a question; your group remains responsible for truthful physical-world reports.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {waterWeightChallenge ? (
+        <Panel
+          title="Curse of Water Weight"
+          subtitle="Seekers need newly acquired liquid totaling at least 2 liters per seeker. Questions stay locked until the team confirms it."
+          tone="accent"
+        >
+          <FactList items={[
+            {
+              label: 'Required liquid',
+              value: waterWeightChallenge.liquidAcquiredAt ? 'Acquired · questions unlocked' : 'Not acquired · questions blocked'
+            },
+            {
+              label: 'Hider bonus',
+              value: waterWeightChallenge.bonusAwardedAt
+                ? `${waterWeightChallenge.hiderBonusMinutes} minutes awarded`
+                : `${waterWeightChallenge.hiderBonusMinutes} minutes if lost or abandoned`
+            },
+            {
+              label: 'Curse bonus earned this round',
+              value: `${projection?.awardedCurseBonusMinutes ?? 0} minutes`
+            }
+          ]} />
+          {viewerRole === 'seeker' ? (
+            <AppButton
+              label={waterWeightChallenge.liquidAcquiredAt
+                ? 'Report the required liquid lost or abandoned'
+                : 'Confirm the team acquired the required liquid'}
+              tone="secondary"
+              disabled={state.loadState === 'loading'}
+              onPress={() => {
+                if (waterWeightChallenge.liquidAcquiredAt) {
+                  void submitCommand({
+                    type: 'report_water_weight_liquid_lost',
+                    payload: { sourceCardInstanceId: waterWeightChallenge.sourceCardInstanceId }
+                  });
+                } else {
+                  void submitCommand({
+                    type: 'confirm_water_weight_liquid_acquired',
+                    payload: { sourceCardInstanceId: waterWeightChallenge.sourceCardInstanceId }
+                  });
+                }
+              }}
+            />
+          ) : null}
+          <Text style={styles.helper}>
+            Liquid carried before the curse does not count. It may be split across containers and seekers; when set down, report it lost if every seeker is more than 3 m away. The physical quantity and loss report remain group-attested.
           </Text>
         </Panel>
       ) : null}
