@@ -458,7 +458,7 @@ export function openAnsweredQuestion(
             kind: 'photo_evidence',
             label: `Evidence ${index + 1}`,
             note: 'Engine test attachment placeholder',
-            visibilityScope: 'team_private',
+            visibilityScope: 'public_match',
             questionInstanceId: args.questionInstanceId,
             captureMetadata: {
               source: 'engine-tests'

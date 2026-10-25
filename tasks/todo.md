@@ -234,6 +234,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Regenerate the draft content pack; verify all 292 tests, mobile typecheck, and `git diff --check` (2026-10-24).
 - [x] Make photo evidence visible to seeker and hider match projections so the seeking team can judge the submitted answer; verify both scope selection and projection redaction.
 
+### Completed implementation slice: Photo answer evidence integrity
+
+- [x] Reject Photo answers that reference files, non-photo attachments, evidence linked to a different question, or evidence not visible to the match.
+- [x] Keep the scanned subject-absent and endgame-unanswerable paths available; require evidence for ordinary Photo answers.
+- [x] Disable player-facing Photo answer submission until the current question has recorded public photo evidence and explain the requirement in the answer panel.
+- [x] Verify invalid and valid engine attachment cases, UI evidence readiness, referee evidence capture/answer flow, the full suite, mobile typecheck, and `git diff --check` (2026-10-25).
+
 ### Current implementation slice: scanned curse clarifications
 
 - [x] Add scan-derived, source-attributed handling clarifications to every curse card in both workbook mapping paths.

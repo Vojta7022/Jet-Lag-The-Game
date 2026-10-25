@@ -23,6 +23,7 @@ import {
   chooseConstraintIdForQuestion,
   buildAskQuestionPayload,
   describeTemplateSupport,
+  hasQuestionPhotoEvidence,
   isQuestionDistanceChoice,
   parseChosenDistanceMeters
 } from '../src/features/questions/question-flow-state.ts';
@@ -372,4 +373,33 @@ test('question support helper stays honest about approximate and metadata-only p
     }),
     'The app can answer from fresh player locations and OpenStreetMap places in the selected region when connected'
   );
+});
+
+test('Photo answer submission requires public photo evidence linked to the active question', () => {
+  const contentPack = loadContentPack();
+  const photos = findQuestionCategory(contentPack, 'photos');
+  const matching = findQuestionCategory(contentPack, 'matching');
+  const evidence = {
+    attachmentId: 'photo-1',
+    kind: 'photo_evidence' as const,
+    status: 'placeholder_pending' as const,
+    label: 'Tree photo',
+    visibilityScope: 'public_match' as const,
+    linkedQuestionInstanceId: 'question:active-photo',
+    captureMetadata: {},
+    createdAt: '2026-01-01T00:00:00.000Z'
+  };
+
+  assert.equal(hasQuestionPhotoEvidence(photos, 'question:active-photo', []), false);
+  assert.equal(hasQuestionPhotoEvidence(photos, 'question:active-photo', [{ ...evidence, kind: 'file' }]), false);
+  assert.equal(hasQuestionPhotoEvidence(photos, 'question:active-photo', [{
+    ...evidence,
+    linkedQuestionInstanceId: 'question:another-photo'
+  }]), false);
+  assert.equal(hasQuestionPhotoEvidence(photos, 'question:active-photo', [{
+    ...evidence,
+    visibilityScope: 'team_private'
+  }]), false);
+  assert.equal(hasQuestionPhotoEvidence(photos, 'question:active-photo', [evidence]), true);
+  assert.equal(hasQuestionPhotoEvidence(matching, 'question:matching', []), true);
 });

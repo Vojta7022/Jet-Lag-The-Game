@@ -305,7 +305,113 @@ test('photo answers require recorded attachments before the hider can answer', (
         ),
         contentPack
       ),
-    /requires at least 1 attachment/i
+    /photo questions require photo evidence/i
+  );
+});
+
+test('photo answers reject non-photo attachments even when they exist in the match', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 30), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:photo-proof-kind',
+      templateId: 'photos-a-tree',
+      targetTeamId: 'team-hider'
+    } }, 31), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'upload_attachment', payload: {
+      attachmentId: 'not-a-photo',
+      kind: 'file',
+      label: 'A file, not photo evidence',
+      visibilityScope: 'public_match',
+      questionInstanceId: 'question:photo-proof-kind'
+    } }, 32), contentPack).aggregate;
+
+  assert.throws(
+    () => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+      { type: 'answer_question', payload: {
+        questionInstanceId: 'question:photo-proof-kind',
+        answer: { attachmentIds: ['not-a-photo'] }
+      } }, 33), contentPack),
+    /photo questions require photo evidence.*for this question/i
+  );
+});
+
+test('photo answers reject evidence linked to a different question', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 30), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:photo-proof-link',
+      templateId: 'photos-a-tree',
+      targetTeamId: 'team-hider'
+    } }, 31), contentPack).aggregate;
+  aggregate.attachments['photo-for-another-question'] = {
+    attachmentId: 'photo-for-another-question',
+    kind: 'photo_evidence',
+    status: 'placeholder_pending',
+    label: 'Evidence for another clue',
+    visibilityScope: 'public_match',
+    ownerPlayerId: 'hider-1',
+    ownerTeamId: 'team-hider',
+    linkedQuestionInstanceId: 'question:unrelated',
+    captureMetadata: {},
+    createdAt: '2026-01-01T00:00:32.000Z'
+  };
+
+  assert.throws(
+    () => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+      { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+      { type: 'answer_question', payload: {
+        questionInstanceId: 'question:photo-proof-link',
+        answer: { attachmentIds: ['photo-for-another-question'] }
+      } }, 33), contentPack),
+    /photo questions require photo evidence.*for this question/i
+  );
+});
+
+test('a question-linked public photo-evidence attachment satisfies a Photo answer', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 30), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:photo-proof-valid',
+      templateId: 'photos-a-tree',
+      targetTeamId: 'team-hider'
+    } }, 31), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'upload_attachment', payload: {
+      attachmentId: 'valid-photo-evidence',
+      kind: 'photo_evidence',
+      label: 'Tree evidence',
+      visibilityScope: 'public_match',
+      questionInstanceId: 'question:photo-proof-valid'
+    } }, 32), contentPack).aggregate;
+
+  const answered = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'answer_question', payload: {
+      questionInstanceId: 'question:photo-proof-valid',
+      answer: { attachmentIds: ['valid-photo-evidence'] }
+    } }, 33), contentPack);
+  assert.deepEqual(
+    answered.aggregate.questionInstances['question:photo-proof-valid']?.answer?.attachmentIds,
+    ['valid-photo-evidence']
   );
 });
 

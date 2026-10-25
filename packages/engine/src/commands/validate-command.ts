@@ -986,6 +986,25 @@ export function validateCommandEnvelope(
         return [];
       }
 
+      if (category.resolverKind === 'photo_challenge') {
+        const attachmentIds = Array.isArray(envelope.command.payload.answer.attachmentIds)
+          ? envelope.command.payload.answer.attachmentIds
+          : [];
+        const validPhotoEvidence = attachmentIds.length > 0 && attachmentIds.every((attachmentId) => {
+          const attachment = aggregate.attachments[attachmentId];
+          return attachment?.kind === 'photo_evidence' &&
+            attachment.linkedQuestionInstanceId === activeQuestion.questionInstanceId &&
+            attachment.visibilityScope === 'public_match';
+        });
+        if (!validPhotoEvidence) {
+          return [error(
+            envelope.command.type,
+            'QUESTION_EVIDENCE_INVALID',
+            'Photo questions require photo evidence: attach a public photo for this question.'
+          )];
+        }
+      }
+
       return validateAnswerPayload({
         commandType: envelope.command.type,
         aggregate,

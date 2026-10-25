@@ -188,7 +188,7 @@ test('an impossible endgame photo is a valid answer and the hider can still draw
   }, {
     type: 'answer_question',
     payload: { questionInstanceId: 'question:endgame-photo', answer: { note: 'No photo attached.' } }
-  }, 32), contentPack), /attachment/);
+  }, 32), contentPack), /photo evidence.*public photo/i);
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
     actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
   }, {

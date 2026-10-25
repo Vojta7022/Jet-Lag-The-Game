@@ -47,6 +47,7 @@ import {
   findQuestionCategory,
   findQuestionTemplate,
   getQuestionFlowCapabilities,
+  hasQuestionPhotoEvidence,
   getSeedRegionFeatureData,
   type QuestionAnswerDraft
 } from '../features/questions/index.ts';
@@ -364,6 +365,11 @@ export function QuestionCenterScreen() {
   );
   const activeQuestionEvidenceContext = evidenceContexts.find(
     (context) => context.kind === 'question'
+  );
+  const hasRequiredQuestionEvidence = hasQuestionPhotoEvidence(
+    activeQuestionCategory,
+    activeQuestion?.questionInstanceId,
+    activeQuestionEvidenceContext?.attachments ?? []
   );
   const questionAttachmentContext = useMemo<
     LocalEvidenceContextDescriptor | undefined
@@ -1168,10 +1174,15 @@ export function QuestionCenterScreen() {
                 }}
               />
             ) : null}
+            {activeQuestionCategory?.resolverKind === 'photo_challenge' && !hasRequiredQuestionEvidence ? (
+              <Text style={styles.copy}>
+                Record public photo evidence for this question before submitting your answer.
+              </Text>
+            ) : null}
             <AppButton
               label="Submit Answer"
               onPress={handleAnswerQuestion}
-              disabled={!canAnswerQuestion || state.loadState === 'loading'}
+              disabled={!canAnswerQuestion || !hasRequiredQuestionEvidence || state.loadState === 'loading'}
             />
             {activeQuestionCategory?.resolverKind === 'photo_challenge' ? (
               <AppButton

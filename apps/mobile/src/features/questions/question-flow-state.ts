@@ -5,12 +5,27 @@ import type {
   MatchRole,
   QuestionCategoryDefinition,
   QuestionTemplateDefinition,
+  VisibleAttachmentProjection,
   VisibleMapProjection,
   VisibleQuestionProjection
 } from '../../../../../packages/shared-types/src/index.ts';
 
 import { getSeedRegionFeatureData, hasSeedFeatureCoverage } from './seed-feature-data.ts';
 import { hasOpenStreetMapFeatureClass } from '../../../../../packages/geo/src/index.ts';
+
+export function hasQuestionPhotoEvidence(
+  category: QuestionCategoryDefinition | undefined,
+  questionInstanceId: string | undefined,
+  attachments: VisibleAttachmentProjection[]
+): boolean {
+  if (category?.resolverKind !== 'photo_challenge') return true;
+  if (!questionInstanceId) return false;
+  return attachments.some((attachment) =>
+    attachment.kind === 'photo_evidence' &&
+    attachment.visibilityScope === 'public_match' &&
+    attachment.linkedQuestionInstanceId === questionInstanceId
+  );
+}
 
 export interface QuestionAnswerDraft {
   selectedValue: string;
