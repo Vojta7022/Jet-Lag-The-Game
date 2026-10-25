@@ -3,6 +3,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { importContentPack } from '../../packages/content-import/src/importer.ts';
+import { getCardDiscardRequirement } from '../../packages/domain/src/index.ts';
 
 const workbookPath = fileURLToPath(new URL('../../Jet Lag The Game - cleaned for import.xlsx', import.meta.url));
 const legacyWorkbookPath = fileURLToPath(new URL('../../Jet Lag The Game.xlsx', import.meta.url));
@@ -244,6 +245,15 @@ test('the workbook importer creates a normalized draft content pack', () => {
     dicePerSeeker: true
   });
   assert.equal(gamblersFeet?.requirements?.requiresManualApproval, false);
+  const eggPartner = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-egg-partner');
+  assert.equal(eggPartner?.automationLevel, 'assisted');
+  assert.equal(eggPartner?.effects[0]?.effectType, 'egg_partner_challenge');
+  assert.deepEqual(eggPartner?.effects[0]?.payload, {
+    minutesByScale: { small: 30, medium: 45, large: 60 },
+    acquireBeforeQuestion: true
+  });
+  assert.equal(eggPartner?.requirements?.requiresManualApproval, false);
+  assert.equal(getCardDiscardRequirement(eggPartner!).requiredCards, 2);
 
   const hiderDeck = result.pack.decks.find((deck) => deck.deckId === 'hider-main');
   assert.ok(hiderDeck);
@@ -273,6 +283,14 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   const gamblersFeet = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');
   assert.equal(gamblersFeet?.automationLevel, 'assisted');
   assert.equal(gamblersFeet?.effects[0]?.effectType, 'gamblers_feet_challenge');
+  const eggPartner = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-egg-partner');
+  assert.equal(eggPartner?.automationLevel, 'assisted');
+  assert.equal(eggPartner?.effects[0]?.effectType, 'egg_partner_challenge');
+  assert.deepEqual(eggPartner?.effects[0]?.payload, {
+    minutesByScale: { small: 30, medium: 45, large: 60 },
+    acquireBeforeQuestion: true
+  });
+  assert.equal(getCardDiscardRequirement(eggPartner!).requiredCards, 2);
   const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
   assert.equal(photoTemplates.length, 18);
   assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));

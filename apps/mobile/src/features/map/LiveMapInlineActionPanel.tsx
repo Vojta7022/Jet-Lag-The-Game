@@ -14,6 +14,7 @@ import {
   getCardResolutionBlockedReason,
   CardResolutionStatusPanel,
   GamblersFeetChallengePanel,
+  EggPartnerChallengePanel,
   EndlessTumbleChallengePanel,
   CardZoneSection,
   HIDER_HAND_TARGET,
@@ -531,6 +532,19 @@ export function LiveMapInlineActionPanel() {
               disabled={state.loadState === 'loading'}
               onRoll={(playerId, dieRoll) => void submitCommand({ type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, dieRoll, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
               onReportSteps={(playerId, stepsTaken, overstep) => void submitCommand({ type: 'report_gamblers_feet_steps', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, stepsTaken, overstep, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
+            />
+          </View>
+        ) : null}
+        {projection?.eggPartnerChallenge ? (
+          <View style={styles.section}>
+            <EggPartnerChallengePanel
+              challenge={projection.eggPartnerChallenge}
+              players={seekerPlayers.map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+              viewerRole={viewerRole}
+              viewerPlayerId={activeMatch?.recipient.playerId}
+              disabled={state.loadState === 'loading'}
+              onAcquire={() => void submitCommand({ type: 'confirm_egg_partner_acquired', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId } })}
+              onReportLost={(memberId, lossKind) => void submitCommand({ type: 'report_egg_partner_member_lost', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId, memberId, lossKind } })}
             />
           </View>
         ) : null}

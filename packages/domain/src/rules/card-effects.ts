@@ -12,7 +12,7 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge';
+  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
@@ -172,6 +172,14 @@ export function buildCardResolutionPlan(
       kind: 'gamblers_feet_challenge',
       discardRequirement: getCardDiscardRequirement(cardDefinition),
       activeDurationMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale)
+    };
+  }
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'egg_partner_challenge')) {
+    return {
+      kind: 'egg_partner_challenge',
+      discardRequirement: getCardDiscardRequirement(cardDefinition),
+      timeBonusMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale)
     };
   }
 

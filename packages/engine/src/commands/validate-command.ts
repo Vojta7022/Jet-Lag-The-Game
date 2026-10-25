@@ -55,7 +55,8 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'seeker_off_transit_challenge',
   'water_weight_challenge',
   'endless_tumble_challenge',
-  'lemon_phylactery_challenge'
+  'lemon_phylactery_challenge',
+  'egg_partner_challenge'
 ]);
 
 function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boolean {
@@ -65,6 +66,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.waterWeightChallenge ||
     aggregate.endlessTumbleChallenge ||
     aggregate.lemonPhylacteryChallenge ||
+    (aggregate.eggPartnerChallenge && !aggregate.eggPartnerChallenge.eggAcquiredAt) ||
     (aggregate.activeCardResolution?.resolutionKind &&
       QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
   );
@@ -883,6 +885,9 @@ export function validateCommandEnvelope(
         if (!seekerTeam?.memberPlayerIds.length || statuses.some((touching) => !touching)) {
           return [error(envelope.command.type, 'LEMON_PHYLACTERY_CONTACT_REQUIRED', 'Each seeker must attach a lemon to their outermost clothing or skin before another question.')];
         }
+      }
+      if (aggregate.eggPartnerChallenge && !aggregate.eggPartnerChallenge.eggAcquiredAt) {
+        return [error(envelope.command.type, 'EGG_PARTNER_ACQUISITION_REQUIRED', 'Seekers must acquire a real egg before asking another question.')];
       }
 
       const category = getQuestionCategory(contentPack, template.categoryId);
@@ -1810,6 +1815,46 @@ export function validateCommandEnvelope(
       }
       if (stepsPayload.stepsTaken > playerState.stepsRemaining && stepsPayload.overstep !== 'accidental' && stepsPayload.overstep !== 'safety') {
         return [error(envelope.command.type, 'GAMBLERS_FEET_STEP_LIMIT_EXCEEDED', 'You may only report steps covered by your die roll. Mark an accidental overstep or safety exception if one occurred.')];
+      }
+      return [];
+    }
+    case 'confirm_egg_partner_acquired': {
+      const challenge = aggregate.eggPartnerChallenge;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'EGG_PARTNER_NOT_ACTIVE', 'There is no active Egg Partner challenge.')];
+      }
+      if (challenge.eggAcquiredAt) {
+        return [error(envelope.command.type, 'EGG_PARTNER_ALREADY_ACQUIRED', 'The egg has already been acquired.')];
+      }
+      if (actorRole !== 'seeker' && actorRole !== 'host' && actorRole !== 'system') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker or the host referee can confirm acquiring the egg.')];
+      }
+      return [];
+    }
+    case 'report_egg_partner_member_lost': {
+      const challenge = aggregate.eggPartnerChallenge;
+      const { sourceCardInstanceId, memberId, lossKind } = envelope.command.payload;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      const isEgg = memberId === 'egg-partner:egg';
+      const memberExists = isEgg || Boolean(seekerTeam?.memberPlayerIds.includes(memberId));
+      const refereeMayReportAny = actorRole === 'host' || actorRole === 'system';
+      if (challenge?.sourceCardInstanceId !== sourceCardInstanceId) {
+        return [error(envelope.command.type, 'EGG_PARTNER_NOT_ACTIVE', 'There is no active Egg Partner challenge.')];
+      }
+      if (!memberExists || (actorRole !== 'seeker' && !refereeMayReportAny) ||
+        (actorRole === 'seeker' && !isEgg && memberId !== envelope.actor.playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'A seeker can report the egg or their own loss; the host referee can report any seeker.')];
+      }
+      if (isEgg && !challenge.eggAcquiredAt) {
+        return [error(envelope.command.type, 'EGG_PARTNER_NOT_ACQUIRED', 'Acquire the egg before reporting that it was abandoned or cracked.')];
+      }
+      if (!isEgg && lossKind !== 'abandoned') {
+        return [error(envelope.command.type, 'EGG_PARTNER_LOSS_KIND_INVALID', 'A seeker can only be marked as abandoned; cracking applies to the egg.')];
+      }
+      if (challenge.statusByMemberId[memberId]?.lossKind) {
+        return [error(envelope.command.type, 'EGG_PARTNER_MEMBER_ALREADY_LOST', 'This team member was already reported lost.')];
       }
       return [];
     }

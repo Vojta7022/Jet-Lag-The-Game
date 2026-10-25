@@ -66,6 +66,7 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 import { EndlessTumbleChallengePanel } from '../features/cards/EndlessTumbleChallengePanel.tsx';
 import { GamblersFeetChallengePanel } from '../features/cards/GamblersFeetChallengePanel.tsx';
+import { EggPartnerChallengePanel } from '../features/cards/EggPartnerChallengePanel.tsx';
 
 function resolveCurrentRole(
   role: string | undefined,
@@ -978,6 +979,20 @@ export function QuestionCenterScreen() {
             disabled={state.loadState === 'loading'}
             onRoll={(playerId, dieRoll) => void submitCommand({ type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, dieRoll, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
             onReportSteps={(playerId, stepsTaken, overstep) => void submitCommand({ type: 'report_gamblers_feet_steps', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, stepsTaken, overstep, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
+          />
+        </Panel>
+      ) : null}
+
+      {projection?.eggPartnerChallenge ? (
+        <Panel title="Curse of the Egg Partner" subtitle="Acquire a real egg before asking the next question." tone="accent">
+          <EggPartnerChallengePanel
+            challenge={projection.eggPartnerChallenge}
+            players={projection.players.filter((player) => player.role === 'seeker').map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+            viewerRole={viewerRole}
+            viewerPlayerId={activeMatch?.recipient.playerId}
+            disabled={state.loadState === 'loading'}
+            onAcquire={() => void submitCommand({ type: 'confirm_egg_partner_acquired', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId } })}
+            onReportLost={(memberId, lossKind) => void submitCommand({ type: 'report_egg_partner_member_lost', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId, memberId, lossKind } })}
           />
         </Panel>
       ) : null}

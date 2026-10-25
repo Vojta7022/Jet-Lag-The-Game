@@ -43,6 +43,8 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'resolve_gamblers_feet_cast',
   'roll_gamblers_feet_die',
   'report_gamblers_feet_steps',
+  'confirm_egg_partner_acquired',
+  'report_egg_partner_member_lost',
   'set_hangman_word',
   'end_hangman_challenge',
   'complete_cooldown',
@@ -92,7 +94,9 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'report_endless_tumble_roll',
   'set_lemon_phylactery_contact',
   'roll_gamblers_feet_die',
-  'report_gamblers_feet_steps'
+  'report_gamblers_feet_steps',
+  'confirm_egg_partner_acquired',
+  'report_egg_partner_member_lost'
 ]);
 
 const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);

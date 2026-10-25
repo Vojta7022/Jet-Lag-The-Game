@@ -1572,6 +1572,13 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'egg_partner_challenge') {
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+          type: 'egg_partner_challenge_started',
+          payload: { sourceCardInstanceId: activeResolution.sourceCardInstanceId, hiderBonusMinutes: activeResolution.timeBonusMinutes ?? 30 }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'move' && aggregate!.lifecycleState === 'hide_phase') {
         const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide' && timer.status === 'paused');
         if (hideTimer) {
@@ -1787,6 +1794,24 @@ function eventsForCommand(
           playerId,
           stepsRemaining: overage > 0 ? 0 : prior.stepsRemaining - stepsTaken,
           unaccountedSteps: prior.unaccountedSteps + (overstep === 'accidental' ? overage : 0)
+        }
+      })];
+    }
+    case 'confirm_egg_partner_acquired':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'egg_partner_acquired',
+        payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId }
+      })];
+    case 'report_egg_partner_member_lost': {
+      const challenge = aggregate!.eggPartnerChallenge!;
+      const memberStatus = challenge.statusByMemberId[envelope.command.payload.memberId];
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'egg_partner_member_lost',
+        payload: {
+          sourceCardInstanceId: challenge.sourceCardInstanceId,
+          memberId: envelope.command.payload.memberId,
+          lossKind: envelope.command.payload.lossKind,
+          bonusMinutesAwarded: memberStatus?.lossKind || challenge.bonusAwardedAt ? 0 : challenge.hiderBonusMinutes
         }
       })];
     }

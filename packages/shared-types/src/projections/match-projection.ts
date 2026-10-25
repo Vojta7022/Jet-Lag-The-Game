@@ -238,7 +238,7 @@ export interface MatchProjection {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
     openedAt?: string;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge';
     hangman?: {
       status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
       secretWord?: string;
@@ -306,6 +306,14 @@ export interface MatchProjection {
     expiresAt: string;
     durationMinutes: number;
     statusByPlayerId: Record<string, { stepsRemaining: number; unaccountedSteps: number; lastDieRoll?: number; updatedAt: string }>;
+  };
+  eggPartnerChallenge?: {
+    sourceCardInstanceId: string;
+    activatedAt: string;
+    hiderBonusMinutes: number;
+    eggAcquiredAt?: string;
+    statusByMemberId: Record<string, { lossKind?: 'abandoned' | 'cracked'; updatedAt: string }>;
+    bonusAwardedAt?: string;
   };
   awardedCurseBonusMinutes?: number;
   disabledQuestionTemplateIds?: string[];

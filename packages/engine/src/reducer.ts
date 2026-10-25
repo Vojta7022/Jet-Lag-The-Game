@@ -303,6 +303,7 @@ export function reduceMatchAggregate(
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
         gamblersFeetChallenge: undefined,
+        eggPartnerChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         cardInstances: Object.fromEntries(
           eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
@@ -339,6 +340,7 @@ export function reduceMatchAggregate(
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
         gamblersFeetChallenge: undefined,
+        eggPartnerChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         disabledQuestionTemplateIds: [],
         disabledQuestionCategoryId: undefined,
@@ -645,6 +647,35 @@ export function reduceMatchAggregate(
             [playerId]: { stepsRemaining, unaccountedSteps, ...(dieRoll !== undefined ? { lastDieRoll: dieRoll } : {}), updatedAt: eventEnvelope.occurredAt }
           }
         }
+      };
+    }
+    case 'egg_partner_challenge_started':
+      return {
+        ...base,
+        eggPartnerChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt,
+          hiderBonusMinutes: eventEnvelope.event.payload.hiderBonusMinutes,
+          statusByMemberId: {}
+        }
+      };
+    case 'egg_partner_acquired': {
+      const challenge = base.eggPartnerChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return { ...base, eggPartnerChallenge: { ...challenge, eggAcquiredAt: eventEnvelope.occurredAt } };
+    }
+    case 'egg_partner_member_lost': {
+      const challenge = base.eggPartnerChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const { memberId, lossKind, bonusMinutesAwarded } = eventEnvelope.event.payload;
+      return {
+        ...base,
+        eggPartnerChallenge: {
+          ...challenge,
+          statusByMemberId: { ...challenge.statusByMemberId, [memberId]: { lossKind, updatedAt: eventEnvelope.occurredAt } },
+          bonusAwardedAt: bonusMinutesAwarded > 0 ? eventEnvelope.occurredAt : challenge.bonusAwardedAt
+        },
+        awardedCurseBonusMinutes: (base.awardedCurseBonusMinutes ?? 0) + bonusMinutesAwarded
       };
     }
     case 'question_response_expired': {

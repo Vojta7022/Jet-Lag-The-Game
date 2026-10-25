@@ -520,3 +520,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Record accidental oversteps as step debt that requires additional die rolls before walking again; allow explicitly attested safety exceptions and report player step counts as physical attestations.
 - [x] Add controls in the card window, Question Center, and live map; allow the unrestricted card in endgame and verify that Lemon Phylactery’s printed endgame restriction remains specific to that card.
 - [x] Verify cast parity, allowance decrement, per-player isolation, overstep recovery, expiration, both workbook profiles, full suite (407 tests), mobile typecheck, and web export (2026-10-25).
+
+### Completed implementation slice: Curse of the Egg Partner
+
+- [x] Add failing tests for scale bonus, acquisition gate, seeker-reported abandonment/cracking, one-time scoring, and endgame prohibition.
+- [x] Import this card as a typed assisted challenge from both workbook profiles and regenerate the personal draft pack.
+- [x] Persist egg acquisition/loss state, block questions until acquisition, and award its printed scale bonus once.
+- [x] Add seeker and referee controls on Cards, Question Center, and the live map; retain physical egg state as an attestation.
+- [x] Verify the printed two-card casting cost, engine/importer paths, full suite (409/409), mobile typecheck, web export, and `git diff --check` (2026-10-25). Physical egg acquisition and member loss remain attested.

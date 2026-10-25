@@ -74,6 +74,8 @@ export type DomainCommand =
   | ResolveGamblersFeetCastCommand
   | RollGamblersFeetDieCommand
   | ReportGamblersFeetStepsCommand
+  | ConfirmEggPartnerAcquiredCommand
+  | ReportEggPartnerMemberLostCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -413,6 +415,16 @@ export interface RollGamblersFeetDieCommand {
 export interface ReportGamblersFeetStepsCommand {
   type: 'report_gamblers_feet_steps';
   payload: { sourceCardInstanceId: string; stepsTaken: number; overstep?: 'accidental' | 'safety'; targetPlayerId?: string };
+}
+
+export interface ConfirmEggPartnerAcquiredCommand {
+  type: 'confirm_egg_partner_acquired';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface ReportEggPartnerMemberLostCommand {
+  type: 'report_egg_partner_member_lost';
+  payload: { sourceCardInstanceId: string; memberId: string; lossKind: 'abandoned' | 'cracked' };
 }
 
 export interface CompleteCooldownCommand {

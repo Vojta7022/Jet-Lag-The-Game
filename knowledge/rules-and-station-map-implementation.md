@@ -23,6 +23,8 @@ Update 2026-10-25: Coastline Measuring now has an automatic path for OSM `natura
 
 Update 2026-10-25: Gambler’s Feet now has an assisted timed flow from the scanned casting clarification: even d6 rolls cancel, odd rolls activate, and each seeker can track a separate die allowance for the selected 20/40/60-minute duration. The engine tracks reported steps, requires retroactive rolls to clear accidental overstep debt, and records safety exceptions as attestations; it cannot independently sense footsteps. [base rulebook scan, pp. 55–56; `tests/engine/cards.test.ts`, `tests/importer/importer.test.ts`, checked 2026-10-25]
 
+Update 2026-10-25: Egg Partner is now imported as an assisted, scale-aware effect. The authority blocks questions until egg acquisition, records per-member loss attestations, awards the 30/45/60-minute bonus once, and rejects play in endgame. The physical egg and member abandonment remain player/referee judgments. [cleaned workbook Curses sheet; base rulebook curse clarification, p. 50; `tests/engine/cards.test.ts`, `tests/importer/importer.test.ts`, checked 2026-10-25]
+
 ## Confirmed rules implemented
 
 - Investigation questions are selectable whenever their printed scale permits. “Draw N, Pick M” is the hider's reward after answering; it does not randomly deal the seekers' question choices. Repeating a question remains allowed and repeats the card draw/pick as a separate reward set.

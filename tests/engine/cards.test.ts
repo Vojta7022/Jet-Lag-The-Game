@@ -400,6 +400,45 @@ test('Lemon Phylactery gates questions per seeker and awards the scale bonus whe
   assert.equal(ask().aggregate.seekPhaseSubstate, 'awaiting_question_answer');
 });
 
+test('Egg Partner gates questions until the egg is acquired and awards its scale bonus once when a team member is lost', () => {
+  const contentPack = loadEngineTestContentPack();
+  const eggPartner = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-egg-partner');
+  assert.ok(eggPartner);
+  eggPartner.castingCost = [];
+  eggPartner.effects = [{ ...eggPartner.effects[0]!, effectType: 'egg_partner_challenge', automationLevel: 'assisted', payload: { minutesByScale: { small: 30, medium: 45, large: 60 } } } as never];
+  let aggregate = setupMatchToSeekReady(contentPack, 'medium');
+  const cardInstanceId = moveCardToTeamHand(aggregate, eggPartner.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'egg_partner_challenge');
+  assert.equal(aggregate.activeCardResolution?.timeBonusMinutes, 45);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 71), contentPack).aggregate;
+  assert.equal(aggregate.eggPartnerChallenge?.hiderBonusMinutes, 45);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'begin_question_prompt', payload: {} }, 72), contentPack).aggregate;
+  const ask = () => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'ask_question', payload: { questionInstanceId: 'question:egg-partner', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider' } }, 73), contentPack);
+  assert.throws(ask, /acquire a real egg/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'report_egg_partner_member_lost', payload: { sourceCardInstanceId: cardInstanceId, memberId: 'egg-partner:egg', lossKind: 'cracked' } } as never, 73), contentPack), /acquire the egg before reporting/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'confirm_egg_partner_acquired', payload: { sourceCardInstanceId: cardInstanceId } } as never, 74), contentPack).aggregate;
+  assert.equal(ask().aggregate.seekPhaseSubstate, 'awaiting_question_answer');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'report_egg_partner_member_lost', payload: { sourceCardInstanceId: cardInstanceId, memberId: 'egg-partner:egg', lossKind: 'cracked' } } as never, 75), contentPack).aggregate;
+  assert.equal(aggregate.awardedCurseBonusMinutes, 45);
+  assert.equal(aggregate.eggPartnerChallenge?.statusByMemberId['egg-partner:egg']?.lossKind, 'cracked');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'report_egg_partner_member_lost', payload: { sourceCardInstanceId: cardInstanceId, memberId: 'egg-partner:egg', lossKind: 'abandoned' } } as never, 76), contentPack), /already reported lost/i);
+  assert.equal(aggregate.awardedCurseBonusMinutes, 45);
+});
+
+test('Egg Partner cannot be played during endgame', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.cardDefinitionId === 'curse-curse-of-the-egg-partner');
+  assert.ok(card);
+  card.effects = [{ ...card.effects[0]!, effectType: 'egg_partner_challenge', automationLevel: 'assisted' } as never];
+  const aggregate = setupMatchToSeekReady(contentPack, 'small');
+  aggregate.lifecycleState = 'endgame';
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack), /cannot be played during the endgame/i);
+});
+
 test('Gambler’s Feet creates a timed, typed step-challenge plan from its selected scale', () => {
   const contentPack = loadEngineTestContentPack();
   const card = contentPack.cards.find((candidate) => candidate.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');

@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T17:33:52.869Z",
+    "importedAt": "2026-10-25T17:47:59.318Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3008,7 +3008,7 @@
       "shortName": "Curse Of The Egg Partner",
       "description": "Seeker(s) must acquire an egg before asking another question. This egg is now treated as an official team member of the seekers. If any team members are abandoned or killed (defined as crack in the eggs case) before the end of your run you are awarded an extra [S30 M45 L60] minutes. This curse cannot be played during the endgame.",
       "rulebookGuidanceText": "The egg must be real; a visible crack, however small, counts as killing it. Treat the egg as a seeker for other curses that apply to every seeker. Remove this card if the group objects to buying an egg or to the animal-welfare implications.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3018,18 +3018,23 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "egg_partner_challenge",
           "description": "Seeker(s) must acquire an egg before asking another question. This egg is now treated as an official team member of the seekers. If any team members are abandoned or killed (defined as crack in the eggs case) before the end of your run you are awarded an extra [S30 M45 L60] minutes. This curse cannot be played during the endgame.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Seeker(s) must acquire an egg before asking another question. This egg is now treated as an official team member of the seekers. If any team members are abandoned or killed (defined as crack in the eggs case) before the end of your run you are awarded an extra [S30 M45 L60] minutes. This course cannot be played during the endgame.",
           "payload": {
-            "workbookName": "Curse Of The Egg Partner"
+            "minutesByScale": {
+              "small": 30,
+              "medium": 45,
+              "large": 60
+            },
+            "acquireBeforeQuestion": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3040,7 +3045,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

@@ -141,6 +141,8 @@ export function validateStateForCommand(
         ? []
         : [error(command.type, 'INVALID_STATE', 'Endless Tumble rolls can only be reported while seekers are searching.')];
     case 'set_lemon_phylactery_contact':
+    case 'confirm_egg_partner_acquired':
+    case 'report_egg_partner_member_lost':
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Lemon contact can only be updated while seekers are searching.')];

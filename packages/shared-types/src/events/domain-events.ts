@@ -116,6 +116,9 @@ export type DomainEvent =
   | GamblersFeetChallengeStartedEvent
   | GamblersFeetCastResolvedEvent
   | GamblersFeetPlayerUpdatedEvent
+  | EggPartnerChallengeStartedEvent
+  | EggPartnerAcquiredEvent
+  | EggPartnerMemberLostEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -437,7 +440,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -566,6 +569,21 @@ export interface GamblersFeetCastResolvedEvent {
 export interface GamblersFeetPlayerUpdatedEvent {
   type: 'gamblers_feet_player_updated';
   payload: { sourceCardInstanceId: string; playerId: string; dieRoll?: number; stepsRemaining: number; unaccountedSteps: number };
+}
+
+export interface EggPartnerChallengeStartedEvent {
+  type: 'egg_partner_challenge_started';
+  payload: { sourceCardInstanceId: string; hiderBonusMinutes: number };
+}
+
+export interface EggPartnerAcquiredEvent {
+  type: 'egg_partner_acquired';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface EggPartnerMemberLostEvent {
+  type: 'egg_partner_member_lost';
+  payload: { sourceCardInstanceId: string; memberId: string; lossKind: 'abandoned' | 'cracked'; bonusMinutesAwarded: number };
 }
 
 export interface QuestionTemplatesDisabledEvent {

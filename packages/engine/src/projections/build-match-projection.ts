@@ -526,6 +526,7 @@ export function buildMatchProjection(
     endlessTumbleChallenge: aggregate.endlessTumbleChallenge,
     lemonPhylacteryChallenge: aggregate.lemonPhylacteryChallenge,
     gamblersFeetChallenge: aggregate.gamblersFeetChallenge,
+    eggPartnerChallenge: aggregate.eggPartnerChallenge,
     awardedCurseBonusMinutes: aggregate.awardedCurseBonusMinutes ?? 0,
     disabledQuestionTemplateIds: aggregate.disabledQuestionTemplateIds ?? [],
     disabledQuestionCategoryId: aggregate.disabledQuestionCategoryId,
