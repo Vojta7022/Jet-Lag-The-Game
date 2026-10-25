@@ -154,6 +154,59 @@ test('Matching automatically compares the nearest same-class features and narrow
   assert.equal(result.aggregate.searchArea?.history.at(-1)?.summary.includes('Matching'), true);
 });
 
+test('Street or Path Matching uses the nearest street segment geometry and narrows from the same snapshot', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.1, longitude: 103.82,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test-street-path-snapshot-v1',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [
+      {
+        featureId: 'osm:street-path/named/101-102', featureClassId: 'street-or-path', label: 'Elm Street',
+        longitude: 103.79, latitude: 1.1, geometrySupport: 'line' as const, coverage: 'approximate' as const,
+        geometry: { type: 'MultiLineString' as const, coordinates: [
+          [[103.79, 1.1], [103.81, 1.1]], [[103.81, 1.1], [103.83, 1.1]]
+        ] }
+      },
+      {
+        featureId: 'osm:street-path/named/202', featureClassId: 'street-or-path', label: 'Pine Road',
+        longitude: 103.8, latitude: 1.104, geometrySupport: 'line' as const, coverage: 'approximate' as const,
+        geometry: { type: 'LineString' as const, coordinates: [[103.79, 1.104], [103.83, 1.104]] }
+      }
+    ]
+  };
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-matching-street-path', templateId: 'matching-street-or-path', targetTeamId: 'team-hider' }
+    }, 16), contentPack, dataset);
+
+  const question = result.aggregate.questionInstances['question:auto-matching-street-path'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.value, 'yes');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:street-path/named/101-102');
+  const constraint = Object.values(result.aggregate.constraints).find(
+    (item) => item.sourceQuestionInstanceId === 'question:auto-matching-street-path'
+  );
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.equal('featureData' in (constraint?.metadata ?? {}), false);
+  assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
+});
+
 test('administrative Matching selects a country-hierarchy division and clips the map to the seeker division', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);

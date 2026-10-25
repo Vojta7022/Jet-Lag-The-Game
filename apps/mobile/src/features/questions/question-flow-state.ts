@@ -219,6 +219,9 @@ export function describeTemplateSupport(args: {
         if ((args.template.featureClassRefs ?? []).some((feature) => /^(?:[1-4](?:st|nd|rd|th)-admin-)/.test(feature.featureClassId))) {
           return 'The app checks fresh player locations against OpenStreetMap administrative boundaries when connected; missing or ambiguous divisions stay manual';
         }
+        if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'street-or-path')) {
+          return 'The app compares fresh player locations to mapped street/path segments when connected; incomplete map data stays manual';
+        }
         return 'The app can answer from fresh player locations and OpenStreetMap places in the selected region when connected';
       }
       return 'Will stay as recorded evidence until suitable place data is available';

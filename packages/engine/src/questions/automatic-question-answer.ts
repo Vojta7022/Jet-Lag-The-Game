@@ -86,14 +86,13 @@ function nearestFeatureHasConfidentMargin(args: {
   accuracyMeters: number;
 }): { feature?: GeoFeatureRecord; ambiguous: boolean } {
   const ranked = args.features
-    .filter((feature) => args.featureClassIds.includes(feature.featureClassId) && feature.representativePoint)
+    .filter((feature) => args.featureClassIds.includes(feature.featureClassId))
     .map((feature) => ({
       feature,
-      distance: distanceMeters(
-        args.point,
-        [feature.representativePoint!.longitude, feature.representativePoint!.latitude]
-      )
+      distance: distanceToFeatureMeters(args.point, feature)
     }))
+    .filter((candidate): candidate is { feature: GeoFeatureRecord; distance: number } =>
+      typeof candidate.distance === 'number' && Number.isFinite(candidate.distance))
     .sort((left, right) => left.distance - right.distance);
   const nearest = ranked[0];
   const second = ranked[1];

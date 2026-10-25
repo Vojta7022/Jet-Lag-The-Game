@@ -30,9 +30,18 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-admin-area-v2';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v3';
+const OSM_REQUEST_HEADERS = {
+  'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+  accept: 'application/json',
+  'user-agent': 'JetLagTheGame/0.1 (+https://github.com/Vojta7022/Jet-Lag-The-Game; OSM question feature lookup)'
+};
 const ADMIN_FEATURE_CLASS_IDS = /^(?:[1-4](?:st|nd|rd|th)-admin-)/;
 const ADMIN_BORDER_FEATURE_CLASS = /^a-([1-4])(?:st|nd|rd|th)-admin-border-/;
+const STREET_PATH_FEATURE_CLASS = 'street-or-path';
+const NON_WALKABLE_OR_INACTIVE_HIGHWAYS = new Set([
+  'abandoned', 'construction', 'corridor', 'elevator', 'planned', 'platform', 'proposed', 'razed'
+]);
 
 const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
   'a-commercial-airport': [{ tags: { aeroway: 'aerodrome', scheduled_service: 'yes' } }],
@@ -78,6 +87,7 @@ const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
 
 export function hasOpenStreetMapFeatureClass(featureClassId: string): boolean {
   return Object.hasOwn(SELECTORS_BY_FEATURE_CLASS, featureClassId) ||
+    featureClassId === STREET_PATH_FEATURE_CLASS ||
     ADMIN_FEATURE_CLASS_IDS.test(featureClassId) || ADMIN_BORDER_FEATURE_CLASS.test(featureClassId);
 }
 
@@ -103,13 +113,149 @@ function adminBoundaryQueryFor(box: NonNullable<ReturnType<typeof geometryBoundi
   return `[out:json][timeout:25];rel["boundary"="administrative"]${bbox};out geom tags;`;
 }
 
+function streetPathQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
+  return `[out:json][timeout:25];way["highway"](${box.minLat},${box.minLon},${box.maxLat},${box.maxLon});out body geom;`;
+}
+
 interface OverpassElement {
   type?: unknown;
   id?: unknown;
   lat?: unknown;
   lon?: unknown;
   center?: { lat?: unknown; lon?: unknown };
+  nodes?: unknown;
+  geometry?: unknown;
   tags?: Record<string, unknown>;
+}
+
+interface StreetWay {
+  id: number;
+  name?: string;
+  nodeIds: number[];
+  coordinates: [number, number][];
+}
+
+function streetWays(elements: unknown[]): StreetWay[] {
+  return elements.flatMap((raw) => {
+    if (!raw || typeof raw !== 'object') return [];
+    const element = raw as OverpassElement;
+    if (element.type !== 'way' || typeof element.id !== 'number' ||
+      !Array.isArray(element.nodes) || !Array.isArray(element.geometry)) return [];
+    const nodeIds = element.nodes.filter((id): id is number => typeof id === 'number');
+    const coordinates = element.geometry.flatMap((point) => {
+      if (!point || typeof point !== 'object') return [];
+      const geometryPoint = point as { lat?: unknown; lon?: unknown };
+      return typeof geometryPoint.lon === 'number' && typeof geometryPoint.lat === 'number'
+        ? [[geometryPoint.lon, geometryPoint.lat] as [number, number]]
+        : [];
+    });
+    const highway = element.tags?.highway;
+    if (typeof highway !== 'string' || NON_WALKABLE_OR_INACTIVE_HIGHWAYS.has(highway) ||
+      nodeIds.length < 2 || coordinates.length !== nodeIds.length) return [];
+    const rawName = element.tags?.name;
+    const name = typeof rawName === 'string' && rawName.trim() ? rawName.trim().normalize('NFC') : undefined;
+    return [{ id: element.id, name, nodeIds, coordinates }];
+  });
+}
+
+function streetPathFeatures(elements: unknown[], regionGeometry: GeoJsonGeometryModel): QuestionFeatureRecordModel[] {
+  const ways = streetWays(elements);
+  const waysByNode = new Map<number, StreetWay[]>();
+  for (const way of ways) {
+    for (const nodeId of new Set(way.nodeIds)) {
+      const incident = waysByNode.get(nodeId) ?? [];
+      incident.push(way);
+      waysByNode.set(nodeId, incident);
+    }
+  }
+
+  const parent = new Map<number, number>(ways.map((way) => [way.id, way.id]));
+  const find = (id: number): number => {
+    const root = parent.get(id)!;
+    if (root === id) return id;
+    const representative = find(root);
+    parent.set(id, representative);
+    return representative;
+  };
+  const union = (left: number, right: number) => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot !== rightRoot) parent.set(Math.max(leftRoot, rightRoot), Math.min(leftRoot, rightRoot));
+  };
+
+  for (const incidentWays of waysByNode.values()) {
+    const namedByName = new Map<string, StreetWay[]>();
+    for (const way of incidentWays) {
+      if (!way.name) continue;
+      const connected = namedByName.get(way.name) ?? [];
+      connected.push(way);
+      namedByName.set(way.name, connected);
+    }
+    for (const connected of namedByName.values()) {
+      for (const way of connected.slice(1)) union(connected[0]!.id, way.id);
+    }
+  }
+
+  const namedGroups = new Map<string, StreetWay[]>();
+  for (const way of ways) {
+    if (!way.name) continue;
+    const key = `${way.name}\u0000${find(way.id)}`;
+    const group = namedGroups.get(key) ?? [];
+    group.push(way);
+    namedGroups.set(key, group);
+  }
+
+  const features: QuestionFeatureRecordModel[] = [];
+  const addFeature = (featureId: string, label: string, lines: [number, number][][], osmWayIds: number[]) => {
+    if (lines.length === 0 || lines.some((line) => line.length < 2)) return;
+    const geometry: GeoJsonGeometryModel = lines.length === 1
+      ? { type: 'LineString', coordinates: lines[0]! }
+      : { type: 'MultiLineString', coordinates: lines };
+    if (!lineGeometryIntersectsPolygon(geometry, regionGeometry)) return;
+    const [longitude, latitude] = lines[0]![0]!;
+    features.push({
+      featureId,
+      featureClassId: STREET_PATH_FEATURE_CLASS,
+      label,
+      latitude,
+      longitude,
+      geometry,
+      geometrySupport: 'line',
+      coverage: 'approximate',
+      properties: { osmWayIds }
+    });
+  };
+
+  for (const group of namedGroups.values()) {
+    const orderedWays = group.sort((left, right) => left.id - right.id);
+    const wayIds = orderedWays.map((way) => way.id);
+    addFeature(
+      `osm:street-path/named/${wayIds.join('-')}`,
+      orderedWays[0]!.name!,
+      orderedWays.map((way) => way.coordinates),
+      wayIds
+    );
+  }
+
+  for (const way of ways.filter((candidate) => !candidate.name)) {
+    const boundaries = [0];
+    for (let index = 1; index < way.nodeIds.length - 1; index += 1) {
+      if ((waysByNode.get(way.nodeIds[index]!)?.length ?? 0) > 1) boundaries.push(index);
+    }
+    boundaries.push(way.nodeIds.length - 1);
+    for (let index = 0; index < boundaries.length - 1; index += 1) {
+      const start = boundaries[index]!;
+      const end = boundaries[index + 1]!;
+      const line = way.coordinates.slice(start, end + 1);
+      addFeature(
+        `osm:street-path/unnamed/${way.id}/${way.nodeIds[start]}-${way.nodeIds[end]}`,
+        'Unnamed street or path',
+        [line],
+        [way.id]
+      );
+    }
+  }
+  return features;
 }
 
 function asFeature(
@@ -186,7 +332,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
     if (needsAdminBoundaries) {
       const response = await this.fetcher(this.endpoint, {
         method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        headers: OSM_REQUEST_HEADERS,
         body: `data=${encodeURIComponent(adminBoundaryQueryFor(box))}`,
         signal: AbortSignal.timeout(30_000)
       });
@@ -217,12 +363,30 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
     }
 
     for (const featureClassId of featureClassIds) {
+      if (featureClassId === STREET_PATH_FEATURE_CLASS) {
+        const response = await this.fetcher(this.endpoint, {
+          method: 'POST',
+          headers: OSM_REQUEST_HEADERS,
+          body: `data=${encodeURIComponent(streetPathQueryFor(box))}`,
+          signal: AbortSignal.timeout(30_000)
+        });
+        if (!response.ok) throw new Error(`OpenStreetMap street/path lookup failed with HTTP ${response.status}.`);
+        const raw = await response.text();
+        if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap street/path data exceeds the 8 MB safety limit.');
+        const parsed = JSON.parse(raw) as { elements?: unknown };
+        if (!Array.isArray(parsed.elements)) throw new Error('OpenStreetMap street/path response did not contain elements.');
+        if (parsed.elements.length > this.maxElements) throw new Error(`OpenStreetMap returned more than ${this.maxElements} street/path ways for this question.`);
+        for (const feature of streetPathFeatures(parsed.elements, request.regionGeometry)) {
+          featuresById.set(feature.featureId, feature);
+        }
+        continue;
+      }
       const selectors = SELECTORS_BY_FEATURE_CLASS[featureClassId];
       if (!selectors) continue;
       const query = queryFor(selectors, box);
       const response = await this.fetcher(this.endpoint, {
         method: 'POST',
-        headers: { 'content-type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        headers: OSM_REQUEST_HEADERS,
         body: `data=${encodeURIComponent(query)}`,
         signal: AbortSignal.timeout(30_000)
       });
@@ -241,7 +405,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
 
     if (featureClassIds.every((featureClassId) =>
       !SELECTORS_BY_FEATURE_CLASS[featureClassId] && !ADMIN_FEATURE_CLASS_IDS.test(featureClassId) &&
-      !ADMIN_BORDER_FEATURE_CLASS.test(featureClassId))) return undefined;
+      !ADMIN_BORDER_FEATURE_CLASS.test(featureClassId) && featureClassId !== STREET_PATH_FEATURE_CLASS)) return undefined;
     return {
       source: 'OpenStreetMap',
       sourceUrl: OSM_COPYRIGHT_URL,

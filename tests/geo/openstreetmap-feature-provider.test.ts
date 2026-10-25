@@ -45,6 +45,56 @@ test('OpenStreetMap question feature provider returns undefined for feature type
   assert.equal(result, undefined);
 });
 
+test('OpenStreetMap provider groups connected named streets and splits unnamed paths at intersections', async () => {
+  let submittedQuery = '';
+  let submittedUserAgent = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      submittedUserAgent = new Headers(init?.headers).get('user-agent') ?? '';
+      return new Response(JSON.stringify({ elements: [
+        {
+          type: 'way', id: 101, nodes: [1, 2],
+          geometry: [{ lon: 0.1, lat: 0.2 }, { lon: 0.2, lat: 0.2 }],
+          tags: { highway: 'residential', name: 'Elm Street' }
+        },
+        {
+          type: 'way', id: 102, nodes: [2, 3],
+          geometry: [{ lon: 0.2, lat: 0.2 }, { lon: 0.3, lat: 0.2 }],
+          tags: { highway: 'residential', name: 'Elm Street' }
+        },
+        {
+          type: 'way', id: 201, nodes: [10, 11, 12],
+          geometry: [{ lon: 0.1, lat: 0.5 }, { lon: 0.2, lat: 0.5 }, { lon: 0.3, lat: 0.5 }],
+          tags: { highway: 'path' }
+        },
+        {
+          type: 'way', id: 202, nodes: [20, 11, 21],
+          geometry: [{ lon: 0.2, lat: 0.4 }, { lon: 0.2, lat: 0.5 }, { lon: 0.2, lat: 0.6 }],
+          tags: { highway: 'footway' }
+        }
+      ] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['street-or-path'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.ok(dataset);
+  assert.match(submittedQuery, /way\["highway"\]/);
+  assert.match(submittedQuery, /out body geom/);
+  assert.match(submittedUserAgent, /JetLagTheGame/);
+  const named = dataset.features.filter((feature) => feature.label === 'Elm Street');
+  const unnamed = dataset.features.filter((feature) => feature.label === 'Unnamed street or path');
+  assert.equal(named.length, 1);
+  assert.equal(named[0]?.geometry?.type, 'MultiLineString');
+  assert.equal(named[0]?.geometrySupport, 'line');
+  assert.equal(unnamed.length, 4);
+  assert.ok(unnamed.every((feature) => feature.geometrySupport === 'line'));
+});
+
 test('OpenStreetMap provider loads polygon geometry for administrative-division Matching', async () => {
   let submittedQuery = '';
   const provider = new OpenStreetMapQuestionFeatureProvider({

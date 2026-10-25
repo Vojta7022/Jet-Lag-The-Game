@@ -260,6 +260,26 @@ test('question guidance explains automatic regional feature answers for supporte
   assert.match(describeExpectedAnswerGuidance(template, category), /OpenStreetMap places in the selected region/i);
 });
 
+test('question guidance explains automatic Street or Path answers from mapped segment geometry', () => {
+  const category = createCategory({
+    categoryId: 'matching',
+    name: 'Matching',
+    resolverKind: 'nearest_feature_match',
+    promptTemplate: 'Is your nearest _____ the same as my nearest _____?',
+    defaultConstraintRefs: ['nearest-feature-match']
+  });
+  const template = createTemplate({
+    templateId: 'matching-street-or-path',
+    categoryId: 'matching',
+    name: 'Street or Path',
+    featureClassRefs: [{ featureClassId: 'street-or-path', label: 'Street or Path', rawLabel: 'Street or Path' }],
+    constraintRefs: ['nearest-feature-match']
+  });
+
+  assert.match(describeExpectedAnswerGuidance(template, category), /mapped street and path segments/i);
+  assert.match(describeExpectedAnswerGuidance(template, category), /intersection/i);
+});
+
 test('question guidance explains when administrative-border Measuring is automatic', () => {
   const category = createCategory({
     categoryId: 'measuring',

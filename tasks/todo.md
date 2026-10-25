@@ -118,6 +118,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Compare normalized Unicode character counts of each player's nearest station name and apply the same nearest-name-length predicate to the map deduction.
 - [x] Verify the OSM provider, direct engine resolution, online authority answer/map update, and role path. Full verification: 266 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
+### Completed implementation slice: Street or Path Matching
+
+- [x] Query OSM highway ways with bounded line geometry and a project-identifying User-Agent; cache the selected region/class result.
+- [x] Join connected same-name ways into one segment; split unnamed ways at mapped intersections and keep incomplete geometries out of automatic answers.
+- [x] Use line distance for nearest-segment GPS confidence, automatic answer, and the same map deduction; describe the automatic and manual fallback behavior in player guidance.
+- [x] Verify against scanned base rulebook p. 18, provider topology tests, engine answer/map test, live Prague Overpass response, full test suite (314 passing), mobile typecheck, and `git diff --check` (2026-10-25).
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.
