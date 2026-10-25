@@ -50,6 +50,9 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'complete_mediocre_travel_agent',
   'review_impressionable_consumer_target',
   'complete_impressionable_consumer_challenge',
+  'set_distant_cuisine_origin',
+  'review_distant_cuisine_target',
+  'complete_distant_cuisine_challenge',
   'confirm_egg_partner_acquired',
   'report_egg_partner_member_lost',
   'report_jammed_door_roll',
@@ -94,6 +97,8 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'review_unguided_tourist_photo',
   'review_bird_guide_video',
   'review_impressionable_consumer_target',
+  'set_distant_cuisine_origin',
+  'review_distant_cuisine_target',
   'answer_question'
 ]);
 
@@ -128,6 +133,9 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'complete_mediocre_travel_agent',
   'submit_impressionable_consumer_target',
   'complete_impressionable_consumer_challenge',
+  'submit_distant_cuisine_target',
+  'report_distant_cuisine_distance',
+  'complete_distant_cuisine_challenge',
   'confirm_egg_partner_acquired',
   'report_egg_partner_member_lost',
   'report_jammed_door_roll',

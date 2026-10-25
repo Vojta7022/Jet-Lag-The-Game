@@ -551,6 +551,7 @@ export function buildMatchProjection(
     birdGuideChallenge: aggregate.birdGuideChallenge,
     mediocreTravelAgentChallenge: aggregate.mediocreTravelAgentChallenge,
     impressionableConsumerChallenge: aggregate.impressionableConsumerChallenge,
+    distantCuisineChallenge: aggregate.distantCuisineChallenge,
     eggPartnerChallenge: aggregate.eggPartnerChallenge,
     jammedDoorChallenge: aggregate.jammedDoorChallenge,
     zoologistChallenge: aggregate.zoologistChallenge,

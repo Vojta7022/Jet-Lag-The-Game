@@ -94,6 +94,11 @@ export type DomainCommand =
   | SubmitImpressionableConsumerTargetCommand
   | ReviewImpressionableConsumerTargetCommand
   | CompleteImpressionableConsumerChallengeCommand
+  | SetDistantCuisineOriginCommand
+  | SubmitDistantCuisineTargetCommand
+  | ReportDistantCuisineDistanceCommand
+  | ReviewDistantCuisineTargetCommand
+  | CompleteDistantCuisineChallengeCommand
   | ConfirmEggPartnerAcquiredCommand
   | ReportEggPartnerMemberLostCommand
   | ReportJammedDoorRollCommand
@@ -577,6 +582,31 @@ export interface ReviewImpressionableConsumerTargetCommand {
 
 export interface CompleteImpressionableConsumerChallengeCommand {
   type: 'complete_impressionable_consumer_challenge';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface SetDistantCuisineOriginCommand {
+  type: 'set_distant_cuisine_origin';
+  payload: { sourceCardInstanceId: string; restaurantName: string; restaurantLatitude: number; restaurantLongitude: number; cuisineCountryName: string; cuisineCountryRegionId: string; publicSingleCountryReferenceAttested: true };
+}
+
+export interface SubmitDistantCuisineTargetCommand {
+  type: 'submit_distant_cuisine_target';
+  payload: { sourceCardInstanceId: string; restaurantName: string; restaurantLatitude: number; restaurantLongitude: number; cuisineCountryName: string; cuisineCountryRegionId: string; publicSingleCountryReferenceAttested: true };
+}
+
+export interface ReportDistantCuisineDistanceCommand {
+  type: 'report_distant_cuisine_distance';
+  payload: { sourceCardInstanceId: string; sourceCountryDistanceMeters: number; targetCountryDistanceMeters: number };
+}
+
+export interface ReviewDistantCuisineTargetCommand {
+  type: 'review_distant_cuisine_target';
+  payload: { sourceCardInstanceId: string; approved: boolean };
+}
+
+export interface CompleteDistantCuisineChallengeCommand {
+  type: 'complete_distant_cuisine_challenge';
   payload: { sourceCardInstanceId: string };
 }
 

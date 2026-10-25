@@ -49,6 +49,19 @@ function error(
   };
 }
 
+function isOsmBoundaryId(value: string): boolean {
+  return /^osm:(?:relation|way):\d+$/.test(value);
+}
+
+function freshDeviceLocation(aggregate: MatchAggregate, playerId: string | undefined, occurredAt: string) {
+  if (!playerId) return undefined;
+  const sample = [...aggregate.locationSamples].reverse().find((candidate) => candidate.playerId === playerId);
+  const age = sample ? Date.parse(occurredAt) - Date.parse(sample.recordedAt) : Number.POSITIVE_INFINITY;
+  return sample && sample.source === 'device' && typeof sample.accuracyMeters === 'number' && sample.accuracyMeters <= 50 && age >= 0 && age <= 30_000
+    ? sample
+    : undefined;
+}
+
 const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'hangman_challenge',
   'labyrinth_challenge',
@@ -56,6 +69,7 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'bird_guide_challenge',
   'mediocre_travel_agent_challenge',
   'impressionable_consumer_challenge',
+  'distant_cuisine_challenge',
   'bridge_troll_challenge',
   'seeker_off_transit_challenge',
   'u_turn_challenge',
@@ -86,6 +100,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.birdGuideChallenge ||
     (aggregate.mediocreTravelAgentChallenge && !aggregate.mediocreTravelAgentChallenge.completedAt) ||
     (aggregate.impressionableConsumerChallenge && !aggregate.impressionableConsumerChallenge.completedAt) ||
+    (aggregate.distantCuisineChallenge && !aggregate.distantCuisineChallenge.completedAt) ||
     (aggregate.activeCardResolution?.resolutionKind &&
       QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
   );
@@ -565,6 +580,10 @@ export function validateCommandEnvelope(
 
   if (envelope.command.type === 'begin_question_prompt' && aggregate.impressionableConsumerChallenge && !aggregate.impressionableConsumerChallenge.completedAt) {
     return [error(envelope.command.type, 'QUESTION_BLOCKED_BY_CURSE', 'Seekers are not ready to ask questions until they complete the approved advertisement challenge.')];
+  }
+
+  if (envelope.command.type === 'begin_question_prompt' && aggregate.distantCuisineChallenge && !aggregate.distantCuisineChallenge.completedAt) {
+    return [error(envelope.command.type, 'QUESTION_BLOCKED_BY_CURSE', 'Seekers are not ready to ask questions until every seeker has visited the approved distant-cuisine restaurant.')];
   }
 
   switch (envelope.command.type) {
@@ -2042,6 +2061,101 @@ export function validateCommandEnvelope(
         now - Date.parse(sample.recordedAt) < 0 || now - Date.parse(sample.recordedAt) > 30_000 ||
         distanceMeters([sample.longitude, sample.latitude], [challenge.target.targetLongitude, challenge.target.targetLatitude]) > 50) {
         return [error(envelope.command.type, 'IMPRESSIONABLE_CONSUMER_ARRIVAL_NOT_CONFIRMED', 'A fresh phone fix must place you at the approved business to attest entry or receipt of the purchase.')];
+      }
+      return [];
+    }
+    case 'set_distant_cuisine_origin': {
+      const challenge = aggregate.distantCuisineChallenge;
+      const payload = envelope.command.payload;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId || challenge.completedAt) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_NOT_ACTIVE', 'There is no active Distant Cuisine challenge.')];
+      }
+      if (actorRole !== 'hider' && actorRole !== 'host') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider or referee can record the restaurant where the curse was played.')];
+      }
+      if (!payload.restaurantName.trim() || payload.restaurantName.trim().length > 120 || !payload.cuisineCountryName.trim() || payload.cuisineCountryName.trim().length > 120 || !isOsmBoundaryId(payload.cuisineCountryRegionId) || payload.publicSingleCountryReferenceAttested !== true || !Number.isFinite(payload.restaurantLatitude) || Math.abs(payload.restaurantLatitude) > 90 || !Number.isFinite(payload.restaurantLongitude) || Math.abs(payload.restaurantLongitude) > 180) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_ORIGIN_INVALID', 'Name the restaurant and one country identified in its public-facing material, and select that country boundary.')];
+      }
+      if (aggregate.mapRegion && !pointInGeometry([payload.restaurantLongitude, payload.restaurantLatitude], aggregate.mapRegion.boundaryGeometry)) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_RESTAURANT_OUTSIDE_MAP', 'The restaurant where the hider played this card must be inside the applied game map.')];
+      }
+      const sample = freshDeviceLocation(aggregate, envelope.actor.playerId, envelope.occurredAt);
+      if (!sample || distanceMeters([sample.longitude, sample.latitude], [payload.restaurantLongitude, payload.restaurantLatitude]) > 50) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_HIDER_NOT_AT_RESTAURANT', 'A fresh hider phone fix must place the hider at the restaurant where the curse is played.')];
+      }
+      return [];
+    }
+    case 'submit_distant_cuisine_target': {
+      const challenge = aggregate.distantCuisineChallenge;
+      const payload = envelope.command.payload;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId || !challenge.origin || challenge.completedAt) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_ORIGIN_REQUIRED', 'The hider must record the restaurant and cuisine country where the curse was played first.')];
+      }
+      if (!envelope.actor.playerId || actorRole !== 'seeker' || !challenge.requiredSeekerPlayerIds.includes(envelope.actor.playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'A seeker must submit the restaurant and cuisine country from their seeker account.')];
+      }
+      if ((challenge.target?.reviewApproved === undefined && challenge.target) || challenge.target?.reviewApproved === true || !payload.restaurantName.trim() || payload.restaurantName.trim().length > 120 || !payload.cuisineCountryName.trim() || payload.cuisineCountryName.trim().length > 120 || !isOsmBoundaryId(payload.cuisineCountryRegionId) || payload.publicSingleCountryReferenceAttested !== true || !Number.isFinite(payload.restaurantLatitude) || Math.abs(payload.restaurantLatitude) > 90 || !Number.isFinite(payload.restaurantLongitude) || Math.abs(payload.restaurantLongitude) > 180) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_TARGET_INVALID', 'Submit a restaurant whose public-facing material identifies one country or region within one country.')];
+      }
+      if (aggregate.mapRegion && !pointInGeometry([payload.restaurantLongitude, payload.restaurantLatitude], aggregate.mapRegion.boundaryGeometry)) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_RESTAURANT_OUTSIDE_MAP', 'The restaurant must be inside the applied game map.')];
+      }
+      return [];
+    }
+    case 'report_distant_cuisine_distance': {
+      const challenge = aggregate.distantCuisineChallenge;
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      const payload = envelope.command.payload;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId || !challenge.origin || !challenge.target || challenge.target.reviewApproved !== undefined || challenge.completedAt) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_TARGET_NOT_READY', 'A proposed restaurant must be awaiting review before measuring country distances.')];
+      }
+      if (!playerId || actorRole !== 'seeker' || !challenge.requiredSeekerPlayerIds.includes(playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must report country distance from their own seeker account.')];
+      }
+      if (!Number.isFinite(payload.sourceCountryDistanceMeters) || payload.sourceCountryDistanceMeters < 0 || payload.sourceCountryDistanceMeters > 20_100_000 || !Number.isFinite(payload.targetCountryDistanceMeters) || payload.targetCountryDistanceMeters < payload.sourceCountryDistanceMeters || payload.targetCountryDistanceMeters > 20_100_000) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_TARGET_COUNTRY_TOO_NEAR', 'The target cuisine country must be at least as far from your exact location as the original cuisine country.')];
+      }
+      if (challenge.distanceByPlayerId[playerId]) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_DISTANCE_ALREADY_REPORTED', 'Your distance check has already been recorded for this restaurant.')];
+      }
+      if (!freshDeviceLocation(aggregate, playerId, envelope.occurredAt)) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_LOCATION_NOT_FRESH', 'Refresh your phone location immediately before measuring the two country boundaries.')];
+      }
+      return [];
+    }
+    case 'review_distant_cuisine_target': {
+      const challenge = aggregate.distantCuisineChallenge;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || !challenge.target || challenge.target.reviewApproved !== undefined) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_REVIEW_NOT_READY', 'There is no new restaurant target to review.')];
+      }
+      if (actorRole !== 'hider' && actorRole !== 'host') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider or referee can review the restaurant and its public cuisine reference.')];
+      }
+      if (envelope.command.payload.approved && !challenge.requiredSeekerPlayerIds.every((playerId) => challenge.distanceByPlayerId[playerId])) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_DISTANCES_REQUIRED', 'Every seeker must confirm the target cuisine country is at least as far away before the hider can approve it.')];
+      }
+      return [];
+    }
+    case 'complete_distant_cuisine_challenge': {
+      const challenge = aggregate.distantCuisineChallenge;
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || challenge.completedAt || !challenge.origin || !challenge.target || challenge.target.reviewApproved !== true) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_TARGET_NOT_APPROVED', 'The hider must approve the target restaurant and cuisine country before the seekers visit.')];
+      }
+      if (!playerId || actorRole !== 'seeker' || !challenge.requiredSeekerPlayerIds.includes(playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must report their own restaurant visit from their seeker account.')];
+      }
+      if (!challenge.distanceByPlayerId[playerId] || challenge.completedAtByPlayerId[playerId]) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_DISTANCE_REQUIRED', 'Record your nearest-boundary distance check before reporting the visit.')];
+      }
+      const sample = freshDeviceLocation(aggregate, playerId, envelope.occurredAt);
+      if (!sample || distanceMeters([sample.longitude, sample.latitude], [challenge.target.restaurantLongitude, challenge.target.restaurantLatitude]) > 50) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_ARRIVAL_NOT_CONFIRMED', 'A fresh seeker phone fix must place you at the approved restaurant.')];
       }
       return [];
     }

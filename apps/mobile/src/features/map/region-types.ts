@@ -12,6 +12,7 @@ export interface RegionProviderMetadata {
   osmId?: number;
   resultClass?: string;
   resultType?: string;
+  resultAddressType?: string;
   placeRank?: number;
   importance?: number;
   boundarySource: 'search_geometry' | 'lookup_geometry' | 'seed_fallback';
@@ -76,6 +77,14 @@ export interface PlayableRegionCatalogEntry {
   parentRegionLabel?: string;
   providerMetadata?: RegionProviderMetadata;
   compositeMetadata?: CompositeRegionMetadata;
+}
+
+export function isCountryBoundaryRegion(region: PlayableRegionCatalogEntry | undefined): region is PlayableRegionCatalogEntry {
+  return Boolean(region && region.sourceKind === 'provider_catalog' &&
+    region.providerMetadata?.providerKey === 'osm_nominatim' &&
+    region.providerMetadata.resultAddressType === 'country' &&
+    (region.geometry.type === 'Polygon' || region.geometry.type === 'MultiPolygon') &&
+    /^osm:(?:relation|way):\d+$/.test(region.regionId));
 }
 
 export interface RegionSearchResponse {

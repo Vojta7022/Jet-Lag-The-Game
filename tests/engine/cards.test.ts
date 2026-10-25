@@ -8,6 +8,7 @@ import {
   loadEngineTestContentPack,
   makeEnvelope,
   moveCardToTeamHand,
+  recordLocationUpdate,
   setupMatchToHidePhase,
   setupMatchToSeekReady
 } from './helpers.ts';
@@ -390,6 +391,62 @@ test('Impressionable Consumer has a typed assisted plan for its scanned 30 m adv
   const plan = buildCardResolutionPlan(card, 'small');
   assert.equal(plan.kind, 'impressionable_consumer_challenge');
   assert.equal(plan.minimumAdvertisementDistanceMeters, 30);
+});
+
+test('Distant Cuisine has a typed assisted plan that compares nearest country boundaries', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('distant cuisine'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'distant_cuisine_challenge', description: card.description, automationLevel: 'assisted', payload: { requireSingleCountryReference: true, compareNearestCountryBoundaryDistance: true, requireHiderReview: true } } as never];
+  const plan = buildCardResolutionPlan(card, 'small');
+  assert.equal(plan.kind, 'distant_cuisine_challenge');
+});
+
+test('Distant Cuisine blocks questions until every seeker visits an approved farther-cuisine restaurant', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('distant cuisine'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'distant_cuisine_challenge', description: card.description, automationLevel: 'assisted', payload: {} } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 100), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 101), contentPack).aggregate;
+  assert.equal(aggregate.distantCuisineChallenge?.sourceCardInstanceId, cardInstanceId);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 102), contentPack), /ready|curse|challenge/i);
+
+  aggregate = recordLocationUpdate(aggregate, contentPack, { playerId: 'hider-1', role: 'hider', latitude: 50.2, longitude: 14.2, accuracyMeters: 8, source: 'device', step: 103 });
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'set_distant_cuisine_origin', payload: {
+      sourceCardInstanceId: cardInstanceId, restaurantName: 'Origin Bistro', restaurantLatitude: 50.2, restaurantLongitude: 14.2,
+      cuisineCountryName: 'Japan', cuisineCountryRegionId: 'osm:relation:1', publicSingleCountryReferenceAttested: true
+    } }, 104), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'submit_distant_cuisine_target', payload: {
+      sourceCardInstanceId: cardInstanceId, restaurantName: 'Target Bistro', restaurantLatitude: 50.25, restaurantLongitude: 14.25,
+      cuisineCountryName: 'Mexico', cuisineCountryRegionId: 'osm:relation:2', publicSingleCountryReferenceAttested: true
+    } }, 105), contentPack).aggregate;
+  aggregate = recordLocationUpdate(aggregate, contentPack, { playerId: 'seeker-1', role: 'seeker', latitude: 50.2, longitude: 14.2, accuracyMeters: 8, source: 'device', step: 106 });
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_distant_cuisine_distance', payload: { sourceCardInstanceId: cardInstanceId, sourceCountryDistanceMeters: 400_000, targetCountryDistanceMeters: 500_000 } }, 107), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'review_distant_cuisine_target', payload: { sourceCardInstanceId: cardInstanceId, approved: true } }, 108), contentPack).aggregate;
+  aggregate = recordLocationUpdate(aggregate, contentPack, { playerId: 'seeker-1', role: 'seeker', latitude: 50.25, longitude: 14.25, accuracyMeters: 8, source: 'device', step: 109 });
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'complete_distant_cuisine_challenge', payload: { sourceCardInstanceId: cardInstanceId } }, 110), contentPack).aggregate;
+
+  assert.ok(aggregate.distantCuisineChallenge?.completedAt);
+  assert.ok(aggregate.distantCuisineChallenge?.completedAtByPlayerId['seeker-1']);
 });
 
 test('Impressionable Consumer gates questions until hider-approved advertisement, target visit, and purchase/entry attestations', () => {

@@ -170,6 +170,11 @@ export function validateStateForCommand(
     case 'submit_impressionable_consumer_target':
     case 'review_impressionable_consumer_target':
     case 'complete_impressionable_consumer_challenge':
+    case 'set_distant_cuisine_origin':
+    case 'submit_distant_cuisine_target':
+    case 'report_distant_cuisine_distance':
+    case 'review_distant_cuisine_target':
+    case 'complete_distant_cuisine_challenge':
     case 'confirm_unguided_tourist_outdoors':
     case 'submit_unguided_tourist_photo':
     case 'review_unguided_tourist_photo':

@@ -1639,6 +1639,14 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'distant_cuisine_challenge') {
+        const seekerTeam = Object.values(aggregate!.teams).find((team) => team.side === 'seeker');
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'distant_cuisine_challenge_started',
+          payload: { sourceCardInstanceId: activeResolution.sourceCardInstanceId, requiredSeekerPlayerIds: seekerTeam?.memberPlayerIds ?? [] }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'seeker_off_transit_challenge') {
         events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
           type: 'seeker_off_transit_restriction_started',
@@ -2065,6 +2073,26 @@ function eventsForCommand(
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
         type: 'impressionable_consumer_visit_reported',
         payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId, playerId: envelope.actor.playerId!, completedAt: envelope.occurredAt }
+      })];
+    case 'set_distant_cuisine_origin':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'distant_cuisine_origin_set', payload: { ...envelope.command.payload, submittedByPlayerId: envelope.actor.playerId! }
+      })];
+    case 'submit_distant_cuisine_target':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'distant_cuisine_target_submitted', payload: { ...envelope.command.payload, submittedByPlayerId: envelope.actor.playerId! }
+      })];
+    case 'report_distant_cuisine_distance':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'distant_cuisine_distance_reported', payload: { ...envelope.command.payload, playerId: envelope.actor.playerId! }
+      })];
+    case 'review_distant_cuisine_target':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'distant_cuisine_target_reviewed', payload: envelope.command.payload
+      })];
+    case 'complete_distant_cuisine_challenge':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'distant_cuisine_visit_reported', payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId, playerId: envelope.actor.playerId! }
       })];
     case 'confirm_egg_partner_acquired':
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {

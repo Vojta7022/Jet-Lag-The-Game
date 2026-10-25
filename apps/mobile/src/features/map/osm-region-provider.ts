@@ -172,6 +172,7 @@ function buildProviderMetadata(
     osmId: Number.isFinite(item.osm_id) ? item.osm_id : undefined,
     resultClass: safeTrimmedString(item.class),
     resultType: safeTrimmedString(item.type),
+    resultAddressType: safeTrimmedString(item.addresstype),
     placeRank: Number.isFinite(item.place_rank) ? item.place_rank : undefined,
     importance: Number.isFinite(item.importance) ? item.importance : undefined,
     boundarySource

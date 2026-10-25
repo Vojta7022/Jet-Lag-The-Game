@@ -312,6 +312,7 @@ export function reduceMatchAggregate(
         birdGuideChallenge: undefined,
         mediocreTravelAgentChallenge: undefined,
         impressionableConsumerChallenge: undefined,
+        distantCuisineChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -360,6 +361,7 @@ export function reduceMatchAggregate(
         birdGuideChallenge: undefined,
         mediocreTravelAgentChallenge: undefined,
         impressionableConsumerChallenge: undefined,
+        distantCuisineChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -940,6 +942,52 @@ export function reduceMatchAggregate(
       const complete = challenge.requiredSeekerPlayerIds.every((playerId) => completedAtByPlayerId[playerId]);
       return { ...base, impressionableConsumerChallenge: { ...challenge, completedAtByPlayerId,
         completedAt: complete ? eventEnvelope.occurredAt : challenge.completedAt } };
+    }
+    case 'distant_cuisine_challenge_started':
+      return { ...base, distantCuisineChallenge: {
+        sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+        requiredSeekerPlayerIds: eventEnvelope.event.payload.requiredSeekerPlayerIds,
+        startedAt: eventEnvelope.occurredAt,
+        distanceByPlayerId: {},
+        completedAtByPlayerId: {}
+      } };
+    case 'distant_cuisine_origin_set': {
+      const challenge = base.distantCuisineChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return { ...base, distantCuisineChallenge: { ...challenge, origin: { ...eventEnvelope.event.payload, submittedAt: eventEnvelope.occurredAt }, target: undefined, distanceByPlayerId: {}, completedAtByPlayerId: {}, completedAt: undefined } };
+    }
+    case 'distant_cuisine_target_submitted': {
+      const challenge = base.distantCuisineChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return { ...base, distantCuisineChallenge: { ...challenge, target: {
+        ...eventEnvelope.event.payload,
+        submittedAt: eventEnvelope.occurredAt,
+        rejectedAttemptCount: (challenge.target?.rejectedAttemptCount ?? 0) + (challenge.target?.reviewApproved === false ? 1 : 0)
+      }, distanceByPlayerId: {}, completedAtByPlayerId: {}, completedAt: undefined } };
+    }
+    case 'distant_cuisine_distance_reported': {
+      const challenge = base.distantCuisineChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return { ...base, distantCuisineChallenge: { ...challenge, distanceByPlayerId: {
+        ...challenge.distanceByPlayerId,
+        [eventEnvelope.event.payload.playerId]: {
+          sourceCountryDistanceMeters: eventEnvelope.event.payload.sourceCountryDistanceMeters,
+          targetCountryDistanceMeters: eventEnvelope.event.payload.targetCountryDistanceMeters,
+          updatedAt: eventEnvelope.occurredAt
+        }
+      } } };
+    }
+    case 'distant_cuisine_target_reviewed': {
+      const challenge = base.distantCuisineChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId || !challenge.target) return base;
+      return { ...base, distantCuisineChallenge: { ...challenge, target: { ...challenge.target, reviewedAt: eventEnvelope.occurredAt, reviewApproved: eventEnvelope.event.payload.approved } } };
+    }
+    case 'distant_cuisine_visit_reported': {
+      const challenge = base.distantCuisineChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const completedAtByPlayerId = { ...challenge.completedAtByPlayerId, [eventEnvelope.event.payload.playerId]: eventEnvelope.occurredAt };
+      const complete = challenge.requiredSeekerPlayerIds.every((playerId) => completedAtByPlayerId[playerId]);
+      return { ...base, distantCuisineChallenge: { ...challenge, completedAtByPlayerId, completedAt: complete ? eventEnvelope.occurredAt : challenge.completedAt } };
     }
     case 'mediocre_travel_agent_completed': {
       const challenge = base.mediocreTravelAgentChallenge;

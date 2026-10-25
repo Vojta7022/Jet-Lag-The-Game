@@ -193,6 +193,15 @@ test('the workbook importer creates a normalized draft content pack', () => {
     requireHiderReview: true
   });
   assert.match(String(impressionableConsumer?.rulebookGuidanceText), /public places such as parks do not count/i);
+  const distantCuisine = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-distant-cuisine');
+  assert.equal(distantCuisine?.automationLevel, 'assisted');
+  assert.equal(distantCuisine?.effects[0]?.effectType, 'distant_cuisine_challenge');
+  assert.deepEqual(distantCuisine?.effects[0]?.payload, {
+    requireSingleCountryReference: true,
+    compareNearestCountryBoundaryDistance: true,
+    requireHiderReview: true
+  });
+  assert.match(String(distantCuisine?.rulebookGuidanceText), /nearest point in that country/i);
   assert.deepEqual(discardDrawThree.effects[0]?.payload, { discardCount: 2, drawCount: 3 });
   assert.match(discardDrawThree.description, /discard 2 cards from your hand, then draw and keep 3 replacement cards/i);
 
@@ -378,6 +387,14 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   assert.deepEqual(legacyImpressionableConsumer?.effects[0]?.payload, {
     minimumAdvertisementDistanceMeters: 30,
     requireOutdoorAdvertisement: true,
+    requireHiderReview: true
+  });
+  const legacyDistantCuisine = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-distant-cuisine');
+  assert.equal(legacyDistantCuisine?.automationLevel, 'assisted');
+  assert.equal(legacyDistantCuisine?.effects[0]?.effectType, 'distant_cuisine_challenge');
+  assert.deepEqual(legacyDistantCuisine?.effects[0]?.payload, {
+    requireSingleCountryReference: true,
+    compareNearestCountryBoundaryDistance: true,
     requireHiderReview: true
   });
   assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));

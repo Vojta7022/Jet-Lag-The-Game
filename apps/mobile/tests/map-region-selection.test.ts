@@ -46,7 +46,7 @@ import {
 import type {
   GeoJsonGeometryModel
 } from '../../../packages/shared-types/src/index.ts';
-import type { PlayableRegionCatalogEntry } from '../src/features/map/region-types.ts';
+import { isCountryBoundaryRegion, type PlayableRegionCatalogEntry } from '../src/features/map/region-types.ts';
 import { pointInGeometry } from '../../../packages/geo/src/index.ts';
 
 const generatedPackPath = fileURLToPath(
@@ -803,6 +803,33 @@ test('nominatim provider maps real polygon search results and exact preview geom
   assert.equal(previewOverlayModel.overlays[0]?.geometry?.type, 'Polygon');
   assert.equal(fetchCalls, 1);
   assert.equal(cachedResults[0]?.regionId, results[0]?.regionId);
+});
+
+test('nominatim provider preserves the address type needed to distinguish countries from subregions', async () => {
+  const boundary: GeoJsonGeometryModel = {
+    type: 'Polygon',
+    coordinates: [[[-180, -80], [180, -80], [180, 80], [-180, 80], [-180, -80]]]
+  };
+  const provider = createNominatimRegionProvider({
+    baseUrl: mobileAppEnvironment.regionProviderBaseUrl,
+    throttleMs: 0,
+    cacheTtlMs: 60_000,
+    fetchFn: async () => new Response(JSON.stringify([{
+      place_id: 1,
+      osm_type: 'relation',
+      osm_id: 51684,
+      class: 'boundary',
+      type: 'administrative',
+      addresstype: 'country',
+      display_name: 'Czechia',
+      address: { country: 'Czechia' },
+      geojson: boundary
+    }]), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  });
+
+  const results = await provider.searchRegions('Czechia');
+  assert.equal(results[0]?.providerMetadata?.resultAddressType, 'country');
+  assert.equal(isCountryBoundaryRegion(results[0]), true);
 });
 
 test('nominatim provider deduplicates in-flight identical searches while keeping cache behavior', async () => {

@@ -37,6 +37,8 @@ import {
   resolveCurrentRole
 } from '../features/cards/index.ts';
 import { ImpressionableConsumerPanel } from '../features/cards/ImpressionableConsumerPanel.tsx';
+import { DistantCuisinePanel } from '../features/cards/DistantCuisinePanel.tsx';
+import { buildLocationUpdateCommand } from '../features/location/location-state.ts';
 import {
   filterCardIdsByVisibleHand,
   haveSameCardIdSequence,
@@ -649,6 +651,22 @@ export function CardsScreen() {
           onSubmitTarget={(payload) => void submitCommand({ type: 'submit_impressionable_consumer_target', payload })}
           onReview={(payload) => void submitCommand({ type: 'review_impressionable_consumer_target', payload })}
           onComplete={(payload) => void submitCommand({ type: 'complete_impressionable_consumer_challenge', payload })}
+        />
+      ) : null}
+
+      {projection?.distantCuisineChallenge ? (
+        <DistantCuisinePanel
+          challenge={projection.distantCuisineChallenge}
+          visibleMap={projection.visibleMap}
+          players={projection.players.map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+          viewerRole={viewerRole}
+          viewerPlayerId={activeMatch?.recipient.playerId}
+          disabled={state.loadState === 'loading'}
+          onSetOrigin={(sample, payload) => submitCommands([buildLocationUpdateCommand(sample), { type: 'set_distant_cuisine_origin', payload }])}
+          onSubmitTarget={(payload) => submitCommand({ type: 'submit_distant_cuisine_target', payload })}
+          onReportDistance={(sample, payload) => submitCommands([buildLocationUpdateCommand(sample), { type: 'report_distant_cuisine_distance', payload }])}
+          onReview={(payload) => submitCommand({ type: 'review_distant_cuisine_target', payload })}
+          onComplete={(sample, payload) => submitCommands([buildLocationUpdateCommand(sample), { type: 'complete_distant_cuisine_challenge', payload }])}
         />
       ) : null}
 

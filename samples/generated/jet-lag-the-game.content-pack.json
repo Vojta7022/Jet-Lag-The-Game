@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T21:38:50.714Z",
+    "importedAt": "2026-10-25T21:58:24.356Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3161,7 +3161,7 @@
       "shortName": "Curse Of The Distant Cuisine",
       "description": "Find a restaurant within your zone that explicitly serves food from a specific foreign country. The seekers must visit a restaurant serving food from a country that is an equal or greater distance away before asking another question",
       "rulebookGuidanceText": "The restaurant must explicitly name one country, or a region within one country, in its name or other public-facing material. A broad label such as “Asian” does not qualify. Measure country distance from the seeker’s exact location to the nearest point in that country.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3171,18 +3171,20 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "distant_cuisine_challenge",
           "description": "Find a restaurant within your zone that explicitly serves food from a specific foreign country. The seekers must visit a restaurant serving food from a country that is an equal or greater distance away before asking another question",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Find a restaurant within your zone that explicitly serves food from a specific foreign country. The seekers must visit a restaurant serving food from a country that is equal or great distance away before asking another question",
           "payload": {
-            "workbookName": "Curse Of The Distant Cuisine"
+            "requireSingleCountryReference": true,
+            "compareNearestCountryBoundaryDistance": true,
+            "requireHiderReview": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true,
+        "requiresManualApproval": false,
         "requiresPhotoUpload": false,
         "requiresVideoUpload": false
       },
@@ -3195,7 +3197,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

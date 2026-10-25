@@ -144,6 +144,12 @@ export type DomainEvent =
   | ImpressionableConsumerTargetSubmittedEvent
   | ImpressionableConsumerTargetReviewedEvent
   | ImpressionableConsumerVisitReportedEvent
+  | DistantCuisineChallengeStartedEvent
+  | DistantCuisineOriginSetEvent
+  | DistantCuisineTargetSubmittedEvent
+  | DistantCuisineDistanceReportedEvent
+  | DistantCuisineTargetReviewedEvent
+  | DistantCuisineVisitReportedEvent
   | EggPartnerChallengeStartedEvent
   | EggPartnerAcquiredEvent
   | EggPartnerMemberLostEvent
@@ -475,7 +481,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'mediocre_travel_agent_challenge' | 'impressionable_consumer_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'mediocre_travel_agent_challenge' | 'impressionable_consumer_challenge' | 'distant_cuisine_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     labyrinthDrawingWindowMinutes?: number;
     moveOriginStationId?: string;
     moveOriginStationName?: string;
@@ -785,6 +791,36 @@ export interface ImpressionableConsumerTargetReviewedEvent {
 export interface ImpressionableConsumerVisitReportedEvent {
   type: 'impressionable_consumer_visit_reported';
   payload: { sourceCardInstanceId: string; playerId: string; completedAt: string };
+}
+
+export interface DistantCuisineChallengeStartedEvent {
+  type: 'distant_cuisine_challenge_started';
+  payload: { sourceCardInstanceId: string; requiredSeekerPlayerIds: string[] };
+}
+
+export interface DistantCuisineOriginSetEvent {
+  type: 'distant_cuisine_origin_set';
+  payload: { sourceCardInstanceId: string; restaurantName: string; restaurantLatitude: number; restaurantLongitude: number; cuisineCountryName: string; cuisineCountryRegionId: string; submittedByPlayerId: string };
+}
+
+export interface DistantCuisineTargetSubmittedEvent {
+  type: 'distant_cuisine_target_submitted';
+  payload: { sourceCardInstanceId: string; restaurantName: string; restaurantLatitude: number; restaurantLongitude: number; cuisineCountryName: string; cuisineCountryRegionId: string; submittedByPlayerId: string };
+}
+
+export interface DistantCuisineDistanceReportedEvent {
+  type: 'distant_cuisine_distance_reported';
+  payload: { sourceCardInstanceId: string; playerId: string; sourceCountryDistanceMeters: number; targetCountryDistanceMeters: number };
+}
+
+export interface DistantCuisineTargetReviewedEvent {
+  type: 'distant_cuisine_target_reviewed';
+  payload: { sourceCardInstanceId: string; approved: boolean };
+}
+
+export interface DistantCuisineVisitReportedEvent {
+  type: 'distant_cuisine_visit_reported';
+  payload: { sourceCardInstanceId: string; playerId: string };
 }
 
 export interface EggPartnerChallengeStartedEvent {
