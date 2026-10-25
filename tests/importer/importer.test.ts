@@ -254,6 +254,17 @@ test('the workbook importer creates a normalized draft content pack', () => {
   });
   assert.equal(eggPartner?.requirements?.requiresManualApproval, false);
   assert.equal(getCardDiscardRequirement(eggPartner!).requiredCards, 2);
+  const jammedDoor = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-jammed-door');
+  assert.equal(jammedDoor?.automationLevel, 'assisted');
+  assert.equal(jammedDoor?.effects[0]?.effectType, 'jammed_door_challenge');
+  assert.deepEqual(jammedDoor?.effects[0]?.payload, {
+    minutesByScale: { small: 30, medium: 60, large: 180 },
+    retryCooldownMinutesByScale: { small: 5, medium: 10, large: 15 },
+    minimumTotal: 7,
+    requiresVisibleDoorway: true
+  });
+  assert.equal(jammedDoor?.requirements?.requiresManualApproval, false);
+  assert.equal(getCardDiscardRequirement(jammedDoor!).requiredCards, 2);
 
   const hiderDeck = result.pack.decks.find((deck) => deck.deckId === 'hider-main');
   assert.ok(hiderDeck);
@@ -291,6 +302,16 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
     acquireBeforeQuestion: true
   });
   assert.equal(getCardDiscardRequirement(eggPartner!).requiredCards, 2);
+  const jammedDoor = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-jammed-door');
+  assert.equal(jammedDoor?.automationLevel, 'assisted');
+  assert.equal(jammedDoor?.effects[0]?.effectType, 'jammed_door_challenge');
+  assert.deepEqual(jammedDoor?.effects[0]?.payload, {
+    minutesByScale: { small: 30, medium: 60, large: 180 },
+    retryCooldownMinutesByScale: { small: 5, medium: 10, large: 15 },
+    minimumTotal: 7,
+    requiresVisibleDoorway: true
+  });
+  assert.equal(getCardDiscardRequirement(jammedDoor!).requiredCards, 2);
   const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
   assert.equal(photoTemplates.length, 18);
   assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));

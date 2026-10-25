@@ -29,7 +29,7 @@ function findPlayableSmokeCard(contentPack: ContentPack, projection: { visibleCa
     return Boolean(
       definition &&
       definition.kind !== 'time_bonus' &&
-      !definition.effects.some((effect) => ['duplicate_card', 'veto_question', 'randomize_question', 'move_power_up', 'endless_tumble_challenge', 'gamblers_feet_challenge', 'egg_partner_challenge'].includes(effect.effectType)) &&
+      !definition.effects.some((effect) => ['duplicate_card', 'veto_question', 'randomize_question', 'move_power_up', 'endless_tumble_challenge', 'gamblers_feet_challenge', 'egg_partner_challenge', 'jammed_door_challenge'].includes(effect.effectType)) &&
       Object.keys(getCardDiscardRequirement(definition)).length === 0
     );
   });
@@ -42,17 +42,20 @@ test('card flow smoke selection skips Move and assisted challenge cards that nee
   const endlessTumble = contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === 'endless_tumble_challenge'));
   const gamblersFeet = contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === 'gamblers_feet_challenge'));
   const eggPartner = contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === 'egg_partner_challenge'));
+  const jammedDoor = contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === 'jammed_door_challenge'));
   assert.ok(move);
   assert.ok(immediatelyResolvable);
   assert.ok(endlessTumble);
   assert.ok(gamblersFeet);
   assert.ok(eggPartner);
+  assert.ok(jammedDoor);
   const selected = findPlayableSmokeCard(contentPack, {
     visibleCards: [
       { cardDefinitionId: move.cardDefinitionId, zone: 'hand' },
       { cardDefinitionId: endlessTumble.cardDefinitionId, zone: 'hand' },
       { cardDefinitionId: gamblersFeet.cardDefinitionId, zone: 'hand' },
       { cardDefinitionId: eggPartner.cardDefinitionId, zone: 'hand' },
+      { cardDefinitionId: jammedDoor.cardDefinitionId, zone: 'hand' },
       { cardDefinitionId: immediatelyResolvable.cardDefinitionId, zone: 'hand' }
     ]
   });

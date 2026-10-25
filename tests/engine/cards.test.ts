@@ -439,6 +439,45 @@ test('Egg Partner cannot be played during endgame', () => {
   assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack), /cannot be played during the endgame/i);
 });
 
+test('Jammed Door enforces the scale timer, visible doorway rolls, and shared retry cooldowns', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.cardDefinitionId === 'curse-curse-of-the-jammed-door');
+  assert.ok(card);
+  card.castingCost = [];
+  card.effects = [{ ...card.effects[0]!, effectType: 'jammed_door_challenge', automationLevel: 'assisted', payload: {
+    minutesByScale: { small: 30, medium: 60, large: 180 },
+    retryCooldownMinutesByScale: { small: 5, medium: 10, large: 15 },
+    minimumTotal: 7
+  } } as never];
+  const plan = buildCardResolutionPlan(card, 'medium');
+  assert.equal(plan.kind, 'jammed_door_challenge');
+  assert.equal(plan.activeDurationMinutes, 60);
+  assert.equal(plan.doorwayRetryCooldownMinutes, 10);
+
+  let aggregate = setupMatchToSeekReady(contentPack, 'medium');
+  aggregate.teams['team-seeker']!.memberPlayerIds.push('seeker-2');
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 71), contentPack).aggregate;
+  assert.equal(aggregate.jammedDoorChallenge?.expiresAt, '2026-01-01T01:01:11.000Z');
+
+  const attempt = (playerId: string, doorwayId: string, dieOne: number, dieTwo: number, at: number, visible = true) => executeCommand(
+    aggregate,
+    makeEnvelope(aggregate.matchId, { actorId: playerId, playerId, role: 'seeker' }, { type: 'report_jammed_door_roll', payload: { sourceCardInstanceId: cardInstanceId, doorwayId, doorwayLabel: doorwayId, dieOne, dieTwo, doorwayVisible: visible } } as never, at),
+    contentPack
+  );
+  assert.throws(() => attempt('seeker-1', 'east-station-door', 3, 4, 72, false), /doorway is visible/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'report_jammed_door_roll', payload: { sourceCardInstanceId: cardInstanceId, doorwayId: 'east-station-door', doorwayLabel: 'East station door', dieOne: 0, dieTwo: 4, doorwayVisible: true } } as never, 72), contentPack), /dice must show a whole number/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'report_jammed_door_roll', payload: { sourceCardInstanceId: cardInstanceId, doorwayId: 'east-station-door', doorwayLabel: 'East station door', dieOne: 4, dieTwo: 4, doorwayVisible: true, targetPlayerId: 'seeker-2' } } as never, 72), contentPack), /reports their own doorway roll/i);
+  aggregate = attempt('seeker-1', 'east-station-door', 2, 2, 72).aggregate;
+  assert.equal(aggregate.jammedDoorChallenge?.statusByDoorwayId['east-station-door']?.retryAt, '2026-01-01T00:11:12.000Z');
+  assert.throws(() => attempt('seeker-2', 'east-station-door', 4, 3, 73), /doorway cannot be retried yet/i);
+  aggregate = attempt('seeker-2', 'west-station-door', 3, 4, 74).aggregate;
+  assert.equal(aggregate.jammedDoorChallenge?.statusByDoorwayId['west-station-door']?.passedAt, '2026-01-01T00:01:14.000Z');
+  assert.equal(aggregate.jammedDoorChallenge?.statusByDoorwayId['west-station-door']?.retryAt, undefined);
+  assert.throws(() => attempt('seeker-1', 'east-station-door', 1, 5, 3671), /curse timer has expired/i);
+});
+
 test('Gambler’s Feet creates a timed, typed step-challenge plan from its selected scale', () => {
   const contentPack = loadEngineTestContentPack();
   const card = contentPack.cards.find((candidate) => candidate.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');

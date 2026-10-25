@@ -67,6 +67,7 @@ import { colors } from '../ui/theme.ts';
 import { EndlessTumbleChallengePanel } from '../features/cards/EndlessTumbleChallengePanel.tsx';
 import { GamblersFeetChallengePanel } from '../features/cards/GamblersFeetChallengePanel.tsx';
 import { EggPartnerChallengePanel } from '../features/cards/EggPartnerChallengePanel.tsx';
+import { JammedDoorChallengePanel } from '../features/cards/JammedDoorChallengePanel.tsx';
 
 function resolveCurrentRole(
   role: string | undefined,
@@ -993,6 +994,19 @@ export function QuestionCenterScreen() {
             disabled={state.loadState === 'loading'}
             onAcquire={() => void submitCommand({ type: 'confirm_egg_partner_acquired', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId } })}
             onReportLost={(memberId, lossKind) => void submitCommand({ type: 'report_egg_partner_member_lost', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId, memberId, lossKind } })}
+          />
+        </Panel>
+      ) : null}
+
+      {projection?.jammedDoorChallenge ? (
+        <Panel title="Curse of the Jammed Door" subtitle="Two dice determine whether the seeker team can enter this doorway." tone="accent">
+          <JammedDoorChallengePanel
+            challenge={projection.jammedDoorChallenge}
+            players={projection.players.filter((player) => player.role === 'seeker').map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+            viewerRole={viewerRole}
+            viewerPlayerId={activeMatch?.recipient.playerId}
+            disabled={state.loadState === 'loading'}
+            onRoll={(playerId, doorwayId, doorwayLabel, dieOne, dieTwo) => void submitCommand({ type: 'report_jammed_door_roll', payload: { sourceCardInstanceId: projection.jammedDoorChallenge!.sourceCardInstanceId, doorwayId, doorwayLabel, dieOne, dieTwo, doorwayVisible: true, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
           />
         </Panel>
       ) : null}

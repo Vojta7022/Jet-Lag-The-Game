@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T17:47:59.318Z",
+    "importedAt": "2026-10-25T17:57:27.451Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2691,7 +2691,7 @@
       "shortName": "Curse Of The Jammed Door",
       "description": "For the next [S0.5, M1, L3] hours, whenever the seeker(s) want to pass through a doorway into a building, business, train, or other vehicle they must first roll 2 dice. If they do not roll a 7 or higher they cannot enter that space (including through other doorways) any given doorway can be reattempted after [S5, M10, L15] minutes.",
       "rulebookGuidanceText": "Roll only once the doorway is visible. Doors leading to another part of the same building do not need a check. If it is reasonably unclear whether something is a separate building, require the roll. When the curse expires, any doorway cooldown ends too.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -2701,18 +2701,29 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "jammed_door_challenge",
           "description": "For the next [S0.5, M1, L3] hours, whenever the seeker(s) want to pass through a doorway into a building, business, train, or other vehicle they must first roll 2 dice. If they do not roll a 7 or higher they cannot enter that space (including through other doorways) any given doorway can be reattempted after [S5, M10, L15] minutes.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "For the next [S0.5, M1, L3] hours, whenever the seeker(s) want to pass through a doorway into a building, business, train, or other vehicle they must first roll 2 dice. If they do not roll a 7 or higher they cannot enter that space (including through other doorways) any given doorway can be reattempted after [S5, M10, L15] minutes.",
           "payload": {
-            "workbookName": "Curse Of The Jammed Door"
+            "minutesByScale": {
+              "small": 30,
+              "medium": 60,
+              "large": 180
+            },
+            "retryCooldownMinutesByScale": {
+              "small": 5,
+              "medium": 10,
+              "large": 15
+            },
+            "minimumTotal": 7,
+            "requiresVisibleDoorway": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2723,7 +2734,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

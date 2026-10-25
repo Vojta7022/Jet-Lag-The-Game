@@ -25,6 +25,8 @@ Update 2026-10-25: Gambler’s Feet now has an assisted timed flow from the scan
 
 Update 2026-10-25: Egg Partner is now imported as an assisted, scale-aware effect. The authority blocks questions until egg acquisition, records per-member loss attestations, awards the 30/45/60-minute bonus once, and rejects play in endgame. The physical egg and member abandonment remain player/referee judgments. [cleaned workbook Curses sheet; base rulebook curse clarification, p. 50; `tests/engine/cards.test.ts`, `tests/importer/importer.test.ts`, checked 2026-10-25]
 
+Update 2026-10-25: Jammed Door is a typed 30/60/180-minute challenge. Seekers use two reported d6 results to reach 7 before entering a visible doorway; a miss starts one shared 5/10/15-minute cooldown for that doorway, while other doors keep independent status. The app enforces dice bounds, cooldown, and timer expiry; identifying a real doorway and rolling dice remain attestations. [cleaned workbook Curses sheet; base rulebook clarification, p. 50; `tests/engine/cards.test.ts`, `tests/importer/importer.test.ts`, checked 2026-10-25]
+
 ## Confirmed rules implemented
 
 - Investigation questions are selectable whenever their printed scale permits. “Draw N, Pick M” is the hider's reward after answering; it does not randomly deal the seekers' question choices. Repeating a question remains allowed and repeats the card draw/pick as a separate reward set.

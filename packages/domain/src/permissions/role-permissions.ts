@@ -45,6 +45,7 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'report_gamblers_feet_steps',
   'confirm_egg_partner_acquired',
   'report_egg_partner_member_lost',
+  'report_jammed_door_roll',
   'set_hangman_word',
   'end_hangman_challenge',
   'complete_cooldown',
@@ -96,7 +97,8 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'roll_gamblers_feet_die',
   'report_gamblers_feet_steps',
   'confirm_egg_partner_acquired',
-  'report_egg_partner_member_lost'
+  'report_egg_partner_member_lost',
+  'report_jammed_door_roll'
 ]);
 
 const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);

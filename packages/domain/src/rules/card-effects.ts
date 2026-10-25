@@ -12,7 +12,7 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge';
+  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
@@ -26,6 +26,8 @@ export interface CardResolutionPlan {
   extraQuestionRewardDrawCount?: number;
   moveDurationSeconds?: number;
   activeDurationMinutes?: number;
+  doorwayRetryCooldownMinutes?: number;
+  doorwayMinimumTotal?: number;
 }
 
 function normalizedCardName(cardDefinition: CardDefinition): string {
@@ -180,6 +182,21 @@ export function buildCardResolutionPlan(
       kind: 'egg_partner_challenge',
       discardRequirement: getCardDiscardRequirement(cardDefinition),
       timeBonusMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale)
+    };
+  }
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'jammed_door_challenge')) {
+    const effect = cardDefinition.effects.find((candidate) => candidate.effectType === 'jammed_door_challenge');
+    const payload = effect?.payload as { retryCooldownMinutesByScale?: Partial<Record<ScaleKey, unknown>>; minimumTotal?: unknown } | undefined;
+    const configuredCooldown = selectedScale ? payload?.retryCooldownMinutesByScale?.[selectedScale] : undefined;
+    const cooldownMinutes = typeof configuredCooldown === 'number' && Number.isFinite(configuredCooldown) && configuredCooldown > 0 ? configuredCooldown : 10;
+    const minimumTotal = typeof payload?.minimumTotal === 'number' && Number.isInteger(payload.minimumTotal) && payload.minimumTotal >= 2 && payload.minimumTotal <= 12 ? payload.minimumTotal : 7;
+    return {
+      kind: 'jammed_door_challenge',
+      discardRequirement: getCardDiscardRequirement(cardDefinition),
+      activeDurationMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale),
+      doorwayRetryCooldownMinutes: cooldownMinutes,
+      doorwayMinimumTotal: minimumTotal
     };
   }
 

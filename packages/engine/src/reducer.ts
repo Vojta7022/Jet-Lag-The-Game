@@ -304,6 +304,7 @@ export function reduceMatchAggregate(
         lemonPhylacteryChallenge: undefined,
         gamblersFeetChallenge: undefined,
         eggPartnerChallenge: undefined,
+        jammedDoorChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         cardInstances: Object.fromEntries(
           eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
@@ -341,6 +342,7 @@ export function reduceMatchAggregate(
         lemonPhylacteryChallenge: undefined,
         gamblersFeetChallenge: undefined,
         eggPartnerChallenge: undefined,
+        jammedDoorChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         disabledQuestionTemplateIds: [],
         disabledQuestionCategoryId: undefined,
@@ -678,6 +680,42 @@ export function reduceMatchAggregate(
         awardedCurseBonusMinutes: (base.awardedCurseBonusMinutes ?? 0) + bonusMinutesAwarded
       };
     }
+    case 'jammed_door_challenge_started':
+      return {
+        ...base,
+        jammedDoorChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt,
+          expiresAt: eventEnvelope.event.payload.expiresAt,
+          durationMinutes: eventEnvelope.event.payload.durationMinutes,
+          retryCooldownMinutes: eventEnvelope.event.payload.retryCooldownMinutes,
+          minimumTotal: eventEnvelope.event.payload.minimumTotal,
+          statusByDoorwayId: {}
+        }
+      };
+    case 'jammed_door_roll_reported': {
+      const challenge = base.jammedDoorChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const { doorwayId, doorwayLabel, reportedByPlayerId, dieOne, dieTwo, total, passed, retryAt } = eventEnvelope.event.payload;
+      return {
+        ...base,
+        jammedDoorChallenge: {
+          ...challenge,
+          statusByDoorwayId: {
+            ...challenge.statusByDoorwayId,
+            [doorwayId]: {
+              doorwayLabel,
+              lastAttemptAt: eventEnvelope.occurredAt,
+              lastReportedByPlayerId: reportedByPlayerId,
+              dieOne,
+              dieTwo,
+              total,
+              ...(passed ? { passedAt: eventEnvelope.occurredAt } : { retryAt })
+            }
+          }
+        }
+      };
+    }
     case 'question_response_expired': {
       const question = base.questionInstances[eventEnvelope.event.payload.questionInstanceId];
       if (!question) return base;
@@ -952,6 +990,9 @@ export function reduceMatchAggregate(
           endlessTumbleMinimumDistanceMeters: eventEnvelope.event.payload.endlessTumbleMinimumDistanceMeters,
           endlessTumbleSuccessfulDieResults: eventEnvelope.event.payload.endlessTumbleSuccessfulDieResults,
           gamblersFeetDurationMinutes: eventEnvelope.event.payload.gamblersFeetDurationMinutes,
+          jammedDoorRetryCooldownMinutes: eventEnvelope.event.payload.jammedDoorRetryCooldownMinutes,
+          jammedDoorMinimumTotal: eventEnvelope.event.payload.jammedDoorMinimumTotal,
+          jammedDoorDurationMinutes: eventEnvelope.event.payload.jammedDoorDurationMinutes,
           questionTemplateCount: eventEnvelope.event.payload.questionTemplateCount,
           requireDistinctQuestionCategories: eventEnvelope.event.payload.requireDistinctQuestionCategories,
           questionRewardCount: eventEnvelope.event.payload.questionRewardCount,

@@ -1858,6 +1858,42 @@ export function validateCommandEnvelope(
       }
       return [];
     }
+    case 'report_jammed_door_roll': {
+      const challenge = aggregate.jammedDoorChallenge;
+      const payload = envelope.command.payload;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      const targetPlayerId = payload.targetPlayerId ?? envelope.actor.playerId;
+      const refereeMayReportForOthers = actorRole === 'host' || actorRole === 'system';
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'JAMMED_DOOR_NOT_ACTIVE', 'There is no active Jammed Door challenge.')];
+      }
+      if (Date.parse(envelope.occurredAt) >= Date.parse(challenge.expiresAt)) {
+        return [error(envelope.command.type, 'JAMMED_DOOR_EXPIRED', 'The Jammed Door curse timer has expired.')];
+      }
+      if (!targetPlayerId || !seekerTeam?.memberPlayerIds.includes(targetPlayerId) ||
+        (!refereeMayReportForOthers && (actorRole !== 'seeker' || targetPlayerId !== envelope.actor.playerId))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'A seeker reports their own doorway roll; the host referee may record a roll for any seeker.')];
+      }
+      if (payload.doorwayVisible !== true) {
+        return [error(envelope.command.type, 'JAMMED_DOOR_NOT_VISIBLE', 'Roll only after the doorway is visible to the seekers.')];
+      }
+      if (typeof payload.doorwayId !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(payload.doorwayId) ||
+        typeof payload.doorwayLabel !== 'string' || payload.doorwayLabel.trim().length < 3 || payload.doorwayLabel.trim().length > 120) {
+        return [error(envelope.command.type, 'JAMMED_DOOR_ID_INVALID', 'Give the visible doorway a short, stable name so the team can share its result.')];
+      }
+      if (![payload.dieOne, payload.dieTwo].every((value) => Number.isInteger(value) && value >= 1 && value <= 6)) {
+        return [error(envelope.command.type, 'JAMMED_DOOR_DICE_INVALID', 'Both dice must show a whole number from 1 to 6.')];
+      }
+      const prior = challenge.statusByDoorwayId[payload.doorwayId];
+      if (prior?.passedAt) {
+        return [error(envelope.command.type, 'JAMMED_DOOR_ALREADY_PASSED', 'The seeker team has already passed through this doorway.')];
+      }
+      if (prior?.retryAt && Date.parse(envelope.occurredAt) < Date.parse(prior.retryAt)) {
+        return [error(envelope.command.type, 'JAMMED_DOOR_COOLDOWN', 'This doorway cannot be retried yet; wait for its displayed cooldown.')];
+      }
+      return [];
+    }
     case 'resume_match':
       return [];
     case 'archive_match':

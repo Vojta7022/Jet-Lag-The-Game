@@ -76,6 +76,7 @@ export type DomainCommand =
   | ReportGamblersFeetStepsCommand
   | ConfirmEggPartnerAcquiredCommand
   | ReportEggPartnerMemberLostCommand
+  | ReportJammedDoorRollCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -425,6 +426,11 @@ export interface ConfirmEggPartnerAcquiredCommand {
 export interface ReportEggPartnerMemberLostCommand {
   type: 'report_egg_partner_member_lost';
   payload: { sourceCardInstanceId: string; memberId: string; lossKind: 'abandoned' | 'cracked' };
+}
+
+export interface ReportJammedDoorRollCommand {
+  type: 'report_jammed_door_roll';
+  payload: { sourceCardInstanceId: string; doorwayId: string; doorwayLabel: string; dieOne: number; dieTwo: number; doorwayVisible: boolean; targetPlayerId?: string };
 }
 
 export interface CompleteCooldownCommand {

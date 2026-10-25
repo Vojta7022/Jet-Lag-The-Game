@@ -528,3 +528,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Persist egg acquisition/loss state, block questions until acquisition, and award its printed scale bonus once.
 - [x] Add seeker and referee controls on Cards, Question Center, and the live map; retain physical egg state as an attestation.
 - [x] Verify the printed two-card casting cost, engine/importer paths, full suite (409/409), mobile typecheck, web export, and `git diff --check` (2026-10-25). Physical egg acquisition and member loss remain attested.
+
+### Completed implementation slice: Curse of the Jammed Door
+
+- [x] Add failing tests for scale timer/cooldown, visible-door attestation, 2d6 threshold, shared retry cooldown, distinct doors, authorization, and expiration.
+- [x] Import the scanned card as a typed assisted effect in both workbook profiles and regenerate the base pack.
+- [x] Persist doorway attempts and enforce failed-door cooldowns until the scale timer expires.
+- [x] Add a role-aware reporting panel to Cards, Question Center, and the live map.
+- [x] Verify the two-card casting cost, engine/importer/mobile flows, full suite (410/410), typecheck, Expo web export, and `git diff --check` (2026-10-25). Doorway visibility and dice remain player/referee attestations.

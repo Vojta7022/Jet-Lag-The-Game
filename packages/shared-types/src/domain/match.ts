@@ -410,7 +410,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -432,6 +432,9 @@ export interface CardResolutionWindow {
   endlessTumbleMinimumDistanceMeters?: number;
   endlessTumbleSuccessfulDieResults?: number[];
   gamblersFeetDurationMinutes?: number;
+  jammedDoorRetryCooldownMinutes?: number;
+  jammedDoorMinimumTotal?: number;
+  jammedDoorDurationMinutes?: number;
   questionTemplateCount?: number;
   requireDistinctQuestionCategories?: boolean;
   rerollAfterQuestion?: boolean;
@@ -499,6 +502,27 @@ export interface EggPartnerChallengeModel {
   bonusAwardedAt?: string;
 }
 
+export interface JammedDoorAttemptModel {
+  doorwayLabel: string;
+  lastAttemptAt: string;
+  lastReportedByPlayerId: string;
+  dieOne: number;
+  dieTwo: number;
+  total: number;
+  passedAt?: string;
+  retryAt?: string;
+}
+
+export interface JammedDoorChallengeModel {
+  sourceCardInstanceId: string;
+  activatedAt: string;
+  expiresAt: string;
+  durationMinutes: number;
+  retryCooldownMinutes: number;
+  minimumTotal: number;
+  statusByDoorwayId: Record<string, JammedDoorAttemptModel>;
+}
+
 export interface MatchAggregate {
   matchId: string;
   mode: MatchMode;
@@ -535,6 +559,7 @@ export interface MatchAggregate {
   lemonPhylacteryChallenge?: LemonPhylacteryChallengeModel;
   gamblersFeetChallenge?: GamblersFeetChallengeModel;
   eggPartnerChallenge?: EggPartnerChallengeModel;
+  jammedDoorChallenge?: JammedDoorChallengeModel;
   awardedCurseBonusMinutes?: number;
   hiderHandLimitBonus?: number;
   disabledQuestionTemplateIds?: string[];

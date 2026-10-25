@@ -1391,7 +1391,10 @@ function eventsForCommand(
               timeBonusMinutes: resolutionPlan.timeBonusMinutes,
               endlessTumbleMinimumDistanceMeters: resolutionPlan.minimumDistanceMeters,
               endlessTumbleSuccessfulDieResults: resolutionPlan.successfulDieResults,
-              gamblersFeetDurationMinutes: resolutionPlan.activeDurationMinutes,
+              gamblersFeetDurationMinutes: resolutionPlan.kind === 'gamblers_feet_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
+              jammedDoorDurationMinutes: resolutionPlan.kind === 'jammed_door_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
+              jammedDoorRetryCooldownMinutes: resolutionPlan.doorwayRetryCooldownMinutes,
+              jammedDoorMinimumTotal: resolutionPlan.doorwayMinimumTotal,
               questionTemplateCount: resolutionPlan.questionTemplateCount,
               requireDistinctQuestionCategories: resolutionPlan.requireDistinctQuestionCategories,
               rerollAfterQuestion: resolutionPlan.rerollAfterQuestion,
@@ -1576,6 +1579,20 @@ function eventsForCommand(
         events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
           type: 'egg_partner_challenge_started',
           payload: { sourceCardInstanceId: activeResolution.sourceCardInstanceId, hiderBonusMinutes: activeResolution.timeBonusMinutes ?? 30 }
+        }));
+      }
+
+      if (activeResolution?.resolutionKind === 'jammed_door_challenge') {
+        const durationMinutes = activeResolution.jammedDoorDurationMinutes ?? 30;
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'jammed_door_challenge_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            durationMinutes,
+            retryCooldownMinutes: activeResolution.jammedDoorRetryCooldownMinutes ?? 5,
+            minimumTotal: activeResolution.jammedDoorMinimumTotal ?? 7,
+            expiresAt: new Date(Date.parse(envelope.occurredAt) + durationMinutes * 60_000).toISOString()
+          }
         }));
       }
 
@@ -1812,6 +1829,27 @@ function eventsForCommand(
           memberId: envelope.command.payload.memberId,
           lossKind: envelope.command.payload.lossKind,
           bonusMinutesAwarded: memberStatus?.lossKind || challenge.bonusAwardedAt ? 0 : challenge.hiderBonusMinutes
+        }
+      })];
+    }
+    case 'report_jammed_door_roll': {
+      const challenge = aggregate!.jammedDoorChallenge!;
+      const { doorwayId, doorwayLabel, dieOne, dieTwo, targetPlayerId } = envelope.command.payload;
+      const total = dieOne + dieTwo;
+      const passed = total >= challenge.minimumTotal;
+      const retryAt = passed ? undefined : new Date(Date.parse(envelope.occurredAt) + challenge.retryCooldownMinutes * 60_000).toISOString();
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'jammed_door_roll_reported',
+        payload: {
+          sourceCardInstanceId: challenge.sourceCardInstanceId,
+          doorwayId,
+          doorwayLabel,
+          reportedByPlayerId: targetPlayerId ?? envelope.actor.playerId!,
+          dieOne,
+          dieTwo,
+          total,
+          passed,
+          retryAt
         }
       })];
     }

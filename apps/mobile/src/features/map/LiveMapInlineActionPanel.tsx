@@ -15,6 +15,7 @@ import {
   CardResolutionStatusPanel,
   GamblersFeetChallengePanel,
   EggPartnerChallengePanel,
+  JammedDoorChallengePanel,
   EndlessTumbleChallengePanel,
   CardZoneSection,
   HIDER_HAND_TARGET,
@@ -545,6 +546,18 @@ export function LiveMapInlineActionPanel() {
               disabled={state.loadState === 'loading'}
               onAcquire={() => void submitCommand({ type: 'confirm_egg_partner_acquired', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId } })}
               onReportLost={(memberId, lossKind) => void submitCommand({ type: 'report_egg_partner_member_lost', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId, memberId, lossKind } })}
+            />
+          </View>
+        ) : null}
+        {projection?.jammedDoorChallenge ? (
+          <View style={styles.section}>
+            <JammedDoorChallengePanel
+              challenge={projection.jammedDoorChallenge}
+              players={seekerPlayers.map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+              viewerRole={viewerRole}
+              viewerPlayerId={activeMatch?.recipient.playerId}
+              disabled={state.loadState === 'loading'}
+              onRoll={(playerId, doorwayId, doorwayLabel, dieOne, dieTwo) => void submitCommand({ type: 'report_jammed_door_roll', payload: { sourceCardInstanceId: projection.jammedDoorChallenge!.sourceCardInstanceId, doorwayId, doorwayLabel, dieOne, dieTwo, doorwayVisible: true, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
             />
           </View>
         ) : null}

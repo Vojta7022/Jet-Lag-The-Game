@@ -143,6 +143,7 @@ export function validateStateForCommand(
     case 'set_lemon_phylactery_contact':
     case 'confirm_egg_partner_acquired':
     case 'report_egg_partner_member_lost':
+    case 'report_jammed_door_roll':
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Lemon contact can only be updated while seekers are searching.')];

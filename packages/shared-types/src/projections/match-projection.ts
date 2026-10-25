@@ -238,7 +238,7 @@ export interface MatchProjection {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
     openedAt?: string;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge';
     hangman?: {
       status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
       secretWord?: string;
@@ -260,6 +260,9 @@ export interface MatchProjection {
     endlessTumbleMinimumDistanceMeters?: number;
     endlessTumbleSuccessfulDieResults?: number[];
     gamblersFeetDurationMinutes?: number;
+    jammedDoorRetryCooldownMinutes?: number;
+    jammedDoorMinimumTotal?: number;
+    jammedDoorDurationMinutes?: number;
     questionTemplateCount?: number;
     requireDistinctQuestionCategories?: boolean;
     rerollAfterQuestion?: boolean;
@@ -314,6 +317,15 @@ export interface MatchProjection {
     eggAcquiredAt?: string;
     statusByMemberId: Record<string, { lossKind?: 'abandoned' | 'cracked'; updatedAt: string }>;
     bonusAwardedAt?: string;
+  };
+  jammedDoorChallenge?: {
+    sourceCardInstanceId: string;
+    activatedAt: string;
+    expiresAt: string;
+    durationMinutes: number;
+    retryCooldownMinutes: number;
+    minimumTotal: number;
+    statusByDoorwayId: Record<string, { doorwayLabel: string; lastAttemptAt: string; lastReportedByPlayerId: string; dieOne: number; dieTwo: number; total: number; passedAt?: string; retryAt?: string }>;
   };
   awardedCurseBonusMinutes?: number;
   disabledQuestionTemplateIds?: string[];
