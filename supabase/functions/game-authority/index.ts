@@ -8,6 +8,7 @@ import type {
   SyncCursor
 } from '../../../packages/shared-types/src/index.ts';
 import type { OnlineTransportService } from '../../../packages/transport/src/online/contracts.ts';
+import { createOnlineAuthorityHandler } from './runtime.ts';
 
 const MAX_REQUEST_BYTES = 64 * 1024;
 const JSON_HEADERS = {
@@ -276,6 +277,5 @@ export function createGameAuthorityHandler(dependencies: GameAuthorityDependenci
 }
 
 if (import.meta.main) {
-  const { createOnlineAuthorityHandler } = await import('./runtime.ts');
   Deno.serve(createOnlineAuthorityHandler());
 }

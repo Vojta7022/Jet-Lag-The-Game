@@ -93,9 +93,9 @@ drop policy if exists "match_attachments_insert_by_scope" on storage.objects;
 drop policy if exists "match_attachments_update_by_scope" on storage.objects;
 drop policy if exists "match_attachments_delete_by_scope" on storage.objects;
 
-alter table storage.objects enable row level security;
-revoke all on table storage.objects from public, anon, authenticated;
-grant select, insert, update, delete on table storage.objects to authenticated, service_role;
+-- Supabase owns the Storage schema and keeps RLS enabled on storage.objects.
+-- Manage bucket access through policies here; the application migration role
+-- cannot alter ownership-managed Storage table privileges.
 
 create policy "match_attachments_read_by_scope"
   on storage.objects for select to authenticated

@@ -59,6 +59,7 @@ test('expo app config and monorepo config files keep the mobile shell startup ho
   const metroConfig = readFileSync(path.join(mobileRoot, 'metro.config.cjs'), 'utf8');
   const babelConfig = readFileSync(path.join(mobileRoot, 'babel.config.cjs'), 'utf8');
   const envExample = readFileSync(path.join(mobileRoot, '.env.example'), 'utf8');
+  const supabaseConfig = readFileSync(path.resolve(mobileRoot, '../../supabase/config.toml'), 'utf8');
   const nativeMapCanvas = readFileSync(path.join(mobileRoot, 'src/features/map/MapCanvas.native.tsx'), 'utf8');
   const webMapCanvas = readFileSync(path.join(mobileRoot, 'src/features/map/MapCanvas.web.tsx'), 'utf8');
   const nativeOverlayRenderer = readFileSync(path.join(mobileRoot, 'src/features/map/MapOverlayRenderer.native.tsx'), 'utf8');
@@ -79,6 +80,8 @@ test('expo app config and monorepo config files keep the mobile shell startup ho
   assert.match(envExample, /EXPO_PUBLIC_ONLINE_STORAGE_CACHE_CONTROL_SECONDS/);
   assert.match(envExample, /EXPO_PUBLIC_REGION_PROVIDER_USAGE_MODE/);
   assert.match(envExample, /EXPO_PUBLIC_REGION_PROVIDER_TIMEOUT_MS/);
+  assert.match(supabaseConfig, /enable_anonymous_sign_ins\s*=\s*true/);
+  assert.match(supabaseConfig, /verify_jwt\s*=\s*true/);
   assert.match(nativeMapCanvas, /react-native-maps/);
   assert.doesNotMatch(webMapCanvas, /react-native-maps/);
   assert.match(nativeOverlayRenderer, /react-native-maps/);

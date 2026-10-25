@@ -1,4 +1,7 @@
 project_id = "jetlag-hide-and-seek"
 
+[auth]
+enable_anonymous_sign_ins = true
+
 [functions.game-authority]
 verify_jwt = true

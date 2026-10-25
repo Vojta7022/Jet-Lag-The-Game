@@ -2,6 +2,8 @@
 
 Online play uses Supabase Auth, an authenticated `game-authority` Edge Function, private match tables, and the `match-attachments` Storage bucket. Mobile clients submit commands through the function; the function validates the signed-in player's match membership and commits state with the server-only service-role key.
 
+The current mobile flow signs each phone in anonymously, then binds that authenticated user to the player's match membership. The local Supabase config enables anonymous sign-ins; enable the same Auth setting in the hosted project's Auth configuration before field play. Anonymous accounts are device/session identities, so account recovery and identity linking are not implemented yet.
+
 ## Runtime configuration
 
 Set these values in `apps/mobile/.env`:
@@ -27,6 +29,12 @@ For a new project, apply every migration in order, including the security follow
 7. `supabase/migrations/202610250001_pin_match_content_pack_version.sql`
 
 The second migration is retained for migration history and creates the bucket, but it temporarily installs permissive development policies. The final migration removes those grants and policies. Do not stop after migration 2 or expose that intermediate state to players.
+
+The final migration adds scoped policies to `storage.objects` without changing its ownership, grants, or RLS flag. Supabase manages that table under `supabase_storage_admin`; app migrations must not alter those ownership-controlled properties.
+
+## Local online smoke check
+
+With Docker running, start the local Supabase stack using `npx --yes supabase@latest start`. In a second terminal run `npx --yes supabase@latest functions serve game-authority`, then run `npm run online:smoke`. The smoke check creates disposable anonymous users, a match, and test evidence in the local database. It exercises host/seeker join, scoped projections, outsider denial, Storage privacy, membership revocation, and direct-table denial. Use only a disposable local project; it does not contact or validate a hosted project.
 
 For a project that already has game data or uploaded attachments, inspect and back up its schema and bucket before applying migration 004. It replaces legacy attachment access policies and only permits the current scoped object paths. Existing objects stored under the older `matches/{matchId}/{visibilityScope}/{attachmentId}.{ext}` layout will not match the new player/team-specific policy; migrate those objects and their metadata before relying on them.
 
@@ -56,4 +64,4 @@ The authenticated Storage policies check active membership and the viewer's scop
 - `403` for a valid user: confirm that user has an active `match_memberships` row for the match and that the player is not removed.
 - Storage upload/read denied: confirm the player is an active match member and the object path uses their permitted visibility scope.
 
-The Edge Function entrypoint passes `deno check`, but this checkout currently has no Supabase CLI, linked project, or project configuration values. The migrations have not been executed against PostgreSQL and the function has not been deployed to a configured Supabase project. Before relying on online play, validate the migrations against a disposable Supabase database, test each attachment scope and removed-member denial with separate accounts, deploy the Edge Function, and complete a cellular multi-phone round.
+The local migrations, Auth, Edge Function, membership checks, and Storage policies have been exercised against a disposable Supabase stack with separate anonymous sessions. This does not validate a hosted deployment. Before relying on online play, deploy the Edge Function and migrations to a configured hosted project, then complete a cellular multi-phone round.

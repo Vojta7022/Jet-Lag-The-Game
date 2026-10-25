@@ -186,6 +186,8 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [ ] Deploy and security-audit the online authority; verify it on real devices over cellular data.
 - [x] Add explicit Supabase CLI project/function configuration with JWT verification enabled; validate the Edge Function runtime using `deno check` (2026-10-25).
 - [x] Add a follow-up migration that removes the legacy blanket database policies and scopes storage objects to an active match membership plus their public/team/player/host scope. Static policy regression test passes; applying and executing it against a Supabase database is still pending.
+- [x] Apply all seven migrations to a real local Supabase stack and inspect RLS flags, owners, policies, and grants. Fix the security migration so it leaves Supabase-owned `storage.objects` RLS/grants intact while replacing its policies; production-project execution remains pending (2026-10-25).
+- [x] Add `npm run online:smoke` to repeat the real local Auth, create/join, scoped-projection, outsider-denial, Storage-scope, revocation, and direct-table-denial walkthrough; hosted execution and cellular multi-phone play remain open (2026-10-25).
 - [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
 - [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects.
 - [x] Import the scan-backed Move procedure, reject its use after endgame begins, and source the missing scale durations (Small 10, Medium 20, Large 60 minutes) from the community card transcription; retain provenance in the generated pack.

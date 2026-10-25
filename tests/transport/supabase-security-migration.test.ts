@@ -15,7 +15,9 @@ test('online security migration removes development-wide table grants and scopes
   assert.match(sql, /create or replace function private\.can_access_match_attachment/i);
   assert.match(sql, /auth\.uid\(\)/i);
   assert.match(sql, /createdByPlayerId/i);
-  assert.match(sql, /alter table storage\.objects enable row level security/i);
+  assert.match(sql, /Supabase owns the Storage schema and keeps RLS enabled on storage\.objects/i);
+  assert.doesNotMatch(sql, /alter table storage\.objects/i);
+  assert.doesNotMatch(sql, /revoke all on table storage\.objects/i);
   assert.match(sql, /team_private/i);
   assert.match(sql, /player_private/i);
   assert.match(sql, /create policy .*match_attachments/i);
