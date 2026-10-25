@@ -94,8 +94,10 @@ function hasValidMapSetupData(payload: {
   customOverlays?: Array<{ id: string; name: string; color: string; visible: boolean; geometry: unknown }>;
   stationSource?: string;
   customStations?: Array<{ id: string; name: string; latitude: number; longitude: number }>;
+  bridgeAvailability?: string;
 }): boolean {
   if (payload.stationSource !== undefined && !['osm', 'custom', 'both'].includes(payload.stationSource)) return false;
+  if (payload.bridgeAvailability !== undefined && !['unknown', 'present', 'none'].includes(payload.bridgeAvailability)) return false;
   const geometryBudget = { positions: 0 };
   if (payload.customOverlays !== undefined && (
     !Array.isArray(payload.customOverlays) || payload.customOverlays.length > 100 ||
@@ -574,6 +576,12 @@ export function validateCommandEnvelope(
       }
       if (!aggregate.mapRegion) {
         return [error(envelope.command.type, 'MAP_REGION_REQUIRED', 'A map region must be configured before starting the match.')];
+      }
+      const hasBridgeTroll = contentPack.cards.some((card) =>
+        card.effects.some((effect) => effect.effectType === 'bridge_troll_challenge')
+      );
+      if (hasBridgeTroll && (aggregate.mapRegion.bridgeAvailability ?? 'unknown') === 'unknown') {
+        return [error(envelope.command.type, 'BRIDGE_AVAILABILITY_REQUIRED', 'Confirm whether the map has bridges before starting the match.')];
       }
       return [];
     }

@@ -212,6 +212,7 @@ def main() -> None:
         "displayName": "Prague smoke region",
         "regionKind": "city",
         "featureDatasetRefs": ["osm-core", "transit-registry"],
+        "bridgeAvailability": "present",
         "stationSource": "custom",
         "customStations": [{
             "id": "smoke-station",

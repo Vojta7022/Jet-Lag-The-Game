@@ -20,6 +20,19 @@ test('match start randomly chooses the first hider and shuffles the full rotatio
   }
 });
 
+test('match start leaves Bridge Troll out of the draw deck when the map has no bridges', () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToHidePhase(contentPack, 'small', 0.999999, 'none');
+  const bridgeDefinition = contentPack.cards.find((card) =>
+    card.effects.some((effect) => effect.effectType === 'bridge_troll_challenge')
+  );
+  assert.ok(bridgeDefinition);
+  const bridgeCards = Object.values(aggregate.cardInstances).filter((card) => card.cardDefinitionId === bridgeDefinition.cardDefinitionId);
+
+  assert.ok(bridgeCards.length > 0);
+  assert.ok(bridgeCards.every((card) => card.zone === 'exile' && card.drawOrder === undefined));
+});
+
 function finishOneRound() {
   const contentPack = loadEngineTestContentPack();
   contentPack.rulesets[0]!.locationPolicies = {
@@ -100,6 +113,28 @@ test('starting the next round rotates the hider, resets round state and deck, an
   assert.ok(Object.values(next.cardInstances).every((card) => card.zone === 'draw_pile' && card.holderType === 'deck'));
   assert.equal(new Set(Object.values(next.cardInstances).map((card) => card.drawOrder)).size, Object.keys(next.cardInstances).length);
   assert.equal(Object.values(next.timers).filter((timer) => timer.kind === 'hide').length, 1);
+});
+
+test('Bridge Troll stays exiled when each round deck is reset on a bridge-free map', () => {
+  const { aggregate: found, contentPack } = finishOneRound();
+  assert.ok(found.mapRegion);
+  found.mapRegion.bridgeAvailability = 'none';
+  const bridgeCardDefinition = contentPack.cards.find((card) =>
+    card.effects.some((effect) => effect.effectType === 'bridge_troll_challenge')
+  );
+  assert.ok(bridgeCardDefinition);
+  const bridgeCard = Object.values(found.cardInstances).find((card) => card.cardDefinitionId === bridgeCardDefinition.cardDefinitionId);
+  assert.ok(bridgeCard);
+
+  const next = executeCommand(found, makeEnvelope(found.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    { type: 'start_next_round', payload: { nextHiderPlayerId: 'seeker-1' } },
+    65
+  ), contentPack).aggregate;
+
+  assert.equal(next.cardInstances[bridgeCard.cardInstanceId]?.zone, 'exile');
+  assert.ok(Object.values(next.cardInstances).filter((card) => card.cardDefinitionId !== bridgeCardDefinition.cardDefinitionId)
+    .every((card) => card.zone === 'draw_pile'));
 });
 
 test('next-round preparation rejects a hider who is not a seeker and expires after ten minutes', () => {

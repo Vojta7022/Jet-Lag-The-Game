@@ -97,7 +97,7 @@ test('default referee rules match printed scale timers, radius, answer windows, 
   assert.equal(getQuestionCooldownSeconds(contentPack, ruleset!.rulesetId, 'photos-tree'), 0);
 });
 
-test('standard question prep starts hide phase without inventing a station or skipping the rules', async () => {
+test('standard question prep routes an unconfirmed map to setup instead of starting around Bridge Troll', async () => {
   const orchestrator = new MobileRuntimeOrchestrator({
     contentPack: loadContentPack(),
     environment: mobileAppEnvironment
@@ -113,7 +113,8 @@ test('standard question prep starts hide phase without inventing a station or sk
   );
   const commands = buildQuestionFlowBootstrapCommands(created.initialSync.projectionDelivery.projection);
 
-  assert.equal(commands.some((command) => command.type === 'start_match'), true);
+  assert.equal(commands.some((command) => command.type === 'start_match'), false);
+  assert.equal(commands.some((command) => command.type === 'create_map_region' && command.payload.bridgeAvailability === 'unknown'), true);
   assert.equal(commands.some((command) => command.type === 'set_hiding_zone'), false);
   assert.equal(commands.some((command) => command.type === 'lock_hider_location'), false);
   assert.equal(commands.some((command) => command.type === 'end_hide_phase'), false);

@@ -7,7 +7,7 @@ import { buildQuestionFlowBootstrapCommands } from '../questions/question-flow-b
 
 export function buildCardFlowBootstrapCommands(
   projection: MatchProjection,
-  options?: { preferredRegionId?: string; mode?: 'standard' | 'demo' }
+  options?: { preferredRegionId?: string; mode?: 'standard' | 'demo'; bridgeAvailability?: 'present' | 'none' }
 ): DomainCommand[] {
   return buildQuestionFlowBootstrapCommands(projection, options);
 }

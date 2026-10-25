@@ -202,7 +202,8 @@ export async function setupOnlineMatchToHidePhase(
           displayName: 'Prague',
           regionKind: 'city',
           featureDatasetRefs: ['osm-core', 'transit-registry'],
-          geometry: makeSquarePolygon()
+          geometry: makeSquarePolygon(),
+          bridgeAvailability: 'present'
         }
       })
     },

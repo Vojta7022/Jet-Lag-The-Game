@@ -138,6 +138,7 @@ export function buildPlayableRegionFromCommand(
     customOverlays: payload.customOverlays ?? [],
     stationSource: payload.stationSource ?? 'osm',
     customStations: payload.customStations ?? [],
+    bridgeAvailability: payload.bridgeAvailability ?? 'unknown',
     configuredAt: occurredAt
   };
 }

@@ -97,6 +97,20 @@ test('map scenario round trip preserves custom layers and station source setting
   assert.deepEqual(decodeMapScenario(encodeMapScenario(scenario as MapScenario)), scenario);
 });
 
+test('map scenario round trip preserves the host-confirmed bridge availability', () => {
+  const scenario: MapScenario = {
+    version: 1,
+    name: 'Bridge-free city',
+    savedAt: '2026-10-24T12:00:00.000Z',
+    query: 'Prague',
+    selectedRegions: [seedPlayableRegions[0]!],
+    bridgeAvailability: 'none'
+  };
+
+  assert.deepEqual(decodeMapScenario(encodeMapScenario(scenario)), scenario);
+  assert.throws(() => decodeMapScenarioJson(JSON.stringify({ ...scenario, bridgeAvailability: 'maybe' })), /valid map scenario/i);
+});
+
 test('custom scenario overlays are included in the map render model', () => {
   const overlay = {
     id: 'route',

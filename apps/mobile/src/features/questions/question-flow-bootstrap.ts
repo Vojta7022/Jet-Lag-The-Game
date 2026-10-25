@@ -45,7 +45,7 @@ function buildMovementPoints(geometry: GeoJsonGeometryModel | undefined) {
 
 export function buildQuestionFlowBootstrapCommands(
   projection: MatchProjection,
-  options: { preferredRegionId?: string; mode?: 'standard' | 'demo' } = {}
+  options: { preferredRegionId?: string; mode?: 'standard' | 'demo'; bridgeAvailability?: 'present' | 'none' } = {}
 ): DomainCommand[] {
   if (
     projection.lifecycleState === 'seek_phase' ||
@@ -59,6 +59,7 @@ export function buildQuestionFlowBootstrapCommands(
   const commands: DomainCommand[] = [...buildMapSetupBootstrapCommands(projection)];
   const preferredRegionId = options.preferredRegionId ?? seedPlayableRegions[0]?.regionId;
   const demoMode = options.mode === 'demo';
+  const bridgeAvailability = options.bridgeAvailability ?? projection.visibleMap?.bridgeAvailability ?? (demoMode ? 'present' : 'unknown');
   const selectedRegion = getSeedPlayableRegion(projection.visibleMap?.regionId ?? preferredRegionId ?? '');
   const selectedGeometry = projection.visibleMap?.playableBoundary.geometry ?? selectedRegion?.geometry;
   const anchorPoint = getAnchorPoint(selectedGeometry);
@@ -74,13 +75,15 @@ export function buildQuestionFlowBootstrapCommands(
         displayName: selectedRegion.displayName,
         regionKind: selectedRegion.regionKind,
         featureDatasetRefs: selectedRegion.featureDatasetRefs,
-        geometry: selectedRegion.geometry
+        geometry: selectedRegion.geometry,
+        bridgeAvailability
       }
     });
   }
 
   if (
     ['draft', 'lobby', 'role_assignment', 'rules_confirmation', 'map_setup'].includes(projection.lifecycleState)
+    && bridgeAvailability !== 'unknown'
   ) {
     commands.push({
       type: 'start_match',

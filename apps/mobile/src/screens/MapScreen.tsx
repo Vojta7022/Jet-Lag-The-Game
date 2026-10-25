@@ -84,6 +84,7 @@ function createMapRegionCommand(
     customOverlays: MapScenarioCustomOverlay[];
     stationSource: 'osm' | 'custom' | 'both';
     customStations: MapScenarioCustomStation[];
+    bridgeAvailability: 'unknown' | 'present' | 'none';
   }
 ): DomainCommand {
   return {
@@ -174,6 +175,8 @@ export function MapScreen() {
   const [customOverlays, setCustomOverlays] = useState<MapScenarioCustomOverlay[]>([]);
   const [stationSource, setStationSource] = useState<'osm' | 'custom' | 'both'>('osm');
   const [customStations, setCustomStations] = useState<MapScenarioCustomStation[]>([]);
+  const [bridgeAvailability, setBridgeAvailability] = useState<'unknown' | 'present' | 'none'>('unknown');
+  const [bridgeAvailabilityRegionId, setBridgeAvailabilityRegionId] = useState<string>();
   const [selectedStationId, setSelectedStationId] = useState<string>();
   const [scenarioStation, setScenarioStation] = useState<TransitStationCandidate>();
   const [scenarioHidingRadius, setScenarioHidingRadius] = useState<number>();
@@ -240,6 +243,10 @@ export function MapScreen() {
     () => buildCompositePlayableRegion(selectedRegions, excludedRegions),
     [excludedRegions, selectedRegions]
   );
+  const selectedDraftRegionId = (compositePreviewRegion ?? appliedRegion)?.regionId;
+  const draftBridgeAvailability = bridgeAvailabilityRegionId === selectedDraftRegionId
+    ? bridgeAvailability
+    : 'unknown';
   const includedPreviewRegion = useMemo(() => buildCompositePlayableRegion(selectedRegions), [selectedRegions]);
   const previewRegion = compositePreviewRegion ?? includedPreviewRegion ?? regionSearch.selectedRegion;
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
@@ -273,6 +280,8 @@ export function MapScreen() {
     setCustomOverlays(visibleMap.customOverlays ?? []);
     setStationSource(visibleMap.stationSource ?? 'osm');
     setCustomStations(visibleMap.customStations ?? []);
+    setBridgeAvailability(visibleMap.bridgeAvailability ?? 'unknown');
+    setBridgeAvailabilityRegionId(visibleMap.regionId);
   }, [projection?.visibleMap?.configuredAt]);
   useEffect(() => {
     if (!stationGeometry) return;
@@ -402,11 +411,15 @@ export function MapScreen() {
     projection?.lifecycleState === 'map_setup' &&
     Boolean(compositePreviewRegion ?? appliedRegion);
   const mapHasBeenApplied = Boolean(projection?.visibleMap);
+  const bridgeTrollInPack = Boolean(contentPack?.cards.some((card) =>
+    card.effects.some((effect) => effect.effectType === 'bridge_troll_challenge')
+  ));
   const draftDiffersFromApplied = Boolean(projection?.visibleMap && (
     (compositePreviewRegion && compositePreviewRegion.regionId !== projection.visibleMap.regionId) ||
     JSON.stringify(customOverlays) !== JSON.stringify(projection.visibleMap.customOverlays ?? []) ||
     stationSource !== (projection.visibleMap.stationSource ?? 'osm') ||
-    JSON.stringify(customStations) !== JSON.stringify(projection.visibleMap.customStations ?? [])
+    JSON.stringify(customStations) !== JSON.stringify(projection.visibleMap.customStations ?? []) ||
+    draftBridgeAvailability !== (projection.visibleMap.bridgeAvailability ?? 'unknown')
   ));
   const mapHeight = liveGameplayState
     ? Math.max(330, Math.min(Math.round(dimensions.height * 0.50), 620))
@@ -601,6 +614,8 @@ export function MapScreen() {
       setCustomOverlays(scenario.customOverlays ?? []);
       setStationSource(scenario.stationSource ?? 'osm');
       setCustomStations(scenario.customStations ?? []);
+      setBridgeAvailability(scenario.bridgeAvailability ?? 'unknown');
+      setBridgeAvailabilityRegionId(buildCompositePlayableRegion(scenario.selectedRegions, scenario.excludedRegions ?? [])?.regionId);
       setSelectedStationId(scenario.selectedStation?.stationId);
       setScenarioNotice(`Loaded shared map: ${scenario.name}`);
     } catch (error) {
@@ -703,7 +718,8 @@ export function MapScreen() {
     hidingRadiusMeters: savedHidingZone?.radiusMeters ?? scenarioHidingRadius ?? loadedScenario?.hidingRadiusMeters ?? (selectedScale ? getHidingRadiusMeters(selectedScale) : undefined),
     customOverlays,
     stationSource,
-    customStations
+    customStations,
+    bridgeAvailability: draftBridgeAvailability
   });
 
   const handleSaveScenario = async () => {
@@ -820,6 +836,8 @@ export function MapScreen() {
     setCustomOverlays(scenario.customOverlays ?? []);
     setStationSource(scenario.stationSource ?? 'osm');
     setCustomStations(scenario.customStations ?? []);
+    setBridgeAvailability(scenario.bridgeAvailability ?? 'unknown');
+    setBridgeAvailabilityRegionId(buildCompositePlayableRegion(scenario.selectedRegions, scenario.excludedRegions ?? [])?.regionId);
     setSelectedStationId(scenario.selectedStation?.stationId);
     setScenarioNotice(`Loaded ${scenario.name}`);
   };
@@ -848,7 +866,8 @@ export function MapScreen() {
       const succeeded = await submitCommands([createMapRegionCommand(regionToApply, {
         customOverlays,
         stationSource,
-        customStations
+        customStations,
+        bridgeAvailability: draftBridgeAvailability
       })]);
       if (!succeeded || !activeMatch) {
         return;
@@ -1122,7 +1141,10 @@ export function MapScreen() {
                   label={state.loadState === 'loading'
                     ? 'Working...'
                     : pregameFlowModel.primaryAction.label}
-                  disabled={state.loadState === 'loading'}
+                  disabled={state.loadState === 'loading' || (
+                    pregameFlowModel.primaryAction.kind === 'start_match' && bridgeTrollInPack &&
+                    (projection?.visibleMap?.bridgeAvailability ?? 'unknown') === 'unknown'
+                  )}
                   onPress={() => {
                     switch (pregameFlowModel.primaryAction?.kind) {
                       case 'open_match_room':
@@ -1142,6 +1164,10 @@ export function MapScreen() {
                     }
                   }}
                 />
+              ) : null}
+              {pregameFlowModel.primaryAction?.kind === 'start_match' && bridgeTrollInPack &&
+              (projection?.visibleMap?.bridgeAvailability ?? 'unknown') === 'unknown' ? (
+                <Text style={styles.helperCopy}>Confirm bridge availability in the map setup below before starting. OSM results do not prove a map has no bridges.</Text>
               ) : null}
 
               {(selectedRegions.length > 0 || excludedRegions.length > 0 || regionSearch.query.length > 0 || Boolean(regionSearch.selectedRegionId)) &&
@@ -1275,6 +1301,38 @@ export function MapScreen() {
                     The room size stays {selectedScale ? formatScaleLabel(selectedScale) : 'the current size'} in this build.
                   </Text>
                 </View>
+
+                {bridgeTrollInPack ? (
+                  <View style={styles.setupSection}>
+                    <Text style={styles.supportEyebrow}>Bridge Troll · map setup rule</Text>
+                    <Text style={styles.copy}>Check the selected play area. Bridge data can be incomplete, so confirm this from what you know about the map.</Text>
+                    <View style={styles.scenarioActions}>
+                      <AppButton
+                        label={draftBridgeAvailability === 'present' ? '✓ Bridges are present' : 'Bridges are present'}
+                        tone={draftBridgeAvailability === 'present' ? 'primary' : 'secondary'}
+                        onPress={() => {
+                          setBridgeAvailability('present');
+                          setBridgeAvailabilityRegionId(selectedDraftRegionId);
+                        }}
+                      />
+                      <AppButton
+                        label={draftBridgeAvailability === 'none' ? '✓ No bridges · remove card' : 'No bridges · remove card'}
+                        tone={draftBridgeAvailability === 'none' ? 'primary' : 'secondary'}
+                        onPress={() => {
+                          setBridgeAvailability('none');
+                          setBridgeAvailabilityRegionId(selectedDraftRegionId);
+                        }}
+                      />
+                    </View>
+                    {draftBridgeAvailability === 'none' ? (
+                      <Text style={styles.helperCopy}>Bridge Troll will stay out of the draw deck for every round.</Text>
+                    ) : draftBridgeAvailability === 'present' ? (
+                      <Text style={styles.helperCopy}>Bridge Troll stays in the draw deck.</Text>
+                    ) : (
+                      <Text style={styles.helperCopy}>Choose an option before you start the match.</Text>
+                    )}
+                  </View>
+                ) : null}
 
                 {draftDiffersFromApplied ? (
                   <StateBanner

@@ -24,7 +24,8 @@ test('map setup stores custom layers and station sources in the match and shares
       geometry: { type: 'LineString', coordinates: [[14.1, 50.1], [14.2, 50.2]] }
     }],
     stationSource: 'both' as const,
-    customStations: [{ id: 'museum', name: 'Museum', latitude: 50.2, longitude: 14.2 }]
+    customStations: [{ id: 'museum', name: 'Museum', latitude: 50.2, longitude: 14.2 }],
+    bridgeAvailability: 'none' as const
   };
   const result = executeCommand(aggregate, makeEnvelope(
     aggregate.matchId,
@@ -51,6 +52,7 @@ test('map setup stores custom layers and station sources in the match and shares
   assert.deepEqual(publicProjection.visibleMap?.customOverlays, settings.customOverlays);
   assert.equal(publicProjection.visibleMap?.stationSource, 'both');
   assert.deepEqual(publicProjection.visibleMap?.customStations, settings.customStations);
+  assert.equal(publicProjection.visibleMap?.bridgeAvailability, 'none');
 
   for (const viewer of [
     { scope: 'team_private' as const, viewerPlayerId: 'hider-1', viewerTeamId: 'team-hider', viewerRole: 'hider' as const },
@@ -74,13 +76,15 @@ test('map setup stores custom layers and station sources in the match and shares
         geometry: { type: 'Polygon', coordinates: [[[14, 50], [14.4, 50], [14.4, 50.4], [14, 50.4], [14, 50]]] },
         customOverlays: [revisedOverlay],
         stationSource: 'custom',
-        customStations: settings.customStations
+        customStations: settings.customStations,
+        bridgeAvailability: 'none'
       }
     },
     73
   ), contentPack);
   assert.deepEqual(updated.aggregate.mapRegion?.customOverlays, [revisedOverlay]);
   assert.equal(updated.aggregate.mapRegion?.stationSource, 'custom');
+  assert.equal(updated.aggregate.mapRegion?.bridgeAvailability, 'none');
 });
 
 test('map setup rejects invalid custom overlay geometry', () => {
@@ -121,4 +125,30 @@ test('map setup rejects custom station coordinates outside the playable globe', 
     71
   ), contentPack), (error: unknown) => error instanceof EngineCommandError &&
     error.issues.some((issue) => issue.code === 'INVALID_MAP_SETUP_DATA'));
+});
+
+test('match cannot start until the host confirms whether Bridge Troll applies to the map', () => {
+  const { contentPack, aggregate } = mapSetupAggregate();
+  const configured = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    {
+      type: 'create_map_region',
+      payload: {
+        regionId: 'bridge-check-region',
+        displayName: 'Bridge check region',
+        geometry: {
+          type: 'Polygon', coordinates: [[[14, 50], [14.4, 50], [14.4, 50.4], [14, 50.4], [14, 50]]]
+        }
+      }
+    },
+    80
+  ), contentPack).aggregate;
+
+  assert.throws(() => executeCommand(configured, makeEnvelope(
+    configured.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    { type: 'start_match', payload: {} },
+    81
+  ), contentPack), /confirm whether the map has bridges/i);
 });

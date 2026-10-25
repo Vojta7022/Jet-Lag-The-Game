@@ -192,19 +192,29 @@ function shuffleAndResetCards(
 ): CardInstanceModel[] {
   const definitionsById = new Map(contentPack.cards.map((card) => [card.cardDefinitionId, card]));
   return contentPack.decks.flatMap((deck) => {
-    const cards = Object.values(aggregate.cardInstances)
+    const deckInstances = Object.values(aggregate.cardInstances)
       .filter((instance) => definitionsById.get(instance.cardDefinitionId)?.deckId === deck.deckId)
-      .map((instance) => ({
-        ...instance,
-        holderType: 'deck' as const,
-        holderId: deck.deckId,
-        zone: 'draw_pile' as const,
-        updatedAt: occurredAt
-      }));
+      .map((instance) => ({ ...instance, holderType: 'deck' as const, holderId: deck.deckId }));
+    const excludedCards = aggregate.mapRegion?.bridgeAvailability === 'none'
+      ? deckInstances.filter((instance) => definitionsById.get(instance.cardDefinitionId)?.effects.some(
+          (effect) => effect.effectType === 'bridge_troll_challenge'
+        ))
+      : [];
+    const excludedIds = new Set(excludedCards.map((instance) => instance.cardInstanceId));
+    const cards = deckInstances
+      .filter((instance) => !excludedIds.has(instance.cardInstanceId))
+      .map((instance) => ({ ...instance, zone: 'draw_pile' as const, updatedAt: occurredAt }));
 
     shuffleValues(cards);
 
-    return cards.map((card, drawOrder) => ({ ...card, drawOrder }));
+    return [
+      ...cards.map((card, drawOrder) => ({ ...card, drawOrder })),
+      ...excludedCards.map(({ drawOrder: _drawOrder, ...card }) => ({
+        ...card,
+        zone: 'exile' as const,
+        updatedAt: occurredAt
+      }))
+    ];
   });
 }
 

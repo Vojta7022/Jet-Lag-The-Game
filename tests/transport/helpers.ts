@@ -187,7 +187,8 @@ export async function setupRuntimeToHidePhase(
           displayName: 'Prague',
           regionKind: 'city',
           featureDatasetRefs: ['osm-core', 'transit-registry'],
-          geometry: makeSquarePolygon()
+          geometry: makeSquarePolygon(),
+          bridgeAvailability: 'present'
         }
       },
       9

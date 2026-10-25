@@ -25,6 +25,7 @@ export interface MapScenario {
   customOverlays?: MapScenarioCustomOverlay[];
   stationSource?: MapStationSource;
   customStations?: MapScenarioCustomStation[];
+  bridgeAvailability?: 'unknown' | 'present' | 'none';
 }
 
 function isCoordinateRing(value: unknown): boolean {
@@ -87,6 +88,7 @@ export function isValidScenarioCustomGeometry(value: unknown, depth = 0): value 
 
 function hasValidCustomData(parsed: Partial<MapScenario>): boolean {
   if (parsed.stationSource !== undefined && !['osm', 'custom', 'both'].includes(parsed.stationSource)) return false;
+  if (parsed.bridgeAvailability !== undefined && !['unknown', 'present', 'none'].includes(parsed.bridgeAvailability)) return false;
   if (parsed.customOverlays !== undefined && (
     !Array.isArray(parsed.customOverlays) || parsed.customOverlays.length > 100 ||
     !parsed.customOverlays.every((overlay) => overlay &&

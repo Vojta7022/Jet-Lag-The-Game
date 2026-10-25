@@ -190,6 +190,7 @@ export interface VisibleMapProjection {
   customOverlays?: CustomMapOverlayModel[];
   stationSource?: MapStationSource;
   customStations?: CustomMapStationModel[];
+  bridgeAvailability?: 'unknown' | 'present' | 'none';
   playableBoundary: VisibleSpatialArtifactProjection;
   remainingArea?: VisibleSpatialArtifactProjection;
   eliminatedAreas: VisibleSpatialArtifactProjection[];

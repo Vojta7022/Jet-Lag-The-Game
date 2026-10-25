@@ -41,6 +41,7 @@ export type MatchRole = 'host' | 'hider' | 'seeker' | 'spectator' | 'system';
 export type TeamSide = 'hider' | 'seeker';
 
 export type PlayableRegionKind = 'city' | 'admin_region' | 'custom';
+export type BridgeAvailability = 'unknown' | 'present' | 'none';
 
 export type PlayerConnectionState = 'connected' | 'disconnected';
 
@@ -378,6 +379,7 @@ export interface PlayableRegionModel {
   customOverlays?: CustomMapOverlayModel[];
   stationSource?: MapStationSource;
   customStations?: CustomMapStationModel[];
+  bridgeAvailability?: BridgeAvailability;
   configuredAt: string;
 }
 

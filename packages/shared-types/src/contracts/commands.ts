@@ -152,6 +152,7 @@ export interface CreateMapRegionCommand {
     customOverlays?: CustomMapOverlayModel[];
     stationSource?: MapStationSource;
     customStations?: CustomMapStationModel[];
+    bridgeAvailability?: 'unknown' | 'present' | 'none';
   };
 }
 

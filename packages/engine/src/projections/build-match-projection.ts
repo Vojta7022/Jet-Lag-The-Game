@@ -392,6 +392,7 @@ export function buildMatchProjection(
           customOverlays: aggregate.mapRegion.customOverlays ?? [],
           stationSource: aggregate.mapRegion.stationSource ?? 'osm',
           customStations: aggregate.mapRegion.customStations ?? [],
+          bridgeAvailability: aggregate.mapRegion.bridgeAvailability ?? 'unknown',
           featureDatasetRefs:
             viewer.scope === 'authority' || viewer.scope === 'host_admin'
               ? aggregate.mapRegion.featureDatasetRefs

@@ -494,6 +494,14 @@ export function QuestionCenterScreen() {
       return;
     }
 
+    const bridgeAvailabilityNeedsSetup = Boolean(contentPack?.cards.some((card) =>
+      card.effects.some((effect) => effect.effectType === 'bridge_troll_challenge')
+    )) && (projection.visibleMap?.bridgeAvailability ?? 'unknown') === 'unknown';
+    if (!projection.visibleMap || bridgeAvailabilityNeedsSetup) {
+      router.push('/map');
+      return;
+    }
+
     const commands = buildQuestionFlowBootstrapCommands(projection);
     if (commands.length === 0) {
       void refreshActiveMatch();
@@ -750,6 +758,16 @@ export function QuestionCenterScreen() {
           tone="warning"
           title="Playable region needed first"
           detail="Finish map setup before relying on question results to change the search area."
+        />
+      ) : null}
+
+      {activeMatch && visibleMap && contentPack?.cards.some((card) =>
+        card.effects.some((effect) => effect.effectType === 'bridge_troll_challenge')
+      ) && (visibleMap.bridgeAvailability ?? 'unknown') === 'unknown' ? (
+        <StateBanner
+          tone="warning"
+          title="Map setup needs one answer"
+          detail="Confirm whether the selected map has bridges before starting. Open map setup to choose; missing OpenStreetMap data does not prove there are none."
         />
       ) : null}
 
