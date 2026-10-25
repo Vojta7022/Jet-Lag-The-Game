@@ -919,6 +919,7 @@ function eventsForCommand(
         askedByPlayerId,
         targetTeamId: envelope.command.payload.targetTeamId,
         chosenDistanceMeters: envelope.command.payload.chosenDistanceMeters,
+        confirmedMovingTransit: envelope.command.payload.confirmedMovingTransit,
         status: 'awaiting_answer',
         askedAt: envelope.occurredAt
       };

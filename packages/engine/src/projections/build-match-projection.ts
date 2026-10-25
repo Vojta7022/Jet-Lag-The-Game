@@ -354,6 +354,7 @@ export function buildMatchProjection(
     askedByPlayerId: question.askedByPlayerId,
     targetTeamId: question.targetTeamId,
     chosenDistanceMeters: question.chosenDistanceMeters,
+    confirmedMovingTransit: question.confirmedMovingTransit,
     answer: canViewQuestionAnswer(aggregate, viewer)
       ? sanitizeQuestionAnswer(viewer, question.answer)
       : undefined,

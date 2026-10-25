@@ -170,6 +170,7 @@ export interface QuestionInstanceModel {
   askedByPlayerId: string;
   targetTeamId?: string;
   chosenDistanceMeters?: number;
+  confirmedMovingTransit?: boolean;
   status: QuestionInstanceStatus;
   answer?: Record<string, unknown>;
   askedAt: string;

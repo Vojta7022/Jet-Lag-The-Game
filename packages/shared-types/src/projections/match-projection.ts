@@ -129,6 +129,7 @@ export interface VisibleQuestionProjection {
   askedByPlayerId: string;
   targetTeamId?: string;
   chosenDistanceMeters?: number;
+  confirmedMovingTransit?: boolean;
   answer?: Record<string, unknown>;
   askedAt?: string;
   lateResponseStartedAt?: string;

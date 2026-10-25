@@ -67,6 +67,20 @@ test('Radar Choose accepts a positive seeker-entered meter value and rejects inv
   }), undefined);
 });
 
+test('Transit Line ask payload preserves the seeker moving-transit confirmation', () => {
+  const contentPack = loadContentPack();
+  const transitLine = contentPack.questionTemplates.find((template) => template.templateId === 'matching-transit-line');
+  assert.ok(transitLine);
+  const payload = buildAskQuestionPayload({
+    questionInstanceId: 'question:transit-confirmation',
+    template: transitLine!,
+    targetTeamId: 'team-hider',
+    chosenDistanceDraft: '',
+    confirmedMovingTransit: true
+  });
+  assert.equal(payload?.confirmedMovingTransit, true);
+});
+
 test('default referee rules match printed scale timers, radius, answer windows, and no cooldown', () => {
   const contentPack = loadContentPack();
   const ruleset = contentPack.rulesets.find((entry) => entry.rulesetId === 'jet-lag-home-game-base');

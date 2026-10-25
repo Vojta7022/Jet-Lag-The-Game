@@ -40,6 +40,7 @@ import {
   createInitialAnswerDraft,
   appendAttachmentIdToDraft,
   describeTemplateSupport,
+  requiresMovingTransitConfirmation,
   findActiveQuestion,
   findConstraintForQuestion,
   findLatestResolvedQuestion,
@@ -224,6 +225,7 @@ export function QuestionCenterScreen() {
   const [answerDraft, setAnswerDraft] = useState<QuestionAnswerDraft>(() =>
     createInitialAnswerDraft(selectedTemplate)
   );
+  const [confirmedMovingTransit, setConfirmedMovingTransit] = useState(false);
   const activeSelectionRound = useMemo(
     () =>
       selectedCategory
@@ -255,6 +257,9 @@ export function QuestionCenterScreen() {
     readyTemplate && projection?.disabledQuestionTemplateIds?.includes(readyTemplate.templateId)
   );
   const previewTemplate = readyTemplate ?? selectedTemplate;
+  const requiresTransitConfirmation = Boolean(
+    previewTemplate && requiresMovingTransitConfirmation(previewTemplate)
+  );
   const ruleLabel = selectedCategory
     ? formatHiderCardReward(selectedCategory)
     : undefined;
@@ -305,6 +310,10 @@ export function QuestionCenterScreen() {
   useEffect(() => {
     setChosenDistanceDraft('');
   }, [readyTemplate?.templateId]);
+
+  useEffect(() => {
+    setConfirmedMovingTransit(false);
+  }, [previewTemplate?.templateId]);
 
   useEffect(() => {
     const composerTemplate =
@@ -488,7 +497,8 @@ export function QuestionCenterScreen() {
       questionInstanceId: `question:${createUuid()}`,
       template: readyTemplate,
       targetTeamId: projection.teams.find((team) => team.side === 'hider')?.teamId ?? 'team-hider',
-      chosenDistanceDraft
+      chosenDistanceDraft,
+      confirmedMovingTransit: requiresTransitConfirmation ? confirmedMovingTransit : undefined
     });
     if (!questionPayload) return;
 
@@ -505,6 +515,7 @@ export function QuestionCenterScreen() {
       payload: questionPayload
     });
 
+    setConfirmedMovingTransit(false);
     void submitCommands(commands);
   };
 
@@ -1006,6 +1017,20 @@ export function QuestionCenterScreen() {
                 detail={selectedQuestionImpact.detail}
               />
             ) : null}
+            {requiresTransitConfirmation ? (
+              <>
+                <StateBanner
+                  tone="warning"
+                  title="Only ask from moving transit"
+                  detail="The hider should answer Yes only if the service you are riding will stop at their station. Passing through without stopping is No; screenshot the planned stops and send them to the hider."
+                />
+                <AppButton
+                  label={confirmedMovingTransit ? 'Confirmed: seekers are riding moving transit' : 'Confirm seekers are riding moving transit'}
+                  tone={confirmedMovingTransit ? 'primary' : 'secondary'}
+                  onPress={() => setConfirmedMovingTransit(true)}
+                />
+              </>
+            ) : null}
             <Text style={styles.helper}>
               Hider reward for this ask: {selectedRewardLabel}. Repeated
               questions pay this reward in separate draw and pick sets.
@@ -1041,7 +1066,7 @@ export function QuestionCenterScreen() {
             <AppButton
               label="Ask Selected Question"
               onPress={handleAskQuestion}
-              disabled={!canAskQuestion || state.loadState === 'loading'}
+              disabled={!canAskQuestion || state.loadState === 'loading' || (requiresTransitConfirmation && !confirmedMovingTransit)}
             />
             {!canAskQuestion ? (
               <Text style={styles.helper}>
@@ -1069,6 +1094,9 @@ export function QuestionCenterScreen() {
                 { label: 'Asked clue', value: activeQuestionTemplate.name },
                 ...(activeQuestion?.chosenDistanceMeters
                   ? [{ label: 'Chosen distance', value: `${activeQuestion.chosenDistanceMeters} m` }]
+                  : []),
+                ...(activeQuestion.confirmedMovingTransit
+                  ? [{ label: 'Transit rule', value: 'Seekers confirmed they are riding moving transit' }]
                   : []),
                 {
                   label: 'Workbook timer',

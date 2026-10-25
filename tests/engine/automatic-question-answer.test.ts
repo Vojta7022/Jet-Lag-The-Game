@@ -23,6 +23,39 @@ function setupRadarMatch() {
   return { aggregate, contentPack };
 }
 
+test('Transit Line cannot be asked unless seekers confirm they are riding moving transit', () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToSeekReady(contentPack);
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+
+  assert.throws(() => executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: {
+        questionInstanceId: 'question:transit-line-rule',
+        templateId: 'matching-transit-line',
+        targetTeamId: 'team-hider'
+      }
+    }, 16), contentPack), /confirm the seekers are riding moving transit/i);
+
+  const accepted = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: {
+        questionInstanceId: 'question:transit-line-confirmed',
+        templateId: 'matching-transit-line',
+        targetTeamId: 'team-hider',
+        confirmedMovingTransit: true
+      }
+    }, 17), contentPack);
+  assert.equal(accepted.aggregate.questionInstances['question:transit-line-confirmed']?.confirmedMovingTransit, true);
+  assert.equal(buildMatchProjection(accepted.aggregate, contentPack, {
+    scope: 'public_match', viewerPlayerId: 'seeker-1', viewerRole: 'seeker', viewerTeamId: 'team-seeker'
+  }).visibleQuestions.find((question) => question.questionInstanceId === 'question:transit-line-confirmed')?.confirmedMovingTransit, true);
+});
+
 test('Radar automatically answers from fresh hider and seeker fixes and applies the bounded map deduction', () => {
   const { aggregate, contentPack } = setupRadarMatch();
   const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,

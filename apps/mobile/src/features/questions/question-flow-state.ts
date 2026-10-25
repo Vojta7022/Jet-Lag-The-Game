@@ -35,6 +35,7 @@ export function buildAskQuestionPayload(args: {
   template: QuestionTemplateDefinition;
   targetTeamId?: string;
   chosenDistanceDraft: string;
+  confirmedMovingTransit?: boolean;
 }): AskQuestionCommand['payload'] | undefined {
   const chosenDistanceMeters = isQuestionDistanceChoice(args.template)
     ? parseChosenDistanceMeters(args.chosenDistanceDraft)
@@ -45,6 +46,9 @@ export function buildAskQuestionPayload(args: {
     questionInstanceId: args.questionInstanceId,
     templateId: args.template.templateId,
     targetTeamId: args.targetTeamId,
+    ...(args.confirmedMovingTransit !== undefined
+      ? { confirmedMovingTransit: args.confirmedMovingTransit }
+      : {}),
     ...(chosenDistanceMeters !== undefined ? { chosenDistanceMeters } : {})
   };
 }

@@ -15,8 +15,17 @@ import {
   describeQuestionRulebookGuidance,
   describeWorkbookRequirementSummary,
   describeWorkbookRuleSummary,
-  formatQuestionScaleSet
+  formatQuestionScaleSet,
+  requiresMovingTransitConfirmation
 } from '../src/features/questions/question-guidance.ts';
+
+test('Transit Line is identified as requiring the moving-transit rule confirmation', () => {
+  const template = createTemplate({
+    featureClassRefs: [{ featureClassId: 'transit-line', label: 'Transit Line', rawLabel: 'Transit Line' }]
+  });
+  assert.equal(requiresMovingTransitConfirmation(template), true);
+  assert.equal(requiresMovingTransitConfirmation(createTemplate()), false);
+});
 
 function createCategory(
   overrides: Partial<QuestionCategoryDefinition> = {}

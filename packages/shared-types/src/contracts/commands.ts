@@ -232,6 +232,7 @@ export interface AskQuestionCommand {
     templateId: string;
     targetTeamId?: string;
     chosenDistanceMeters?: number;
+    confirmedMovingTransit?: boolean;
   };
 }
 

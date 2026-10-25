@@ -400,3 +400,10 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Accept custom stations only when their ID, name, and coordinates match the host-saved map configuration; skip external map lookup for custom-only maps and picks.
 - [x] Keep the single-device referee path usable with local station selection when external map data is unavailable.
 - [x] Verify OSM/custom station paths and source selection; full suite and mobile typecheck pass (2026-10-25).
+
+### Active implementation slice: enforce Transit Line's moving-transit precondition
+
+- [x] Recheck the scanned rule: seekers must be on moving transit; the hider says yes only when the ridden service actually stops at their station, including express-pass-through no answers (base rulebook printed p. 18).
+- [x] Require a seeker attestation before asking Transit Line and preserve it in the public question record/projection.
+- [x] Show the scan-faithful confirmation in the player UI, including the screenshot/share-stop-list recommendation. Keep the hider's answer manual because no active-service feed verifies a complete, direction-specific stop list for every region.
+- [x] Verify engine rejection/recording, question UI guidance/payload, full suite (359/359), mobile typecheck, and `git diff --check` (2026-10-25).

@@ -807,6 +807,15 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'QUESTION_CATEGORY_NOT_FOUND', 'The selected question category does not exist.')];
       }
 
+      const requiresMovingTransitConfirmation = (template.featureClassRefs ?? [])
+        .some((feature) => feature.featureClassId === 'transit-line');
+      if (requiresMovingTransitConfirmation && envelope.command.payload.confirmedMovingTransit !== true) {
+        return [error(envelope.command.type, 'TRANSIT_RULE_CONFIRMATION_REQUIRED', 'Confirm the seekers are riding moving transit before asking Transit Line.')];
+      }
+      if (!requiresMovingTransitConfirmation && envelope.command.payload.confirmedMovingTransit !== undefined) {
+        return [error(envelope.command.type, 'TRANSIT_RULE_CONFIRMATION_NOT_APPLICABLE', 'Moving-transit confirmation only applies to the Transit Line question.')];
+      }
+
       const chosenDistanceMeters = envelope.command.payload.chosenDistanceMeters;
       const needsChosenDistance = template.parameters?.distanceMode === 'player_choice';
       if (needsChosenDistance && (typeof chosenDistanceMeters !== 'number' || !Number.isFinite(chosenDistanceMeters) || chosenDistanceMeters <= 0)) {

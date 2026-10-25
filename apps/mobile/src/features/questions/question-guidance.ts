@@ -9,6 +9,10 @@ import type { ResolutionTone } from './question-result-model.ts';
 import { describeTemplateSupport } from './question-flow-state.ts';
 import { hasOpenStreetMapFeatureClass } from '../../../../../packages/geo/src/index.ts';
 
+export function requiresMovingTransitConfirmation(template: QuestionTemplateDefinition): boolean {
+  return (template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'transit-line');
+}
+
 function joinList(values: string[]): string {
   if (values.length === 0) {
     return '';
