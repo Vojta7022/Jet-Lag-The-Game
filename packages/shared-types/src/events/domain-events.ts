@@ -108,6 +108,9 @@ export type DomainEvent =
   | WaterWeightChallengeStartedEvent
   | WaterWeightLiquidAcquiredEvent
   | WaterWeightLiquidLostEvent
+  | EndlessTumbleChallengeStartedEvent
+  | EndlessTumbleCastResolvedEvent
+  | EndlessTumbleRollReportedEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -429,7 +432,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -440,6 +443,8 @@ export interface CardResolutionOpenedEvent {
     };
     drawCountOnResolve?: number;
     timeBonusMinutes?: number;
+    endlessTumbleMinimumDistanceMeters?: number;
+    endlessTumbleSuccessfulDieResults?: number[];
     questionTemplateCount?: number;
     requireDistinctQuestionCategories?: boolean;
     rerollAfterQuestion?: boolean;
@@ -500,6 +505,36 @@ export interface WaterWeightLiquidAcquiredEvent {
 export interface WaterWeightLiquidLostEvent {
   type: 'water_weight_liquid_lost';
   payload: { sourceCardInstanceId: string; playerId: string; bonusMinutesAwarded: number };
+}
+
+export interface EndlessTumbleChallengeStartedEvent {
+  type: 'endless_tumble_challenge_started';
+  payload: {
+    sourceCardInstanceId: string;
+    hiderBonusMinutes: number;
+    minimumDistanceMeters: number;
+    successfulDieResults: number[];
+  };
+}
+
+export interface EndlessTumbleCastResolvedEvent {
+  type: 'endless_tumble_cast_resolved';
+  payload: { sourceCardInstanceId: string; dieRoll: number; effectActivated: boolean };
+}
+
+export interface EndlessTumbleRollReportedEvent {
+  type: 'endless_tumble_roll_reported';
+  payload: {
+    sourceCardInstanceId: string;
+    playerId: string;
+    dieRoll: number | null;
+    distanceMeters: number;
+    unaided: boolean;
+    landsCleanly: boolean;
+    hitPerson: boolean;
+    successful: boolean;
+    bonusMinutesAwarded: number;
+  };
 }
 
 export interface QuestionTemplatesDisabledEvent {

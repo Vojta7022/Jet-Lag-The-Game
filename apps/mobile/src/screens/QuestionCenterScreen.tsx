@@ -64,6 +64,7 @@ import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
+import { EndlessTumbleChallengePanel } from '../features/cards/EndlessTumbleChallengePanel.tsx';
 
 function resolveCurrentRole(
   role: string | undefined,
@@ -456,6 +457,7 @@ export function QuestionCenterScreen() {
     bridgeTrollSeekers.every((player) => seekerTransitStatuses[player.playerId]?.onTransitOrAtStation === false)
   );
   const waterWeightChallenge = projection?.waterWeightChallenge;
+  const endlessTumbleChallenge = projection?.endlessTumbleChallenge;
   const canAskQuestion = Boolean(
     activeMatch &&
       capabilities.canAskQuestions &&
@@ -465,6 +467,7 @@ export function QuestionCenterScreen() {
       (!bridgeTrollChallenge || bridgeTrollReady) &&
       (!seekerOffTransitRestriction || allSeekersOffTransit) &&
       (!waterWeightChallenge || waterWeightChallenge.liquidAcquiredAt) &&
+      (!endlessTumbleChallenge || endlessTumbleChallenge.successfulRollAt) &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
   const canAnswerQuestion = Boolean(
@@ -921,6 +924,30 @@ export function QuestionCenterScreen() {
         </Panel>
       ) : null}
 
+      {projection?.endlessTumbleChallenge ? (
+        <Panel title="Curse of the Endless Tumble" subtitle="Complete the physical die-roll challenge to unlock another question." tone="accent">
+          <EndlessTumbleChallengePanel
+            challenge={projection.endlessTumbleChallenge}
+            viewerRole={viewerRole}
+            disabled={state.loadState === 'loading'}
+            awardedCurseBonusMinutes={projection.awardedCurseBonusMinutes}
+            onReport={(dieRoll, distanceMeters, unaided, landsCleanly, hitPerson) => {
+              void submitCommand({
+                type: 'report_endless_tumble_roll',
+                payload: {
+                  sourceCardInstanceId: projection.endlessTumbleChallenge!.sourceCardInstanceId,
+                  dieRoll,
+                  distanceMeters,
+                  unaided,
+                  landsCleanly,
+                  hitPerson
+                }
+              });
+            }}
+          />
+        </Panel>
+      ) : null}
+
       {latestConstraintApplied && latestResolvedEffect ? (
         <StateBanner
           tone={latestResolvedEffect.mapEffectTone}
@@ -1243,7 +1270,9 @@ export function QuestionCenterScreen() {
             />
             {!canAskQuestion ? (
               <Text style={styles.helper}>
-                This category is using the current authoritative workbook draw.
+                {endlessTumbleChallenge && !endlessTumbleChallenge.successfulRollAt
+                  ? 'Endless Tumble is active. Report an unaided 5 or 6 after a measured 30 m roll to unlock questions.'
+                  : 'This category is using the current authoritative workbook draw.'}
                 When no clue is ready here, the match state still needs the next
                 draw to open or the current clue step to finish.
               </Text>

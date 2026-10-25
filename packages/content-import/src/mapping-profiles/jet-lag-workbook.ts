@@ -1099,6 +1099,10 @@ const CURSE_RULEBOOK_GUIDANCE: Record<string, { text: string; printedPage: numbe
     text: 'Liquid already being carried when the curse is played does not count. It may be split between any number of containers and passed between seekers. Seekers may set it down while stationary or on transit; it is abandoned when it is no longer within 3 m of any seeker. Award the hider’s bonus immediately when that happens. A qualifying body of water need not be natural, but cannot be a pool and must be large enough to appear on the map.',
     printedPage: 51
   },
+  'curse-of-the-endless-tumble': {
+    text: 'Measure the 30 m die roll parallel to the ground. It must travel using only the initial throw and gravity, without assistance. A lost die or a die that does not land cleanly on one side cannot count. If it hits someone, award the hider’s scale bonus immediately.',
+    printedPage: 56
+  },
   'curse-of-the-jammed-door': {
     text: 'Roll only once the doorway is visible. Doors leading to another part of the same building do not need a check. If it is reasonably unclear whether something is a separate building, require the roll. When the curse expires, any doorway cooldown ends too.',
     printedPage: 52
@@ -1205,6 +1209,7 @@ function buildCurseCards(
       const startsBridgeTrollChallenge = normalizedName.slug === 'curse-of-the-bridge-troll';
       const startsSeekerOffTransitChallenge = normalizedName.slug === 'curse-of-the-urban-explorer';
       const startsWaterWeightChallenge = normalizedName.slug === 'curse-of-water-weight';
+      const startsEndlessTumbleChallenge = normalizedName.slug === 'curse-of-the-endless-tumble';
       const rulebookGuidance = curseRulebookGuidance(normalizedName.slug);
       buildNormalizationIssue(
         issues,
@@ -1229,7 +1234,7 @@ function buildCurseCards(
         shortName: normalizedName.displayText,
         description: applyWorkbookCorrections(descriptionRaw),
         ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
-        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge ? 'assisted' : 'manual',
+        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge ? 'assisted' : 'manual',
         castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
         effects: [
           {
@@ -1239,6 +1244,8 @@ function buildCurseCards(
               ? 'seeker_off_transit_challenge'
               : startsWaterWeightChallenge
               ? 'water_weight_challenge'
+              : startsEndlessTumbleChallenge
+              ? 'endless_tumble_challenge'
               : startsHangmanChallenge
               ? 'hangman_challenge'
               : locksQuestionTemplates
@@ -1246,7 +1253,7 @@ function buildCurseCards(
               : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
                 : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
             description: applyWorkbookCorrections(descriptionRaw),
-            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge ? 'assisted' : 'manual',
+            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge ? 'assisted' : 'manual',
             rawText: descriptionRaw,
             payload: {
               ...(startsSeekerOffTransitChallenge
@@ -1255,6 +1262,8 @@ function buildCurseCards(
                 ? { requiredAttestations: 'all_seekers' }
                 : startsWaterWeightChallenge
                 ? { requiredLitersPerSeeker: 2, abandonRadiusMeters: 3, minutesByScale: { small: 30, medium: 30, large: 60 } }
+                : startsEndlessTumbleChallenge
+                ? { minimumDistanceMeters: 30, successfulDieResults: [5, 6], minutesByScale: { small: 10, medium: 20, large: 30 } }
                 : startsHangmanChallenge
                 ? { wordLength: 5, secretScope: 'hider_player' }
                 : locksQuestionTemplates
@@ -1269,10 +1278,10 @@ function buildCurseCards(
         ],
         rewardsOrPenalties: [],
         requirements: {
-          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsWaterWeightChallenge
+          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge
         },
         visibilityPolicy: HIDER_DECK_VISIBILITY,
-        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
+        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'name', nameRaw, nameRaw),
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'description', descriptionRaw, nameRaw),
@@ -1349,6 +1358,7 @@ function buildCurseCards(
     const startsBridgeTrollChallenge = normalizedName.slug === 'curse-of-the-bridge-troll';
     const startsSeekerOffTransitChallenge = normalizedName.slug === 'curse-of-the-urban-explorer';
     const startsWaterWeightChallenge = normalizedName.slug === 'curse-of-water-weight';
+    const startsEndlessTumbleChallenge = normalizedName.slug === 'curse-of-the-endless-tumble';
     const rulebookGuidance = curseRulebookGuidance(normalizedName.slug);
     buildNormalizationIssue(
       issues,
@@ -1374,7 +1384,7 @@ function buildCurseCards(
       shortName: normalizedName.displayText,
       description: applyWorkbookCorrections(descriptionRaw),
       ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
-      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge ? 'assisted' : 'manual',
+      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge ? 'assisted' : 'manual',
       castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
       effects: [
         {
@@ -1384,6 +1394,8 @@ function buildCurseCards(
             ? 'seeker_off_transit_challenge'
             : startsWaterWeightChallenge
             ? 'water_weight_challenge'
+            : startsEndlessTumbleChallenge
+            ? 'endless_tumble_challenge'
             : startsHangmanChallenge
             ? 'hangman_challenge'
             : locksQuestionTemplates
@@ -1391,7 +1403,7 @@ function buildCurseCards(
             : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
               : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
           description: applyWorkbookCorrections(descriptionRaw),
-          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge ? 'assisted' : 'manual',
+          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge ? 'assisted' : 'manual',
           rawText: descriptionRaw,
           payload: {
             ...(startsSeekerOffTransitChallenge
@@ -1400,6 +1412,8 @@ function buildCurseCards(
               ? { requiredAttestations: 'all_seekers' }
               : startsWaterWeightChallenge
               ? { requiredLitersPerSeeker: 2, abandonRadiusMeters: 3, minutesByScale: { small: 30, medium: 30, large: 60 } }
+              : startsEndlessTumbleChallenge
+              ? { minimumDistanceMeters: 30, successfulDieResults: [5, 6], minutesByScale: { small: 10, medium: 20, large: 30 } }
               : startsHangmanChallenge
               ? { wordLength: 5, secretScope: 'hider_player' }
               : locksQuestionTemplates
@@ -1414,10 +1428,10 @@ function buildCurseCards(
       ],
       rewardsOrPenalties: [],
       requirements: {
-        requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsWaterWeightChallenge
+        requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge
       },
       visibilityPolicy: HIDER_DECK_VISIBILITY,
-      tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
+      tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
       sourceProvenance: [
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'B', nameRaw, orderRaw),
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'C', descriptionRaw, nameRaw),

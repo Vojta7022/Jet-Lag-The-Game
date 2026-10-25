@@ -462,6 +462,14 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Carry curse awards into the final round score, including hider-facing and seeker-facing status in Question Center and Live Map.
 - [x] Verify scan-derived importer values, acquisition/loss/question rules, scoring, full suite (395/395), mobile typecheck, Expo web/iOS/Android exports, and `git diff --check` (2026-10-25).
 
+### Completed implementation slice: Curse of the Endless Tumble
+
+- [x] Import the scan-derived 30 m distance, unaided die requirement, clean-landing and lost-die rule, 5/6 success result, and 10/20/30-minute scale bonus as an assisted typed card effect.
+- [x] Record the hider's casting roll (5/6 cancels the curse; 1–4 activates it), gate seeker questions until a qualifying roll is reported, and immediately add the scale bonus for each reported hit.
+- [x] Enforce the base rule that only one typed curse blocking questions or transit may be active at once.
+- [x] Add a shared Question Center and map challenge panel with explicit die, distance, unaided, and hit attestations; keep the physical outcomes group-attested.
+- [x] Verify cast cancellation/activation, the 30 m boundary, clean-landing requirement, question gate, bonus accumulation, both workbook mappings, full suite (402/402), mobile typecheck, web/iOS/Android exports, and `git diff --check` (2026-10-25).
+
 ### Completed implementation slice: crossing administrative-region subtraction
 
 - [x] Replace the contained-hole-only subtraction path with boolean polygon union/intersection/difference over searchable administrative polygons.

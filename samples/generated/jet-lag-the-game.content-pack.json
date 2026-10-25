@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T15:48:59.233Z",
+    "importedAt": "2026-10-25T16:31:43.895Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2046,8 +2046,8 @@
       "name": "Curse Of The Endless Tumble",
       "shortName": "Curse Of The Endless Tumble",
       "description": "Seekers Must roll a die at least 100ft (30m) and have it land on a 5 or a 6 before they can ask another question. The die must roll the full distance, unaided, using only the momentum from the initial throw and gravity to travel the 100ft (30m). If the seekers accidentally hit someone with a die you are awarded a [S10, M20, L30] minute bonus",
-      "rulebookGuidanceText": "Measure the 30 m roll parallel to the ground. The die must travel using only the initial throw and gravity, without assistance. If it hits someone, award the hider’s scale bonus immediately.",
-      "automationLevel": "manual",
+      "rulebookGuidanceText": "Measure the 30 m die roll parallel to the ground. It must travel using only the initial throw and gravity, without assistance. A lost die or a die that does not land cleanly on one side cannot count. If it hits someone, award the hider’s scale bonus immediately.",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -2057,18 +2057,27 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "endless_tumble_challenge",
           "description": "Seekers Must roll a die at least 100ft (30m) and have it land on a 5 or a 6 before they can ask another question. The die must roll the full distance, unaided, using only the momentum from the initial throw and gravity to travel the 100ft (30m). If the seekers accidentally hit someone with a die you are awarded a [S10, M20, L30] minute bonus",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Seekers Must roll a die at least 100ft (30m) and have it land on a 5 or a 6 before they can ask another question. The die must roll the full distance, unaided, using only the momentum from the initial throw and gravity to travel the 100ft (30m). If the seekers accidentally hit someone with a die you are awarded a [S10, M20, L30] minute bonus",
           "payload": {
-            "workbookName": "Curse Of The Endless Tumble"
+            "minimumDistanceMeters": 30,
+            "successfulDieResults": [
+              5,
+              6
+            ],
+            "minutesByScale": {
+              "small": 10,
+              "medium": 20,
+              "large": 30
+            }
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2079,7 +2088,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

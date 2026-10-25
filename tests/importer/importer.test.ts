@@ -219,6 +219,15 @@ test('the workbook importer creates a normalized draft content pack', () => {
     minutesByScale: { small: 30, medium: 30, large: 60 }
   });
   assert.equal(waterWeight?.requirements?.requiresManualApproval, false);
+  const endlessTumble = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-endless-tumble');
+  assert.equal(endlessTumble?.automationLevel, 'assisted');
+  assert.equal(endlessTumble?.effects[0]?.effectType, 'endless_tumble_challenge');
+  assert.deepEqual(endlessTumble?.effects[0]?.payload, {
+    minimumDistanceMeters: 30,
+    successfulDieResults: [5, 6],
+    minutesByScale: { small: 10, medium: 20, large: 30 }
+  });
+  assert.equal(endlessTumble?.requirements?.requiresManualApproval, false);
 
   const hiderDeck = result.pack.decks.find((deck) => deck.deckId === 'hider-main');
   assert.ok(hiderDeck);
@@ -240,6 +249,8 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   const waterWeight = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');
   assert.equal(waterWeight?.automationLevel, 'assisted');
   assert.equal(waterWeight?.effects[0]?.effectType, 'water_weight_challenge');
+  const endlessTumble = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-endless-tumble');
+  assert.equal(endlessTumble?.effects[0]?.effectType, 'endless_tumble_challenge');
   const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
   assert.equal(photoTemplates.length, 18);
   assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));

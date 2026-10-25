@@ -68,6 +68,8 @@ export type DomainCommand =
   | SetSeekerTransitContextCommand
   | ConfirmWaterWeightLiquidAcquiredCommand
   | ReportWaterWeightLiquidLostCommand
+  | ResolveEndlessTumbleCastCommand
+  | ReportEndlessTumbleRollCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -370,6 +372,23 @@ export interface ConfirmWaterWeightLiquidAcquiredCommand {
 export interface ReportWaterWeightLiquidLostCommand {
   type: 'report_water_weight_liquid_lost';
   payload: { sourceCardInstanceId: string };
+}
+
+export interface ResolveEndlessTumbleCastCommand {
+  type: 'resolve_endless_tumble_cast';
+  payload: { sourceCardInstanceId: string; dieRoll: number };
+}
+
+export interface ReportEndlessTumbleRollCommand {
+  type: 'report_endless_tumble_roll';
+  payload: {
+    sourceCardInstanceId: string;
+    dieRoll: number | null;
+    distanceMeters: number;
+    unaided: boolean;
+    landsCleanly: boolean;
+    hitPerson: boolean;
+  };
 }
 
 export interface CompleteCooldownCommand {

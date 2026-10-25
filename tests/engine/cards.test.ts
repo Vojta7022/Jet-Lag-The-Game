@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { representativePointFromGeometry } from '../../packages/geo/src/index.ts';
+import { buildCardResolutionPlan } from '../../packages/domain/src/index.ts';
 import { buildMatchProjection, executeCommand } from '../../packages/engine/src/index.ts';
 import {
   loadEngineTestContentPack,
@@ -10,6 +11,104 @@ import {
   setupMatchToHidePhase,
   setupMatchToSeekReady
 } from './helpers.ts';
+
+test('Endless Tumble has a typed roll challenge plan and the selected-scale hit bonus', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('endless tumble'));
+  assert.ok(card);
+  card.effects = [{
+    effectType: 'endless_tumble_challenge',
+    description: card.description,
+    automationLevel: 'assisted',
+    payload: { minutesByScale: { small: 10, medium: 20, large: 30 } }
+  } as never];
+
+  const plan = buildCardResolutionPlan(card, 'medium');
+  assert.equal(plan.kind, 'endless_tumble_challenge');
+  assert.equal(plan.timeBonusMinutes, 20);
+});
+
+test('Endless Tumble casting roll, 30 m seeker roll, question gate, and hit bonus follow the card rule', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('endless tumble'));
+  assert.ok(card);
+  card.effects = [{
+    effectType: 'endless_tumble_challenge',
+    description: card.description,
+    automationLevel: 'assisted',
+    payload: { minimumDistanceMeters: 30, successfulDieResults: [5, 6], minutesByScale: { small: 10, medium: 20, large: 30 } }
+  } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.selectedScale = 'medium';
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'endless_tumble_challenge');
+  assert.equal(aggregate.activeCardResolution?.timeBonusMinutes, 20);
+  assert.equal(aggregate.activeCardResolution?.endlessTumbleMinimumDistanceMeters, 30);
+  assert.deepEqual(aggregate.activeCardResolution?.endlessTumbleSuccessfulDieResults, [5, 6]);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_endless_tumble_cast', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 2 } }, 71), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution, undefined);
+  assert.equal(aggregate.endlessTumbleChallenge?.hiderBonusMinutes, 20);
+  const waterWeight = contentPack.cards.find((candidate) => candidate.effects.some((effect) => effect.effectType === 'water_weight_challenge'));
+  assert.ok(waterWeight);
+  const secondBlockingCurseId = moveCardToTeamHand(aggregate, waterWeight.cardDefinitionId, 'team-hider');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId: secondBlockingCurseId } }, 72), contentPack),
+  /wait until the active question- or transit-blocking curse is cleared/i);
+
+  const reportRoll = (dieRoll: number | null, distanceMeters: number, unaided: boolean, landsCleanly: boolean, hitPerson: boolean, at: number) => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_endless_tumble_roll', payload: { sourceCardInstanceId: cardInstanceId, dieRoll, distanceMeters, unaided, landsCleanly, hitPerson } }, at), contentPack);
+  aggregate = reportRoll(6, 29.9, true, true, false, 73).aggregate;
+  assert.equal(aggregate.endlessTumbleChallenge?.successfulRollAt, undefined);
+  aggregate = reportRoll(null, 30, true, false, false, 74).aggregate;
+  assert.equal(aggregate.endlessTumbleChallenge?.successfulRollAt, undefined);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 75), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:endless-tumble-blocked', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider'
+    } }, 76), contentPack), /must report a clean, unaided roll of 5 or 6/i);
+  aggregate = reportRoll(5, 30, true, false, true, 77).aggregate;
+  assert.equal(aggregate.endlessTumbleChallenge?.successfulRollAt, undefined);
+  assert.equal(aggregate.awardedCurseBonusMinutes, 20);
+  aggregate = reportRoll(5, 30, true, true, false, 78).aggregate;
+  assert.ok(aggregate.endlessTumbleChallenge?.successfulRollAt);
+  assert.equal(aggregate.awardedCurseBonusMinutes, 20);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:endless-tumble', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider'
+    } }, 79), contentPack).aggregate;
+  assert.equal(aggregate.endlessTumbleChallenge, undefined);
+  assert.equal(aggregate.awardedCurseBonusMinutes, 20);
+});
+
+test('Endless Tumble has no effect when the hider casting roll is 5 or 6', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('endless tumble'));
+  assert.ok(card);
+  card.effects = [{ ...card.effects[0]!, effectType: 'endless_tumble_challenge', automationLevel: 'assisted' }];
+  const aggregate = setupMatchToSeekReady(contentPack);
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  const played = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 80), contentPack).aggregate;
+  const resolved = executeCommand(played, makeEnvelope(played.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_endless_tumble_cast', payload: { sourceCardInstanceId: cardInstanceId, dieRoll: 6 } }, 81), contentPack);
+  assert.equal(resolved.aggregate.endlessTumbleChallenge, undefined);
+  assert.equal(resolved.aggregate.cardInstances[cardInstanceId]?.zone, 'discard_pile');
+  assert.equal(resolved.events[0]?.event.type, 'endless_tumble_cast_resolved');
+  assert.equal(resolved.events[0]?.event.payload.effectActivated, false);
+});
 
 test('Move lets only the hider relocate, select a new zone, and confirm arrival', () => {
   const contentPack = loadEngineTestContentPack();

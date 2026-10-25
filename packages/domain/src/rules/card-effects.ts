@@ -12,11 +12,13 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge';
+  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
   timeBonusMinutes?: number;
+  minimumDistanceMeters?: number;
+  successfulDieResults?: number[];
   questionTemplateCount?: number;
   requireDistinctQuestionCategories?: boolean;
   rerollAfterQuestion?: boolean;
@@ -134,6 +136,25 @@ export function buildCardResolutionPlan(
       kind: 'water_weight_challenge',
       discardRequirement: getCardDiscardRequirement(cardDefinition),
       timeBonusMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale)
+    };
+  }
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'endless_tumble_challenge')) {
+    const tumbleEffect = cardDefinition.effects.find((effect) => effect.effectType === 'endless_tumble_challenge');
+    const payload = tumbleEffect?.payload as { minimumDistanceMeters?: unknown; successfulDieResults?: unknown } | undefined;
+    const minimumDistanceMeters = typeof payload?.minimumDistanceMeters === 'number' && Number.isFinite(payload.minimumDistanceMeters) && payload.minimumDistanceMeters > 0
+      ? payload.minimumDistanceMeters
+      : 30;
+    const configuredSuccessfulDieResults = Array.isArray(payload?.successfulDieResults)
+      ? payload.successfulDieResults.filter((value): value is number => Number.isInteger(value) && value >= 1 && value <= 6)
+      : [];
+    const successfulDieResults = configuredSuccessfulDieResults.length > 0 ? configuredSuccessfulDieResults : [5, 6];
+    return {
+      kind: 'endless_tumble_challenge',
+      discardRequirement: getCardDiscardRequirement(cardDefinition),
+      timeBonusMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale),
+      minimumDistanceMeters,
+      successfulDieResults
     };
   }
 

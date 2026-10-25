@@ -49,6 +49,25 @@ function error(
   };
 }
 
+const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
+  'hangman_challenge',
+  'bridge_troll_challenge',
+  'seeker_off_transit_challenge',
+  'water_weight_challenge',
+  'endless_tumble_challenge'
+]);
+
+function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boolean {
+  return Boolean(
+    aggregate.bridgeTrollChallenge ||
+    aggregate.seekerOffTransitRestriction ||
+    aggregate.waterWeightChallenge ||
+    aggregate.endlessTumbleChallenge ||
+    (aggregate.activeCardResolution?.resolutionKind &&
+      QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
+  );
+}
+
 function isGeoJsonPosition(value: unknown, budget: { positions: number }): value is number[] {
   budget.positions += 1;
   return budget.positions <= 25_000 && Array.isArray(value) && value.length >= 2 &&
@@ -846,6 +865,13 @@ export function validateCommandEnvelope(
       if (aggregate.waterWeightChallenge && !aggregate.waterWeightChallenge.liquidAcquiredAt) {
         return [error(envelope.command.type, 'WATER_WEIGHT_LIQUID_REQUIRED', 'Seekers must confirm they acquired the required new liquid before asking another question.')];
       }
+      if (aggregate.endlessTumbleChallenge && !aggregate.endlessTumbleChallenge.successfulRollAt) {
+        return [error(
+          envelope.command.type,
+          'ENDLESS_TUMBLE_ROLL_REQUIRED',
+          `Seekers must report a clean, unaided roll of ${aggregate.endlessTumbleChallenge.successfulDieResults.join(' or ')} over at least ${aggregate.endlessTumbleChallenge.minimumDistanceMeters} m before asking another question.`
+        )];
+      }
 
       const category = getQuestionCategory(contentPack, template.categoryId);
       if (!category) {
@@ -1365,6 +1391,16 @@ export function validateCommandEnvelope(
       }
 
       const resolutionPlan = buildCardResolutionPlan(effectCardDefinition, aggregate.selectedScale);
+      if (
+        QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(resolutionPlan.kind) &&
+        hasActiveQuestionOrTransitBlockingCurse(aggregate)
+      ) {
+        return [error(
+          envelope.command.type,
+          'QUESTION_BLOCKING_CURSE_ALREADY_ACTIVE',
+          'Wait until the active question- or transit-blocking curse is cleared before playing another one.'
+        )];
+      }
       if (resolutionPlan.kind === 'move' && !aggregate.hiddenState.hidingZone) {
         return [error(envelope.command.type, 'MOVE_ORIGIN_REQUIRED', 'Move requires an original hiding station to reveal to seekers.')];
       }
@@ -1470,6 +1506,10 @@ export function validateCommandEnvelope(
       const activeResolution = aggregate.activeCardResolution;
       if (activeResolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
         return [error(envelope.command.type, 'CARD_WINDOW_NOT_ACTIVE', 'This card resolution window is not active.')];
+      }
+
+      if (activeResolution.resolutionKind === 'endless_tumble_challenge') {
+        return [error(envelope.command.type, 'ENDLESS_TUMBLE_CAST_ROLL_REQUIRED', 'Roll the casting die and record its result to resolve Endless Tumble.')];
       }
 
       if (activeResolution.resolutionKind === 'hangman_challenge' &&
@@ -1638,6 +1678,49 @@ export function validateCommandEnvelope(
       const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
       if (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId)) {
         return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may report that the team liquid was lost or abandoned.')];
+      }
+      return [];
+    }
+    case 'resolve_endless_tumble_cast': {
+      const resolution = aggregate.activeCardResolution;
+      if (resolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || resolution.resolutionKind !== 'endless_tumble_challenge') {
+        return [error(envelope.command.type, 'ENDLESS_TUMBLE_NOT_WAITING_FOR_CAST_ROLL', 'There is no Endless Tumble casting roll to resolve.')];
+      }
+      if (!Number.isInteger(envelope.command.payload.dieRoll) || envelope.command.payload.dieRoll < 1 || envelope.command.payload.dieRoll > 6) {
+        return [error(envelope.command.type, 'ENDLESS_TUMBLE_DIE_ROLL_INVALID', 'Enter a die result from 1 to 6.')];
+      }
+      const sourceCard = aggregate.cardInstances[resolution.sourceCardInstanceId];
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if ((actorRole !== 'hider' && actorRole !== 'host' && actorRole !== 'system') || !sourceCard ||
+        (actorRole === 'hider' && !isCardAccessibleToActor(aggregate, sourceCard, envelope.actor.playerId, envelope.actor.role))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a hider who holds the curse may resolve its casting roll.')];
+      }
+      return [];
+    }
+    case 'report_endless_tumble_roll': {
+      const challenge = aggregate.endlessTumbleChallenge;
+      const payload = envelope.command.payload;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'ENDLESS_TUMBLE_NOT_ACTIVE', 'There is no active Endless Tumble challenge.')];
+      }
+      if (challenge.successfulRollAt) {
+        return [error(envelope.command.type, 'ENDLESS_TUMBLE_ALREADY_PASSED', 'The seekers already completed the required roll.')];
+      }
+      if (payload.dieRoll !== null && (!Number.isInteger(payload.dieRoll) || payload.dieRoll < 1 || payload.dieRoll > 6)) {
+        return [error(envelope.command.type, 'ENDLESS_TUMBLE_DIE_ROLL_INVALID', 'Enter a die result from 1 to 6.')];
+      }
+      if (!Number.isFinite(payload.distanceMeters) || payload.distanceMeters < 0 || payload.distanceMeters > 10000) {
+        return [error(envelope.command.type, 'ENDLESS_TUMBLE_DISTANCE_INVALID', 'Enter a measured roll distance between 0 and 10,000 meters.')];
+      }
+      if (typeof payload.unaided !== 'boolean' || typeof payload.landsCleanly !== 'boolean' || typeof payload.hitPerson !== 'boolean') {
+        return [error(envelope.command.type, 'ENDLESS_TUMBLE_ATTESTATION_REQUIRED', 'Confirm whether the die rolled unaided, landed cleanly, and hit someone.')];
+      }
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      const refereeMayReport = actorRole === 'host' || actorRole === 'system';
+      if (!refereeMayReport && (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may report the team’s die roll from a seeker account.')];
       }
       return [];
     }

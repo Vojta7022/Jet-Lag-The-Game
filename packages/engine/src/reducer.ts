@@ -300,6 +300,7 @@ export function reduceMatchAggregate(
         hiderRotationOrder: eventEnvelope.event.payload.hiderRotationOrder,
         seekerOffTransitRestriction: undefined,
         waterWeightChallenge: undefined,
+        endlessTumbleChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         cardInstances: Object.fromEntries(
           eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
@@ -333,6 +334,7 @@ export function reduceMatchAggregate(
         activeCardResolution: undefined,
         seekerOffTransitRestriction: undefined,
         waterWeightChallenge: undefined,
+        endlessTumbleChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         disabledQuestionTemplateIds: [],
         disabledQuestionCategoryId: undefined,
@@ -466,6 +468,7 @@ export function reduceMatchAggregate(
           [eventEnvelope.event.payload.question.questionInstanceId]: eventEnvelope.event.payload.question
         },
         bridgeTrollChallenge: undefined,
+        endlessTumbleChallenge: base.endlessTumbleChallenge?.successfulRollAt ? undefined : base.endlessTumbleChallenge,
         timers: eventEnvelope.event.payload.questionTimer
           ? {
               ...base.timers,
@@ -559,6 +562,31 @@ export function reduceMatchAggregate(
           bonusAwardedAt: eventEnvelope.event.payload.bonusMinutesAwarded > 0
             ? eventEnvelope.occurredAt
             : challenge.bonusAwardedAt
+        },
+        awardedCurseBonusMinutes: (base.awardedCurseBonusMinutes ?? 0) + eventEnvelope.event.payload.bonusMinutesAwarded
+      };
+    }
+    case 'endless_tumble_challenge_started':
+      return {
+        ...base,
+        endlessTumbleChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt,
+          hiderBonusMinutes: eventEnvelope.event.payload.hiderBonusMinutes,
+          minimumDistanceMeters: eventEnvelope.event.payload.minimumDistanceMeters,
+          successfulDieResults: eventEnvelope.event.payload.successfulDieResults,
+          reportedAttempts: 0
+        }
+      };
+    case 'endless_tumble_roll_reported': {
+      const challenge = base.endlessTumbleChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        endlessTumbleChallenge: {
+          ...challenge,
+          successfulRollAt: eventEnvelope.event.payload.successful ? eventEnvelope.occurredAt : challenge.successfulRollAt,
+          reportedAttempts: challenge.reportedAttempts + 1
         },
         awardedCurseBonusMinutes: (base.awardedCurseBonusMinutes ?? 0) + eventEnvelope.event.payload.bonusMinutesAwarded
       };
@@ -834,6 +862,8 @@ export function reduceMatchAggregate(
           discardRequirement: eventEnvelope.event.payload.discardRequirement,
           drawCountOnResolve: eventEnvelope.event.payload.drawCountOnResolve,
           timeBonusMinutes: eventEnvelope.event.payload.timeBonusMinutes,
+          endlessTumbleMinimumDistanceMeters: eventEnvelope.event.payload.endlessTumbleMinimumDistanceMeters,
+          endlessTumbleSuccessfulDieResults: eventEnvelope.event.payload.endlessTumbleSuccessfulDieResults,
           questionTemplateCount: eventEnvelope.event.payload.questionTemplateCount,
           requireDistinctQuestionCategories: eventEnvelope.event.payload.requireDistinctQuestionCategories,
           questionRewardCount: eventEnvelope.event.payload.questionRewardCount,

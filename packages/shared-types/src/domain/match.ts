@@ -410,7 +410,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -429,6 +429,8 @@ export interface CardResolutionWindow {
   };
   drawCountOnResolve?: number;
   timeBonusMinutes?: number;
+  endlessTumbleMinimumDistanceMeters?: number;
+  endlessTumbleSuccessfulDieResults?: number[];
   questionTemplateCount?: number;
   requireDistinctQuestionCategories?: boolean;
   rerollAfterQuestion?: boolean;
@@ -460,6 +462,16 @@ export interface WaterWeightChallengeModel {
   liquidAcquiredByPlayerId?: string;
   lastLossReportedAt?: string;
   bonusAwardedAt?: string;
+}
+
+export interface EndlessTumbleChallengeModel {
+  sourceCardInstanceId: string;
+  activatedAt: string;
+  hiderBonusMinutes: number;
+  minimumDistanceMeters: number;
+  successfulDieResults: number[];
+  successfulRollAt?: string;
+  reportedAttempts: number;
 }
 
 export interface MatchAggregate {
@@ -494,6 +506,7 @@ export interface MatchAggregate {
   bridgeTrollChallenge?: BridgeTrollChallengeModel;
   seekerOffTransitRestriction?: SeekerOffTransitRestrictionModel;
   waterWeightChallenge?: WaterWeightChallengeModel;
+  endlessTumbleChallenge?: EndlessTumbleChallengeModel;
   awardedCurseBonusMinutes?: number;
   hiderHandLimitBonus?: number;
   disabledQuestionTemplateIds?: string[];

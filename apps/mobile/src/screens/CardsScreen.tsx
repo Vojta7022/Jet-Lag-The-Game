@@ -976,6 +976,12 @@ export function CardsScreen() {
                   type: 'end_hangman_challenge', payload: { sourceCardInstanceId }
                 });
               }}
+              onResolveEndlessTumbleCast={(dieRoll) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({
+                  type: 'resolve_endless_tumble_cast', payload: { sourceCardInstanceId, dieRoll }
+                });
+              }}
               onResolve={(questionTemplateIds) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;

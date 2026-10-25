@@ -238,7 +238,7 @@ export interface MatchProjection {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
     openedAt?: string;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge';
     hangman?: {
       status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
       secretWord?: string;
@@ -257,6 +257,8 @@ export interface MatchProjection {
     };
     drawCountOnResolve?: number;
     timeBonusMinutes?: number;
+    endlessTumbleMinimumDistanceMeters?: number;
+    endlessTumbleSuccessfulDieResults?: number[];
     questionTemplateCount?: number;
     requireDistinctQuestionCategories?: boolean;
     rerollAfterQuestion?: boolean;
@@ -281,6 +283,15 @@ export interface MatchProjection {
     liquidAcquiredByPlayerId?: string;
     lastLossReportedAt?: string;
     bonusAwardedAt?: string;
+  };
+  endlessTumbleChallenge?: {
+    sourceCardInstanceId: string;
+    activatedAt: string;
+    hiderBonusMinutes: number;
+    minimumDistanceMeters: number;
+    successfulDieResults: number[];
+    successfulRollAt?: string;
+    reportedAttempts: number;
   };
   awardedCurseBonusMinutes?: number;
   disabledQuestionTemplateIds?: string[];

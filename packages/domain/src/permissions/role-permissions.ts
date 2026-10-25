@@ -37,6 +37,8 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'end_match',
   'archive_match',
   'resolve_card_window',
+  'resolve_endless_tumble_cast',
+  'report_endless_tumble_roll',
   'set_hangman_word',
   'end_hangman_challenge',
   'complete_cooldown',
@@ -59,6 +61,7 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'play_card',
   'discard_card',
   'resolve_card_window',
+  'resolve_endless_tumble_cast',
   'set_hangman_word',
   'end_hangman_challenge',
   'answer_question'
@@ -80,7 +83,8 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'set_bridge_troll_position',
   'set_seeker_transit_context',
   'confirm_water_weight_liquid_acquired',
-  'report_water_weight_liquid_lost'
+  'report_water_weight_liquid_lost',
+  'report_endless_tumble_roll'
 ]);
 
 const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);

@@ -1389,6 +1389,8 @@ function eventsForCommand(
                   : undefined,
               drawCountOnResolve: resolutionPlan.drawCountOnResolve,
               timeBonusMinutes: resolutionPlan.timeBonusMinutes,
+              endlessTumbleMinimumDistanceMeters: resolutionPlan.minimumDistanceMeters,
+              endlessTumbleSuccessfulDieResults: resolutionPlan.successfulDieResults,
               questionTemplateCount: resolutionPlan.questionTemplateCount,
               requireDistinctQuestionCategories: resolutionPlan.requireDistinctQuestionCategories,
               rerollAfterQuestion: resolutionPlan.rerollAfterQuestion,
@@ -1659,6 +1661,55 @@ function eventsForCommand(
           sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
           playerId: envelope.actor.playerId!,
           bonusMinutesAwarded: challenge.bonusAwardedAt ? 0 : challenge.hiderBonusMinutes
+        }
+      })];
+    }
+    case 'resolve_endless_tumble_cast': {
+      const resolution = aggregate!.activeCardResolution!;
+      const dieRoll = envelope.command.payload.dieRoll;
+      const effectActivated = dieRoll < 5;
+      const events: DomainEventEnvelope[] = [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'endless_tumble_cast_resolved',
+        payload: { sourceCardInstanceId: resolution.sourceCardInstanceId, dieRoll, effectActivated }
+      })];
+      if (effectActivated) {
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+          type: 'endless_tumble_challenge_started',
+          payload: {
+            sourceCardInstanceId: resolution.sourceCardInstanceId,
+            hiderBonusMinutes: resolution.timeBonusMinutes ?? 0,
+            minimumDistanceMeters: resolution.endlessTumbleMinimumDistanceMeters ?? 30,
+            successfulDieResults: resolution.endlessTumbleSuccessfulDieResults ?? [5, 6]
+          }
+        }));
+      }
+      events.push(makeEventEnvelope(aggregate, envelope, events.length, 'team_private', {
+        type: 'card_resolution_closed',
+        payload: {
+          sourceCardInstanceId: resolution.sourceCardInstanceId,
+          seekPhaseSubstate: 'ready',
+          lifecycleState: aggregate!.lifecycleState
+        }
+      }));
+      return events;
+    }
+    case 'report_endless_tumble_roll': {
+      const challenge = aggregate!.endlessTumbleChallenge!;
+      const { dieRoll, distanceMeters, unaided, landsCleanly, hitPerson } = envelope.command.payload;
+      const successful = dieRoll !== null && challenge.successfulDieResults.includes(dieRoll) &&
+        distanceMeters >= challenge.minimumDistanceMeters && unaided && landsCleanly;
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'endless_tumble_roll_reported',
+        payload: {
+          sourceCardInstanceId: challenge.sourceCardInstanceId,
+          playerId: envelope.actor.playerId ?? envelope.actor.actorId,
+          dieRoll,
+          distanceMeters,
+          unaided,
+          landsCleanly,
+          hitPerson,
+          successful,
+          bonusMinutesAwarded: hitPerson ? challenge.hiderBonusMinutes : 0
         }
       })];
     }

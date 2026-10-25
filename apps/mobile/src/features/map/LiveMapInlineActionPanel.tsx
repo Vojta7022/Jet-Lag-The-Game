@@ -13,6 +13,7 @@ import {
   canResolveCardWindow,
   getCardResolutionBlockedReason,
   CardResolutionStatusPanel,
+  EndlessTumbleChallengePanel,
   CardZoneSection,
   HIDER_HAND_TARGET,
   resolveCurrentRole
@@ -88,6 +89,7 @@ export function LiveMapInlineActionPanel() {
     seekerPlayers.every((player) => seekerTransitStatuses[player.playerId]?.onTransitOrAtStation === false)
   );
   const waterWeightChallenge = projection?.waterWeightChallenge;
+  const endlessTumbleChallenge = projection?.endlessTumbleChallenge;
 
   const categoryViewModels = useMemo(
     () => buildQuestionCategoryViewModels(contentPack),
@@ -243,6 +245,7 @@ export function LiveMapInlineActionPanel() {
       inSeekOrEndgame &&
       (!seekerOffTransitRestriction || allSeekersOffTransit) &&
       (!waterWeightChallenge || waterWeightChallenge.liquidAcquiredAt) &&
+      (!endlessTumbleChallenge || endlessTumbleChallenge.successfulRollAt) &&
       (activeQuestionSubstate === 'ready' || activeQuestionSubstate === 'awaiting_question_selection')
   );
   const canAnswerQuestion = Boolean(
@@ -475,6 +478,27 @@ export function LiveMapInlineActionPanel() {
               />
             ) : null}
             <Text style={styles.copy}>New liquid only. The seekers may share containers; if set down, it is abandoned when every seeker is more than 3 m away. Report physical acquisition and loss from the seeker team.</Text>
+          </View>
+        ) : null}
+        {projection?.endlessTumbleChallenge ? (
+          <View style={styles.section}>
+            <EndlessTumbleChallengePanel
+              challenge={projection.endlessTumbleChallenge}
+              viewerRole={viewerRole}
+              disabled={state.loadState === 'loading'}
+              awardedCurseBonusMinutes={projection.awardedCurseBonusMinutes}
+              onReport={(dieRoll, distanceMeters, unaided, landsCleanly, hitPerson) => void submitCommand({
+                type: 'report_endless_tumble_roll',
+                payload: {
+                  sourceCardInstanceId: projection.endlessTumbleChallenge!.sourceCardInstanceId,
+                  dieRoll,
+                  distanceMeters,
+                  unaided,
+                  landsCleanly,
+                  hitPerson
+                }
+              })}
+            />
           </View>
         ) : null}
         <LiveMapInfoChips

@@ -2,6 +2,7 @@ export * from './CardAutomationPill.tsx';
 export * from './CardDeckList.tsx';
 export * from './CardDetailPanel.tsx';
 export * from './CardResolutionStatusPanel.tsx';
+export * from './EndlessTumbleChallengePanel.tsx';
 export * from './CardZoneSection.tsx';
 export * from './CardZoneStats.tsx';
 export * from './card-catalog.ts';

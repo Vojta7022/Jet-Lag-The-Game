@@ -28,6 +28,7 @@ interface CardResolutionStatusPanelProps {
   onSetHangmanWord?: (word: string) => void;
   onGuessHangmanLetter?: (letter: string) => void;
   onEndHangmanChallenge?: () => void;
+  onResolveEndlessTumbleCast?: (dieRoll: number) => void;
   onResolve: (questionTemplateIds: string[]) => void;
 }
 
@@ -35,10 +36,12 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
   const [hangmanWord, setHangmanWord] = useState('');
   const [hangmanLetter, setHangmanLetter] = useState('');
+  const [endlessTumbleCastRoll, setEndlessTumbleCastRoll] = useState<number | undefined>();
   useEffect(() => {
     setSelectedTemplateIds([]);
     setHangmanWord('');
     setHangmanLetter('');
+    setEndlessTumbleCastRoll(undefined);
   }, [props.resolution?.sourceCardInstanceId]);
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
@@ -60,11 +63,13 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const bridgeTrollChallenge = props.resolution?.resolutionKind === 'bridge_troll_challenge';
   const seekerOffTransitChallenge = props.resolution?.resolutionKind === 'seeker_off_transit_challenge';
   const waterWeightChallenge = props.resolution?.resolutionKind === 'water_weight_challenge';
+  const endlessTumbleChallenge = props.resolution?.resolutionKind === 'endless_tumble_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const canSubmit = props.canResolve &&
     (!questionSelectionRequired || selectedTemplateIds.length === requiredQuestionCount) &&
-    (!hangmanChallenge || hangman?.status === 'solved' || hangman?.status === 'ended');
+    (!hangmanChallenge || hangman?.status === 'solved' || hangman?.status === 'ended') &&
+    !endlessTumbleChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
     <View style={styles.section}>
@@ -253,6 +258,31 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
 
       {hangmanPanel}
 
+      {endlessTumbleChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>CASTING ROLL</Text>
+          <Text style={styles.copy}>The hider rolls a physical six-sided die. On {props.resolution?.endlessTumbleSuccessfulDieResults?.join(' or ') ?? '5 or 6'} the curse has no effect; on another result the seekers must complete the {props.resolution?.endlessTumbleMinimumDistanceMeters ?? 30} m roll before their next question.</Text>
+          {props.viewerRole === 'hider' || props.viewerRole === 'host' ? (
+            <>
+              <View style={styles.hangmanGuessRow}>
+                {[1, 2, 3, 4, 5, 6].map((value) => (
+                  <Pressable key={value} onPress={() => setEndlessTumbleCastRoll(value)} style={[styles.categoryOption, endlessTumbleCastRoll === value ? styles.categoryOptionSelected : null]}>
+                    <Text style={[styles.categoryLabel, endlessTumbleCastRoll === value ? styles.categoryLabelSelected : null]}>{value}</Text>
+                  </Pressable>
+                ))}
+              </View>
+              <AppButton
+                label={endlessTumbleCastRoll ? `Record casting roll: ${endlessTumbleCastRoll}` : 'Choose the die result'}
+                disabled={props.disabled || endlessTumbleCastRoll === undefined || !props.onResolveEndlessTumbleCast}
+                onPress={() => {
+                  if (endlessTumbleCastRoll !== undefined) props.onResolveEndlessTumbleCast?.(endlessTumbleCastRoll);
+                }}
+              />
+            </>
+          ) : <Text style={styles.copy}>Waiting for the hider to report the casting die.</Text>}
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Next step</Text>
         <Text style={styles.copy}>{guidance.nextStep}</Text>
@@ -262,7 +292,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
       </View>
 
       <AppButton
-        label="Close Card Window"
+        label={endlessTumbleChallenge ? 'Record the casting roll above' : 'Close Card Window'}
         onPress={() => props.onResolve(questionSelectionRequired ? selectedTemplateIds : [])}
         disabled={!canSubmit || props.disabled}
       />
