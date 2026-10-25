@@ -24,6 +24,7 @@ import { buildDrawnExclusionRegion } from '../features/map/drawn-region.ts';
 import type { MapCoordinate } from '../features/map/map-geometry.ts';
 import { createMapScenario, decodeMapScenario, decodeMapScenarioJson, encodeMapScenario, encodeMapScenarioJson, type MapScenario, type MapScenarioCustomOverlay, type MapScenarioCustomStation } from '../features/map/map-scenarios.ts';
 import { loadSavedMapScenarios, saveMapScenario } from '../features/map/map-scenario-storage.ts';
+import { buildCreateMatchRouteFromScenario } from '../navigation/map-scenario-handoff.ts';
 
 import {
   LiveMapActionPanel,
@@ -754,8 +755,8 @@ export function MapScreen() {
     if (!compositePreviewRegion || invalidExclusion) return;
     const scenario = makeScenario(`${compositePreviewRegion.displayName} · ${new Date().toLocaleDateString()}`);
     setSavedScenarios(await saveMapScenario(scenario));
-    setScenarioNotice(`Saved ${scenario.name}. Load it from Map Scenarios after creating the match.`);
-    router.push('/create-match');
+    setScenarioNotice(`Saved ${scenario.name}. Taking it into match setup…`);
+    router.push(buildCreateMatchRouteFromScenario(encodeMapScenario(scenario)));
   };
 
   const handleShareScenario = async () => {

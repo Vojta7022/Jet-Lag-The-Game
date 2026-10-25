@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, Share, StyleSheet, Text, View } from 'react-native';
 
@@ -24,8 +24,10 @@ import { GameIcon } from '../ui/GameIcon.tsx';
 import { Field } from '../ui/Field.tsx';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { canLeaveLobby, canManageLobbyMembers, canRemoveLobbyPlayer } from '../features/lobby/lobby-membership-model.ts';
+import { buildMapRouteFromLobby } from '../navigation/map-scenario-handoff.ts';
 
 export function LobbyScreen() {
+  const routeParams = useLocalSearchParams<{ scenario?: string | string[] }>();
   const { state, refreshActiveMatch, submitCommand, submitCommands, disconnectActiveMatch } =
     useAppShell();
   const [crewName, setCrewName] = useState('');
@@ -170,7 +172,7 @@ export function LobbyScreen() {
           </View>
           <AppButton
             label={primaryNextLabel}
-            onPress={() => router.push(primaryNextRoute)}
+            onPress={() => router.push(buildMapRouteFromLobby(primaryNextRoute, routeParams.scenario))}
           />
           <AppButton
             label="Refresh Room"

@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
 import { useMemo, useState } from 'react';
@@ -15,6 +15,7 @@ import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 import { GameArtwork } from '../ui/GameArtwork.tsx';
+import { buildLobbyRouteForMatch } from '../navigation/map-scenario-handoff.ts';
 import {
   defaultContentPack,
   getBundledContentPackValidationIssues
@@ -27,6 +28,7 @@ const SCALE_OPTIONS = [
 ] as const;
 
 export function CreateMatchScreen() {
+  const routeParams = useLocalSearchParams<{ scenario?: string | string[] }>();
   const { state, createMatch, getInstalledContentPacks, importContentPackJson } = useAppShell();
   const runtimeClient = useRuntimeClient();
   const { runtimeKind } = useRuntimeMode();
@@ -265,7 +267,7 @@ export function CreateMatchScreen() {
               matchMode
             }).then((accepted) => {
               if (accepted) {
-                router.replace('/lobby');
+                router.replace(buildLobbyRouteForMatch(routeParams.scenario));
               }
             });
           }}
