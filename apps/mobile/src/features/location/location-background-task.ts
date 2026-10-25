@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as TaskManager from 'expo-task-manager';
+import { Platform } from 'react-native';
 
 import { normalizeDeviceLocationSample, type DeviceLocationSample } from './location-state.ts';
 
@@ -115,7 +116,10 @@ if (!TaskManager.isTaskDefined(LOCATION_BACKGROUND_TASK_NAME)) {
     async ({ data, error }) => {
       if (error || !data?.locations?.length) return;
       for (const position of data.locations) {
-        const sample = normalizeDeviceLocationSample(position);
+        const sample = normalizeDeviceLocationSample(
+          position,
+          Platform.OS === 'ios' ? 'mean_sea_level' : 'wgs84_ellipsoid'
+        );
         if (backgroundSampleHandler) {
           try {
             await backgroundSampleHandler(sample);

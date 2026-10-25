@@ -64,6 +64,21 @@ test('device altitude normalization retains vertical datum, accuracy, and sample
   });
 });
 
+test('device altitude normalization records iOS Core Location altitude as mean-sea-level height', () => {
+  const sample = normalizeDeviceLocationSample({
+    coords: {
+      latitude: 50.08,
+      longitude: 14.42,
+      altitude: 235.4,
+      altitudeAccuracy: 6.2
+    },
+    timestamp: Date.parse('2026-01-01T00:00:03.000Z')
+  }, 'mean_sea_level');
+
+  assert.equal(sample.altitudeReference, 'mean_sea_level');
+  assert.equal(sample.altitudeMeters, 235.4);
+});
+
 const generatedPackPath = fileURLToPath(
   new URL('../../../samples/generated/jet-lag-the-game.content-pack.json', import.meta.url)
 );

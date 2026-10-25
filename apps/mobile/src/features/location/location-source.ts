@@ -5,6 +5,7 @@ import {
   type LocationPermissionState,
   type LocationUpdateFrequencyMode
 } from './location-state.ts';
+import { Platform } from 'react-native';
 import {
   LOCATION_BACKGROUND_TASK_NAME,
   registerBackgroundLocationSampleHandler,
@@ -22,6 +23,12 @@ interface ExpoLocationPosition {
     altitudeAccuracy?: number | null;
   };
   timestamp?: number;
+}
+
+function altitudeReferenceForCurrentPlatform(): 'wgs84_ellipsoid' | 'mean_sea_level' {
+  // Expo SDK 55 forwards CLLocation.altitude on iOS (orthometric/MSL height),
+  // while Android Location.getAltitude and browser geolocation use ellipsoid height.
+  return Platform.OS === 'ios' ? 'mean_sea_level' : 'wgs84_ellipsoid';
 }
 
 export interface LocationWatchHandle {
@@ -183,7 +190,7 @@ export function createExpoLocationSource(): MobileLocationSource {
         accuracy
       });
 
-      return normalizeDeviceLocationSample(position);
+      return normalizeDeviceLocationSample(position, altitudeReferenceForCurrentPlatform());
     },
     async watchPosition(mode, onSample) {
       const expoLocation = await loadExpoLocationModule();
@@ -199,7 +206,7 @@ export function createExpoLocationSource(): MobileLocationSource {
           distanceInterval: distanceForMode(mode) || undefined
         },
         (position: ExpoLocationPosition) => {
-          void onSample(normalizeDeviceLocationSample(position));
+          void onSample(normalizeDeviceLocationSample(position, altitudeReferenceForCurrentPlatform()));
         }
       );
 

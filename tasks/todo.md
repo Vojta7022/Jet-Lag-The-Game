@@ -414,4 +414,5 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Capture altitude and vertical accuracy from foreground/background device fixes and carry them in authoritative location events.
 - [x] Keep altitude and its vertical datum in server-side samples without adding it to movement-track projections.
 - [x] Verify device-sample normalization, event/reducer persistence, projection privacy, full suite (363/363), mobile typecheck, and `git diff --check` (2026-10-25).
+- [x] Correct datum tagging by platform: Expo SDK 55's iOS bridge exposes Apple's mean-sea-level `CLLocation.altitude`, while Android and Web expose WGS84 ellipsoid height; add a regression test. Full suite (364/364), mobile typecheck, and `git diff --check` pass (2026-10-25).
 - [ ] Implement a Sea Level resolver that fails closed when altitude uncertainty cannot distinguish the comparison; keep map deduction honest until terrain geometry is available.

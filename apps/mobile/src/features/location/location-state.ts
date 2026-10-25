@@ -40,7 +40,7 @@ export function normalizeDeviceLocationSample(position: {
     altitudeAccuracy?: number | null;
   };
   timestamp?: number;
-}): DeviceLocationSample {
+}, altitudeReference: 'wgs84_ellipsoid' | 'mean_sea_level' = 'wgs84_ellipsoid'): DeviceLocationSample {
   const altitudeMeters = position.coords.altitude ?? undefined;
   return {
     latitude: position.coords.latitude,
@@ -48,7 +48,7 @@ export function normalizeDeviceLocationSample(position: {
     accuracyMeters: position.coords.accuracy ?? undefined,
     altitudeMeters,
     altitudeAccuracyMeters: position.coords.altitudeAccuracy ?? undefined,
-    altitudeReference: altitudeMeters === undefined ? undefined : 'wgs84_ellipsoid',
+    altitudeReference: altitudeMeters === undefined ? undefined : altitudeReference,
     recordedAt: new Date(position.timestamp ?? Date.now()).toISOString(),
     source: 'device'
   };
