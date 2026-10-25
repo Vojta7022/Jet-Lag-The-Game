@@ -74,7 +74,7 @@
 - [x] Retry network errors and transient Overpass HTTP failures against a documented public fallback while keeping explicitly configured endpoints isolated.
 - [x] Verify fallback order and response parsing, reject invalid queries without fan-out, and pass the full suite (387), mobile typecheck, Edge Function typecheck, and `git diff --check` (2026-10-25).
 - [x] Cool down transiently failed endpoints for 60 seconds across different region lookups, then restore the normal endpoint order after recovery.
-- [ ] Verify live regional feature coverage; both documented public endpoints timed out on a tiny Prague node query from this environment, so no regional coverage claim is made.
+- [ ] Verify live regional feature coverage; on 2026-10-26, a bounded 0.03° × 0.02° Prague hospital lookup returned HTTP 502 from `overpass-api.de` and timed out after 30 seconds on the Private.coffee fallback. No regional coverage claim is made.
 
 ### Current implementation slice: enforce the scanned Bridge Troll curse
 
