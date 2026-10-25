@@ -619,3 +619,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add a playable-region pin picker on native and web maps, with coordinate refinement and server-side rejection outside the selected region; verify pan/zoom coordinate conversion.
 - [x] Public accessibility and possession of the physical souvenir remain player-attested; foreground device location drives the visit timer.
 - [x] Verify the complete current suite (434/434), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` after the map picker (2026-10-25).
+
+### Completed implementation slice: Curse of the Impressionable Consumer
+
+- [x] Import the 30 m outdoor-ad rule and scanned p. 54 guidance in both workbook mappings; regenerate the draft pack as an assisted challenge.
+- [x] Require a seeker to propose an outdoor advertisement and advertised business/product with pins inside the playable region and at least 30 m apart; require hider approval or allow another attempt.
+- [x] Keep questions blocked until every seeker reports entering the approved location or buying and receiving the approved product/service from their own device with a fresh GPS fix within 50 m.
+- [x] Add map pin pickers, target submission, hider review, per-seeker visit status, and an explicit location refresh to the player card UI. Align the persisted action type with the engine command.
+- [x] Verify both workbook mappings, generated content, full suite (436/436), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). Real-world ad identity, outdoor location, business status, admission, and purchase receipt remain human attestations.

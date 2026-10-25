@@ -36,6 +36,7 @@ import {
   pickDefaultCardInstanceId,
   resolveCurrentRole
 } from '../features/cards/index.ts';
+import { ImpressionableConsumerPanel } from '../features/cards/ImpressionableConsumerPanel.tsx';
 import {
   filterCardIdsByVisibleHand,
   haveSameCardIdSequence,
@@ -636,6 +637,20 @@ export function CardsScreen() {
           </Panel>
         );
       })() : null}
+
+      {projection?.impressionableConsumerChallenge ? (
+        <ImpressionableConsumerPanel
+          challenge={projection.impressionableConsumerChallenge}
+          visibleMap={projection.visibleMap}
+          players={projection.players.map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+          viewerRole={viewerRole}
+          viewerPlayerId={activeMatch?.recipient.playerId}
+          disabled={state.loadState === 'loading'}
+          onSubmitTarget={(payload) => void submitCommand({ type: 'submit_impressionable_consumer_target', payload })}
+          onReview={(payload) => void submitCommand({ type: 'review_impressionable_consumer_target', payload })}
+          onComplete={(payload) => void submitCommand({ type: 'complete_impressionable_consumer_challenge', payload })}
+        />
+      ) : null}
 
       {projection?.eggPartnerChallenge ? (
         <Panel title="Curse of the Egg Partner" subtitle="Track the egg and its effect on the seeker team." tone="accent">

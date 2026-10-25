@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T21:06:40.206Z",
+    "importedAt": "2026-10-25T21:38:50.714Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2992,7 +2992,7 @@
       "shortName": "Curse Of The Impressionable Consumer",
       "description": "Seekers must enter and gain admission (if applicable) to a location or buy a product that they saw an advertisement for before asking another question. This advertisement musts be found out in the world and must be at least 100ft (30m) from the product or location itself.",
       "rulebookGuidanceText": "An advertisement is an object or display mainly intended to raise awareness of a product, service, or business. If it advertises a specific service, seekers must buy and receive that service; if it advertises a place, they must enter it. Public places such as parks do not count as private businesses. Remove this card if the group does not want possible spending.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3002,18 +3002,20 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "impressionable_consumer_challenge",
           "description": "Seekers must enter and gain admission (if applicable) to a location or buy a product that they saw an advertisement for before asking another question. This advertisement musts be found out in the world and must be at least 100ft (30m) from the product or location itself.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Seekers must enter and gain admission (if applicable) to a location or buy a product that they saw an advertisement for before asking another question. This advertisement musts be found out in the world and must be at least 100ft (30m) from the product or location itself.",
           "payload": {
-            "workbookName": "Curse Of The Impressionable Consumer"
+            "minimumAdvertisementDistanceMeters": 30,
+            "requireOutdoorAdvertisement": true,
+            "requireHiderReview": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true,
+        "requiresManualApproval": false,
         "requiresPhotoUpload": false,
         "requiresVideoUpload": false
       },
@@ -3026,7 +3028,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

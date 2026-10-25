@@ -612,7 +612,7 @@ export interface ImpressionableConsumerChallengeModel {
     targetName: string;
     targetLatitude: number;
     targetLongitude: number;
-    action: 'enter_location' | 'buy_service';
+    action: 'enter_location' | 'buy_product_or_service';
     submittedByPlayerId: string;
     submittedAt: string;
     reviewedAt?: string;
