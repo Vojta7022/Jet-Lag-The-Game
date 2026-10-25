@@ -1254,6 +1254,7 @@ export function CardsScreen() {
                 const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
                 if (sourceCardInstanceId) void submitCommand({ type: 'set_seeker_transit_context', payload: { sourceCardInstanceId, onTransitOrAtStation } });
               }}
+              visibleMap={projection.visibleMap}
               unguidedTouristOutdoorsConfirmedByPlayerIds={projection.activeCardResolution.unguidedTouristOutdoorsConfirmedByPlayerIds}
               unguidedTouristSeekerPlayerIds={projection.players.filter((player) => player.role === 'seeker').map((player) => player.playerId)}
               viewerPlayerId={activeMatch?.recipient.playerId}

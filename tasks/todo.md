@@ -616,4 +616,6 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Require new public camera photos and a physical souvenir before completion, block questions during the trip, and award the scale bonus once if the souvenir is reported lost before capture.
 - [x] Add hider destination/public-access attestation and role-specific seeker transit, photo, souvenir, and completion controls on each phone.
 - [x] Verify clean/legacy imports, engine authorization, timer reset, photo/souvenir gates, and scoring; full suite (432/432), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` pass (2026-10-25).
-- [ ] Replace manual destination latitude/longitude entry with a map pin picker. Public access and possession of the physical souvenir remain player-attested; location tracking is foreground/device dependent.
+- [x] Add a playable-region pin picker on native and web maps, with coordinate refinement and server-side rejection outside the selected region; verify pan/zoom coordinate conversion.
+- [x] Public accessibility and possession of the physical souvenir remain player-attested; foreground device location drives the visit timer.
+- [x] Verify the complete current suite (434/434), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` after the map picker (2026-10-25).

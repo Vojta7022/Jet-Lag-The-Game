@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import MapView, { PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
 import { colors } from '../../ui/theme.ts';
 
@@ -12,6 +12,8 @@ import {
   getPreferredMapGeometry
 } from './map-geometry.ts';
 import { buildMapOverlayModel } from './map-overlays.ts';
+import type { MapCoordinate } from './map-geometry.ts';
+import { pointInGeometry } from '../../../../../packages/geo/src/index.ts';
 
 export function MapCanvas(props: MapCanvasProps) {
   const [frameWidth, setFrameWidth] = useState<number>();
@@ -126,8 +128,13 @@ function NativeMapSurface(props: MapCanvasProps) {
         style={StyleSheet.absoluteFill}
         toolbarEnabled={false}
         zoomEnabled
+        onPress={props.selectable ? (event) => {
+          const coordinate = event.nativeEvent.coordinate as MapCoordinate;
+          if (pointInGeometry([coordinate.longitude, coordinate.latitude], referenceGeometry)) props.onCoordinateSelect?.(coordinate);
+        } : undefined}
       >
         <MapOverlayRenderer overlays={overlayModel.overlays} />
+        {props.selectable && props.selectedCoordinate ? <Marker coordinate={props.selectedCoordinate} title="Trip destination" pinColor={colors.accentStrong} /> : null}
       </MapView>
       <View pointerEvents="none" style={styles.chrome}>
         <View style={styles.chip}>

@@ -13,6 +13,7 @@ import {
 import { AppButton } from '../../ui/AppButton.tsx';
 import { colors } from '../../ui/theme.ts';
 import { describeQuestionTemplateForPlayers } from '../questions/question-guidance.ts';
+import { MapCanvas } from '../map/MapCanvas';
 
 interface CardResolutionStatusPanelProps {
   activeCard?: ResolvedVisibleCardModel;
@@ -38,6 +39,7 @@ interface CardResolutionStatusPanelProps {
   mediocreTravelAgentTransitStatusByPlayerId?: Record<string, { onTransitOrAtStation: boolean; updatedAt: string }>;
   mediocreTravelAgentSeekerPlayerIds?: string[];
   onSetMediocreTravelAgentTransitContext?: (onTransitOrAtStation: boolean) => void;
+  visibleMap?: MatchProjection['visibleMap'];
   unguidedTouristOutdoorsConfirmedByPlayerIds?: string[];
   unguidedTouristSeekerPlayerIds?: string[];
   viewerPlayerId?: string;
@@ -263,6 +265,19 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         <AppButton label={travelAgentTransitStatuses[props.viewerPlayerId ?? '']?.onTransitOrAtStation === false ? 'Report transit / station' : 'Confirm I am off transit'} tone="secondary" disabled={props.disabled} onPress={() => props.onSetMediocreTravelAgentTransitContext?.(travelAgentTransitStatuses[props.viewerPlayerId ?? '']?.onTransitOrAtStation === false)} />
       ) : null}
       <TextInput accessibilityLabel="Public destination name" onChangeText={setTravelDestinationName} placeholder="Place name" style={styles.hangmanInput} value={travelDestinationName} />
+      <MapCanvas
+        height={240}
+        visibleMap={props.visibleMap}
+        selectable
+        selectedCoordinate={Number.isFinite(Number(travelDestinationLatitude)) && Number.isFinite(Number(travelDestinationLongitude)) && travelDestinationLatitude !== '' && travelDestinationLongitude !== ''
+          ? { latitude: Number(travelDestinationLatitude), longitude: Number(travelDestinationLongitude) }
+          : undefined}
+        onCoordinateSelect={(coordinate) => {
+          setTravelDestinationLatitude(coordinate.latitude.toFixed(6));
+          setTravelDestinationLongitude(coordinate.longitude.toFixed(6));
+        }}
+      />
+      <Text style={styles.copy}>Tap inside the playable map to place the destination pin. You can refine the coordinates below.</Text>
       <TextInput accessibilityLabel="Destination latitude" keyboardType="decimal-pad" onChangeText={setTravelDestinationLatitude} placeholder="Latitude" style={styles.hangmanInput} value={travelDestinationLatitude} />
       <TextInput accessibilityLabel="Destination longitude" keyboardType="decimal-pad" onChangeText={setTravelDestinationLongitude} placeholder="Longitude" style={styles.hangmanInput} value={travelDestinationLongitude} />
       <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: travelPublicAccessAttested }} onPress={() => setTravelPublicAccessAttested((value) => !value)} style={styles.uTurnCheckboxRow}>

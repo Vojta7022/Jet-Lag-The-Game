@@ -23,6 +23,8 @@ import type { MapScenarioCustomOverlay } from './map-scenarios.ts';
 import { buildOsmTileLayout } from './map-tiles.ts';
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
 import { panMapViewport, zoomMapViewport, type MapViewportTransform } from './map-canvas-gesture.ts';
+import { pointInGeometry } from '../../../../../packages/geo/src/index.ts';
+import { projectMapCoordinate, unprojectMapCoordinate, type MapCoordinate } from './map-geometry.ts';
 
 interface MapFallbackCanvasProps {
   visibleMap?: VisibleMapProjection;
@@ -36,11 +38,16 @@ interface MapFallbackCanvasProps {
   selectedStation?: import('./station-layer.ts').TransitStationCandidate;
   hidingRadiusMeters?: number;
   customOverlays?: MapScenarioCustomOverlay[];
+  selectable?: boolean;
+  selectedCoordinate?: MapCoordinate;
+  onCoordinateSelect?: (coordinate: MapCoordinate) => void;
 }
 
 export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
   const [viewport, setViewport] = useState<MapViewportTransform>({ scale: 1, offsetX: 0, offsetY: 0 });
   const touchesRef = useRef<Array<{ pageX: number; pageY: number }>>([]);
+  const tapStartRef = useRef<{ x: number; y: number } | undefined>(undefined);
+  const tapMovedRef = useRef(false);
   const gestureStyle = { touchAction: 'none' } as unknown as ViewStyle;
   const dimensions = useWindowDimensions();
   const availableWidth = Math.max(260, dimensions.width - 32);
@@ -89,12 +96,20 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
   const readTouches = (event: { nativeEvent: { touches?: ArrayLike<{ pageX: number; pageY: number }> } }) =>
     Array.from(event.nativeEvent.touches ?? [], (touch) => ({ pageX: touch.pageX, pageY: touch.pageY }));
 
-  const handleTouchStart = (event: { nativeEvent: { touches?: ArrayLike<{ pageX: number; pageY: number }> } }) => {
+  const handleTouchStart = (event: { nativeEvent: { touches?: ArrayLike<{ pageX: number; pageY: number }>; locationX?: number; locationY?: number } }) => {
     touchesRef.current = readTouches(event);
+    tapStartRef.current = typeof event.nativeEvent.locationX === 'number' && typeof event.nativeEvent.locationY === 'number'
+      ? { x: event.nativeEvent.locationX, y: event.nativeEvent.locationY }
+      : undefined;
+    tapMovedRef.current = false;
   };
 
-  const handleTouchMove = (event: { nativeEvent: { touches?: ArrayLike<{ pageX: number; pageY: number }> } }) => {
+  const handleTouchMove = (event: { nativeEvent: { touches?: ArrayLike<{ pageX: number; pageY: number }>; locationX?: number; locationY?: number } }) => {
     const nextTouches = readTouches(event);
+    if (tapStartRef.current && typeof event.nativeEvent.locationX === 'number' && typeof event.nativeEvent.locationY === 'number' &&
+      Math.hypot(event.nativeEvent.locationX - tapStartRef.current.x, event.nativeEvent.locationY - tapStartRef.current.y) > 8) {
+      tapMovedRef.current = true;
+    }
     const previousTouches = touchesRef.current;
     if (nextTouches.length === 1 && previousTouches.length === 1) {
       setViewport((current) => panMapViewport(
@@ -132,7 +147,18 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
       style={[styles.frame, { width, height }, gestureStyle]}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
-      onTouchEnd={(event) => { touchesRef.current = readTouches(event); }}
+      onTouchEnd={(event) => {
+        touchesRef.current = readTouches(event);
+        const x = event.nativeEvent.locationX;
+        const y = event.nativeEvent.locationY;
+        const tappedMapControl = typeof x === 'number' && typeof y === 'number' && x >= width - 54 && y <= 150;
+        if (props.selectable && !tapMovedRef.current && !tappedMapControl && typeof x === 'number' && typeof y === 'number') {
+          const coordinate = unprojectMapCoordinate({ x, y, bounds, viewport: tileViewport, transform: viewport });
+          if (coordinate && pointInGeometry([coordinate.longitude, coordinate.latitude], referenceGeometry)) props.onCoordinateSelect?.(coordinate);
+        }
+        tapStartRef.current = undefined;
+        tapMovedRef.current = false;
+      }}
       onTouchCancel={() => { touchesRef.current = []; }}
     >
       <Svg width={width} height={height}>
@@ -225,6 +251,10 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
             </G>
           );
         })}
+        {props.selectable && props.selectedCoordinate ? (() => {
+          const point = projectMapCoordinate(props.selectedCoordinate!, bounds, tileViewport);
+          return <G><Circle cx={point.x} cy={point.y} fill={colors.accentStrong} r={8} stroke={colors.surface} strokeWidth={3} /><Circle cx={point.x} cy={point.y} fill="none" r={14} stroke={colors.accentStrong} strokeWidth={2} /></G>;
+        })() : null}
         </G>
       </Svg>
       <View style={styles.zoomControls}>
@@ -243,6 +273,7 @@ export function MapFallbackCanvas(props: MapFallbackCanvasProps) {
           <Text style={styles.noticeText}>{props.notice ?? tileLayout.attribution}</Text>
         </View>
       ) : null}
+      {props.selectable ? <View pointerEvents="none" style={styles.pickHint}><Text style={styles.noticeText}>Tap the map to set the destination pin</Text></View> : null}
     </View>
   );
 }
@@ -292,6 +323,16 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     bottom: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(19, 33, 47, 0.78)',
+    paddingHorizontal: 12,
+    paddingVertical: 8
+  },
+  pickHint: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    top: 12,
     borderRadius: 12,
     backgroundColor: 'rgba(19, 33, 47, 0.78)',
     paddingHorizontal: 12,

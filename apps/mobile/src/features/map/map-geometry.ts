@@ -40,6 +40,37 @@ export interface MapViewport {
   padding: number;
 }
 
+export function unprojectMapCoordinate(args: {
+  x: number;
+  y: number;
+  bounds: GeometryBounds;
+  viewport: MapViewport;
+  transform?: { scale: number; offsetX: number; offsetY: number };
+}): MapCoordinate | undefined {
+  const transform = args.transform ?? { scale: 1, offsetX: 0, offsetY: 0 };
+  if (!Number.isFinite(args.x) || !Number.isFinite(args.y) || !Number.isFinite(transform.scale) || transform.scale <= 0) return undefined;
+  const baseX = (args.x - transform.offsetX - args.viewport.width / 2) / transform.scale + args.viewport.width / 2;
+  const baseY = (args.y - transform.offsetY - args.viewport.height / 2) / transform.scale + args.viewport.height / 2;
+  const drawableWidth = Math.max(args.viewport.width - args.viewport.padding * 2, 1);
+  const drawableHeight = Math.max(args.viewport.height - args.viewport.padding * 2, 1);
+  const longitude = args.bounds.minLongitude + ((baseX - args.viewport.padding) / drawableWidth) * (args.bounds.maxLongitude - args.bounds.minLongitude);
+  const latitude = args.bounds.maxLatitude - ((baseY - args.viewport.padding) / drawableHeight) * (args.bounds.maxLatitude - args.bounds.minLatitude);
+  return Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : undefined;
+}
+
+export function projectMapCoordinate(
+  coordinate: MapCoordinate,
+  bounds: GeometryBounds,
+  viewport: MapViewport
+): { x: number; y: number } {
+  const spanLongitude = bounds.maxLongitude - bounds.minLongitude || 1;
+  const spanLatitude = bounds.maxLatitude - bounds.minLatitude || 1;
+  return {
+    x: viewport.padding + ((coordinate.longitude - bounds.minLongitude) / spanLongitude) * Math.max(viewport.width - viewport.padding * 2, 1),
+    y: viewport.height - (viewport.padding + ((coordinate.latitude - bounds.minLatitude) / spanLatitude) * Math.max(viewport.height - viewport.padding * 2, 1))
+  };
+}
+
 type Ring = GeometryPoint[];
 type PolygonRings = Ring[];
 

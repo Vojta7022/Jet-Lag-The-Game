@@ -19,6 +19,9 @@ export function MapCanvas(props: MapCanvasProps) {
           transitStations={props.transitStations}
           selectedStation={props.selectedStation}
           hidingRadiusMeters={props.hidingRadiusMeters}
+          selectable={props.selectable}
+          selectedCoordinate={props.selectedCoordinate}
+          onCoordinateSelect={props.onCoordinateSelect}
           height={props.height}
           maxWidth={Math.min(props.maxWidth ?? frameWidth, frameWidth)}
           notice="© OpenStreetMap contributors · Street tiles load for the visible map."

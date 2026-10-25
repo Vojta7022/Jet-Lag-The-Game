@@ -8,7 +8,7 @@ import type {
   MatchAggregate,
   QuestionFeatureDatasetModel
 } from '../../../shared-types/src/index.ts';
-import { circleWithinGeometry, distanceMeters, isPolygonBoundaryGeometry } from '../../../geo/src/index.ts';
+import { circleWithinGeometry, distanceMeters, isPolygonBoundaryGeometry, pointInGeometry } from '../../../geo/src/index.ts';
 
 import {
   buildCardResolutionPlan,
@@ -1705,6 +1705,9 @@ export function validateCommandEnvelope(
         const maximumDistanceMeters = activeResolution.mediocreTravelAgentMaximumDistanceMeters;
         if (!seekerTeam || !Number.isFinite(maximumDistanceMeters) || !maximumDistanceMeters) {
           return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_SEEKERS_REQUIRED', 'A current seeker location and scale limit are required to set the trip.')];
+        }
+        if (aggregate.mapRegion && !pointInGeometry([longitude!, latitude!], aggregate.mapRegion.boundaryGeometry)) {
+          return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_DESTINATION_OUTSIDE_REGION', 'Choose the destination inside the selected playable map region.')];
         }
         for (const playerId of seekerTeam.memberPlayerIds) {
           const transitStatus = activeResolution.mediocreTravelAgentTransitStatusByPlayerId?.[playerId];

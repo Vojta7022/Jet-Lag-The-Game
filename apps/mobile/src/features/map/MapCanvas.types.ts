@@ -7,6 +7,7 @@ import type {
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
 import type { TransitStationCandidate } from './station-layer.ts';
 import type { MapScenarioCustomOverlay } from './map-scenarios.ts';
+import type { MapCoordinate } from './map-geometry.ts';
 
 export interface MapCanvasProps {
   visibleMap?: VisibleMapProjection;
@@ -19,4 +20,7 @@ export interface MapCanvasProps {
   selectedStation?: TransitStationCandidate;
   hidingRadiusMeters?: number;
   customOverlays?: MapScenarioCustomOverlay[];
+  selectable?: boolean;
+  selectedCoordinate?: MapCoordinate;
+  onCoordinateSelect?: (coordinate: MapCoordinate) => void;
 }

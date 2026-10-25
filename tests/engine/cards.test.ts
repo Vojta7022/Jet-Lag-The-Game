@@ -324,6 +324,9 @@ test('Mediocre Travel Agent tracks a shared trip, photo evidence, souvenir, and 
     { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
     { type: 'set_seeker_transit_context', payload: { sourceCardInstanceId: cardInstanceId, onTransitOrAtStation: false } }, 100.5), contentPack).aggregate;
   assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, mediocreTravelAgentDestinationName: 'Outside city', mediocreTravelAgentLatitude: 0, mediocreTravelAgentLongitude: 0, mediocreTravelAgentPublicAccessAttested: true } }, 100.75), contentPack), /inside the selected playable map region/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 101), contentPack), /publicly accessible destination/i);
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
