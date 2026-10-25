@@ -1,6 +1,7 @@
 export type ScenarioRouteParams = { scenario?: string | string[] };
+export type ScenarioRoutePath = '/create-match' | '/dashboard' | '/lobby' | '/map';
 export type ScenarioNavigationTarget = string | {
-  pathname: '/create-match' | '/lobby' | '/map';
+  pathname: ScenarioRoutePath;
   params: { scenario: string };
 };
 
@@ -10,21 +11,17 @@ function firstScenarioToken(value: string | string[] | undefined): string | unde
 }
 
 export function buildLobbyRouteForMatch(scenario?: string | string[]): ScenarioNavigationTarget {
-  const token = firstScenarioToken(scenario);
-  return token ? { pathname: '/lobby', params: { scenario: token } } : '/lobby';
+  return buildScenarioRoute('/lobby', scenario);
 }
 
 export function buildCreateMatchRouteFromScenario(scenario: string): ScenarioNavigationTarget {
-  const token = firstScenarioToken(scenario);
-  return token ? { pathname: '/create-match', params: { scenario: token } } : '/create-match';
+  return buildScenarioRoute('/create-match', scenario);
 }
 
-export function buildMapRouteFromLobby(
-  primaryNextRoute: string,
+export function buildScenarioRoute(
+  pathname: ScenarioRoutePath,
   scenario?: string | string[]
 ): ScenarioNavigationTarget {
   const token = firstScenarioToken(scenario);
-  return primaryNextRoute === '/map' && token
-    ? { pathname: '/map', params: { scenario: token } }
-    : primaryNextRoute;
+  return token ? { pathname, params: { scenario: token } } : pathname;
 }

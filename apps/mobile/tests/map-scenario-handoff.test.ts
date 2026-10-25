@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   buildCreateMatchRouteFromScenario,
   buildLobbyRouteForMatch,
-  buildMapRouteFromLobby
+  buildScenarioRoute
 } from '../src/navigation/map-scenario-handoff.ts';
 
 test('a saved standalone map scenario survives match creation and reaches map setup', () => {
@@ -15,7 +15,8 @@ test('a saved standalone map scenario survives match creation and reaches map se
   });
   const lobbyRoute = buildLobbyRouteForMatch(scenario);
   assert.deepEqual(lobbyRoute, { pathname: '/lobby', params: { scenario } });
-  assert.deepEqual(buildMapRouteFromLobby('/map', scenario), { pathname: '/map', params: { scenario } });
+  assert.deepEqual(buildScenarioRoute('/map', scenario), { pathname: '/map', params: { scenario } });
+  assert.deepEqual(buildScenarioRoute('/dashboard', scenario), { pathname: '/dashboard', params: { scenario } });
 });
 
 test('scenario route parameters discard empty and duplicate route values', () => {
@@ -28,6 +29,6 @@ test('scenario route parameters discard empty and duplicate route values', () =>
 
 test('map scenario handoff keeps the normal route when no scenario was prepared', () => {
   assert.equal(buildLobbyRouteForMatch(undefined), '/lobby');
-  assert.equal(buildMapRouteFromLobby('/map', undefined), '/map');
-  assert.equal(buildMapRouteFromLobby('/dashboard', 'prepared-map'), '/dashboard');
+  assert.equal(buildScenarioRoute('/map', undefined), '/map');
+  assert.equal(buildScenarioRoute('/dashboard', undefined), '/dashboard');
 });

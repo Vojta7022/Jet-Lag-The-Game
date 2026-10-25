@@ -24,7 +24,7 @@ import { GameIcon } from '../ui/GameIcon.tsx';
 import { Field } from '../ui/Field.tsx';
 import { createUuid } from '../runtime/create-uuid.ts';
 import { canLeaveLobby, canManageLobbyMembers, canRemoveLobbyPlayer } from '../features/lobby/lobby-membership-model.ts';
-import { buildMapRouteFromLobby } from '../navigation/map-scenario-handoff.ts';
+import { buildScenarioRoute } from '../navigation/map-scenario-handoff.ts';
 
 export function LobbyScreen() {
   const routeParams = useLocalSearchParams<{ scenario?: string | string[] }>();
@@ -172,7 +172,7 @@ export function LobbyScreen() {
           </View>
           <AppButton
             label={primaryNextLabel}
-            onPress={() => router.push(buildMapRouteFromLobby(primaryNextRoute, routeParams.scenario))}
+            onPress={() => router.push(buildScenarioRoute(primaryNextRoute, routeParams.scenario))}
           />
           <AppButton
             label="Refresh Room"

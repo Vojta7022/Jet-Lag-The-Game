@@ -317,8 +317,8 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 
 ## Active: rules-faithful game and reference-map workflows
 
-- [x] Let the map workbench search and compose playable regions before a match exists; save/share/export the draft and carry its compressed scenario directly through new-match creation and lobby into map setup.
-- [x] Verify standalone region search, include/exclude editing, scenario persistence and route handoff, the 459-test suite, mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). Hand-drawn masks are available before match creation too.
+- [x] Let the map workbench search and compose playable regions before a match exists; save/share/export the draft and carry its compressed scenario through new-match creation, lobby, optional team-assignment dashboard, and map setup.
+- [x] Verify standalone region search, include/exclude editing, scenario persistence and handoff through team assignment, the 461-test suite, single-device referee round, mobile typecheck, Expo web export, and `git diff --check` (2026-10-26). Hand-drawn masks are available before match creation too.
 
 ### Current rules slice: late question answers
 
@@ -416,7 +416,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 ### Findings for this pass
 
 - OSM encodes the five North American Great Lakes as multipolygon relations with `natural=water`, `water=lake`, and stable Wikidata IDs Q1066, Q1169, Q1383, Q5492, and Q1062. The provider can use those polygons as shoreline linework without inferring that arbitrary lakes or river paths meet the scanned Coastline rule. Direct OSM API tag checks succeeded for all five; the regional Overpass geometry request returned 502. [OpenStreetMap relation API; OpenStreetMap Wiki `natural=water`; checked 2026-10-25]
-- The map workbench now works without an active match: searchable administrative regions can be combined/subtracted, edited custom overlays and stations can be added, and Save Map & Create Match persists the selected geometry and carries its compressed scenario through match creation and lobby into map setup without requiring a rediscovery step. [MapScreen, `apps/mobile/src/navigation/map-scenario-handoff.ts`, `apps/mobile/tests/map-scenario-handoff.test.ts`; checked 2026-10-25]
+- The map workbench now works without an active match: searchable administrative regions can be combined/subtracted, edited custom overlays and stations can be added, and Save Map & Create Match persists the selected geometry and carries its compressed scenario through match creation, lobby, optional team-assignment dashboard, and map setup without requiring a rediscovery step. [MapScreen, `apps/mobile/src/navigation/map-scenario-handoff.ts`, `apps/mobile/tests/map-scenario-handoff.test.ts`; checked 2026-10-26]
 - Pregame map setup and the standalone map studio support hand-drawn exclusion masks on the same native/web map canvas. Draft points are restricted to the selected boundary, invalid/degenerate rings are rejected, and closed masks flow through existing subtraction, scenario serialization, and authoritative map application paths. [map builder, `apps/mobile/tests/map-region-selection.test.ts`, checked 2026-10-25]
 - The Investigation Book's “Draw N, Pick M” is the hider's card reward after an answer. A prior build incorrectly used those numbers to deal a random subset of available questions; the current flow shows all scale-allowed printed questions and repeats their reward separately.
 - A prior app-injected ruleset used a 120-second hide phase and 45-second post-answer cooldown. These were replaced with the scanned 30/60/180-minute hide periods by scale and no extra answer cooldown.

@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { Text } from 'react-native';
 
@@ -10,6 +10,7 @@ import { FactList } from '../ui/FactList.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
 import { StateBanner } from '../ui/StateBanner.tsx';
+import { buildScenarioRoute } from '../navigation/map-scenario-handoff.ts';
 
 function formatRoleLabel(role: string) {
   switch (role) {
@@ -87,15 +88,16 @@ function buildRoleCopy(role: string) {
 }
 
 export function RoleDashboardScreen() {
+  const routeParams = useLocalSearchParams<{ scenario?: string | string[] }>();
   const { state } = useAppShell();
   const activeMatch = state.activeMatch;
 
   useFocusEffect(
     useCallback(() => {
       if (shouldRedirectSetupScreen(activeMatch?.projection.lifecycleState)) {
-        router.replace('/map');
+        router.replace(buildScenarioRoute('/map', routeParams.scenario));
       }
-    }, [activeMatch?.projection.lifecycleState])
+    }, [activeMatch?.projection.lifecycleState, routeParams.scenario])
   );
 
   if (!activeMatch) {
@@ -154,12 +156,12 @@ export function RoleDashboardScreen() {
         <Text>{roleCopy.detail}</Text>
         <AppButton
           label="Back To Match Room"
-          onPress={() => router.push('/lobby')}
+          onPress={() => router.push(buildScenarioRoute('/lobby', routeParams.scenario))}
         />
         {role === 'host' ? (
           <AppButton
             label="Open Map Setup"
-            onPress={() => router.push('/map')}
+            onPress={() => router.push(buildScenarioRoute('/map', routeParams.scenario))}
             tone="secondary"
           />
         ) : null}
