@@ -27,6 +27,8 @@
 
 ## Review
 
+- Bridge Troll is now a typed assisted effect from the scanned rulebook. The engine blocks the next question until each active seeker has independently marked that they are under the bridge; each player can update their status if they leave, and acceptance of the next question clears the condition. Physical presence remains a group attestation. [base rulebook scan, printed p. 50; engine/importer tests, 2026-10-25]
+
 - The project has a broad functional foundation; its phased plan and some package READMEs are out of date.
 - `npm run online:smoke` now runs a real local Supabase round using distinct authenticated host, hider, and seeker sessions: role setup, location privacy, automatic Radar/map deduction, in-app reward selection, found/scoring, and round rotation. The local smoke uses synthetic GPS and a host phase advance; hosted deployment, hosted authorization audit, timer/native-GPS behavior, and cellular field play remain unverified. Nearby mode has no LAN transport.
 - The regenerated base-game pack has six question categories and 80 printed Investigation Book question templates, 37 card definitions / 125 card instances, one scan-attributed base ruleset, one host-selected-boundary map preset, 11 warnings, and 5 informational import findings. It remains draft content; remaining card warnings still need adjudication.
@@ -72,6 +74,15 @@
 - [x] Verify fallback order and response parsing, reject invalid queries without fan-out, and pass the full suite (387), mobile typecheck, Edge Function typecheck, and `git diff --check` (2026-10-25).
 - [x] Cool down transiently failed endpoints for 60 seconds across different region lookups, then restore the normal endpoint order after recovery.
 - [ ] Verify live regional feature coverage; both documented public endpoints timed out on a tiny Prague node query from this environment, so no regional coverage claim is made.
+
+### Current implementation slice: enforce the scanned Bridge Troll curse
+
+- [x] Add a failing engine test proving the curse blocks the next question until every active seeker attests they are under a bridge.
+- [x] Record each seeker's current under-bridge status in public match state and let the player revoke it if they leave.
+- [x] Activate the requirement when the hider resolves Bridge Troll and clear it only when the next question is accepted.
+- [x] Add player controls and role-specific status so every seeker can attest from their own phone and the hider can see readiness.
+- [x] Verify the printed p. 50 rule with focused engine/importer tests, the 388-test suite, mobile typecheck, Edge Function check, 14-step online smoke, and web/iOS/Android bundle exports. Physical bridge presence remains a player attestation because GPS cannot verify posture/structure.
+- [ ] Honor the other p. 50 setup rule: exclude Bridge Troll from the deck when the selected map has no bridges. The current slice enforces the curse after a draw but does not yet filter it at setup.
 
 ### Completed implementation slice: authority-backed Matching/Measuring
 

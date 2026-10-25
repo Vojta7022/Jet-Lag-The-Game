@@ -202,6 +202,8 @@ test('the workbook importer creates a normalized draft content pack', () => {
   )));
   const bridgeTroll = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
   assert.match(String(bridgeTroll?.rulebookGuidanceText), /elevated structure.*pedestrians, cars, or other vehicles/i);
+  assert.equal(bridgeTroll?.automationLevel, 'assisted');
+  assert.equal(bridgeTroll?.effects[0]?.effectType, 'bridge_troll_challenge');
   const uTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-u-turn');
   assert.match(String(uTurn?.rulebookGuidanceText), /ignore skipped stops/i);
   const urbanExplorer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
@@ -218,6 +220,9 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   const curses = result.pack.cards.filter((card) => card.kind === 'curse');
   assert.equal(curses.length, 24);
   assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));
+  const bridgeTroll = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
+  assert.equal(bridgeTroll?.automationLevel, 'assisted');
+  assert.equal(bridgeTroll?.effects[0]?.effectType, 'bridge_troll_challenge');
   const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
   assert.equal(photoTemplates.length, 18);
   assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));

@@ -64,6 +64,7 @@ export type DomainCommand =
   | SetHangmanWordCommand
   | GuessHangmanLetterCommand
   | EndHangmanChallengeCommand
+  | SetBridgeTrollPositionCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -345,6 +346,11 @@ export interface GuessHangmanLetterCommand {
 export interface EndHangmanChallengeCommand {
   type: 'end_hangman_challenge';
   payload: { sourceCardInstanceId: string };
+}
+
+export interface SetBridgeTrollPositionCommand {
+  type: 'set_bridge_troll_position';
+  payload: { sourceCardInstanceId: string; underBridge: boolean };
 }
 
 export interface CompleteCooldownCommand {

@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T13:19:25.343Z",
+    "importedAt": "2026-10-25T14:50:23.788Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2518,7 +2518,7 @@
       "shortName": "Curse Of The Bridge Troll",
       "description": "The seekers must ask their next question from under a bridge",
       "rulebookGuidanceText": "A bridge is an elevated structure intended for pedestrians, cars, or other vehicles to cross as a path, road, or railway. When the next question is asked, every seeker must have some part of their body under the bridge. Remove this card if the playable map has no bridges.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -2528,18 +2528,18 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "bridge_troll_challenge",
           "description": "The seekers must ask their next question from under a bridge",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "The seekers must ask their next question from under a bridge",
           "payload": {
-            "workbookName": "Curse Of The Bridge Troll"
+            "requiredAttestations": "all_seekers"
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2550,7 +2550,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

@@ -1525,6 +1525,13 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'bridge_troll_challenge') {
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+          type: 'bridge_troll_challenge_started',
+          payload: { sourceCardInstanceId: activeResolution.sourceCardInstanceId }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'move' && aggregate!.lifecycleState === 'hide_phase') {
         const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide' && timer.status === 'paused');
         if (hideTimer) {
@@ -1588,6 +1595,15 @@ function eventsForCommand(
         }
       })];
     }
+    case 'set_bridge_troll_position':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'bridge_troll_position_changed',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          playerId: envelope.actor.playerId!,
+          underBridge: envelope.command.payload.underBridge
+        }
+      })];
     case 'complete_cooldown':
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {

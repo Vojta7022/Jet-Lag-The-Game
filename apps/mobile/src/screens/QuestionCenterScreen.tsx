@@ -441,12 +441,21 @@ export function QuestionCenterScreen() {
         'map_setup'
       ].includes(projection.lifecycleState)
   );
+  const bridgeTrollChallenge = projection?.bridgeTrollChallenge;
+  const bridgeTrollSeekers = projection?.players.filter((player) => player.role === 'seeker') ?? [];
+  const bridgeTrollAttestedIds = new Set(Object.keys(bridgeTrollChallenge?.attestedAtByPlayerId ?? {}));
+  const bridgeTrollReady = Boolean(
+    bridgeTrollChallenge &&
+    bridgeTrollSeekers.length > 0 &&
+    bridgeTrollSeekers.every((player) => bridgeTrollAttestedIds.has(player.playerId))
+  );
   const canAskQuestion = Boolean(
     activeMatch &&
       capabilities.canAskQuestions &&
       readyTemplate &&
       (!isQuestionDistanceChoice(readyTemplate) || parseChosenDistanceMeters(chosenDistanceDraft) !== undefined) &&
       !selectedQuestionIsDisabled &&
+      (!bridgeTrollChallenge || bridgeTrollReady) &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
   const canAnswerQuestion = Boolean(
@@ -753,6 +762,39 @@ export function QuestionCenterScreen() {
       ) : null}
 
       <MatchTimingBanner model={timingModel} />
+
+      {bridgeTrollChallenge ? (
+        <Panel
+          title="Curse of the Bridge Troll"
+          subtitle="Every seeker must be under the same bridge when the next question is asked. Confirm from your own phone while you are there."
+          tone="accent"
+        >
+          <FactList items={bridgeTrollSeekers.map((player) => ({
+            label: player.displayName,
+            value: bridgeTrollAttestedIds.has(player.playerId) ? 'Under a bridge · confirmed' : 'Confirmation needed'
+          }))} />
+          {viewerRole === 'seeker' ? (
+            <AppButton
+              label={bridgeTrollAttestedIds.has(activeMatch?.recipient.playerId ?? '') ? 'Update: I am no longer under the bridge' : 'Confirm I am under the bridge'}
+              tone="secondary"
+              disabled={state.loadState === 'loading'}
+              onPress={() => {
+                if (!bridgeTrollChallenge) return;
+                void submitCommand({
+                  type: 'set_bridge_troll_position',
+                  payload: {
+                    sourceCardInstanceId: bridgeTrollChallenge.sourceCardInstanceId,
+                    underBridge: !bridgeTrollAttestedIds.has(activeMatch?.recipient.playerId ?? '')
+                  }
+                });
+              }}
+            />
+          ) : null}
+          <Text style={styles.helper}>
+            If a seeker leaves the bridge, update their status here. The app enforces that everyone is marked under the bridge when the next question is asked; your group still judges whether the structure qualifies as a bridge.
+          </Text>
+        </Panel>
+      ) : null}
 
       {latestConstraintApplied && latestResolvedEffect ? (
         <StateBanner

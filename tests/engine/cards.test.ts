@@ -113,6 +113,83 @@ test('Move lets only the hider relocate, select a new zone, and confirm arrival'
   assert.equal(aggregate.roundResults?.at(-1)?.survivalSeconds, 33);
 });
 
+test('Bridge Troll blocks the next question until each seeker confirms they are under a bridge', () => {
+  const contentPack = loadEngineTestContentPack();
+  const bridgeTroll = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
+  assert.ok(bridgeTroll);
+  bridgeTroll.castingCost = [];
+  bridgeTroll.effects = bridgeTroll.effects.map((effect) => ({
+    ...effect,
+    effectType: 'bridge_troll_challenge',
+    automationLevel: 'assisted'
+  }));
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.players['seeker-2'] = {
+    playerId: 'seeker-2', displayName: 'Second Seeker', connectionState: 'connected', joinedAt: aggregate.createdAt
+  };
+  aggregate.roleAssignments['seeker-2'] = { playerId: 'seeker-2', role: 'seeker', teamId: 'team-seeker' };
+  aggregate.teams['team-seeker']!.memberPlayerIds.push('seeker-2');
+  const cardInstanceId = moveCardToTeamHand(aggregate, bridgeTroll.cardDefinitionId, 'team-hider');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'bridge_troll_challenge');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 71), contentPack).aggregate;
+  assert.equal(aggregate.bridgeTrollChallenge?.sourceCardInstanceId, cardInstanceId);
+  assert.deepEqual(aggregate.bridgeTrollChallenge?.attestedAtByPlayerId, {});
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'set_bridge_troll_position', payload: { sourceCardInstanceId: cardInstanceId, underBridge: true } } as never, 72), contentPack), /does not have permission/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'set_bridge_troll_position', payload: { sourceCardInstanceId: cardInstanceId, underBridge: 'yes' } } as never, 72), contentPack), /choose whether you are currently under the bridge/i);
+  for (const role of ['hider', 'seeker'] as const) {
+    const teamId = role === 'hider' ? 'team-hider' : 'team-seeker';
+    const view = buildMatchProjection(aggregate, contentPack, {
+      scope: 'team_private',
+      viewerPlayerId: `${role}-1`,
+      viewerTeamId: teamId,
+      viewerRole: role
+    });
+    assert.equal(view.bridgeTrollChallenge?.sourceCardInstanceId, cardInstanceId);
+  }
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 72), contentPack).aggregate;
+  const askQuestion = (occurredAt: number) => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:bridge-troll',
+      templateId: 'matching-commercial-airport',
+      targetTeamId: 'team-hider'
+    } }, occurredAt), contentPack);
+  assert.throws(() => askQuestion(73), /every seeker must confirm they are under a bridge/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'set_bridge_troll_position', payload: { sourceCardInstanceId: cardInstanceId, underBridge: true } } as never, 74), contentPack).aggregate;
+  assert.deepEqual(aggregate.bridgeTrollChallenge?.attestedAtByPlayerId, { 'seeker-1': '2026-01-01T00:01:14.000Z' });
+  assert.throws(() => askQuestion(75), /every seeker must confirm they are under a bridge/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-2', playerId: 'seeker-2', role: 'seeker' },
+    { type: 'set_bridge_troll_position', payload: { sourceCardInstanceId: cardInstanceId, underBridge: true } } as never, 76), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'set_bridge_troll_position', payload: { sourceCardInstanceId: cardInstanceId, underBridge: false } } as never, 77), contentPack).aggregate;
+  assert.throws(() => askQuestion(78), /every seeker must confirm they are under a bridge/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'set_bridge_troll_position', payload: { sourceCardInstanceId: cardInstanceId, underBridge: true } } as never, 79), contentPack).aggregate;
+  const result = askQuestion(80);
+  assert.equal(result.aggregate.questionInstances['question:bridge-troll']?.status, 'awaiting_answer');
+  assert.equal(result.aggregate.bridgeTrollChallenge, undefined);
+});
+
 test('Hidden Hangman tracks a private five-letter word and public seeker guesses until solved', () => {
   const contentPack = loadEngineTestContentPack();
   const hangmanDefinition = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-hidden-hangman');

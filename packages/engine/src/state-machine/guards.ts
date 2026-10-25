@@ -119,6 +119,10 @@ export function validateStateForCommand(
           (!aggregate.seekPhaseSubstate || aggregate.seekPhaseSubstate === 'ready'))
         ? []
         : [error(command.type, 'INVALID_STATE', 'Question prompts can only open when seekers are ready, including during endgame.')];
+    case 'set_bridge_troll_position':
+      return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Bridge position can only be confirmed while seekers are searching.')];
     case 'ask_question':
       return isSeekPhaseState(aggregate, 'awaiting_question_selection') ||
         (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'awaiting_question_selection')

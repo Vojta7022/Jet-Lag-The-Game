@@ -101,6 +101,8 @@ export type DomainEvent =
   | HangmanWordSetEvent
   | HangmanLetterGuessedEvent
   | HangmanChallengeEndedEvent
+  | BridgeTrollChallengeStartedEvent
+  | BridgeTrollPositionChangedEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -422,7 +424,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -458,6 +460,16 @@ export interface HangmanLetterGuessedEvent {
 export interface HangmanChallengeEndedEvent {
   type: 'hangman_challenge_ended';
   payload: { sourceCardInstanceId: string; revealedWord: string };
+}
+
+export interface BridgeTrollChallengeStartedEvent {
+  type: 'bridge_troll_challenge_started';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface BridgeTrollPositionChangedEvent {
+  type: 'bridge_troll_position_changed';
+  payload: { sourceCardInstanceId: string; playerId: string; underBridge: boolean };
 }
 
 export interface QuestionTemplatesDisabledEvent {

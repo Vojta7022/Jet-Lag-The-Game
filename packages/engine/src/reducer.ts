@@ -459,6 +459,7 @@ export function reduceMatchAggregate(
           ...base.questionInstances,
           [eventEnvelope.event.payload.question.questionInstanceId]: eventEnvelope.event.payload.question
         },
+        bridgeTrollChallenge: undefined,
         timers: eventEnvelope.event.payload.questionTimer
           ? {
               ...base.timers,
@@ -466,6 +467,32 @@ export function reduceMatchAggregate(
             }
           : base.timers
       };
+    case 'bridge_troll_challenge_started':
+      return {
+        ...base,
+        bridgeTrollChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt,
+          attestedAtByPlayerId: {}
+        }
+      };
+    case 'bridge_troll_position_changed': {
+      const challenge = base.bridgeTrollChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const attestedAtByPlayerId = { ...challenge.attestedAtByPlayerId };
+      if (eventEnvelope.event.payload.underBridge) {
+        attestedAtByPlayerId[eventEnvelope.event.payload.playerId] = eventEnvelope.occurredAt;
+      } else {
+        delete attestedAtByPlayerId[eventEnvelope.event.payload.playerId];
+      }
+      return {
+        ...base,
+        bridgeTrollChallenge: {
+          ...challenge,
+          attestedAtByPlayerId
+        }
+      };
+    }
     case 'question_response_expired': {
       const question = base.questionInstances[eventEnvelope.event.payload.questionInstanceId];
       if (!question) return base;

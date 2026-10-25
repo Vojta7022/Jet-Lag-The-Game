@@ -813,6 +813,17 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'QUESTION_CATEGORY_DISABLED', 'This question category is disabled for the current roll.')];
       }
 
+      if (aggregate.bridgeTrollChallenge) {
+        const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+        const missingAttestation = (seekerTeam?.memberPlayerIds ?? []).some((playerId) => {
+          const attestedAt = aggregate.bridgeTrollChallenge!.attestedAtByPlayerId[playerId];
+          return !attestedAt;
+        });
+        if (!seekerTeam?.memberPlayerIds.length || missingAttestation) {
+          return [error(envelope.command.type, 'BRIDGE_TROLL_ATTESTATIONS_REQUIRED', 'Every seeker must confirm they are under a bridge before the next question.')];
+        }
+      }
+
       const category = getQuestionCategory(contentPack, template.categoryId);
       if (!category) {
         return [error(envelope.command.type, 'QUESTION_CATEGORY_NOT_FOUND', 'The selected question category does not exist.')];
@@ -1540,6 +1551,22 @@ export function validateCommandEnvelope(
       }
       if (resolution.hangman?.status !== 'playing') {
         return [error(envelope.command.type, 'HANGMAN_CHALLENGE_NOT_PLAYING', 'The Hangman challenge is not waiting for the seeker team.')];
+      }
+      return [];
+    }
+    case 'set_bridge_troll_position': {
+      const challenge = aggregate.bridgeTrollChallenge;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'BRIDGE_TROLL_NOT_ACTIVE', 'There is no active Bridge Troll condition to confirm.')];
+      }
+      if (typeof envelope.command.payload.underBridge !== 'boolean') {
+        return [error(envelope.command.type, 'BRIDGE_TROLL_STATUS_INVALID', 'Choose whether you are currently under the bridge.')];
+      }
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      if (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must confirm their own position from their seeker account.')];
       }
       return [];
     }

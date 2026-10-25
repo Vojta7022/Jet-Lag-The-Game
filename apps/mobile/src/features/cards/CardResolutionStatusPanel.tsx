@@ -57,6 +57,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
       : undefined;
   const questionSelectionRequired = props.resolution?.resolutionKind === 'disable_question_templates';
   const hangmanChallenge = props.resolution?.resolutionKind === 'hangman_challenge';
+  const bridgeTrollChallenge = props.resolution?.resolutionKind === 'bridge_troll_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const canSubmit = props.canResolve &&
@@ -143,6 +144,14 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
               Seekers stay in place and do not ask questions while the hider moves. The hider must choose a different station, travel by valid transit, and confirm arrival. The engine enforces the selected game-size timer ({Math.ceil((props.resolution.moveDurationSeconds ?? 0) / 60)} minutes) before the window can end.
             </Text>
           </>
+        ) : null}
+        {bridgeTrollChallenge ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>BRIDGE TROLL</Text>
+            <Text style={styles.copy}>
+              Close this card window to activate the curse. Before the next question, every seeker must be under the same qualifying bridge and confirm from their own phone. The app will block the question until every seeker has a recent confirmation.
+            </Text>
+          </View>
         ) : null}
         {hangmanPanel}
         <Text style={styles.copy}>{guidance.detail}</Text>

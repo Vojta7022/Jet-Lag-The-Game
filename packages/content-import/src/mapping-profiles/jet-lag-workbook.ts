@@ -1202,6 +1202,7 @@ function buildCurseCards(
       const grantsExtraQuestionRewardDraws = normalizedName.slug === 'curse-of-the-overflowing-chalice';
       const randomizesQuestionCategory = normalizedName.slug === 'curse-of-spotty-memory';
       const startsHangmanChallenge = normalizedName.slug === 'curse-of-the-hidden-hangman';
+      const startsBridgeTrollChallenge = normalizedName.slug === 'curse-of-the-bridge-troll';
       const rulebookGuidance = curseRulebookGuidance(normalizedName.slug);
       buildNormalizationIssue(
         issues,
@@ -1226,21 +1227,25 @@ function buildCurseCards(
         shortName: normalizedName.displayText,
         description: applyWorkbookCorrections(descriptionRaw),
         ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
-        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge ? 'assisted' : 'manual',
+        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge ? 'assisted' : 'manual',
         castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
         effects: [
           {
-            effectType: startsHangmanChallenge
+            effectType: startsBridgeTrollChallenge
+              ? 'bridge_troll_challenge'
+              : startsHangmanChallenge
               ? 'hangman_challenge'
               : locksQuestionTemplates
               ? 'disable_question_templates'
               : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
                 : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
             description: applyWorkbookCorrections(descriptionRaw),
-            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge ? 'assisted' : 'manual',
+            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge ? 'assisted' : 'manual',
             rawText: descriptionRaw,
             payload: {
-              ...(startsHangmanChallenge
+              ...(startsBridgeTrollChallenge
+                ? { requiredAttestations: 'all_seekers' }
+                : startsHangmanChallenge
                 ? { wordLength: 5, secretScope: 'hider_player' }
                 : locksQuestionTemplates
                 ? { questionCount: 3, requireDistinctCategories: true, duration: 'hider_run' }
@@ -1254,10 +1259,10 @@ function buildCurseCards(
         ],
         rewardsOrPenalties: [],
         requirements: {
-          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge
+          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge
         },
         visibilityPolicy: HIDER_DECK_VISIBILITY,
-        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
+        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'name', nameRaw, nameRaw),
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'description', descriptionRaw, nameRaw),
@@ -1331,6 +1336,7 @@ function buildCurseCards(
     const grantsExtraQuestionRewardDraws = normalizedName.slug === 'curse-of-the-overflowing-chalice';
     const randomizesQuestionCategory = normalizedName.slug === 'curse-of-spotty-memory';
     const startsHangmanChallenge = normalizedName.slug === 'curse-of-the-hidden-hangman';
+    const startsBridgeTrollChallenge = normalizedName.slug === 'curse-of-the-bridge-troll';
     const rulebookGuidance = curseRulebookGuidance(normalizedName.slug);
     buildNormalizationIssue(
       issues,
@@ -1356,21 +1362,25 @@ function buildCurseCards(
       shortName: normalizedName.displayText,
       description: applyWorkbookCorrections(descriptionRaw),
       ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
-      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge ? 'assisted' : 'manual',
+      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge ? 'assisted' : 'manual',
       castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
       effects: [
         {
-          effectType: startsHangmanChallenge
+          effectType: startsBridgeTrollChallenge
+            ? 'bridge_troll_challenge'
+            : startsHangmanChallenge
             ? 'hangman_challenge'
             : locksQuestionTemplates
             ? 'disable_question_templates'
             : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
               : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
           description: applyWorkbookCorrections(descriptionRaw),
-          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge ? 'assisted' : 'manual',
+          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge ? 'assisted' : 'manual',
           rawText: descriptionRaw,
           payload: {
-            ...(startsHangmanChallenge
+            ...(startsBridgeTrollChallenge
+              ? { requiredAttestations: 'all_seekers' }
+              : startsHangmanChallenge
               ? { wordLength: 5, secretScope: 'hider_player' }
               : locksQuestionTemplates
               ? { questionCount: 3, requireDistinctCategories: true, duration: 'hider_run' }
@@ -1384,10 +1394,10 @@ function buildCurseCards(
       ],
       rewardsOrPenalties: [],
       requirements: {
-        requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge
+        requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge
       },
       visibilityPolicy: HIDER_DECK_VISIBILITY,
-      tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
+      tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
       sourceProvenance: [
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'B', nameRaw, orderRaw),
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'C', descriptionRaw, nameRaw),
