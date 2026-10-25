@@ -609,7 +609,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add camera video capture, local/remote video playback, duration metadata, and role-specific hider/seeker controls to the mobile card flow; store online evidence in the existing authenticated Supabase attachment path.
 - [x] Verify engine and media flows, both workbook mappings, full suite (430/430), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). People must still confirm the bird is recognizable and remains in frame; the app enforces duration and records attestation but does not inspect video content. Native phone camera playback and hosted/cellular storage remain unverified.
 
-### Active implementation slice: Curse of the Mediocre Travel Agent
+### Completed implementation slice: Curse of the Mediocre Travel Agent
 
 - [x] Import the scale requirements in both workbook profiles: 402/402/805 m, 5/5/10 minutes, and a 3-photo team minimum; keep printed miles canonical where the scan's metric row conflicts.
 - [x] Validate every seeker's fresh phone fix and per-player transit attestation before the hider starts the trip; continuously track destination presence and reset that seeker's timer when they leave the radius or report transit/station.
@@ -627,3 +627,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Keep questions blocked until every seeker reports entering the approved location or buying and receiving the approved product/service from their own device with a fresh GPS fix within 50 m.
 - [x] Add map pin pickers, target submission, hider review, per-seeker visit status, and an explicit location refresh to the player card UI. Align the persisted action type with the engine command.
 - [x] Verify both workbook mappings, generated content, full suite (436/436), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). Real-world ad identity, outdoor location, business status, admission, and purchase receipt remain human attestations.
+
+### Active implementation slice: Curse of the Distant Cuisine
+
+- [ ] Recheck printed card wording and p. 55 clarification against the local scan before choosing the resolver contract.
+- [ ] Source and validate country boundary geometry so the distance check measures from each seeker's exact location to the nearest point in the cuisine country; do not substitute a country centroid or a generic administrative level.
+- [ ] Import the card as an assisted effect in both workbook mappings and regenerate the draft pack.
+- [ ] Add an engine challenge that records the qualifying restaurant/country, verifies the restaurant visit from each seeker's device, and gates questions until every required seeker completes it; retain hider/player review for public-facing cuisine claims.
+- [ ] Add role-specific setup, review, and per-seeker visit controls to the mobile game UI.
+- [ ] Verify country-distance geometry, authorization, map/zone constraints, both import profiles, full suite, typecheck, web export, and `git diff --check`.
