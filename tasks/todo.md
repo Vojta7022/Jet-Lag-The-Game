@@ -316,6 +316,9 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 
 ## Active: rules-faithful game and reference-map workflows
 
+- [x] Let the map workbench search and compose playable regions before a match exists; save/share/export the draft so it can be selected during match setup. Saving and creating a match stores the draft locally; it is available from Map Scenarios during setup.
+- [x] Verify standalone region search, include/exclude editing, scenario persistence, the 453-test suite, mobile typecheck, Expo web export, and `git diff --check` (2026-10-25).
+
 ### Current rules slice: late question answers
 
 - [x] Add authority-side expiration when a question's printed response timer expires.
@@ -411,6 +414,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 
 ### Findings for this pass
 
+- The map workbench now works without an active match: searchable administrative regions can be combined/subtracted, edited custom overlays and stations can be added, and Save Map & Create Match persists the selected geometry locally for the later match setup flow. [MapScreen, scenario persistence tests; checked 2026-10-25]
 - Pregame map setup supports hand-drawn exclusion masks on the same native/web map canvas. The draft points are restricted to the current selected boundary, invalid/degenerate rings are rejected, and a closed mask flows through the existing subtraction, scenario serialization, and authoritative map application paths. [map builder, `apps/mobile/tests/map-region-selection.test.ts`, checked 2026-10-25]
 - The Investigation Book's “Draw N, Pick M” is the hider's card reward after an answer. A prior build incorrectly used those numbers to deal a random subset of available questions; the current flow shows all scale-allowed printed questions and repeats their reward separately.
 - A prior app-injected ruleset used a 120-second hide phase and 45-second post-answer cooldown. These were replaced with the scanned 30/60/180-minute hide periods by scale and no extra answer cooldown.

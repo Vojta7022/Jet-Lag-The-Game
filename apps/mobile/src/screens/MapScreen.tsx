@@ -750,6 +750,14 @@ export function MapScreen() {
     setScenarioNotice(`Saved ${scenario.name}`);
   };
 
+  const handleCreateMatchFromStandaloneMap = async () => {
+    if (!compositePreviewRegion || invalidExclusion) return;
+    const scenario = makeScenario(`${compositePreviewRegion.displayName} · ${new Date().toLocaleDateString()}`);
+    setSavedScenarios(await saveMapScenario(scenario));
+    setScenarioNotice(`Saved ${scenario.name}. Load it from Map Scenarios after creating the match.`);
+    router.push('/create-match');
+  };
+
   const handleShareScenario = async () => {
     if (invalidExclusion) {
       setScenarioNotice('A subtracted region must fit fully inside an included region. Adjust the selection before sharing.');
@@ -1044,10 +1052,87 @@ export function MapScreen() {
     >
         {!activeMatch ? (
           <StateBanner
-            tone="warning"
-            title="No active match"
-            detail="Create or join a match first. Map changes are applied through the active match connection."
+            tone="info"
+            title="Map studio"
+            detail="Search and save a playable area here first, or build it during match setup."
           />
+        ) : null}
+
+        {!activeMatch ? (
+          <Panel
+            title="Build a Play Area"
+            subtitle="Choose administrative regions, combine them, and save a reusable map before creating a match."
+          >
+            <SearchableRegionPicker
+              query={regionSearch.query}
+              minimumQueryLengthMet={regionSearch.minimumQueryLengthMet}
+              results={regionSearch.regions}
+              previewRegion={regionSearch.selectedRegion}
+              selectedRegionId={regionSearch.selectedRegionId}
+              selectedRegionCount={selectedRegions.length}
+              excludedRegionCount={excludedRegions.length}
+              sourceLabel={regionSearch.sourceLabel}
+              usingFallback={regionSearch.usingFallback}
+              noticeMessage={regionSearch.noticeMessage}
+              attribution={regionSearch.attribution}
+              isLoading={regionSearch.isLoading}
+              errorMessage={regionSearch.errorMessage}
+              onChangeQuery={regionSearch.setQuery}
+              onRetry={regionSearch.retrySearch}
+              onSelect={(regionId) => { void regionSearch.selectRegion(regionId); }}
+              onAddPreviewRegion={() => {
+                if (!regionSearch.selectedRegion) return;
+                setSelectedRegions((current) => addRegionToSelection(current, regionSearch.selectedRegion!));
+                setExcludedRegions((current) => removeRegionFromSelection(current, regionSearch.selectedRegion!.regionId));
+              }}
+              canAddPreviewRegion={Boolean(regionSearch.selectedRegion) && !previewRegionAlreadyAdded && !previewRegionAlreadyExcluded}
+              onSubtractPreviewRegion={() => {
+                if (!regionSearch.selectedRegion) return;
+                setExcludedRegions((current) => addRegionToSelection(current, regionSearch.selectedRegion!));
+                setSelectedRegions((current) => removeRegionFromSelection(current, regionSearch.selectedRegion!.regionId));
+              }}
+              canSubtractPreviewRegion={Boolean(regionSearch.selectedRegion) && selectedRegions.length > 0 && !previewRegionAlreadyExcluded && !previewRegionAlreadyAdded}
+              previewRegionAlreadyExcluded={previewRegionAlreadyExcluded}
+              previewRegionAlreadyAdded={previewRegionAlreadyAdded}
+            />
+            {selectedRegions.length ? (
+              <SelectedRegionChipList
+                regions={selectedRegions}
+                onRemove={(regionId) => setSelectedRegions((current) => removeRegionFromSelection(current, regionId))}
+                onClearAll={clearDraftSelection}
+              />
+            ) : null}
+            {excludedRegions.length ? (
+              <SelectedRegionChipList
+                regions={excludedRegions}
+                listType="excluded"
+                onRemove={(regionId) => setExcludedRegions((current) => removeRegionFromSelection(current, regionId))}
+                onClearAll={() => setExcludedRegions(clearSelectedRegions())}
+              />
+            ) : null}
+            {compositePreviewRegion || regionSearch.selectedRegion ? (
+              <MapCanvas
+                height={Math.max(280, Math.min(Math.round(dimensions.height * 0.5), 560))}
+                maxWidth={dimensions.width - 32}
+                previewRegion={compositePreviewRegion ?? regionSearch.selectedRegion}
+                customOverlays={customOverlays}
+              />
+            ) : null}
+            <MapScenarioWorkbench
+              customOverlays={customOverlays}
+              onCustomOverlaysChange={setCustomOverlays}
+              stationSource={stationSource}
+              onStationSourceChange={setStationSource}
+              customStations={customStations}
+              onCustomStationsChange={setCustomStations}
+            />
+            <View style={styles.scenarioActions}>
+              <AppButton label="Save Map" tone="secondary" disabled={!compositePreviewRegion || invalidExclusion} onPress={() => void handleSaveScenario()} />
+              <AppButton label="Share Map" tone="secondary" disabled={!compositePreviewRegion || invalidExclusion} onPress={() => void handleShareScenario()} />
+              <AppButton label="Save Map & Create Match" disabled={!compositePreviewRegion || invalidExclusion} onPress={() => void handleCreateMatchFromStandaloneMap()} />
+            </View>
+            {scenarioNotice ? <Text style={styles.helperCopy}>{scenarioNotice}</Text> : null}
+          </Panel>
         ) : null}
 
         {loadedScenario ? (
