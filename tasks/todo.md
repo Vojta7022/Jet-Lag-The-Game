@@ -125,6 +125,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Use line distance for nearest-segment GPS confidence, automatic answer, and the same map deduction; describe the automatic and manual fallback behavior in player guidance.
 - [x] Verify against scanned base rulebook p. 18, provider topology tests, engine answer/map test, live Prague Overpass response, full test suite (314 passing), mobile typecheck, and `git diff --check` (2026-10-25).
 
+### Completed implementation slice: International Border Measuring
+
+- [x] Load only OSM admin-level-2 country relations for the selected map region and derive shared border ways.
+- [x] Preserve inner and outer member-way identities so enclave borders count, while keeping admin-division border logic outer-boundary-only.
+- [x] Resolve closer/further from fresh locations to the same nearest mapped country border and apply the corresponding map deduction.
+- [x] Show connected-only player guidance and retain manual handling when coverage is incomplete; verify scanned p. 24, enclave/provider tests, engine answer/map test, focused suite, full suite, and mobile typecheck (2026-10-25).
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.

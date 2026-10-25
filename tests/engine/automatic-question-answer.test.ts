@@ -308,6 +308,54 @@ test('administrative-border Measuring compares distance to the same shared bound
   assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
 });
 
+test('International Border Measuring compares both fixes to a shared country border and updates the map', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.79,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.1, longitude: 103.805,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test-international-border-v1',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [{
+      featureId: 'osm:admin-border/2/100', featureClassId: 'an-international-border', label: 'International Border',
+      longitude: 103.81, latitude: 1.1, geometrySupport: 'line' as const, coverage: 'approximate' as const,
+      geometry: { type: 'LineString' as const, coordinates: [[103.81, 1], [103.81, 1.2]] }
+    }]
+  };
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: {
+        questionInstanceId: 'question:auto-international-border',
+        templateId: 'measuring-an-international-border',
+        targetTeamId: 'team-hider'
+      }
+    }, 16), contentPack, dataset);
+
+  const question = result.aggregate.questionInstances['question:auto-international-border'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.value, 'closer');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:admin-border/2/100');
+  const constraint = Object.values(result.aggregate.constraints).find(
+    (item) => item.sourceQuestionInstanceId === 'question:auto-international-border'
+  );
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.equal('featureData' in (constraint?.metadata ?? {}), false);
+  assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
+});
+
 test('Station-name-length Matching compares nearest names by character count and clips by that same rule', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);

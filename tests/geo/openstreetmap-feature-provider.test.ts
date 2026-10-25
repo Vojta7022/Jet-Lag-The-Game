@@ -164,6 +164,50 @@ test('OpenStreetMap provider emits only shared same-level admin ways inside the 
   assert.equal(borderFeatures[0]?.geometrySupport, 'line');
 });
 
+test('OpenStreetMap provider includes shared country borders and enclave edges as Measuring targets', async () => {
+  let submittedQuery = '';
+  const way = (ref: number, role: 'outer' | 'inner', coordinates: Array<{ lon: number; lat: number }>) => ({
+    type: 'way', ref, role, geometry: coordinates
+  });
+  const country = (id: number, name: string, members: unknown[]) => ({
+    type: 'relation', id, tags: { boundary: 'administrative', admin_level: '2', name }, members
+  });
+  const sharedBorder = [{ lon: 0.4, lat: 0 }, { lon: 0.4, lat: 1 }];
+  const enclaveRing = [
+    { lon: 0.37, lat: 0.37 }, { lon: 0.38, lat: 0.37 }, { lon: 0.38, lat: 0.38 },
+    { lon: 0.37, lat: 0.38 }, { lon: 0.37, lat: 0.37 }
+  ];
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [
+        country(1, 'Country A', [
+          way(100, 'outer', sharedBorder),
+          way(101, 'outer', [{ lon: 0.4, lat: 0 }, { lon: 0, lat: 0 }, { lon: 0, lat: 1 }, { lon: 0.4, lat: 1 }]),
+          way(200, 'inner', enclaveRing)
+        ]),
+        country(2, 'Country B', [
+          way(100, 'outer', sharedBorder),
+          way(102, 'outer', [{ lon: 0.4, lat: 0 }, { lon: 1, lat: 0 }, { lon: 1, lat: 1 }, { lon: 0.4, lat: 1 }])
+        ]),
+        country(3, 'Enclave C', [way(200, 'outer', enclaveRing)])
+      ] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['an-international-border'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0.35, 0.35], [0.45, 0.35], [0.45, 0.45], [0.35, 0.45], [0.35, 0.35]]] }
+  });
+
+  assert.ok(dataset);
+  assert.match(submittedQuery, /admin_level.*2/);
+  assert.deepEqual(
+    dataset.features.filter((feature) => feature.featureClassId === 'an-international-border').map((feature) => feature.featureId),
+    ['osm:admin-border/2/100', 'osm:admin-border/2/200']
+  );
+});
+
 test('OpenStreetMap provider maps the printed Tentacles place classes and leaves metro lines unsupported', async () => {
   const submittedQueries: string[] = [];
   const provider = new OpenStreetMapQuestionFeatureProvider({

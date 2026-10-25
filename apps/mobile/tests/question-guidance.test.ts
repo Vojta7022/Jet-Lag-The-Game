@@ -304,6 +304,28 @@ test('question guidance explains when administrative-border Measuring is automat
   assert.match(describeExpectedAnswerGuidance(template, category), /manual ruling/i);
 });
 
+test('question guidance describes mapped international-border Measuring and enclave coverage', () => {
+  const category = createCategory({
+    categoryId: 'measuring',
+    name: 'Measuring',
+    resolverKind: 'comparative_distance',
+    promptTemplate: 'Compared to me, are you closer to or further from _____?',
+    defaultConstraintRefs: ['comparative-distance']
+  });
+  const template = createTemplate({
+    templateId: 'measuring-an-international-border',
+    categoryId: 'measuring',
+    name: 'An International Border',
+    featureClassRefs: [{
+      featureClassId: 'an-international-border', label: 'An International Border', rawLabel: 'An International Border'
+    }],
+    constraintRefs: ['comparative-distance']
+  });
+
+  assert.match(describeExpectedAnswerGuidance(template, category), /mapped international borders/i);
+  assert.match(describeExpectedAnswerGuidance(template, category), /enclaves/i);
+});
+
 test('Tentacles guidance explains the seeker-anchored reach and automatic closest-place answer', () => {
   const category = createCategory({
     categoryId: 'tentacles',

@@ -98,19 +98,19 @@ export function assembleAdministrativeBoundary(element: unknown): QuestionFeatur
   if (boundary.type !== 'relation' || typeof boundary.id !== 'number' ||
     boundary.tags?.boundary !== 'administrative') return undefined;
   const adminLevel = Number(boundary.tags.admin_level);
-  if (!Number.isInteger(adminLevel) || adminLevel <= 2 || adminLevel > 12 || !Array.isArray(boundary.members)) return undefined;
+  if (!Number.isInteger(adminLevel) || adminLevel < 2 || adminLevel > 12 || !Array.isArray(boundary.members)) return undefined;
 
   const outerWays: [number, number][][] = [];
   const innerWays: [number, number][][] = [];
-  const boundaryWays: Array<{ wayId: number; coordinates: [number, number][] }> = [];
+  const boundaryWays: Array<{ wayId: number; role: 'outer' | 'inner'; coordinates: [number, number][] }> = [];
   for (const memberValue of boundary.members) {
     if (!memberValue || typeof memberValue !== 'object') continue;
     const member = memberValue as BoundaryMember;
     if (member.type !== 'way' || !Array.isArray(member.geometry)) continue;
     const way = member.geometry.map(coordinate).filter((point): point is [number, number] => point !== undefined);
     if (way.length < 2) continue;
-    if (member.role === 'outer' && typeof member.ref === 'number') {
-      boundaryWays.push({ wayId: member.ref, coordinates: way });
+    if ((member.role === 'outer' || member.role === 'inner') && typeof member.ref === 'number') {
+      boundaryWays.push({ wayId: member.ref, role: member.role, coordinates: way });
     }
     if (member.role === 'outer') outerWays.push(way);
     if (member.role === 'inner') innerWays.push(way);
@@ -161,6 +161,17 @@ export function buildSharedAdministrativeBorders(
 ): QuestionFeatureRecordModel[] {
   const adminLevel = expectedAdminLevel(features, divisionOrdinal);
   if (adminLevel === undefined) return [];
+  return buildSharedAdministrativeBordersAtLevel(features, adminLevel, featureClassId, label);
+}
+
+export function buildSharedAdministrativeBordersAtLevel(
+  features: QuestionFeatureRecordModel[],
+  adminLevel: number,
+  featureClassId: string,
+  label: string,
+  includeInnerBoundaries = false
+): QuestionFeatureRecordModel[] {
+  if (!Number.isInteger(adminLevel) || adminLevel < 2 || adminLevel > 12) return [];
   const regions = features.filter((feature) => feature.featureClassId === 'admin-boundary' &&
     feature.properties?.adminLevel === adminLevel);
   const ways = new Map<number, { areaIds: Set<string>; coordinates: [number, number][] }>();
@@ -169,8 +180,9 @@ export function buildSharedAdministrativeBorders(
     if (!Array.isArray(boundaryWays)) continue;
     for (const item of boundaryWays) {
       if (!item || typeof item !== 'object') continue;
-      const way = item as { wayId?: unknown; coordinates?: unknown };
+      const way = item as { wayId?: unknown; role?: unknown; coordinates?: unknown };
       if (typeof way.wayId !== 'number' || !Array.isArray(way.coordinates)) continue;
+      if (!includeInnerBoundaries && way.role !== undefined && way.role !== 'outer') continue;
       const coordinates = way.coordinates.filter((point): point is [number, number] =>
         Array.isArray(point) && point.length >= 2 && typeof point[0] === 'number' && typeof point[1] === 'number');
       if (coordinates.length < 2) continue;

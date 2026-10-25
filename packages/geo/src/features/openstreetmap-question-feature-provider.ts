@@ -5,7 +5,12 @@ import type {
 } from '../../../shared-types/src/index.ts';
 
 import { geometryBoundingBox, pointInGeometry } from '../geometry/geojson.ts';
-import { assembleAdministrativeBoundary, buildSharedAdministrativeBorders, lineGeometryIntersectsPolygon } from './admin-boundary-hierarchy.ts';
+import {
+  assembleAdministrativeBoundary,
+  buildSharedAdministrativeBorders,
+  buildSharedAdministrativeBordersAtLevel,
+  lineGeometryIntersectsPolygon
+} from './admin-boundary-hierarchy.ts';
 
 interface OSMTagSelector {
   tags: Record<string, string>;
@@ -30,7 +35,7 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-question-features-v3';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v4';
 const OSM_REQUEST_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   accept: 'application/json',
@@ -38,6 +43,7 @@ const OSM_REQUEST_HEADERS = {
 };
 const ADMIN_FEATURE_CLASS_IDS = /^(?:[1-4](?:st|nd|rd|th)-admin-)/;
 const ADMIN_BORDER_FEATURE_CLASS = /^a-([1-4])(?:st|nd|rd|th)-admin-border-/;
+const INTERNATIONAL_BORDER_FEATURE_CLASS = 'an-international-border';
 const STREET_PATH_FEATURE_CLASS = 'street-or-path';
 const NON_WALKABLE_OR_INACTIVE_HIGHWAYS = new Set([
   'abandoned', 'construction', 'corridor', 'elevator', 'planned', 'platform', 'proposed', 'razed'
@@ -88,6 +94,7 @@ const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
 export function hasOpenStreetMapFeatureClass(featureClassId: string): boolean {
   return Object.hasOwn(SELECTORS_BY_FEATURE_CLASS, featureClassId) ||
     featureClassId === STREET_PATH_FEATURE_CLASS ||
+    featureClassId === INTERNATIONAL_BORDER_FEATURE_CLASS ||
     ADMIN_FEATURE_CLASS_IDS.test(featureClassId) || ADMIN_BORDER_FEATURE_CLASS.test(featureClassId);
 }
 
@@ -108,9 +115,13 @@ function queryFor(selectors: OSMTagSelector[], box: NonNullable<ReturnType<typeo
   return `[out:json][timeout:25];(${clauses.join('')});out center tags;`;
 }
 
-function adminBoundaryQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
+function adminBoundaryQueryFor(
+  box: NonNullable<ReturnType<typeof geometryBoundingBox>>,
+  adminLevel?: number
+): string {
   const bbox = `(${box.minLat},${box.minLon},${box.maxLat},${box.maxLon})`;
-  return `[out:json][timeout:25];rel["boundary"="administrative"]${bbox};out geom tags;`;
+  const level = adminLevel ? `["admin_level"="${adminLevel}"]` : '';
+  return `[out:json][timeout:25];rel["boundary"="administrative"]${level}${bbox};out geom tags;`;
 }
 
 function streetPathQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
@@ -327,13 +338,15 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
 
     const featuresById = new Map<string, QuestionFeatureRecordModel>();
     const featureClassIds = [...new Set(request.featureClassIds)];
-    const needsAdminBoundaries = featureClassIds.some((id) => ADMIN_FEATURE_CLASS_IDS.test(id) || ADMIN_BORDER_FEATURE_CLASS.test(id));
+    const needsInternationalBorders = featureClassIds.includes(INTERNATIONAL_BORDER_FEATURE_CLASS);
+    const needsAdminBoundaries = needsInternationalBorders || featureClassIds.some((id) =>
+      ADMIN_FEATURE_CLASS_IDS.test(id) || ADMIN_BORDER_FEATURE_CLASS.test(id));
     const adminBoundaries: QuestionFeatureRecordModel[] = [];
     if (needsAdminBoundaries) {
       const response = await this.fetcher(this.endpoint, {
         method: 'POST',
         headers: OSM_REQUEST_HEADERS,
-        body: `data=${encodeURIComponent(adminBoundaryQueryFor(box))}`,
+        body: `data=${encodeURIComponent(adminBoundaryQueryFor(box, needsInternationalBorders ? 2 : undefined))}`,
         signal: AbortSignal.timeout(30_000)
       });
       if (!response.ok) throw new Error(`OpenStreetMap boundary lookup failed with HTTP ${response.status}.`);
@@ -350,6 +363,20 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         }
       }
       for (const featureClassId of featureClassIds) {
+        if (featureClassId === INTERNATIONAL_BORDER_FEATURE_CLASS) {
+          for (const border of buildSharedAdministrativeBordersAtLevel(
+            adminBoundaries,
+            2,
+            INTERNATIONAL_BORDER_FEATURE_CLASS,
+            'International Border',
+            true
+          )) {
+            if (lineGeometryIntersectsPolygon(border.geometry, request.regionGeometry)) {
+              featuresById.set(border.featureId, border);
+            }
+          }
+          continue;
+        }
         const match = featureClassId.match(ADMIN_BORDER_FEATURE_CLASS);
         if (!match) continue;
         const ordinal = Number(match[1]);
@@ -405,7 +432,8 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
 
     if (featureClassIds.every((featureClassId) =>
       !SELECTORS_BY_FEATURE_CLASS[featureClassId] && !ADMIN_FEATURE_CLASS_IDS.test(featureClassId) &&
-      !ADMIN_BORDER_FEATURE_CLASS.test(featureClassId) && featureClassId !== STREET_PATH_FEATURE_CLASS)) return undefined;
+      !ADMIN_BORDER_FEATURE_CLASS.test(featureClassId) && featureClassId !== STREET_PATH_FEATURE_CLASS &&
+      featureClassId !== INTERNATIONAL_BORDER_FEATURE_CLASS)) return undefined;
     return {
       source: 'OpenStreetMap',
       sourceUrl: OSM_COPYRIGHT_URL,
