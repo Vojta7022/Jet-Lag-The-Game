@@ -387,6 +387,10 @@ export function buildMatchProjection(
           regionId: aggregate.mapRegion.regionId,
           displayName: aggregate.mapRegion.displayName,
           regionKind: aggregate.mapRegion.regionKind,
+          configuredAt: aggregate.mapRegion.configuredAt,
+          customOverlays: aggregate.mapRegion.customOverlays ?? [],
+          stationSource: aggregate.mapRegion.stationSource ?? 'osm',
+          customStations: aggregate.mapRegion.customStations ?? [],
           featureDatasetRefs:
             viewer.scope === 'authority' || viewer.scope === 'host_admin'
               ? aggregate.mapRegion.featureDatasetRefs

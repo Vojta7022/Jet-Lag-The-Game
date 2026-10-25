@@ -2,22 +2,15 @@ import { deflateSync, inflateSync, strFromU8, strToU8 } from 'fflate';
 
 import type { TransitStationCandidate } from './station-layer.ts';
 import type { PlayableRegionCatalogEntry } from './region-types.ts';
-import type { GeoJsonGeometryModel } from '../../../../../packages/shared-types/src/index.ts';
+import type {
+  CustomMapOverlayModel,
+  CustomMapStationModel,
+  GeoJsonGeometryModel,
+  MapStationSource
+} from '../../../../../packages/shared-types/src/index.ts';
 
-export interface MapScenarioCustomOverlay {
-  id: string;
-  name: string;
-  color: string;
-  visible: boolean;
-  geometry: GeoJsonGeometryModel;
-}
-
-export interface MapScenarioCustomStation {
-  id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-}
+export type MapScenarioCustomOverlay = CustomMapOverlayModel;
+export type MapScenarioCustomStation = CustomMapStationModel;
 
 export interface MapScenario {
   version: 1;
@@ -30,7 +23,7 @@ export interface MapScenario {
   selectedStation?: Pick<TransitStationCandidate, 'stationId' | 'name' | 'latitude' | 'longitude'>;
   hidingRadiusMeters?: number;
   customOverlays?: MapScenarioCustomOverlay[];
-  stationSource?: 'osm' | 'custom' | 'both';
+  stationSource?: MapStationSource;
   customStations?: MapScenarioCustomStation[];
 }
 

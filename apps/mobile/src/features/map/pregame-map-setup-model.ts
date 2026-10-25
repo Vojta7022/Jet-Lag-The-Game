@@ -86,11 +86,11 @@ export function buildPregameMapSetupFlowModel(
     };
   }
 
-  if (args.hasDraftSelection && (!args.mapHasBeenApplied || args.draftDiffersFromApplied)) {
+  if ((!args.mapHasBeenApplied && args.hasDraftSelection) || args.draftDiffersFromApplied) {
     return {
       badge: 'Step 2 of 3',
       title: args.mapHasBeenApplied ? 'Apply the updated play area' : 'Apply the play area',
-      detail: 'Review the preview on the map, then apply it so everyone sees the same playable region.',
+      detail: 'Review the region, custom layers, and station sources, then apply the setup so every player receives the same map.',
       primaryAction: {
         kind: 'apply_region',
         label: args.mapHasBeenApplied ? 'Apply Updated Play Area' : 'Apply Play Area'

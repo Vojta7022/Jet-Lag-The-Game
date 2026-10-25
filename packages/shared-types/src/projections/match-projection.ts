@@ -1,11 +1,14 @@
 import type {
   ConstraintExplanationModel,
   ContradictionReportModel,
+  CustomMapOverlayModel,
+  CustomMapStationModel,
   EventLogEntry,
   GeometryPrecision,
   GeoJsonGeometryModel,
   MatchLifecycleState,
   MatchRole,
+  MapStationSource,
   PauseOverlayState,
   PlayableRegionKind,
   QuestionInstanceStatus,
@@ -181,7 +184,11 @@ export interface VisibleMapProjection {
   regionId: string;
   displayName: string;
   regionKind: PlayableRegionKind;
+  configuredAt: string;
   featureDatasetRefs: string[];
+  customOverlays?: CustomMapOverlayModel[];
+  stationSource?: MapStationSource;
+  customStations?: CustomMapStationModel[];
   playableBoundary: VisibleSpatialArtifactProjection;
   remainingArea?: VisibleSpatialArtifactProjection;
   eliminatedAreas: VisibleSpatialArtifactProjection[];

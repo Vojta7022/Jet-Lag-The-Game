@@ -70,7 +70,7 @@ import { isSameMapSetupDraft } from '../state/app-shell-state.ts';
 import { hasRequiredRoleAssignments } from '../features/roles/role-assignment.ts';
 import { findTransitStationsInGeometry, getHidingRadiusMeters } from '../features/map/station-layer.ts';
 import type { TransitStationCandidate } from '../features/map/station-layer.ts';
-import { combineStationSources } from '../features/map/map-workbench.ts';
+import { combineStationSources, resolveMapWorkbenchConfiguration } from '../features/map/map-workbench.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
@@ -78,7 +78,14 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors, fonts } from '../ui/theme.ts';
 import { buildLiveLocationStatusModel } from '../features/location/location-state.ts';
 
-function createMapRegionCommand(selectedRegion: PlayableRegionCatalogEntry): DomainCommand {
+function createMapRegionCommand(
+  selectedRegion: PlayableRegionCatalogEntry,
+  mapSetup: {
+    customOverlays: MapScenarioCustomOverlay[];
+    stationSource: 'osm' | 'custom' | 'both';
+    customStations: MapScenarioCustomStation[];
+  }
+): DomainCommand {
   return {
     type: 'create_map_region',
     payload: {
@@ -86,7 +93,8 @@ function createMapRegionCommand(selectedRegion: PlayableRegionCatalogEntry): Dom
       displayName: selectedRegion.displayName,
       regionKind: selectedRegion.regionKind,
       featureDatasetRefs: selectedRegion.featureDatasetRefs,
-      geometry: selectedRegion.geometry
+      geometry: selectedRegion.geometry,
+      ...mapSetup
     }
   };
 }
@@ -244,15 +252,37 @@ export function MapScreen() {
   const stationGeometry = liveGameplayState
     ? projection?.visibleMap?.playableBoundary.geometry
     : previewRegion?.geometry;
+  const editingAppliedMapSetup = Boolean(isHostView && projection?.lifecycleState === 'map_setup');
+  const mapConfiguration = resolveMapWorkbenchConfiguration(
+    { customOverlays, stationSource, customStations },
+    projection?.visibleMap ? {
+      customOverlays: projection.visibleMap.customOverlays ?? [],
+      stationSource: projection.visibleMap.stationSource ?? 'osm',
+      customStations: projection.visibleMap.customStations ?? []
+    } : undefined,
+    editingAppliedMapSetup
+  );
+  const mapCustomOverlays = mapConfiguration.customOverlays;
+  const mapStationSource = mapConfiguration.stationSource;
+  const mapCustomStations = mapConfiguration.customStations;
+  const mapConfigSyncKey = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const visibleMap = projection?.visibleMap;
+    if (!visibleMap || mapConfigSyncKey.current === visibleMap.configuredAt) return;
+    mapConfigSyncKey.current = visibleMap.configuredAt;
+    setCustomOverlays(visibleMap.customOverlays ?? []);
+    setStationSource(visibleMap.stationSource ?? 'osm');
+    setCustomStations(visibleMap.customStations ?? []);
+  }, [projection?.visibleMap?.configuredAt]);
   useEffect(() => {
     if (!stationGeometry) return;
     setTransitStations((current) => combineStationSources(
-      stationSource,
+      mapStationSource,
       stationGeometry,
       current.filter((station) => !station.stationId.startsWith('custom:')),
-      customStations
+      mapCustomStations
     ));
-  }, [customStations, stationGeometry, stationSource]);
+  }, [mapCustomStations, mapStationSource, stationGeometry]);
   const savedHidingZone = projection?.hiddenState?.hidingZone;
   const isMoveResolution = projection?.activeCardResolution?.resolutionKind === 'move';
   const canSetRoundZone = projection?.lifecycleState === 'hide_phase' ||
@@ -358,9 +388,9 @@ export function MapScreen() {
       transitStations,
       selectedStation: mapSelectedStation,
       hidingRadiusMeters: mapHidingRadius,
-      customOverlays: liveGameplayState ? undefined : customOverlays
+      customOverlays: mapCustomOverlays
     }),
-    [canvasPreviewRegion, customOverlays, displayedVisibleMap, liveGameplayState, mapHidingRadius, mapSelectedStation, projection?.roundStartLocation, projection?.visibleMovementTracks, transitStations]
+    [canvasPreviewRegion, displayedVisibleMap, liveGameplayState, mapCustomOverlays, mapHidingRadius, mapSelectedStation, projection?.roundStartLocation, projection?.visibleMovementTracks, transitStations]
   );
   const canPrepareMapSetup =
     isHostView &&
@@ -370,13 +400,14 @@ export function MapScreen() {
   const canApplySelectedRegion =
     isHostView &&
     projection?.lifecycleState === 'map_setup' &&
-    Boolean(compositePreviewRegion);
+    Boolean(compositePreviewRegion ?? appliedRegion);
   const mapHasBeenApplied = Boolean(projection?.visibleMap);
-  const draftDiffersFromApplied = Boolean(
-    compositePreviewRegion &&
-    projection?.visibleMap &&
-    compositePreviewRegion.regionId !== projection.visibleMap.regionId
-  );
+  const draftDiffersFromApplied = Boolean(projection?.visibleMap && (
+    (compositePreviewRegion && compositePreviewRegion.regionId !== projection.visibleMap.regionId) ||
+    JSON.stringify(customOverlays) !== JSON.stringify(projection.visibleMap.customOverlays ?? []) ||
+    stationSource !== (projection.visibleMap.stationSource ?? 'osm') ||
+    JSON.stringify(customStations) !== JSON.stringify(projection.visibleMap.customStations ?? [])
+  ));
   const mapHeight = liveGameplayState
     ? Math.max(330, Math.min(Math.round(dimensions.height * 0.50), 620))
     : Math.max(190, Math.min(Math.round(dimensions.height * 0.24), 250));
@@ -420,7 +451,7 @@ export function MapScreen() {
         rolesReadyForMapSetup,
         lifecycleState: projection?.lifecycleState,
         mapHasBeenApplied,
-        hasDraftSelection: Boolean(compositePreviewRegion),
+        hasDraftSelection: Boolean(compositePreviewRegion || (draftDiffersFromApplied && appliedRegion)),
         draftDiffersFromApplied
       }),
     [
@@ -808,12 +839,17 @@ export function MapScreen() {
   };
 
   const handleApplyPlayableRegion = () => {
-    if (!canApplySelectedRegion || !compositePreviewRegion) {
+    const regionToApply = compositePreviewRegion ?? appliedRegion;
+    if (!canApplySelectedRegion || !regionToApply) {
       return;
     }
 
     void (async () => {
-      const succeeded = await submitCommands([createMapRegionCommand(compositePreviewRegion)]);
+      const succeeded = await submitCommands([createMapRegionCommand(regionToApply, {
+        customOverlays,
+        stationSource,
+        customStations
+      })]);
       if (!succeeded || !activeMatch) {
         return;
       }
@@ -833,16 +869,16 @@ export function MapScreen() {
     if (!stationGeometry || stationSearchLoading) return;
     setStationSearchLoading(true);
     setStationSearchError(undefined);
-    const request = stationSource === 'custom'
+    const request = mapStationSource === 'custom'
       ? Promise.resolve([] as TransitStationCandidate[])
       : findTransitStationsInGeometry(stationGeometry);
     void request
       .then((osmStations) => {
-        setTransitStations(combineStationSources(stationSource, stationGeometry, osmStations, customStations));
+        setTransitStations(combineStationSources(mapStationSource, stationGeometry, osmStations, mapCustomStations));
         setSelectedStationId(undefined);
       })
       .catch((error: unknown) => {
-        setTransitStations(combineStationSources(stationSource, stationGeometry, [], customStations));
+        setTransitStations(combineStationSources(mapStationSource, stationGeometry, [], mapCustomStations));
         setStationSearchError(error instanceof Error ? error.message : 'Station search failed. Try again later.');
       })
       .finally(() => setStationSearchLoading(false));
@@ -958,7 +994,7 @@ export function MapScreen() {
           </Text>
         ) : null}
       {!stationSearchLoading && !stationSearchError && transitStations.length === 0 ? (
-        <Text style={styles.helperCopy}>{stationSource === 'custom'
+        <Text style={styles.helperCopy}>{mapStationSource === 'custom'
           ? 'No custom stations are inside this play area. Add or import stops in Map Scenarios.'
           : 'OpenStreetMap candidates load on demand; choose OSM or both to include them.'}</Text>
       ) : null}
@@ -1003,14 +1039,14 @@ export function MapScreen() {
             )}
             <AppButton label="Save Map On This Device" tone="secondary" onPress={() => void handleSaveScenario()} />
             <AppButton label="Share This Map" tone="secondary" onPress={() => void handleShareScenario()} />
-            <MapScenarioWorkbench
+            {!activeMatch || (isHostView && !liveGameplayState) ? <MapScenarioWorkbench
               customOverlays={customOverlays}
               onCustomOverlaysChange={setCustomOverlays}
               stationSource={stationSource}
               onStationSourceChange={setStationSource}
               customStations={customStations}
               onCustomStationsChange={setCustomStations}
-            />
+            /> : null}
             {!activeMatch ? (
               <View style={styles.scenarioActions}>
                 <AppButton label={exportingScenario ? 'Exporting…' : 'Export Map File'} tone="secondary" disabled={importingScenario || exportingScenario} onPress={() => void handleExportScenario()} />
@@ -1131,7 +1167,7 @@ export function MapScreen() {
                 <AppButton label={importingScenario ? 'Importing…' : 'Import Map File'} tone="secondary" disabled={importingScenario || exportingScenario} onPress={() => void handleImportScenario()} />
               </View>
               {scenarioNotice ? <Text style={styles.helperCopy}>{scenarioNotice}</Text> : null}
-              {!loadedScenario ? <MapScenarioWorkbench
+              {!loadedScenario && (!activeMatch || (isHostView && !liveGameplayState)) ? <MapScenarioWorkbench
                 customOverlays={customOverlays}
                 onCustomOverlaysChange={setCustomOverlays}
                 stationSource={stationSource}
@@ -1243,8 +1279,8 @@ export function MapScreen() {
                 {draftDiffersFromApplied ? (
                   <StateBanner
                     tone="info"
-                    title="A new draft is ready"
-                    detail="The preview below is different from the playable area currently applied to the match."
+                    title="A map update is ready"
+                    detail="The region or its shared layers and station sources changed. Apply the update so every player receives the same map setup."
                   />
                 ) : null}
 
@@ -1381,7 +1417,7 @@ export function MapScreen() {
                     transitStations={transitStations}
                     selectedStation={mapSelectedStation}
                     hidingRadiusMeters={mapHidingRadius}
-                    customOverlays={customOverlays}
+                    customOverlays={mapCustomOverlays}
                   />
                   {stationWorkbenchForViewer}
                   {showLegend ? (
@@ -1417,7 +1453,7 @@ export function MapScreen() {
                   visibleMovementTracks={projection?.visibleMovementTracks}
                   roundStartLocation={projection?.roundStartLocation}
                   previewRegion={undefined}
-                  customOverlays={customOverlays}
+                  customOverlays={mapCustomOverlays}
                 />
               </Panel>
             ) : null}
@@ -1479,6 +1515,7 @@ export function MapScreen() {
                   transitStations={transitStations}
                   selectedStation={mapSelectedStation}
                   hidingRadiusMeters={mapHidingRadius}
+                  customOverlays={mapCustomOverlays}
                 />
                 {stationWorkbenchForViewer}
               </View>

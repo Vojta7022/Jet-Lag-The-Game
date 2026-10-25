@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { combineStationSources, parseCustomOverlayGeoJson, parseCustomStationsCsv, parseCustomStationsGeoJson, parseCustomStationsKml } from '../src/features/map/map-workbench.ts';
+import { combineStationSources, parseCustomOverlayGeoJson, parseCustomStationsCsv, parseCustomStationsGeoJson, parseCustomStationsKml, resolveMapWorkbenchConfiguration } from '../src/features/map/map-workbench.ts';
 import { seedPlayableRegions } from '../src/features/map/seed-regions.ts';
 
 test('GeoJSON editor imports named features from a FeatureCollection as independently editable layers', () => {
@@ -58,4 +58,20 @@ test('station source selection returns only in-boundary OSM and custom candidate
 
   assert.deepEqual(combineStationSources('custom', geometry, osm, custom).map((station) => station.stationId), ['custom:c1']);
   assert.deepEqual(combineStationSources('both', geometry, osm, custom).map((station) => station.stationId), ['custom:c1', 'node/1']);
+});
+
+test('player map screens prefer authority settings while host map setup can preview local edits', () => {
+  const local = {
+    customOverlays: [],
+    stationSource: 'osm' as const,
+    customStations: []
+  };
+  const authority = {
+    customOverlays: [{ id: 'shared', name: 'Shared layer', color: '#2374ab', visible: true, geometry: { type: 'Point', coordinates: [14.2, 50.2] } }],
+    stationSource: 'custom' as const,
+    customStations: [{ id: 'shared-stop', name: 'Shared stop', latitude: 50.2, longitude: 14.2 }]
+  };
+
+  assert.deepEqual(resolveMapWorkbenchConfiguration(local, authority, false), authority);
+  assert.deepEqual(resolveMapWorkbenchConfiguration(local, authority, true), local);
 });

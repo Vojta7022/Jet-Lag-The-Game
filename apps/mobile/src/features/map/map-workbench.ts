@@ -3,6 +3,20 @@ import type { GeoJsonGeometryModel } from '../../../../../packages/shared-types/
 import { isValidScenarioCustomGeometry, type MapScenarioCustomOverlay, type MapScenarioCustomStation } from './map-scenarios.ts';
 import { filterStationsToGeometry, type TransitStationCandidate } from './station-layer.ts';
 
+export interface MapWorkbenchConfiguration {
+  customOverlays: MapScenarioCustomOverlay[];
+  stationSource: 'osm' | 'custom' | 'both';
+  customStations: MapScenarioCustomStation[];
+}
+
+export function resolveMapWorkbenchConfiguration(
+  localDraft: MapWorkbenchConfiguration,
+  authoritative: MapWorkbenchConfiguration | undefined,
+  canEditAppliedSetup: boolean
+): MapWorkbenchConfiguration {
+  return canEditAppliedSetup ? localDraft : authoritative ?? localDraft;
+}
+
 interface LayerImportOptions {
   name: string;
   color: string;

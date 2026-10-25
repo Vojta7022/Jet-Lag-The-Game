@@ -1,9 +1,12 @@
 import type {
   AttachmentKind,
+  CustomMapOverlayModel,
+  CustomMapStationModel,
   GeoJsonGeometryModel,
   MatchLifecycleState,
   MatchMode,
   MatchRole,
+  MapStationSource,
   PlayableRegionKind,
   SeekPhaseSubstate
 } from '../domain/index.ts';
@@ -145,6 +148,9 @@ export interface CreateMapRegionCommand {
     regionKind?: PlayableRegionKind;
     featureDatasetRefs?: string[];
     geometry: GeoJsonGeometryModel;
+    customOverlays?: CustomMapOverlayModel[];
+    stationSource?: MapStationSource;
+    customStations?: CustomMapStationModel[];
   };
 }
 

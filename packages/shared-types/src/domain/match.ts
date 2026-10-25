@@ -88,6 +88,23 @@ export interface GeoJsonGeometryModel {
   properties?: Record<string, unknown>;
 }
 
+export type MapStationSource = 'osm' | 'custom' | 'both';
+
+export interface CustomMapOverlayModel {
+  id: string;
+  name: string;
+  color: string;
+  visible: boolean;
+  geometry: GeoJsonGeometryModel;
+}
+
+export interface CustomMapStationModel {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface PlayerModel {
   playerId: string;
   displayName: string;
@@ -354,6 +371,9 @@ export interface PlayableRegionModel {
   boundaryGeometry: GeoJsonGeometryModel;
   boundaryArtifact: SpatialArtifactModel;
   featureDatasetRefs: string[];
+  customOverlays?: CustomMapOverlayModel[];
+  stationSource?: MapStationSource;
+  customStations?: CustomMapStationModel[];
   configuredAt: string;
 }
 

@@ -46,6 +46,20 @@ test('pregame map flow makes start match the primary action once the map is appl
   assert.equal(model.title, 'Start the game');
 });
 
+test('pregame map flow lets the host apply shared configuration changes without a new region draft', () => {
+  const model = buildPregameMapSetupFlowModel({
+    isHostView: true,
+    rolesReadyForMapSetup: true,
+    lifecycleState: 'map_setup',
+    mapHasBeenApplied: true,
+    hasDraftSelection: false,
+    draftDiffersFromApplied: true
+  });
+
+  assert.equal(model.primaryAction?.kind, 'apply_region');
+  assert.equal(model.primaryAction?.label, 'Apply Updated Play Area');
+});
+
 test('pregame map flow keeps non-host players in a waiting state while the host finishes setup', () => {
   const model = buildPregameMapSetupFlowModel({
     isHostView: false,

@@ -135,6 +135,9 @@ export function buildPlayableRegionFromCommand(
     boundaryGeometry: payload.geometry,
     boundaryArtifact,
     featureDatasetRefs: payload.featureDatasetRefs ?? [],
+    customOverlays: payload.customOverlays ?? [],
+    stationSource: payload.stationSource ?? 'osm',
+    customStations: payload.customStations ?? [],
     configuredAt: occurredAt
   };
 }

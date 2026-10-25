@@ -49,6 +49,73 @@ function error(
   };
 }
 
+function isGeoJsonPosition(value: unknown, budget: { positions: number }): value is number[] {
+  budget.positions += 1;
+  return budget.positions <= 25_000 && Array.isArray(value) && value.length >= 2 &&
+    Number.isFinite(value[0]) && Math.abs(value[0] as number) <= 180 &&
+    Number.isFinite(value[1]) && Math.abs(value[1] as number) <= 90;
+}
+
+function isGeoJsonLine(value: unknown, budget: { positions: number }, minimum = 2): boolean {
+  return Array.isArray(value) && value.length >= minimum && value.every((position) => isGeoJsonPosition(position, budget));
+}
+
+function isValidMapOverlayGeometry(value: unknown, depth = 0, budget = { positions: 0 }): boolean {
+  if (!value || typeof value !== 'object' || depth > 8) return false;
+  const geometry = value as { type?: unknown; coordinates?: unknown; geometries?: unknown };
+  const coordinates = geometry.coordinates;
+  switch (geometry.type) {
+    case 'Point': return isGeoJsonPosition(coordinates, budget);
+    case 'MultiPoint': return Array.isArray(coordinates) && coordinates.length > 0 && coordinates.every((point) => isGeoJsonPosition(point, budget));
+    case 'LineString': return isGeoJsonLine(coordinates, budget);
+    case 'MultiLineString': return Array.isArray(coordinates) && coordinates.length > 0 && coordinates.every((line) => isGeoJsonLine(line, budget));
+    case 'Polygon':
+      return Array.isArray(coordinates) && coordinates.length > 0 && coordinates.every((ring) =>
+        isGeoJsonLine(ring, budget, 4) && Array.isArray(ring) &&
+        (ring[0] as number[])[0] === (ring[ring.length - 1] as number[])[0] &&
+        (ring[0] as number[])[1] === (ring[ring.length - 1] as number[])[1]
+      );
+    case 'MultiPolygon':
+      return Array.isArray(coordinates) && coordinates.length > 0 && coordinates.every((polygon) =>
+        Array.isArray(polygon) && polygon.length > 0 && polygon.every((ring) =>
+          isGeoJsonLine(ring, budget, 4) && Array.isArray(ring) &&
+          (ring[0] as number[])[0] === (ring[ring.length - 1] as number[])[0] &&
+          (ring[0] as number[])[1] === (ring[ring.length - 1] as number[])[1]
+        )
+      );
+    case 'GeometryCollection':
+      return Array.isArray(geometry.geometries) && geometry.geometries.length > 0 &&
+        geometry.geometries.every((child) => isValidMapOverlayGeometry(child, depth + 1, budget));
+    default: return false;
+  }
+}
+
+function hasValidMapSetupData(payload: {
+  customOverlays?: Array<{ id: string; name: string; color: string; visible: boolean; geometry: unknown }>;
+  stationSource?: string;
+  customStations?: Array<{ id: string; name: string; latitude: number; longitude: number }>;
+}): boolean {
+  if (payload.stationSource !== undefined && !['osm', 'custom', 'both'].includes(payload.stationSource)) return false;
+  const geometryBudget = { positions: 0 };
+  if (payload.customOverlays !== undefined && (
+    !Array.isArray(payload.customOverlays) || payload.customOverlays.length > 100 ||
+    !payload.customOverlays.every((overlay) => overlay &&
+      typeof overlay.id === 'string' && overlay.id.length > 0 && overlay.id.length <= 100 &&
+      typeof overlay.name === 'string' && overlay.name.trim().length > 0 && overlay.name.length <= 100 &&
+      typeof overlay.color === 'string' && /^#[0-9a-f]{6}$/i.test(overlay.color) &&
+      typeof overlay.visible === 'boolean' && isValidMapOverlayGeometry(overlay.geometry, 0, geometryBudget))
+  )) return false;
+  if (payload.customStations !== undefined && (
+    !Array.isArray(payload.customStations) || payload.customStations.length > 2000 ||
+    !payload.customStations.every((station) => station &&
+      typeof station.id === 'string' && station.id.length > 0 && station.id.length <= 100 &&
+      typeof station.name === 'string' && station.name.trim().length > 0 && station.name.length <= 100 &&
+      Number.isFinite(station.latitude) && station.latitude >= -90 && station.latitude <= 90 &&
+      Number.isFinite(station.longitude) && station.longitude >= -180 && station.longitude <= 180)
+  )) return false;
+  return true;
+}
+
 function getDeckDefinition(contentPack: ContentPack, deckId: string): DeckDefinition | undefined {
   return contentPack.decks.find((candidate) => candidate.deckId === deckId);
 }
@@ -495,6 +562,9 @@ export function validateCommandEnvelope(
             'The playable region must be defined by a polygon or multipolygon boundary.'
           )
         ];
+      }
+      if (!hasValidMapSetupData(envelope.command.payload)) {
+        return [error(envelope.command.type, 'INVALID_MAP_SETUP_DATA', 'Custom map layers or station settings are invalid.')];
       }
       return [];
     }
