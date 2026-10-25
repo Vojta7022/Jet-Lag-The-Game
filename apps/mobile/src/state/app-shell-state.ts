@@ -16,6 +16,7 @@ export type ShellLoadState = 'idle' | 'loading' | 'ready' | 'error';
 export interface MapSetupDraftState {
   matchId: string;
   selectedRegions: PlayableRegionCatalogEntry[];
+  excludedRegions?: PlayableRegionCatalogEntry[];
   selectedPreviewRegionId?: string;
   query: string;
 }
@@ -51,7 +52,8 @@ export function isSameMapSetupDraft(
   return left.matchId === right.matchId &&
     left.query === right.query &&
     left.selectedPreviewRegionId === right.selectedPreviewRegionId &&
-    sameDraftRegionSelection(left.selectedRegions, right.selectedRegions);
+    sameDraftRegionSelection(left.selectedRegions, right.selectedRegions) &&
+    sameDraftRegionSelection(left.excludedRegions ?? [], right.excludedRegions ?? []);
 }
 
 export interface ActiveMatchViewState extends ConnectionSnapshotSummary {

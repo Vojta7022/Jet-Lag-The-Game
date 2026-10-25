@@ -6,16 +6,20 @@ import type { PlayableRegionCatalogEntry } from './region-types.ts';
 
 interface SelectedRegionChipListProps {
   regions: PlayableRegionCatalogEntry[];
+  listType?: 'included' | 'excluded';
   onRemove: (regionId: string) => void;
   onClearAll: () => void;
 }
 
 export function SelectedRegionChipList(props: SelectedRegionChipListProps) {
+  const listType = props.listType ?? 'included';
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerLabel}>
-          {props.regions.length === 1 ? '1 selected region' : `${props.regions.length} selected regions`}
+          {listType === 'excluded'
+            ? `${props.regions.length} excluded ${props.regions.length === 1 ? 'region' : 'regions'}`
+            : `${props.regions.length} included ${props.regions.length === 1 ? 'region' : 'regions'}`}
         </Text>
         <Pressable
           accessibilityRole="button"
@@ -25,7 +29,7 @@ export function SelectedRegionChipList(props: SelectedRegionChipListProps) {
             pressed ? styles.pressedButton : null
           ]}
         >
-          <Text style={styles.clearButtonLabel}>Clear All</Text>
+          <Text style={styles.clearButtonLabel}>{listType === 'excluded' ? 'Clear exclusions' : 'Clear map'}</Text>
         </Pressable>
       </View>
 

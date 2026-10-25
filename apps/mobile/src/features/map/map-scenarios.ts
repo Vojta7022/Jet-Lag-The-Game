@@ -10,6 +10,7 @@ export interface MapScenario {
   query: string;
   selectedPreviewRegionId?: string;
   selectedRegions: PlayableRegionCatalogEntry[];
+  excludedRegions?: PlayableRegionCatalogEntry[];
   selectedStation?: Pick<TransitStationCandidate, 'stationId' | 'name' | 'latitude' | 'longitude'>;
   hidingRadiusMeters?: number;
 }
@@ -67,7 +68,14 @@ export function decodeMapScenario(value: string): MapScenario {
       parsed.selectedRegions.length > 50 ||
       !parsed.selectedRegions.every((region) =>
         region && typeof region.regionId === 'string' && typeof region.displayName === 'string' && hasPlayableBoundary(region)
-      )
+      ) ||
+      (parsed.excludedRegions !== undefined && (
+        !Array.isArray(parsed.excludedRegions) ||
+        parsed.excludedRegions.length > 50 ||
+        !parsed.excludedRegions.every((region) =>
+          region && typeof region.regionId === 'string' && typeof region.displayName === 'string' && hasPlayableBoundary(region)
+        )
+      ))
     ) {
       throw new Error('missing scenario fields');
     }

@@ -16,6 +16,7 @@ test('map scenarios preserve region geometry and selected station across a share
     query: 'Prague',
     selectedPreviewRegionId: 'prague',
     selectedRegions: [seedPlayableRegions[0]!],
+    excludedRegions: [seedPlayableRegions[1]!],
     selectedStation: {
       stationId: 'node/123',
       name: 'Main Station',
@@ -39,4 +40,13 @@ test('map scenario decoder rejects malformed and unsupported payloads', () => {
     selectedRegions: [{ ...seedPlayableRegions[0]!, geometry: { type: 'Polygon', coordinates: [] } }]
   } as unknown as MapScenario;
   assert.throws(() => decodeMapScenario(encodeMapScenario(invalid)), /valid map scenario/i);
+  const invalidExclusion = {
+    version: 1,
+    name: 'Broken subtraction',
+    savedAt: '2026-10-24T12:00:00.000Z',
+    query: '',
+    selectedRegions: [seedPlayableRegions[0]!],
+    excludedRegions: [{ ...seedPlayableRegions[1]!, geometry: { type: 'Polygon', coordinates: [] } }]
+  } as unknown as MapScenario;
+  assert.throws(() => decodeMapScenario(encodeMapScenario(invalidExclusion)), /valid map scenario/i);
 });

@@ -19,6 +19,7 @@ interface SearchableRegionPickerProps {
   previewRegion?: PlayableRegionCatalogEntry;
   selectedRegionId?: string;
   selectedRegionCount: number;
+  excludedRegionCount?: number;
   sourceLabel: string;
   usingFallback: boolean;
   noticeMessage?: string;
@@ -29,8 +30,11 @@ interface SearchableRegionPickerProps {
   onRetry: () => void;
   onSelect: (regionId: string) => void;
   onAddPreviewRegion: () => void;
+  onSubtractPreviewRegion: () => void;
   canAddPreviewRegion: boolean;
+  canSubtractPreviewRegion: boolean;
   previewRegionAlreadyAdded: boolean;
+  previewRegionAlreadyExcluded: boolean;
 }
 
 export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
@@ -44,12 +48,12 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
         autoCapitalize="words"
       />
       <Text style={styles.helper}>
-        Find your city, or combine a few neighbouring regions for a bigger adventure.
+        Find your city, combine neighbouring regions, or subtract a contained region to shape your match map.
       </Text>
 
       {props.selectedRegionCount > 0 ? (
         <Text style={styles.meta}>
-          Match map: {props.selectedRegionCount === 1 ? '1 region added' : `${props.selectedRegionCount} regions added`}
+          Match map: {props.selectedRegionCount} included · {props.excludedRegionCount ?? 0} subtracted
         </Text>
       ) : null}
 
@@ -138,7 +142,7 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
                     </View>
                     <View style={styles.previewBadge}>
                       <Text style={styles.previewBadgeLabel}>
-                        {props.previewRegionAlreadyAdded ? 'Added' : 'Preview'}
+                        {props.previewRegionAlreadyAdded ? 'Added' : props.previewRegionAlreadyExcluded ? 'Subtracted' : 'Preview'}
                       </Text>
                     </View>
                   </View>
@@ -155,6 +159,12 @@ export function SearchableRegionPicker(props: SearchableRegionPickerProps) {
                     onPress={props.onAddPreviewRegion}
                     disabled={!props.canAddPreviewRegion}
                     tone="secondary"
+                  />
+                  <AppButton
+                    label={props.previewRegionAlreadyExcluded ? 'Region Excluded' : 'Subtract Region From Match Map'}
+                    onPress={props.onSubtractPreviewRegion}
+                    disabled={!props.canSubtractPreviewRegion}
+                    tone="ghost"
                   />
                 </View>
               ) : null}

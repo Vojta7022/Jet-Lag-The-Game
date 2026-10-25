@@ -5,7 +5,8 @@ import type { MatchProjection, SyncEnvelope } from '../../../packages/shared-typ
 
 import {
   appShellReducer,
-  createInitialShellState
+  createInitialShellState,
+  isSameMapSetupDraft
 } from '../src/state/app-shell-state.ts';
 
 function makeProjection(overrides: Partial<MatchProjection> = {}): MatchProjection {
@@ -295,6 +296,22 @@ test('app shell reducer ignores identical map setup drafts so screens do not res
   });
 
   assert.equal(nextState, state);
+});
+
+test('map setup draft equality tracks excluded regions as part of the selected boundary', () => {
+  const included = {
+    regionId: 'region-included', displayName: 'Included', regionKind: 'admin_region', summary: '',
+    featureDatasetRefs: [], geometry: { type: 'Polygon' as const, coordinates: [] },
+    sourceKind: 'seed_catalog' as const, sourceLabel: 'Seed', searchAliases: []
+  };
+  const excluded = { ...included, regionId: 'region-excluded', displayName: 'Excluded' };
+  const baseline = { matchId: 'match', selectedRegions: [included], query: '' };
+
+  assert.equal(isSameMapSetupDraft(baseline, { ...baseline, excludedRegions: [excluded] }), false);
+  assert.equal(isSameMapSetupDraft(
+    { ...baseline, excludedRegions: [excluded] },
+    { ...baseline, excludedRegions: [{ ...excluded }] }
+  ), true);
 });
 
 test('app shell reducer ignores identical runtime and session sync actions', () => {

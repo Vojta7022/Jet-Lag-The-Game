@@ -154,6 +154,9 @@ export function MapScreen() {
   const [selectedRegions, setSelectedRegions] = useState<PlayableRegionCatalogEntry[]>(
     () => mapSetupDraft?.selectedRegions ?? []
   );
+  const [excludedRegions, setExcludedRegions] = useState<PlayableRegionCatalogEntry[]>(
+    () => mapSetupDraft?.excludedRegions ?? []
+  );
   const [transitStations, setTransitStations] = useState<TransitStationCandidate[]>([]);
   const [selectedStationId, setSelectedStationId] = useState<string>();
   const [scenarioStation, setScenarioStation] = useState<TransitStationCandidate>();
@@ -216,10 +219,11 @@ export function MapScreen() {
     ]
   );
   const compositePreviewRegion = useMemo(
-    () => buildCompositePlayableRegion(selectedRegions),
-    [selectedRegions]
+    () => buildCompositePlayableRegion(selectedRegions, excludedRegions),
+    [excludedRegions, selectedRegions]
   );
-  const previewRegion = compositePreviewRegion ?? regionSearch.selectedRegion;
+  const includedPreviewRegion = useMemo(() => buildCompositePlayableRegion(selectedRegions), [selectedRegions]);
+  const previewRegion = compositePreviewRegion ?? includedPreviewRegion ?? regionSearch.selectedRegion;
   const liveGameplayState = isLiveGameplayState(projection?.lifecycleState);
   useEffect(() => {
     if (!liveGameplayState) return undefined;
@@ -372,15 +376,20 @@ export function MapScreen() {
     previewRegion?.sourceLabel ??
     'No provider selected yet';
   const disconnectedWarning = compositePreviewRegion?.compositeMetadata?.disconnectedWarning;
+  const invalidExclusion = excludedRegions.length > 0 && !compositePreviewRegion;
   const previewRegionAlreadyAdded = Boolean(
     regionSearch.selectedRegion &&
     selectedRegions.some((region) => region.regionId === regionSearch.selectedRegion?.regionId)
+  );
+  const previewRegionAlreadyExcluded = Boolean(
+    regionSearch.selectedRegion &&
+    excludedRegions.some((region) => region.regionId === regionSearch.selectedRegion?.regionId)
   );
   const activeSelectionCoverage = compositePreviewRegion?.countryLabel ?? previewRegion?.countryLabel;
   const activeSelectionParentLabel = compositePreviewRegion?.parentRegionLabel ?? previewRegion?.parentRegionLabel;
   const compositeDissolveNotice = compositePreviewRegion?.compositeMetadata?.dissolveNotice;
   const selectionBadgeLabel =
-    selectedRegions.length > 1
+    selectedRegions.length > 1 || excludedRegions.length > 0
       ? 'Composite'
       : compositePreviewRegion?.regionKind ?? previewRegion?.regionKind ?? 'Preview';
   const onlineIdentityMismatch = hasOnlineIdentityMismatch(state.sessionProfile, activeMatch);
@@ -513,8 +522,10 @@ export function MapScreen() {
 
   useEffect(() => {
     const persistedSelection = mapSetupDraft?.selectedRegions ?? [];
+    const persistedExclusions = mapSetupDraft?.excludedRegions ?? [];
     setSelectedRegions((current) => (sameSelection(current, persistedSelection) ? current : persistedSelection));
-  }, [activeMatch?.matchId, mapSetupDraft?.selectedRegions]);
+    setExcludedRegions((current) => (sameSelection(current, persistedExclusions) ? current : persistedExclusions));
+  }, [activeMatch?.matchId, mapSetupDraft?.excludedRegions, mapSetupDraft?.selectedRegions]);
 
   useEffect(() => {
     void loadSavedMapScenarios().then(setSavedScenarios);
@@ -528,6 +539,7 @@ export function MapScreen() {
       const scenario = decodeMapScenario(token);
       setLoadedScenario(scenario);
       setSelectedRegions(scenario.selectedRegions);
+      setExcludedRegions(scenario.excludedRegions ?? []);
       regionSearch.setQuery(scenario.query);
       if (scenario.selectedPreviewRegionId) void regionSearch.selectRegion(scenario.selectedPreviewRegionId);
       setScenarioStation(scenario.selectedStation ? {
@@ -550,6 +562,7 @@ export function MapScreen() {
     const nextDraft = {
       matchId: activeMatch.matchId,
       selectedRegions,
+      excludedRegions,
       query: regionSearch.query,
       selectedPreviewRegionId: regionSearch.selectedRegionId
     };
@@ -566,6 +579,7 @@ export function MapScreen() {
     regionSearch.query,
     regionSearch.selectedRegionId,
     saveMapSetupDraft,
+    excludedRegions,
     selectedRegions
   ]);
 
@@ -574,7 +588,7 @@ export function MapScreen() {
       return;
     }
 
-    const shouldClearDraftState = selectedRegions.length > 0 ||
+    const shouldClearDraftState = selectedRegions.length > 0 || excludedRegions.length > 0 ||
       regionSearch.query.length > 0 ||
       Boolean(regionSearch.selectedRegionId) ||
       Boolean(mapSetupDraft);
@@ -586,6 +600,7 @@ export function MapScreen() {
     if (selectedRegions.length > 0) {
       setSelectedRegions(clearSelectedRegions());
     }
+    if (excludedRegions.length > 0) setExcludedRegions(clearSelectedRegions());
 
     if (regionSearch.query.length > 0) {
       regionSearch.setQuery('');
@@ -604,6 +619,7 @@ export function MapScreen() {
     liveGameplayState,
     mapSetupDraft,
     regionSearch.clearSelection,
+    excludedRegions.length,
     regionSearch.query,
     regionSearch.selectedRegionId,
     regionSearch.setQuery,
@@ -615,6 +631,7 @@ export function MapScreen() {
 
   const clearDraftSelection = () => {
     setSelectedRegions(clearSelectedRegions());
+    setExcludedRegions(clearSelectedRegions());
     regionSearch.setQuery('');
     regionSearch.clearSelection();
     if (activeMatch) {
@@ -627,11 +644,16 @@ export function MapScreen() {
     query: regionSearch.query || loadedScenario?.query || '',
     selectedPreviewRegionId: regionSearch.selectedRegionId ?? loadedScenario?.selectedPreviewRegionId,
     selectedRegions: selectedRegions.length ? selectedRegions : loadedScenario?.selectedRegions ?? (appliedRegion ? [appliedRegion] : []),
+    excludedRegions,
     selectedStation: selectedStation ?? scenarioStation ?? savedZoneStation ?? loadedScenario?.selectedStation,
     hidingRadiusMeters: savedHidingZone?.radiusMeters ?? scenarioHidingRadius ?? loadedScenario?.hidingRadiusMeters ?? (selectedScale ? getHidingRadiusMeters(selectedScale) : undefined)
   });
 
   const handleSaveScenario = async () => {
+    if (invalidExclusion) {
+      setScenarioNotice('A subtracted region must fit fully inside an included region. Adjust the selection before saving.');
+      return;
+    }
     if (selectedRegions.length === 0 && !appliedRegion && !loadedScenario) {
       setScenarioNotice('Choose a playable region before saving a map.');
       return;
@@ -644,6 +666,10 @@ export function MapScreen() {
   };
 
   const handleShareScenario = async () => {
+    if (invalidExclusion) {
+      setScenarioNotice('A subtracted region must fit fully inside an included region. Adjust the selection before sharing.');
+      return;
+    }
     if (selectedRegions.length === 0 && !appliedRegion && !loadedScenario) {
       setScenarioNotice('Choose a playable region before sharing a map.');
       return;
@@ -656,6 +682,7 @@ export function MapScreen() {
   const handleLoadScenario = (scenario: MapScenario) => {
     setLoadedScenario(scenario);
     setSelectedRegions(scenario.selectedRegions);
+    setExcludedRegions(scenario.excludedRegions ?? []);
     regionSearch.setQuery(scenario.query);
     if (scenario.selectedPreviewRegionId) void regionSearch.selectRegion(scenario.selectedPreviewRegionId);
     setScenarioStation(scenario.selectedStation ? { ...scenario.selectedStation, kind: 'transit' } : undefined);
@@ -855,13 +882,17 @@ export function MapScreen() {
             subtitle="Shared map scenario preview. It includes the selected play area and any hiding-zone station marker."
             tone="soft"
           >
-            <MapCanvas
-              height={Math.max(300, Math.min(Math.round(dimensions.height * 0.58), 620))}
-              maxWidth={dimensions.width - 32}
-              previewRegion={buildCompositePlayableRegion(loadedScenario.selectedRegions) ?? loadedScenario.selectedRegions[0]}
-              selectedStation={scenarioStation}
-              hidingRadiusMeters={scenarioHidingRadius}
-            />
+            {buildCompositePlayableRegion(loadedScenario.selectedRegions, loadedScenario.excludedRegions ?? []) ? (
+              <MapCanvas
+                height={Math.max(300, Math.min(Math.round(dimensions.height * 0.58), 620))}
+                maxWidth={dimensions.width - 32}
+                previewRegion={buildCompositePlayableRegion(loadedScenario.selectedRegions, loadedScenario.excludedRegions ?? [])}
+                selectedStation={scenarioStation}
+                hidingRadiusMeters={scenarioHidingRadius}
+              />
+            ) : (
+              <StateBanner tone="error" title="Invalid region subtraction" detail="A subtracted region must fit fully inside an included region." />
+            )}
             <AppButton label="Save Map On This Device" tone="secondary" onPress={() => void handleSaveScenario()} />
             <AppButton label="Share This Map" tone="secondary" onPress={() => void handleShareScenario()} />
             {!activeMatch ? <AppButton label="Start a Game With This Map" onPress={() => router.push('/create-match')} /> : null}
@@ -948,7 +979,7 @@ export function MapScreen() {
                 />
               ) : null}
 
-              {(selectedRegions.length > 0 || regionSearch.query.length > 0 || Boolean(regionSearch.selectedRegionId)) &&
+              {(selectedRegions.length > 0 || excludedRegions.length > 0 || regionSearch.query.length > 0 || Boolean(regionSearch.selectedRegionId)) &&
               canShowSetupBuilder ? (
                 <AppButton
                   label="Clear Draft"
@@ -1002,6 +1033,7 @@ export function MapScreen() {
                   previewRegion={regionSearch.selectedRegion}
                   selectedRegionId={regionSearch.selectedRegionId}
                   selectedRegionCount={selectedRegions.length}
+                  excludedRegionCount={excludedRegions.length}
                   sourceLabel={regionSearch.sourceLabel}
                   usingFallback={regionSearch.usingFallback}
                   noticeMessage={regionSearch.noticeMessage}
@@ -1021,8 +1053,16 @@ export function MapScreen() {
                     setSelectedRegions((currentRegions) =>
                       addRegionToSelection(currentRegions, regionSearch.selectedRegion!)
                     );
+                    setExcludedRegions((currentRegions) => removeRegionFromSelection(currentRegions, regionSearch.selectedRegion!.regionId));
                   }}
-                  canAddPreviewRegion={Boolean(regionSearch.selectedRegion) && !previewRegionAlreadyAdded}
+                  canAddPreviewRegion={Boolean(regionSearch.selectedRegion) && !previewRegionAlreadyAdded && !previewRegionAlreadyExcluded}
+                  onSubtractPreviewRegion={() => {
+                    if (!regionSearch.selectedRegion) return;
+                    setExcludedRegions((currentRegions) => addRegionToSelection(currentRegions, regionSearch.selectedRegion!));
+                    setSelectedRegions((currentRegions) => removeRegionFromSelection(currentRegions, regionSearch.selectedRegion!.regionId));
+                  }}
+                  canSubtractPreviewRegion={Boolean(regionSearch.selectedRegion) && selectedRegions.length > 0 && !previewRegionAlreadyExcluded && !previewRegionAlreadyAdded}
+                  previewRegionAlreadyExcluded={previewRegionAlreadyExcluded}
                   previewRegionAlreadyAdded={previewRegionAlreadyAdded}
                 />
 
@@ -1085,12 +1125,20 @@ export function MapScreen() {
                   />
                 ) : null}
 
-                {compositePreviewRegion ? (
+                {invalidExclusion ? (
+                  <StateBanner
+                    tone="error"
+                    title="Region subtraction needs adjustment"
+                    detail="Each subtracted boundary must fit fully inside one included region and cannot cross its edge. Remove or replace the subtracted area before applying the map."
+                  />
+                ) : null}
+
+                {compositePreviewRegion || includedPreviewRegion ? (
                   <View style={styles.selectedSection}>
                     <View style={styles.selectedHeader}>
                       <View style={styles.selectedTextBlock}>
-                        <Text style={styles.title}>{compositePreviewRegion.displayName}</Text>
-                        <Text style={styles.copy}>{compositePreviewRegion.summary}</Text>
+                        <Text style={styles.title}>{compositePreviewRegion?.displayName ?? includedPreviewRegion?.displayName}</Text>
+                        <Text style={styles.copy}>{compositePreviewRegion?.summary ?? includedPreviewRegion?.summary}</Text>
                       </View>
                       <View style={styles.selectedBadge}>
                         <Text style={styles.selectedBadgeLabel}>{selectionBadgeLabel}</Text>
@@ -1104,12 +1152,22 @@ export function MapScreen() {
                       }}
                       onClearAll={clearDraftSelection}
                     />
+                    {excludedRegions.length > 0 ? (
+                      <SelectedRegionChipList
+                        regions={excludedRegions}
+                        listType="excluded"
+                        onRemove={(regionId) => {
+                          setExcludedRegions((currentRegions) => removeRegionFromSelection(currentRegions, regionId));
+                        }}
+                        onClearAll={() => setExcludedRegions(clearSelectedRegions())}
+                      />
+                    ) : null}
 
                     <View style={styles.metricGrid}>
                       <View style={styles.metricCard}>
                         <Text style={styles.metricLabel}>Regions</Text>
                         <Text style={styles.metricValue}>
-                          {selectedRegions.length} {selectedRegions.length === 1 ? 'region' : 'regions'}
+                          {selectedRegions.length} included · {excludedRegions.length} excluded
                         </Text>
                       </View>
                       <View style={styles.metricCard}>
@@ -1129,7 +1187,7 @@ export function MapScreen() {
                     {activeSelectionCoverage ? (
                       <Text style={styles.copy}>
                         Coverage: {activeSelectionCoverage}
-                        {activeSelectionParentLabel && activeSelectionParentLabel !== compositePreviewRegion.displayName
+                        {activeSelectionParentLabel && activeSelectionParentLabel !== (compositePreviewRegion?.displayName ?? includedPreviewRegion?.displayName)
                           ? ` · ${activeSelectionParentLabel}`
                           : ''}
                       </Text>

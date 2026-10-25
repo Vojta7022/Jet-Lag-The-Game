@@ -51,6 +51,7 @@ export interface CompositeRegionWarning {
 
 export interface CompositeRegionMetadata {
   componentRegions: CompositeRegionComponent[];
+  excludedRegions?: CompositeRegionComponent[];
   sourceProviderLabels: string[];
   combinedGeometry: GeoJsonGeometryModel;
   rawCombinedGeometry: GeoJsonGeometryModel;

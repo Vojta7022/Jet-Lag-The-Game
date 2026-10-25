@@ -47,6 +47,7 @@ import type {
   GeoJsonGeometryModel
 } from '../../../packages/shared-types/src/index.ts';
 import type { PlayableRegionCatalogEntry } from '../src/features/map/region-types.ts';
+import { pointInGeometry } from '../../../packages/geo/src/index.ts';
 
 const generatedPackPath = fileURLToPath(
   new URL('../../../samples/generated/jet-lag-the-game.content-pack.json', import.meta.url)
@@ -382,6 +383,67 @@ test('composite region builder previews multiple selected regions as one combine
   );
   assert.equal(Boolean(disconnectedComposite?.compositeMetadata?.disconnectedWarning), true);
   assert.equal(disconnectedWarning?.connectedGroupCount, 2);
+});
+
+test('composite region builder subtracts a contained region as a real playable-boundary hole', () => {
+  const outer: PlayableRegionCatalogEntry = {
+    regionId: 'test:outer', displayName: 'Outer Region', regionKind: 'admin_region', summary: 'Outer',
+    featureDatasetRefs: ['osm-admin'],
+    geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
+    sourceKind: 'provider_catalog', sourceLabel: 'Test', searchAliases: []
+  };
+  const excluded: PlayableRegionCatalogEntry = {
+    ...outer,
+    regionId: 'test:excluded', displayName: 'Excluded Region', summary: 'Excluded',
+    geometry: { type: 'Polygon', coordinates: [[[2, 2], [4, 2], [4, 4], [2, 4], [2, 2]]] }
+  };
+
+  const composite = buildCompositePlayableRegion([outer], [excluded]);
+
+  assert.equal(composite?.geometry.type, 'Polygon');
+  assert.equal(composite?.geometry.type === 'Polygon' ? composite.geometry.coordinates.length : 0, 2);
+  assert.equal(pointInGeometry([1, 1], composite?.geometry), true);
+  assert.equal(pointInGeometry([3, 3], composite?.geometry), false);
+  assert.equal(composite?.compositeMetadata?.excludedRegions?.[0]?.regionId, 'test:excluded');
+  assert.equal(composite?.compositeMetadata?.dissolveNotice, undefined);
+  assert.deepEqual(composite?.compositeMetadata?.sourceProviderLabels, ['Test']);
+});
+
+test('composite region builder rejects a subtract region that is not fully contained', () => {
+  const outer: PlayableRegionCatalogEntry = {
+    regionId: 'test:outer', displayName: 'Outer Region', regionKind: 'admin_region', summary: 'Outer',
+    featureDatasetRefs: ['osm-admin'],
+    geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
+    sourceKind: 'provider_catalog', sourceLabel: 'Test', searchAliases: []
+  };
+  const crossing: PlayableRegionCatalogEntry = {
+    ...outer,
+    regionId: 'test:crossing', displayName: 'Crossing Region', summary: 'Crossing',
+    geometry: { type: 'Polygon', coordinates: [[[8, 2], [12, 2], [12, 4], [8, 4], [8, 2]]] }
+  };
+
+  assert.equal(buildCompositePlayableRegion([outer], [crossing]), undefined);
+});
+
+test('composite region builder rejects a subtract region that crosses an overlapping included boundary', () => {
+  const included: PlayableRegionCatalogEntry = {
+    regionId: 'test:included-a', displayName: 'Included A', regionKind: 'admin_region', summary: 'A',
+    featureDatasetRefs: [],
+    geometry: { type: 'Polygon', coordinates: [[[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]] },
+    sourceKind: 'provider_catalog', sourceLabel: 'Test', searchAliases: []
+  };
+  const overlapping = {
+    ...included,
+    regionId: 'test:included-b', displayName: 'Included B',
+    geometry: { type: 'Polygon' as const, coordinates: [[[5, 0], [15, 0], [15, 10], [5, 10], [5, 0]]] }
+  };
+  const crossing = {
+    ...included,
+    regionId: 'test:crossing', displayName: 'Crossing Region',
+    geometry: { type: 'Polygon' as const, coordinates: [[[2, 2], [8, 2], [8, 4], [2, 4], [2, 2]]] }
+  };
+
+  assert.equal(buildCompositePlayableRegion([included, overlapping], [crossing]), undefined);
 });
 
 test('live map display suppresses initial candidate geometry until real search updates exist', () => {
@@ -1008,11 +1070,19 @@ test('composite playable regions apply through create_map_region into the bounde
     bootstrapCommands
   );
 
-  const compositeRegion = buildCompositePlayableRegion([
-    seedPlayableRegions[0]!,
-    seedPlayableRegions[1]!
-  ]);
+  const excludedRegion: PlayableRegionCatalogEntry = {
+    ...seedPlayableRegions[0]!,
+    regionId: 'test:excluded-quarter',
+    displayName: 'Excluded Quarter',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [[[14.30, 50.25], [14.35, 50.25], [14.35, 50.30], [14.30, 50.30], [14.30, 50.25]]]
+    }
+  };
+  const compositeRegion = buildCompositePlayableRegion([seedPlayableRegions[0]!], [excludedRegion]);
   assert.ok(compositeRegion);
+  assert.equal(pointInGeometry([14.325, 50.275], compositeRegion.geometry), false);
+  assert.equal(pointInGeometry([14.25, 50.2], compositeRegion.geometry), true);
 
   const applied = await orchestrator.submitCommands(
     created.connection,
@@ -1042,6 +1112,7 @@ test('composite playable regions apply through create_map_region into the bounde
     applied.projectionDelivery.projection.visibleMap?.remainingArea?.geometry,
     compositeRegion.geometry
   );
+  assert.equal(pointInGeometry([14.325, 50.275], applied.projectionDelivery.projection.visibleMap?.playableBoundary.geometry), false);
 
   await orchestrator.disconnect(created.connection);
 });
