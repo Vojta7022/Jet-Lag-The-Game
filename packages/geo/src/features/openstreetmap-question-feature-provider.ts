@@ -43,6 +43,7 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OVERPASS_FALLBACK_ENDPOINT = 'https://overpass.private.coffee/api/interpreter';
 const RETRYABLE_OVERPASS_STATUSES = new Set([429, 502, 503, 504]);
+const OVERPASS_ENDPOINT_COOLDOWN_MS = 60_000;
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
 const OSM_SOURCE_VERSION = 'overpass-question-features-v10';
 const OSM_REQUEST_HEADERS = {
@@ -691,6 +692,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
   private readonly cacheMilliseconds: number;
   private readonly cache = new Map<string, { expiresAt: number; dataset: QuestionFeatureDatasetModel }>();
   private readonly inFlight = new Map<string, Promise<QuestionFeatureDatasetModel | undefined>>();
+  private readonly retryAfterByEndpoint = new Map<string, number>();
 
   constructor(options: OpenStreetMapQuestionFeatureProviderOptions = {}) {
     this.endpoints = options.endpoints?.length
@@ -707,7 +709,11 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
 
   private async postQuery(query: string, lookupLabel: string): Promise<Response> {
     let lastError: unknown;
-    for (const [index, endpoint] of this.endpoints.entries()) {
+    const nowMs = Date.parse(this.now());
+    const availableEndpoints = this.endpoints.filter((endpoint) =>
+      (this.retryAfterByEndpoint.get(endpoint) ?? 0) <= nowMs);
+    const endpointsToTry = availableEndpoints.length > 0 ? availableEndpoints : this.endpoints;
+    for (const [index, endpoint] of endpointsToTry.entries()) {
       let response: Response;
       try {
         response = await this.fetcher(endpoint, {
@@ -718,13 +724,19 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         });
       } catch (error) {
         lastError = error;
-        if (index === this.endpoints.length - 1) break;
+        this.retryAfterByEndpoint.set(endpoint, nowMs + OVERPASS_ENDPOINT_COOLDOWN_MS);
+        if (index === endpointsToTry.length - 1) break;
         continue;
       }
-      if (response.ok) return response;
+      if (response.ok) {
+        this.retryAfterByEndpoint.delete(endpoint);
+        return response;
+      }
       const failure = new Error(`OpenStreetMap ${lookupLabel} lookup failed with HTTP ${response.status}.`);
-      if (!RETRYABLE_OVERPASS_STATUSES.has(response.status) || index === this.endpoints.length - 1) throw failure;
+      if (!RETRYABLE_OVERPASS_STATUSES.has(response.status)) throw failure;
       lastError = failure;
+      this.retryAfterByEndpoint.set(endpoint, nowMs + OVERPASS_ENDPOINT_COOLDOWN_MS);
+      if (index === endpointsToTry.length - 1) throw failure;
     }
     if (lastError instanceof Error) {
       throw new Error(`OpenStreetMap ${lookupLabel} lookup failed on all configured endpoints: ${lastError.message}`, { cause: lastError });

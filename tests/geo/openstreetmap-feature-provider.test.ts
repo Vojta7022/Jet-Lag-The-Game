@@ -85,6 +85,43 @@ test('Overpass question lookups do not retry invalid queries on a second service
   assert.equal(requestCount, 1);
 });
 
+test('Overpass question lookups cool down a failed endpoint across regional requests', async () => {
+  let now = '2026-10-25T12:00:00.000Z';
+  const requestedUrls: string[] = [];
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    now: () => now,
+    fetch: async (input) => {
+      requestedUrls.push(String(input));
+      return requestedUrls.at(-1) === 'https://overpass-api.de/api/interpreter'
+        ? new Response('busy', { status: 504 })
+        : new Response(JSON.stringify({ elements: [] }), { status: 200 });
+    }
+  });
+
+  await provider.load({
+    featureClassIds: ['hospital'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+  now = '2026-10-25T12:00:01.000Z';
+  await provider.load({
+    featureClassIds: ['hospital'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[1, 0], [2, 0], [2, 1], [1, 1], [1, 0]]] }
+  });
+  now = '2026-10-25T12:01:02.000Z';
+  await provider.load({
+    featureClassIds: ['hospital'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[2, 0], [3, 0], [3, 1], [2, 1], [2, 0]]] }
+  });
+
+  assert.deepEqual(requestedUrls, [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter'
+  ]);
+});
+
 test('rail station lookup includes mapped tram stops and public transport stations', async () => {
   let submittedQuery = '';
   const provider = new OpenStreetMapQuestionFeatureProvider({
