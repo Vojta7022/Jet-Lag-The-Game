@@ -1194,7 +1194,7 @@ export function MapScreen() {
             )}
             <AppButton label="Save Map On This Device" tone="secondary" onPress={() => void handleSaveScenario()} />
             <AppButton label="Share This Map" tone="secondary" onPress={() => void handleShareScenario()} />
-            {!activeMatch || (isHostView && !liveGameplayState) ? <MapScenarioWorkbench
+            {activeMatch && isHostView && !liveGameplayState ? <MapScenarioWorkbench
               customOverlays={customOverlays}
               onCustomOverlaysChange={setCustomOverlays}
               stationSource={stationSource}
