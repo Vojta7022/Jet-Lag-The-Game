@@ -1580,6 +1580,17 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'cairn_challenge') {
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'cairn_challenge_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            targetHeight: envelope.command.payload.cairnTargetHeight!,
+            activatedAt: envelope.occurredAt
+          }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'water_weight_challenge') {
         events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
           type: 'water_weight_challenge_started',
@@ -1955,6 +1966,31 @@ function eventsForCommand(
         payload: {
           sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
           accepted: envelope.command.payload.accepted
+        }
+      })];
+    case 'begin_cairn_rock_placement':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'cairn_rock_placement_started',
+        payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId, startedAt: envelope.occurredAt }
+      })];
+    case 'confirm_cairn_rock_stable': {
+      const challenge = aggregate!.cairnChallenge!;
+      const stableHeight = challenge.seekerStableHeight + 1;
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'cairn_rock_stable',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          stableHeight,
+          ...(stableHeight === challenge.targetHeight ? { completedAt: envelope.occurredAt } : {})
+        }
+      })];
+    }
+    case 'report_cairn_tower_fallen':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'cairn_tower_fallen',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          attempts: aggregate!.cairnChallenge!.attempts + 1
         }
       })];
     case 'complete_cooldown':

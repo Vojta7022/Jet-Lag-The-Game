@@ -301,6 +301,7 @@ export function reduceMatchAggregate(
         seekerOffTransitRestriction: undefined,
         uTurnChallenge: undefined,
         ransomNoteChallenge: undefined,
+        cairnChallenge: undefined,
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
@@ -343,6 +344,7 @@ export function reduceMatchAggregate(
         seekerOffTransitRestriction: undefined,
         uTurnChallenge: undefined,
         ransomNoteChallenge: undefined,
+        cairnChallenge: undefined,
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
@@ -584,6 +586,48 @@ export function reduceMatchAggregate(
         ransomNoteChallenge: eventEnvelope.event.payload.accepted
           ? { ...challenge, acceptedNoteText: challenge.candidate.noteText }
           : { ...challenge, candidate: undefined }
+      };
+    }
+    case 'cairn_challenge_started':
+      return {
+        ...base,
+        cairnChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          targetHeight: eventEnvelope.event.payload.targetHeight,
+          activatedAt: eventEnvelope.event.payload.activatedAt,
+          seekerStableHeight: 0,
+          attempts: 0
+        }
+      };
+    case 'cairn_rock_placement_started': {
+      const challenge = base.cairnChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return { ...base, cairnChallenge: { ...challenge, pendingRockStartedAt: eventEnvelope.event.payload.startedAt } };
+    }
+    case 'cairn_rock_stable': {
+      const challenge = base.cairnChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        cairnChallenge: {
+          ...challenge,
+          seekerStableHeight: eventEnvelope.event.payload.stableHeight,
+          pendingRockStartedAt: undefined,
+          ...(eventEnvelope.event.payload.completedAt ? { completedAt: eventEnvelope.event.payload.completedAt } : {})
+        }
+      };
+    }
+    case 'cairn_tower_fallen': {
+      const challenge = base.cairnChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        cairnChallenge: {
+          ...challenge,
+          seekerStableHeight: 0,
+          pendingRockStartedAt: undefined,
+          attempts: eventEnvelope.event.payload.attempts
+        }
       };
     }
     case 'seeker_transit_context_changed': {

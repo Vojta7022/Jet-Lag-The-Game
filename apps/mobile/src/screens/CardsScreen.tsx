@@ -19,6 +19,7 @@ import {
   LuxuryCarChallengePanel,
   UTurnChallengePanel,
   RansomNoteChallengePanel,
+  CairnChallengePanel,
   CardZoneSection,
   buildQuestionResponseCardReason,
   buildCardFlowBootstrapCommands,
@@ -597,6 +598,19 @@ export function CardsScreen() {
         </Panel>
       ) : null}
 
+      {projection?.cairnChallenge ? (
+        <Panel title="Curse of the Cairn" subtitle="Rebuild the hider’s one-attempt tower as a team." tone="accent">
+          <CairnChallengePanel
+            challenge={projection.cairnChallenge}
+            viewerRole={viewerRole}
+            disabled={state.loadState === 'loading'}
+            onBeginPlacement={() => void submitCommand({ type: 'begin_cairn_rock_placement', payload: { sourceCardInstanceId: projection.cairnChallenge!.sourceCardInstanceId } })}
+            onConfirmStable={() => void submitCommand({ type: 'confirm_cairn_rock_stable', payload: { sourceCardInstanceId: projection.cairnChallenge!.sourceCardInstanceId } })}
+            onReportFallen={() => void submitCommand({ type: 'report_cairn_tower_fallen', payload: { sourceCardInstanceId: projection.cairnChallenge!.sourceCardInstanceId } })}
+          />
+        </Panel>
+      ) : null}
+
       {activeMatch && latestLateResolvedQuestion && viewerRole === 'hider' ? (
         <StateBanner
           tone="warning"
@@ -1128,7 +1142,7 @@ export function CardsScreen() {
                   type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId, dieRoll }
                 });
               }}
-              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection, ransomNoteSelection) => {
+              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection, ransomNoteSelection, cairnSelection) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -1156,6 +1170,10 @@ export function CardsScreen() {
                     } : {}),
                     ...(ransomNoteSelection ? {
                       ransomNoteCastingCostConfirmed: ransomNoteSelection.castingCostConfirmed
+                    } : {}),
+                    ...(cairnSelection ? {
+                      cairnTargetHeight: cairnSelection.targetHeight,
+                      cairnTargetConfirmed: cairnSelection.targetConfirmed
                     } : {})
                   }
                 });

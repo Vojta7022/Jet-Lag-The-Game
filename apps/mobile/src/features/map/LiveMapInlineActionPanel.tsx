@@ -19,6 +19,7 @@ import {
   EndlessTumbleChallengePanel,
   UTurnChallengePanel,
   RansomNoteChallengePanel,
+  CairnChallengePanel,
   CardZoneSection,
   HIDER_HAND_TARGET,
   resolveCurrentRole
@@ -258,6 +259,7 @@ export function LiveMapInlineActionPanel() {
       (!lemonPhylacteryChallenge || allSeekersHaveLemons) &&
       (activeQuestionSubstate === 'ready' || activeQuestionSubstate === 'awaiting_question_selection')
       && (!projection?.ransomNoteChallenge || Boolean(projection.ransomNoteChallenge.acceptedNoteText))
+      && (!projection?.cairnChallenge || Boolean(projection.cairnChallenge.completedAt))
   );
   const canAnswerQuestion = Boolean(
     activeMatch &&
@@ -483,6 +485,16 @@ export function LiveMapInlineActionPanel() {
               type: 'decide_ransom_note_question',
               payload: { sourceCardInstanceId: projection.ransomNoteChallenge!.sourceCardInstanceId, accepted }
             })}
+          />
+        ) : null}
+        {projection?.cairnChallenge ? (
+          <CairnChallengePanel
+            challenge={projection.cairnChallenge}
+            viewerRole={viewerRole}
+            disabled={state.loadState === 'loading'}
+            onBeginPlacement={() => void submitCommand({ type: 'begin_cairn_rock_placement', payload: { sourceCardInstanceId: projection.cairnChallenge!.sourceCardInstanceId } })}
+            onConfirmStable={() => void submitCommand({ type: 'confirm_cairn_rock_stable', payload: { sourceCardInstanceId: projection.cairnChallenge!.sourceCardInstanceId } })}
+            onReportFallen={() => void submitCommand({ type: 'report_cairn_tower_fallen', payload: { sourceCardInstanceId: projection.cairnChallenge!.sourceCardInstanceId } })}
           />
         ) : null}
         {uTurnChallenge ? (

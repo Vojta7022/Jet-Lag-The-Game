@@ -528,6 +528,7 @@ export function buildMatchProjection(
     seekerOffTransitRestriction: aggregate.seekerOffTransitRestriction,
     uTurnChallenge: aggregate.uTurnChallenge,
     ransomNoteChallenge: aggregate.ransomNoteChallenge,
+    cairnChallenge: aggregate.cairnChallenge,
     waterWeightChallenge: aggregate.waterWeightChallenge,
     endlessTumbleChallenge: aggregate.endlessTumbleChallenge,
     lemonPhylacteryChallenge: aggregate.lemonPhylacteryChallenge,

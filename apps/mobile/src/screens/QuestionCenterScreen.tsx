@@ -70,6 +70,7 @@ import { EggPartnerChallengePanel } from '../features/cards/EggPartnerChallengeP
 import { JammedDoorChallengePanel } from '../features/cards/JammedDoorChallengePanel.tsx';
 import { UTurnChallengePanel } from '../features/cards/UTurnChallengePanel.tsx';
 import { RansomNoteChallengePanel } from '../features/cards/RansomNoteChallengePanel.tsx';
+import { CairnChallengePanel } from '../features/cards/CairnChallengePanel.tsx';
 
 function resolveCurrentRole(
   role: string | undefined,
@@ -478,6 +479,7 @@ export function QuestionCenterScreen() {
       (!endlessTumbleChallenge || endlessTumbleChallenge.successfulRollAt) &&
       (!lemonPhylacteryChallenge || allSeekersHaveLemons) &&
       (!projection?.ransomNoteChallenge || Boolean(projection.ransomNoteChallenge.acceptedNoteText)) &&
+      (!projection?.cairnChallenge || Boolean(projection.cairnChallenge.completedAt)) &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
   const canAnswerQuestion = Boolean(
@@ -915,6 +917,19 @@ export function QuestionCenterScreen() {
               type: 'decide_ransom_note_question',
               payload: { sourceCardInstanceId: projection.ransomNoteChallenge!.sourceCardInstanceId, accepted }
             })}
+          />
+        </Panel>
+      ) : null}
+
+      {projection?.cairnChallenge ? (
+        <Panel title="Curse of the Cairn" subtitle="The seeker team must match the hider tower before asking again." tone="accent">
+          <CairnChallengePanel
+            challenge={projection.cairnChallenge}
+            viewerRole={viewerRole}
+            disabled={state.loadState === 'loading'}
+            onBeginPlacement={() => void submitCommand({ type: 'begin_cairn_rock_placement', payload: { sourceCardInstanceId: projection.cairnChallenge!.sourceCardInstanceId } })}
+            onConfirmStable={() => void submitCommand({ type: 'confirm_cairn_rock_stable', payload: { sourceCardInstanceId: projection.cairnChallenge!.sourceCardInstanceId } })}
+            onReportFallen={() => void submitCommand({ type: 'report_cairn_tower_fallen', payload: { sourceCardInstanceId: projection.cairnChallenge!.sourceCardInstanceId } })}
           />
         </Panel>
       ) : null}

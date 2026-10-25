@@ -228,6 +228,10 @@ test('the workbook importer creates a normalized draft content pack', () => {
   assert.equal(ransomNote?.automationLevel, 'assisted');
   assert.equal(ransomNote?.effects[0]?.effectType, 'ransom_note_challenge');
   assert.deepEqual(ransomNote?.effects[0]?.payload, { minimumWords: 5, requireHiderApproval: true, requirePrintedCutouts: true });
+  const cairn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-cairn');
+  assert.equal(cairn?.automationLevel, 'assisted');
+  assert.equal(cairn?.effects[0]?.effectType, 'cairn_challenge');
+  assert.deepEqual(cairn?.effects[0]?.payload, { minimumStableSecondsPerRock: 5, hiderAttestedTarget: true });
   const urbanExplorer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
   assert.match(String(urbanExplorer?.rulebookGuidanceText), /questions already asked.*still need an answer/i);
   assert.equal(urbanExplorer?.automationLevel, 'assisted');
@@ -320,6 +324,10 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   assert.equal(ransomNote?.automationLevel, 'assisted');
   assert.equal(ransomNote?.effects[0]?.effectType, 'ransom_note_challenge');
   assert.deepEqual(ransomNote?.effects[0]?.payload, { minimumWords: 5, requireHiderApproval: true, requirePrintedCutouts: true });
+  const cairn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-cairn');
+  assert.equal(cairn?.automationLevel, 'assisted');
+  assert.equal(cairn?.effects[0]?.effectType, 'cairn_challenge');
+  assert.deepEqual(cairn?.effects[0]?.payload, { minimumStableSecondsPerRock: 5, hiderAttestedTarget: true });
   const urbanExplorer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
   assert.equal(urbanExplorer?.automationLevel, 'assisted');
   assert.equal(urbanExplorer?.effects[0]?.effectType, 'seeker_off_transit_challenge');

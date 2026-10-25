@@ -110,6 +110,10 @@ export type DomainEvent =
   | RansomNoteChallengeStartedEvent
   | RansomNoteQuestionReportedEvent
   | RansomNoteQuestionDecidedEvent
+  | CairnChallengeStartedEvent
+  | CairnRockPlacementStartedEvent
+  | CairnRockStableEvent
+  | CairnTowerFallenEvent
   | WaterWeightChallengeStartedEvent
   | WaterWeightLiquidAcquiredEvent
   | WaterWeightLiquidLostEvent
@@ -452,7 +456,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -545,6 +549,26 @@ export interface RansomNoteQuestionReportedEvent {
 export interface RansomNoteQuestionDecidedEvent {
   type: 'ransom_note_question_decided';
   payload: { sourceCardInstanceId: string; accepted: boolean };
+}
+
+export interface CairnChallengeStartedEvent {
+  type: 'cairn_challenge_started';
+  payload: { sourceCardInstanceId: string; targetHeight: number; activatedAt: string };
+}
+
+export interface CairnRockPlacementStartedEvent {
+  type: 'cairn_rock_placement_started';
+  payload: { sourceCardInstanceId: string; startedAt: string };
+}
+
+export interface CairnRockStableEvent {
+  type: 'cairn_rock_stable';
+  payload: { sourceCardInstanceId: string; stableHeight: number; completedAt?: string };
+}
+
+export interface CairnTowerFallenEvent {
+  type: 'cairn_tower_fallen';
+  payload: { sourceCardInstanceId: string; attempts: number };
 }
 
 export interface WaterWeightChallengeStartedEvent {

@@ -49,6 +49,9 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'report_zoologist_evidence',
   'decide_luxury_car_candidate',
   'decide_ransom_note_question',
+  'begin_cairn_rock_placement',
+  'confirm_cairn_rock_stable',
+  'report_cairn_tower_fallen',
   'set_hangman_word',
   'end_hangman_challenge',
   'complete_cooldown',
@@ -107,7 +110,10 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'report_jammed_door_roll',
   'report_zoologist_evidence',
   'report_luxury_car_candidate',
-  'report_ransom_note_question'
+  'report_ransom_note_question',
+  'begin_cairn_rock_placement',
+  'confirm_cairn_rock_stable',
+  'report_cairn_tower_fallen'
 ]);
 
 const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);

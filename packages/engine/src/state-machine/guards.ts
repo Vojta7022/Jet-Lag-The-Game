@@ -149,9 +149,12 @@ export function validateStateForCommand(
     case 'decide_luxury_car_candidate':
     case 'report_ransom_note_question':
     case 'decide_ransom_note_question':
+    case 'begin_cairn_rock_placement':
+    case 'confirm_cairn_rock_stable':
+    case 'report_cairn_tower_fallen':
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
-        : [error(command.type, 'INVALID_STATE', 'Lemon contact can only be updated while seekers are searching.')];
+        : [error(command.type, 'INVALID_STATE', 'Challenge reports are only available while seekers are searching.')];
     case 'resolve_gamblers_feet_cast':
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []

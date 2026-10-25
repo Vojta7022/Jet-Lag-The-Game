@@ -465,6 +465,54 @@ test('Ransom Note requires a hider-approved five-word cut-out question and consu
   assert.equal(asked.ransomNoteChallenge, undefined);
 });
 
+test('Cairn makes seekers rebuild a five-second-stable tower to the hider height', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((item) => item.cardDefinitionId === 'curse-curse-of-the-cairn');
+  assert.ok(card);
+  card.effects = [{ effectType: 'cairn_challenge', description: card.description, automationLevel: 'assisted' } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  assert.equal(buildCardResolutionPlan(card, 'small').kind, 'cairn_challenge');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, cairnTargetHeight: 0 } } as never, 71), contentPack), /at least one rock/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, cairnTargetHeight: 2, cairnTargetConfirmed: true } } as never, 72), contentPack).aggregate;
+  assert.equal(aggregate.cairnChallenge?.targetHeight, 2);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, {
+    type: 'begin_cairn_rock_placement', payload: { sourceCardInstanceId: cardInstanceId }
+  }, 72.25), contentPack), /does not have permission/i);
+  const blockedPrompt = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'begin_question_prompt', payload: {} }, 72.5), contentPack).aggregate;
+  assert.throws(() => executeCommand(blockedPrompt, makeEnvelope(blockedPrompt.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+    type: 'ask_question', payload: { questionInstanceId: 'question:cairn:blocked', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider' }
+  }, 73), contentPack), /build a tower with 2 rocks/i);
+
+  const seeker = { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' as const };
+  const run = (type: 'begin_cairn_rock_placement' | 'confirm_cairn_rock_stable' | 'report_cairn_tower_fallen', step: number) =>
+    executeCommand(aggregate, makeEnvelope(aggregate.matchId, seeker,
+      { type, payload: { sourceCardInstanceId: cardInstanceId } } as never, step), contentPack);
+  aggregate = run('begin_cairn_rock_placement', 73).aggregate;
+  assert.throws(() => run('confirm_cairn_rock_stable', 77), /must stand for at least five seconds/i);
+  aggregate = run('report_cairn_tower_fallen', 78).aggregate;
+  assert.equal(aggregate.cairnChallenge?.seekerStableHeight, 0);
+  assert.equal(aggregate.cairnChallenge?.attempts, 1);
+  aggregate = run('begin_cairn_rock_placement', 80).aggregate;
+  aggregate = run('confirm_cairn_rock_stable', 85).aggregate;
+  assert.equal(aggregate.cairnChallenge?.seekerStableHeight, 1);
+  aggregate = run('begin_cairn_rock_placement', 86).aggregate;
+  aggregate = run('confirm_cairn_rock_stable', 91).aggregate;
+  assert.ok(aggregate.cairnChallenge?.completedAt);
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId, seeker, { type: 'begin_question_prompt', payload: {} }, 92), contentPack).aggregate;
+  const asked = executeCommand(prompted, makeEnvelope(prompted.matchId, seeker, {
+    type: 'ask_question', payload: { questionInstanceId: 'question:cairn:complete', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider' }
+  }, 93), contentPack);
+  assert.equal(asked.aggregate.activeQuestionInstanceId, 'question:cairn:complete');
+});
+
 test('Water Weight opens an assisted supply challenge with its printed scale-specific bonus', () => {
   const contentPack = loadEngineTestContentPack();
   const waterWeight = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');
@@ -1017,7 +1065,9 @@ test('resolved manual cards stay visible in the discard pile for the owning team
       {
         type: 'resolve_card_window',
         payload: {
-          sourceCardInstanceId: cardInstanceId
+          sourceCardInstanceId: cardInstanceId,
+          cairnTargetHeight: 1,
+          cairnTargetConfirmed: true
         }
       },
       51
@@ -1180,7 +1230,7 @@ test('Duplicate identifies a copied manual effect in its private resolution wind
 
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'host-1', playerId: 'host-1', role: 'host' },
-    { type: 'resolve_card_window', payload: { sourceCardInstanceId: duplicateCardId } }, 82), contentPack).aggregate;
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: duplicateCardId, cairnTargetHeight: 1, cairnTargetConfirmed: true } }, 82), contentPack).aggregate;
   assert.equal(aggregate.cardInstances[duplicateCardId]?.zone, 'discard_pile');
   assert.equal(aggregate.cardInstances[originalCardId]?.zone, 'hand');
 });

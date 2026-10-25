@@ -55,6 +55,7 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'seeker_off_transit_challenge',
   'u_turn_challenge',
   'ransom_note_challenge',
+  'cairn_challenge',
   'water_weight_challenge',
   'endless_tumble_challenge',
   'lemon_phylactery_challenge',
@@ -69,6 +70,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.seekerOffTransitRestriction ||
     aggregate.uTurnChallenge ||
     aggregate.ransomNoteChallenge ||
+    (aggregate.cairnChallenge && !aggregate.cairnChallenge.completedAt) ||
     aggregate.waterWeightChallenge ||
     aggregate.endlessTumbleChallenge ||
     aggregate.lemonPhylacteryChallenge ||
@@ -904,6 +906,9 @@ export function validateCommandEnvelope(
           return [error(envelope.command.type, 'RANSOM_NOTE_TEXT_MISMATCH', 'The approved ransom note wording must match the question being asked.')];
         }
       }
+      if (aggregate.cairnChallenge && !aggregate.cairnChallenge.completedAt) {
+        return [error(envelope.command.type, 'CAIRN_TEAM_TOWER_REQUIRED', `Seekers must build a tower with ${aggregate.cairnChallenge.targetHeight} rocks that each stand for five seconds before asking another question.`)];
+      }
       if (aggregate.waterWeightChallenge && !aggregate.waterWeightChallenge.liquidAcquiredAt) {
         return [error(envelope.command.type, 'WATER_WEIGHT_LIQUID_REQUIRED', 'Seekers must confirm they acquired the required new liquid before asking another question.')];
       }
@@ -1619,6 +1624,11 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'RANSOM_NOTE_CASTING_COST_REQUIRED', 'The hider must spell RANSOM NOTE with printed cutouts before activating this curse.')];
       }
 
+      if (activeResolution.resolutionKind === 'cairn_challenge' &&
+        (!Number.isSafeInteger(envelope.command.payload.cairnTargetHeight) || (envelope.command.payload.cairnTargetHeight ?? 0) < 1 || envelope.command.payload.cairnTargetConfirmed !== true)) {
+        return [error(envelope.command.type, 'CAIRN_TARGET_HEIGHT_REQUIRED', 'Record the hider tower height: at least one rock must have stood for five seconds.')];
+      }
+
       if (activeResolution.resolutionKind === 'move') {
         if (
           typeof activeResolution.moveDurationSeconds === 'number' &&
@@ -1802,6 +1812,39 @@ export function validateCommandEnvelope(
       }
       if (typeof envelope.command.payload.accepted !== 'boolean') {
         return [error(envelope.command.type, 'RANSOM_NOTE_DECISION_INVALID', 'Choose whether the question is coherent and follows the cut-out rule.')];
+      }
+      return [];
+    }
+    case 'begin_cairn_rock_placement': {
+      const challenge = aggregate.cairnChallenge;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || challenge.completedAt) {
+        return [error(envelope.command.type, 'CAIRN_NOT_ACTIVE', 'There is no unfinished Cairn tower challenge.')];
+      }
+      if (challenge.pendingRockStartedAt) {
+        return [error(envelope.command.type, 'CAIRN_ROCK_ALREADY_PENDING', 'Wait for the current rock to stand for five seconds or report that the tower fell.')];
+      }
+      if (challenge.seekerStableHeight >= challenge.targetHeight) {
+        return [error(envelope.command.type, 'CAIRN_ALREADY_COMPLETE', 'The seekers have already matched the hider tower.')];
+      }
+      return [];
+    }
+    case 'confirm_cairn_rock_stable': {
+      const challenge = aggregate.cairnChallenge;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || challenge.completedAt || !challenge.pendingRockStartedAt) {
+        return [error(envelope.command.type, 'CAIRN_ROCK_NOT_PENDING', 'Start placing a rock before confirming that it stood.')];
+      }
+      if (Date.parse(envelope.occurredAt) < Date.parse(challenge.pendingRockStartedAt) + 5_000) {
+        return [error(envelope.command.type, 'CAIRN_STABILITY_TIME_REQUIRED', 'Each rock must stand for at least five seconds before it counts.')];
+      }
+      return [];
+    }
+    case 'report_cairn_tower_fallen': {
+      const challenge = aggregate.cairnChallenge;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || challenge.completedAt) {
+        return [error(envelope.command.type, 'CAIRN_NOT_ACTIVE', 'There is no unfinished Cairn tower challenge.')];
+      }
+      if (!challenge.pendingRockStartedAt && challenge.seekerStableHeight === 0) {
+        return [error(envelope.command.type, 'CAIRN_TOWER_NOT_BUILT', 'Begin building the seeker tower before reporting that it fell.')];
       }
       return [];
     }

@@ -69,6 +69,9 @@ export type DomainCommand =
   | ReportUTurnDisembarkationCommand
   | ReportRansomNoteQuestionCommand
   | DecideRansomNoteQuestionCommand
+  | BeginCairnRockPlacementCommand
+  | ConfirmCairnRockStableCommand
+  | ReportCairnTowerFallenCommand
   | ConfirmWaterWeightLiquidAcquiredCommand
   | ReportWaterWeightLiquidLostCommand
   | ResolveEndlessTumbleCastCommand
@@ -360,6 +363,8 @@ export interface ResolveCardWindowCommand {
     uTurnNextStationName?: string;
     uTurnPreconditionsConfirmed?: boolean;
     ransomNoteCastingCostConfirmed?: boolean;
+    cairnTargetHeight?: number;
+    cairnTargetConfirmed?: boolean;
   };
 }
 
@@ -401,6 +406,21 @@ export interface ReportRansomNoteQuestionCommand {
 export interface DecideRansomNoteQuestionCommand {
   type: 'decide_ransom_note_question';
   payload: { sourceCardInstanceId: string; accepted: boolean };
+}
+
+export interface BeginCairnRockPlacementCommand {
+  type: 'begin_cairn_rock_placement';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface ConfirmCairnRockStableCommand {
+  type: 'confirm_cairn_rock_stable';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface ReportCairnTowerFallenCommand {
+  type: 'report_cairn_tower_fallen';
+  payload: { sourceCardInstanceId: string };
 }
 
 export interface ConfirmWaterWeightLiquidAcquiredCommand {

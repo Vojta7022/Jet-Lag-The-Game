@@ -9,6 +9,7 @@ export * from './JammedDoorChallengePanel.tsx';
 export * from './LuxuryCarChallengePanel.tsx';
 export * from './UTurnChallengePanel.tsx';
 export * from './RansomNoteChallengePanel.tsx';
+export * from './CairnChallengePanel.tsx';
 export * from './CardZoneSection.tsx';
 export * from './CardZoneStats.tsx';
 export * from './card-catalog.ts';

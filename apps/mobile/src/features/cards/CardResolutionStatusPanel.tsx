@@ -37,7 +37,8 @@ interface CardResolutionStatusPanelProps {
     zoologistSelection?: { category: ZoologistAnimalCategory; hiderAttachmentId: string },
     luxuryCarSelection?: { hiderAttachmentId: string; description: string; productionYear: number; msrpCents: number; currencyCode: string },
     uTurnSelection?: { nextStationName: string; preconditionsConfirmed: true },
-    ransomNoteSelection?: { castingCostConfirmed: true }
+    ransomNoteSelection?: { castingCostConfirmed: true },
+    cairnSelection?: { targetHeight: number; targetConfirmed: true }
   ) => void;
 }
 
@@ -55,6 +56,8 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [uTurnNextStationName, setUTurnNextStationName] = useState('');
   const [uTurnPreconditionsConfirmed, setUTurnPreconditionsConfirmed] = useState(false);
   const [ransomNoteCastingCostConfirmed, setRansomNoteCastingCostConfirmed] = useState(false);
+  const [cairnTargetHeight, setCairnTargetHeight] = useState('');
+  const [cairnTargetConfirmed, setCairnTargetConfirmed] = useState(false);
   useEffect(() => {
     setSelectedTemplateIds([]);
     setHangmanWord('');
@@ -69,6 +72,8 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     setUTurnNextStationName('');
     setUTurnPreconditionsConfirmed(false);
     setRansomNoteCastingCostConfirmed(false);
+    setCairnTargetHeight('');
+    setCairnTargetConfirmed(false);
   }, [props.resolution?.sourceCardInstanceId]);
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
@@ -96,6 +101,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const luxuryCarChallenge = props.resolution?.resolutionKind === 'luxury_car_challenge';
   const uTurnChallenge = props.resolution?.resolutionKind === 'u_turn_challenge';
   const ransomNoteChallenge = props.resolution?.resolutionKind === 'ransom_note_challenge';
+  const cairnChallenge = props.resolution?.resolutionKind === 'cairn_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const normalizedLuxuryCarMsrp = luxuryCarMsrp.trim();
@@ -114,6 +120,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     (!luxuryCarChallenge || luxuryCarFormValid) &&
     (!uTurnChallenge || (uTurnNextStationName.trim().length >= 2 && uTurnPreconditionsConfirmed)) &&
     (!ransomNoteChallenge || ransomNoteCastingCostConfirmed) &&
+    (!cairnChallenge || (Number.isSafeInteger(Number(cairnTargetHeight)) && Number(cairnTargetHeight) >= 1 && cairnTargetConfirmed)) &&
     !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
@@ -407,6 +414,19 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         </View>
       ) : null}
 
+      {cairnChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>CAIRN · HIDER’S ATTEMPT</Text>
+          <Text style={styles.copy}>Build your one rock tower attempt. Each added rock must stand for at least five seconds before you add another. After it falls, report the number of rocks that successfully stood five seconds; seekers must build a tower of that height.</Text>
+          <TextInput accessibilityLabel="Hider stable cairn height" keyboardType="number-pad" onChangeText={(value) => setCairnTargetHeight(value.replace(/[^0-9]/g, ''))} placeholder="Stable height in rocks" style={styles.hangmanInput} value={cairnTargetHeight} />
+          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: cairnTargetConfirmed }} onPress={() => setCairnTargetConfirmed((value) => !value)} style={styles.uTurnCheckboxRow}>
+            <View style={[styles.uTurnCheckbox, cairnTargetConfirmed ? styles.uTurnCheckboxOn : undefined]}><Text style={styles.uTurnCheck}>{cairnTargetConfirmed ? '✓' : ''}</Text></View>
+            <Text style={styles.copy}>I confirm my one-attempt tower has fallen, and this is its highest height where every rock stood for five seconds.</Text>
+          </Pressable>
+          <Text style={styles.copy}>Rocks must be found in nature, not purchased. Both teams disperse their rocks after building. The app records the agreed count; it cannot verify the physical tower.</Text>
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Next step</Text>
         <Text style={styles.copy}>{guidance.nextStep}</Text>
@@ -436,6 +456,9 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             : undefined,
           ransomNoteChallenge && ransomNoteCastingCostConfirmed
             ? { castingCostConfirmed: true }
+            : undefined,
+          cairnChallenge && Number.isSafeInteger(Number(cairnTargetHeight)) && Number(cairnTargetHeight) >= 1 && cairnTargetConfirmed
+            ? { targetHeight: Number(cairnTargetHeight), targetConfirmed: true }
             : undefined
         )}
         disabled={!canSubmit || props.disabled}

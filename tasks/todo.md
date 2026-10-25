@@ -569,3 +569,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Store the approved wording on the resulting question and clear the curse after that one question.
 - [x] Add role-aware controls to the card, question, and live-map flows, including referee approval.
 - [x] Verify minimum word count, seeker ownership, rejection/retry, exact approval/question binding, round reset, both import profiles, full suite (417/417), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Physical print origin and coherence remain player/hider judgments.
+
+### Completed implementation slice: Curse of the Cairn team tower challenge
+
+- [x] Import the printed Cairn effect as a typed assisted card in both workbook profiles.
+- [x] Have the hider record the count of rocks in their single tower attempt that stood for five seconds.
+- [x] Track the seekers' shared rebuild: each added rock needs five seconds to count, collapse resets the tower, and reaching the target unlocks questions.
+- [x] Add role-aware hider, seeker, and referee controls across Cards, Questions, and the live map; preserve physical verification as player-attested.
+- [x] Verify five-second timing, collapse/restart, question blocking/unlock, seeker authorization, round reset, both import profiles, full suite (418/418), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Rock contact and physical collapse remain group-attested.
