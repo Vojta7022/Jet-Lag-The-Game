@@ -76,6 +76,7 @@ test('question flow and card resolution windows lock correctly', () => {
   );
 
   aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.locationSamples = [{ sampleId: 'lock:seeker-origin', playerId: 'seeker-1', role: 'seeker', teamId: 'team-seeker', latitude: 50, longitude: 14, accuracyMeters: 8, source: 'device', onTransit: false, recordedAt: '2026-01-01T00:00:42.000Z' }];
   const firstCardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-mediocre-travel-agent', 'team-hider');
   const secondCardId = moveCardToTeamHand(aggregate, 'power-up-', 'team-hider');
 
@@ -126,11 +127,26 @@ test('question flow and card resolution windows lock correctly', () => {
     aggregate,
     makeEnvelope(
       aggregate.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'set_seeker_transit_context', payload: { sourceCardInstanceId: firstCardId, onTransitOrAtStation: false } },
+      44.5
+    ),
+    contentPack
+  ).aggregate;
+
+  aggregate = executeCommand(
+    aggregate,
+    makeEnvelope(
+      aggregate.matchId,
       { actorId: 'host-1', playerId: 'host-1', role: 'host' },
       {
         type: 'resolve_card_window',
         payload: {
-          sourceCardInstanceId: firstCardId
+          sourceCardInstanceId: firstCardId,
+          mediocreTravelAgentDestinationName: 'Nearby public garden',
+          mediocreTravelAgentLatitude: 50.001,
+          mediocreTravelAgentLongitude: 14,
+          mediocreTravelAgentPublicAccessAttested: true
         }
       },
       45

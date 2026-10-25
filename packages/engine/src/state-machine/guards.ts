@@ -165,6 +165,8 @@ export function validateStateForCommand(
     case 'roll_gamblers_feet_die':
     case 'report_gamblers_feet_steps':
     case 'report_right_turn_route_choice':
+    case 'report_mediocre_travel_souvenir':
+    case 'complete_mediocre_travel_agent':
     case 'confirm_unguided_tourist_outdoors':
     case 'submit_unguided_tourist_photo':
     case 'review_unguided_tourist_photo':
@@ -203,6 +205,7 @@ export function validateStateForCommand(
         Boolean(aggregate.luxuryCarChallenge) ||
         Boolean(aggregate.unguidedTouristChallenge) ||
         Boolean(aggregate.birdGuideChallenge) ||
+        Boolean(aggregate.mediocreTravelAgentChallenge && !aggregate.mediocreTravelAgentChallenge.completedAt) ||
         isLifecycleState(aggregate, 'endgame') ||
         isLifecycleState(aggregate, 'game_complete')
         ? []

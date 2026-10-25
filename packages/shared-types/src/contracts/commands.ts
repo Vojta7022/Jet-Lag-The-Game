@@ -89,6 +89,8 @@ export type DomainCommand =
   | ReviewUnguidedTouristPhotoCommand
   | SubmitBirdGuideVideoCommand
   | ReviewBirdGuideVideoCommand
+  | ReportMediocreTravelSouvenirCommand
+  | CompleteMediocreTravelAgentCommand
   | ConfirmEggPartnerAcquiredCommand
   | ReportEggPartnerMemberLostCommand
   | ReportJammedDoorRollCommand
@@ -378,6 +380,10 @@ export interface ResolveCardWindowCommand {
     unguidedTouristRulesAttested?: boolean;
     birdGuideHiderAttachmentId?: string;
     birdGuideBirdPresentAttested?: boolean;
+    mediocreTravelAgentDestinationName?: string;
+    mediocreTravelAgentLatitude?: number;
+    mediocreTravelAgentLongitude?: number;
+    mediocreTravelAgentPublicAccessAttested?: boolean;
   };
 }
 
@@ -532,6 +538,16 @@ export interface SubmitBirdGuideVideoCommand {
 export interface ReviewBirdGuideVideoCommand {
   type: 'review_bird_guide_video';
   payload: { sourceCardInstanceId: string; approved: boolean };
+}
+
+export interface ReportMediocreTravelSouvenirCommand {
+  type: 'report_mediocre_travel_souvenir';
+  payload: { sourceCardInstanceId: string; status: 'acquired' | 'lost' };
+}
+
+export interface CompleteMediocreTravelAgentCommand {
+  type: 'complete_mediocre_travel_agent';
+  payload: { sourceCardInstanceId: string };
 }
 
 export interface ConfirmEggPartnerAcquiredCommand {

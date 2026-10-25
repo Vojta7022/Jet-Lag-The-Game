@@ -35,6 +35,9 @@ interface CardResolutionStatusPanelProps {
   labyrinthHiderAttachmentId?: string;
   unguidedTouristHiderAttachmentId?: string;
   birdGuideHiderAttachmentId?: string;
+  mediocreTravelAgentTransitStatusByPlayerId?: Record<string, { onTransitOrAtStation: boolean; updatedAt: string }>;
+  mediocreTravelAgentSeekerPlayerIds?: string[];
+  onSetMediocreTravelAgentTransitContext?: (onTransitOrAtStation: boolean) => void;
   unguidedTouristOutdoorsConfirmedByPlayerIds?: string[];
   unguidedTouristSeekerPlayerIds?: string[];
   viewerPlayerId?: string;
@@ -51,7 +54,8 @@ interface CardResolutionStatusPanelProps {
     ransomNoteSelection?: { castingCostConfirmed: true },
     cairnSelection?: { targetHeight: number; targetConfirmed: true },
     unguidedTouristSelection?: { hiderAttachmentId: string; rulesAttested: true },
-    birdGuideSelection?: { hiderAttachmentId: string; birdPresentAttested: true }
+    birdGuideSelection?: { hiderAttachmentId: string; birdPresentAttested: true },
+    mediocreTravelAgentSelection?: { destinationName: string; destinationLatitude: number; destinationLongitude: number; publicAccessAttested: true }
   ) => void;
 }
 
@@ -74,6 +78,10 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [labyrinthSolution, setLabyrinthSolution] = useState('');
   const [unguidedTouristRulesAttested, setUnguidedTouristRulesAttested] = useState(false);
   const [birdGuideFrameAttested, setBirdGuideFrameAttested] = useState(false);
+  const [travelDestinationName, setTravelDestinationName] = useState('');
+  const [travelDestinationLatitude, setTravelDestinationLatitude] = useState('');
+  const [travelDestinationLongitude, setTravelDestinationLongitude] = useState('');
+  const [travelPublicAccessAttested, setTravelPublicAccessAttested] = useState(false);
   const [clockNow, setClockNow] = useState(Date.now());
   useEffect(() => {
     setSelectedTemplateIds([]);
@@ -94,6 +102,10 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     setLabyrinthSolution('');
     setUnguidedTouristRulesAttested(false);
     setBirdGuideFrameAttested(false);
+    setTravelDestinationName('');
+    setTravelDestinationLatitude('');
+    setTravelDestinationLongitude('');
+    setTravelPublicAccessAttested(false);
   }, [props.resolution?.sourceCardInstanceId]);
   useEffect(() => {
     if (props.resolution?.resolutionKind !== 'labyrinth_challenge') return;
@@ -131,9 +143,15 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const rightTurnChallenge = props.resolution?.resolutionKind === 'right_turn_challenge';
   const unguidedTouristChallenge = props.resolution?.resolutionKind === 'unguided_tourist_challenge';
   const birdGuideChallenge = props.resolution?.resolutionKind === 'bird_guide_challenge';
+  const mediocreTravelAgentChallenge = props.resolution?.resolutionKind === 'mediocre_travel_agent_challenge';
   const touristConfirmed = props.unguidedTouristOutdoorsConfirmedByPlayerIds ?? [];
   const touristSeekers = props.unguidedTouristSeekerPlayerIds ?? [];
   const touristOutdoorsComplete = touristSeekers.every((playerId) => touristConfirmed.includes(playerId));
+  const travelAgentSeekers = props.mediocreTravelAgentSeekerPlayerIds ?? [];
+  const travelAgentTransitStatuses = props.mediocreTravelAgentTransitStatusByPlayerId ?? {};
+  const travelAgentTransitReady = travelAgentSeekers.length > 0 && travelAgentSeekers.every((playerId) =>
+    travelAgentTransitStatuses[playerId]?.onTransitOrAtStation === false
+  );
   const labyrinth = props.resolution?.labyrinth;
   const labyrinthDrawingDeadline = props.resolution?.openedAt && props.resolution.labyrinthDrawingWindowMinutes
     ? Date.parse(props.resolution.openedAt) + props.resolution.labyrinthDrawingWindowMinutes * 60_000
@@ -163,6 +181,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     (!labyrinthChallenge || labyrinth?.status === 'solved') &&
     (!unguidedTouristChallenge || (Boolean(props.unguidedTouristHiderAttachmentId) && touristOutdoorsComplete && unguidedTouristRulesAttested)) &&
     (!birdGuideChallenge || (Boolean(props.birdGuideHiderAttachmentId) && birdGuideFrameAttested)) &&
+    (!mediocreTravelAgentChallenge || (travelDestinationName.trim().length >= 2 && Number.isFinite(Number(travelDestinationLatitude)) && Math.abs(Number(travelDestinationLatitude)) <= 90 && Number.isFinite(Number(travelDestinationLongitude)) && Math.abs(Number(travelDestinationLongitude)) <= 180 && travelPublicAccessAttested && travelAgentTransitReady)) &&
     !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
@@ -232,6 +251,28 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     </View>
   ) : null;
 
+  const travelAgentPanel = mediocreTravelAgentChallenge ? (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>MEDIOCRE TRAVEL AGENT</Text>
+      <Text style={styles.copy}>Choose a publicly accessible destination within {Math.round((props.resolution?.mediocreTravelAgentMaximumDistanceMeters ?? 0) / 100) / 10} km of every seeker. Every seeker must be off transit before you start. They will need to stay within 50 m for {props.resolution?.mediocreTravelAgentStayMinutes ?? 5} minutes, send {props.resolution?.mediocreTravelAgentRequiredPhotoCount ?? 3} new vacation photos, and bring you a souvenir. If the souvenir is lost before you are caught, you gain {props.resolution?.mediocreTravelAgentHiderBonusMinutes ?? 30} minutes.</Text>
+      {travelAgentSeekers.map((playerId) => {
+        const status = travelAgentTransitStatuses[playerId];
+        return <Text key={playerId} style={styles.metaChip}>{playerId}: {status ? status.onTransitOrAtStation ? 'on transit / station' : 'off transit confirmed' : 'transit check needed'}</Text>;
+      })}
+      {props.viewerRole === 'seeker' && props.onSetMediocreTravelAgentTransitContext ? (
+        <AppButton label={travelAgentTransitStatuses[props.viewerPlayerId ?? '']?.onTransitOrAtStation === false ? 'Report transit / station' : 'Confirm I am off transit'} tone="secondary" disabled={props.disabled} onPress={() => props.onSetMediocreTravelAgentTransitContext?.(travelAgentTransitStatuses[props.viewerPlayerId ?? '']?.onTransitOrAtStation === false)} />
+      ) : null}
+      <TextInput accessibilityLabel="Public destination name" onChangeText={setTravelDestinationName} placeholder="Place name" style={styles.hangmanInput} value={travelDestinationName} />
+      <TextInput accessibilityLabel="Destination latitude" keyboardType="decimal-pad" onChangeText={setTravelDestinationLatitude} placeholder="Latitude" style={styles.hangmanInput} value={travelDestinationLatitude} />
+      <TextInput accessibilityLabel="Destination longitude" keyboardType="decimal-pad" onChangeText={setTravelDestinationLongitude} placeholder="Longitude" style={styles.hangmanInput} value={travelDestinationLongitude} />
+      <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: travelPublicAccessAttested }} onPress={() => setTravelPublicAccessAttested((value) => !value)} style={styles.uTurnCheckboxRow}>
+        <View style={[styles.uTurnCheckbox, travelPublicAccessAttested ? styles.uTurnCheckboxOn : undefined]}><Text style={styles.uTurnCheck}>{travelPublicAccessAttested ? '✓' : ''}</Text></View>
+        <Text style={styles.copy}>I checked this destination is publicly accessible and suitable for the seekers to visit.</Text>
+      </Pressable>
+      <Text style={styles.copy}>The 50 m arrival radius is an app location check; the printed rule requires a visit and timed stay. Enter the map point coordinates for the chosen place.</Text>
+    </View>
+  ) : null;
+
   if (!props.activeCard) {
     return (
       <View style={styles.container}>
@@ -254,6 +295,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             </Text>
           </View>
         ) : null}
+        {travelAgentPanel}
         {seekerOffTransitChallenge ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>URBAN EXPLORER</Text>
@@ -364,6 +406,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
       </View>
 
       {hangmanPanel}
+      {travelAgentPanel}
 
       {endlessTumbleChallenge ? (
         <View style={styles.section}>
@@ -631,6 +674,9 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             : undefined,
           birdGuideChallenge && birdGuideFrameAttested && props.birdGuideHiderAttachmentId
             ? { hiderAttachmentId: props.birdGuideHiderAttachmentId, birdPresentAttested: true }
+            : undefined,
+          mediocreTravelAgentChallenge && travelDestinationName.trim().length >= 2 && travelPublicAccessAttested
+            ? { destinationName: travelDestinationName.trim(), destinationLatitude: Number(travelDestinationLatitude), destinationLongitude: Number(travelDestinationLongitude), publicAccessAttested: true }
             : undefined
         )}
         disabled={!canSubmit || props.disabled}

@@ -8,7 +8,8 @@ import type {
 import {
   applyConstraintRecordToSearchArea,
   buildPlayableRegionFromCommand,
-  initializeSearchAreaFromRegion
+  initializeSearchAreaFromRegion,
+  distanceMeters
 } from '../../geo/src/index.ts';
 
 function toEventLogEntry(eventEnvelope: DomainEventEnvelope): EventLogEntry {
@@ -309,6 +310,7 @@ export function reduceMatchAggregate(
         rightTurnChallenge: undefined,
         unguidedTouristChallenge: undefined,
         birdGuideChallenge: undefined,
+        mediocreTravelAgentChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -355,6 +357,7 @@ export function reduceMatchAggregate(
         rightTurnChallenge: undefined,
         unguidedTouristChallenge: undefined,
         birdGuideChallenge: undefined,
+        mediocreTravelAgentChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -416,12 +419,8 @@ export function reduceMatchAggregate(
           }
         }
       };
-    case 'location_updated':
-      return {
-        ...base,
-        locationSamples: [
-          ...base.locationSamples,
-          {
+    case 'location_updated': {
+      const sample = {
             sampleId: `location:${eventEnvelope.sequence}`,
             playerId: eventEnvelope.event.payload.playerId,
             role: eventEnvelope.event.payload.role,
@@ -435,9 +434,28 @@ export function reduceMatchAggregate(
             source: eventEnvelope.event.payload.source ?? 'device',
             onTransit: eventEnvelope.event.payload.onTransit,
             recordedAt: eventEnvelope.occurredAt
-          }
-        ]
       };
+      const challenge = base.mediocreTravelAgentChallenge;
+      let mediocreTravelAgentChallenge = challenge;
+      if (challenge && !challenge.completedAt && challenge.requiredSeekerPlayerIds.includes(sample.playerId)) {
+        const transitStatus = challenge.transitStatusByPlayerId[sample.playerId];
+        const withinArrivalRadius = sample.source === 'device' && transitStatus && !transitStatus.onTransitOrAtStation &&
+          typeof sample.accuracyMeters === 'number' && sample.accuracyMeters <= challenge.arrivalRadiusMeters &&
+          distanceMeters([sample.longitude, sample.latitude], [challenge.destinationLongitude, challenge.destinationLatitude]) <= challenge.arrivalRadiusMeters;
+        const stayStartedAtByPlayerId = { ...challenge.stayStartedAtByPlayerId };
+        if (withinArrivalRadius) {
+          stayStartedAtByPlayerId[sample.playerId] ??= eventEnvelope.occurredAt;
+        } else {
+          delete stayStartedAtByPlayerId[sample.playerId];
+        }
+        mediocreTravelAgentChallenge = { ...challenge, stayStartedAtByPlayerId };
+      }
+      return {
+        ...base,
+        locationSamples: [...base.locationSamples, sample],
+        mediocreTravelAgentChallenge
+      };
+    }
     case 'endgame_started':
       return {
         ...base,
@@ -638,17 +656,44 @@ export function reduceMatchAggregate(
     }
     case 'seeker_transit_context_changed': {
       const restriction = base.seekerOffTransitRestriction;
-      if (restriction?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const { sourceCardInstanceId, playerId, onTransitOrAtStation } = eventEnvelope.event.payload;
+      if (restriction?.sourceCardInstanceId === sourceCardInstanceId) {
+        return {
+          ...base,
+          seekerOffTransitRestriction: {
+            ...restriction,
+            statusByPlayerId: {
+              ...restriction.statusByPlayerId,
+              [playerId]: { onTransitOrAtStation, updatedAt: eventEnvelope.occurredAt }
+            }
+          }
+        };
+      }
+      const resolution = base.activeCardResolution;
+      if (resolution?.sourceCardInstanceId === sourceCardInstanceId && resolution.resolutionKind === 'mediocre_travel_agent_challenge') {
+        return {
+          ...base,
+          activeCardResolution: {
+            ...resolution,
+            mediocreTravelAgentTransitStatusByPlayerId: {
+              ...resolution.mediocreTravelAgentTransitStatusByPlayerId,
+              [playerId]: { onTransitOrAtStation, updatedAt: eventEnvelope.occurredAt }
+            }
+          }
+        };
+      }
+      const challenge = base.mediocreTravelAgentChallenge;
+      if (challenge?.sourceCardInstanceId !== sourceCardInstanceId) return base;
+      const stayStartedAtByPlayerId = { ...challenge.stayStartedAtByPlayerId };
+      if (onTransitOrAtStation) delete stayStartedAtByPlayerId[playerId];
       return {
         ...base,
-        seekerOffTransitRestriction: {
-          ...restriction,
-          statusByPlayerId: {
-            ...restriction.statusByPlayerId,
-            [eventEnvelope.event.payload.playerId]: {
-              onTransitOrAtStation: eventEnvelope.event.payload.onTransitOrAtStation,
-              updatedAt: eventEnvelope.occurredAt
-            }
+        mediocreTravelAgentChallenge: {
+          ...challenge,
+          stayStartedAtByPlayerId,
+          transitStatusByPlayerId: {
+            ...challenge.transitStatusByPlayerId,
+            [playerId]: { onTransitOrAtStation, updatedAt: eventEnvelope.occurredAt }
           }
         }
       };
@@ -854,6 +899,31 @@ export function reduceMatchAggregate(
       if (eventEnvelope.event.payload.approved) return { ...base, birdGuideChallenge: undefined };
       return { ...base, birdGuideChallenge: { ...challenge, candidate: undefined,
         rejectedAttemptCount: challenge.rejectedAttemptCount + 1 } };
+    }
+    case 'mediocre_travel_agent_started':
+      return { ...base, mediocreTravelAgentChallenge: {
+        ...eventEnvelope.event.payload,
+        startedAt: eventEnvelope.occurredAt,
+        stayStartedAtByPlayerId: {},
+        transitStatusByPlayerId: eventEnvelope.event.payload.transitStatusByPlayerId
+      } };
+    case 'mediocre_travel_agent_completed': {
+      const challenge = base.mediocreTravelAgentChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return { ...base, mediocreTravelAgentChallenge: { ...challenge, completedAt: eventEnvelope.occurredAt } };
+    }
+    case 'mediocre_travel_souvenir_reported': {
+      const challenge = base.mediocreTravelAgentChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const { status, playerId, bonusMinutesAwarded } = eventEnvelope.event.payload;
+      return {
+        ...base,
+        mediocreTravelAgentChallenge: status === 'acquired'
+          ? { ...challenge, souvenirAcquiredAt: eventEnvelope.occurredAt, souvenirReportedByPlayerId: playerId }
+          : { ...challenge, souvenirLostAt: eventEnvelope.occurredAt, souvenirLostReportedByPlayerId: playerId,
+              bonusAwardedAt: bonusMinutesAwarded > 0 ? eventEnvelope.occurredAt : challenge.bonusAwardedAt },
+        awardedCurseBonusMinutes: (base.awardedCurseBonusMinutes ?? 0) + bonusMinutesAwarded
+      };
     }
     case 'egg_partner_challenge_started':
       return {
@@ -1266,6 +1336,10 @@ export function reduceMatchAggregate(
           rightTurnDurationMinutes: eventEnvelope.event.payload.rightTurnDurationMinutes,
           unguidedTouristOutdoorsConfirmedByPlayerIds: eventEnvelope.event.payload.unguidedTouristOutdoorsConfirmedByPlayerIds ?? [],
           birdGuideMaximumDurationMinutes: eventEnvelope.event.payload.birdGuideMaximumDurationMinutes,
+          mediocreTravelAgentMaximumDistanceMeters: eventEnvelope.event.payload.mediocreTravelAgentMaximumDistanceMeters,
+          mediocreTravelAgentStayMinutes: eventEnvelope.event.payload.mediocreTravelAgentStayMinutes,
+          mediocreTravelAgentHiderBonusMinutes: eventEnvelope.event.payload.mediocreTravelAgentHiderBonusMinutes,
+          mediocreTravelAgentRequiredPhotoCount: eventEnvelope.event.payload.mediocreTravelAgentRequiredPhotoCount,
           rightTurnDeadEndDistanceMeters: eventEnvelope.event.payload.rightTurnDeadEndDistanceMeters,
           uTurnAlternateTransitWindowMinutes: eventEnvelope.event.payload.uTurnAlternateTransitWindowMinutes,
           jammedDoorRetryCooldownMinutes: eventEnvelope.event.payload.jammedDoorRetryCooldownMinutes,

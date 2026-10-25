@@ -137,6 +137,9 @@ export type DomainEvent =
   | BirdGuideChallengeStartedEvent
   | BirdGuideVideoSubmittedEvent
   | BirdGuideVideoReviewedEvent
+  | MediocreTravelAgentStartedEvent
+  | MediocreTravelAgentCompletedEvent
+  | MediocreTravelSouvenirReportedEvent
   | EggPartnerChallengeStartedEvent
   | EggPartnerAcquiredEvent
   | EggPartnerMemberLostEvent
@@ -468,7 +471,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bird_guide_challenge' | 'mediocre_travel_agent_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     labyrinthDrawingWindowMinutes?: number;
     moveOriginStationId?: string;
     moveOriginStationName?: string;
@@ -487,6 +490,10 @@ export interface CardResolutionOpenedEvent {
     rightTurnDeadEndDistanceMeters?: number;
     unguidedTouristOutdoorsConfirmedByPlayerIds?: string[];
     birdGuideMaximumDurationMinutes?: number;
+    mediocreTravelAgentMaximumDistanceMeters?: number;
+    mediocreTravelAgentStayMinutes?: number;
+    mediocreTravelAgentHiderBonusMinutes?: number;
+    mediocreTravelAgentRequiredPhotoCount?: number;
     uTurnAlternateTransitWindowMinutes?: number;
     jammedDoorRetryCooldownMinutes?: number;
     jammedDoorMinimumTotal?: number;
@@ -723,6 +730,26 @@ export interface BirdGuideVideoSubmittedEvent {
 export interface BirdGuideVideoReviewedEvent {
   type: 'bird_guide_video_reviewed';
   payload: { sourceCardInstanceId: string; approved: boolean };
+}
+
+export interface MediocreTravelAgentStartedEvent {
+  type: 'mediocre_travel_agent_started';
+  payload: {
+    sourceCardInstanceId: string; destinationName: string; destinationLatitude: number; destinationLongitude: number;
+    arrivalRadiusMeters: number; maximumDistanceMeters: number; stayMinutes: number; hiderBonusMinutes: number;
+    requiredPhotoCount: number; requiredSeekerPlayerIds: string[];
+    transitStatusByPlayerId: Record<string, { onTransitOrAtStation: boolean; updatedAt: string }>;
+  };
+}
+
+export interface MediocreTravelAgentCompletedEvent {
+  type: 'mediocre_travel_agent_completed';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface MediocreTravelSouvenirReportedEvent {
+  type: 'mediocre_travel_souvenir_reported';
+  payload: { sourceCardInstanceId: string; status: 'acquired' | 'lost'; playerId: string; bonusMinutesAwarded: number };
 }
 
 export interface EggPartnerChallengeStartedEvent {

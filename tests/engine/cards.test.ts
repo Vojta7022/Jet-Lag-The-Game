@@ -289,6 +289,96 @@ test('Bird Guide blocks questions until a seeker video matches the hider recordi
   assert.equal(aggregate.seekPhaseSubstate, 'awaiting_question_selection');
 });
 
+test('Mediocre Travel Agent derives the printed trip requirements from the selected scale', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('mediocre travel agent'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'mediocre_travel_agent_challenge', description: card.description, automationLevel: 'assisted',
+    payload: { maximumDistanceMetersByScale: { small: 402, medium: 402, large: 805 }, stayMinutesByScale: { small: 5, medium: 5, large: 10 }, hiderBonusMinutesByScale: { small: 30, medium: 45, large: 60 }, requiredPhotoCount: 3 } } as never];
+  for (const [scale, radius, stay, bonus] of [['small', 402, 5, 30], ['medium', 402, 5, 45], ['large', 805, 10, 60]] as const) {
+    const plan = buildCardResolutionPlan(card, scale);
+    assert.equal(plan.kind, 'mediocre_travel_agent_challenge');
+    assert.equal(plan.maximumDistanceMeters, radius);
+    assert.equal(plan.activeDurationMinutes, stay);
+    assert.equal(plan.timeBonusMinutes, bonus);
+  }
+});
+
+test('Mediocre Travel Agent tracks a shared trip, photo evidence, souvenir, and lost-souvenir bonus', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('mediocre travel agent'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'mediocre_travel_agent_challenge', description: card.description, automationLevel: 'assisted',
+    payload: { maximumDistanceMetersByScale: { small: 402, medium: 402, large: 805 }, stayMinutesByScale: { small: 5, medium: 5, large: 10 }, hiderBonusMinutesByScale: { small: 30, medium: 45, large: 60 }, requiredPhotoCount: 3 } } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.selectedScale = 'small';
+  aggregate.locationSamples = [{ sampleId: 'trip:origin', playerId: 'seeker-1', role: 'seeker', teamId: 'team-seeker', latitude: 50, longitude: 14, accuracyMeters: 8, source: 'device', onTransit: false, recordedAt: '2026-01-01T00:01:39.000Z' }];
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 100), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'mediocre_travel_agent_challenge');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, mediocreTravelAgentDestinationName: 'Old Town garden', mediocreTravelAgentLatitude: 50.001, mediocreTravelAgentLongitude: 14, mediocreTravelAgentPublicAccessAttested: true } }, 100.25), contentPack), /off transit/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'set_seeker_transit_context', payload: { sourceCardInstanceId: cardInstanceId, onTransitOrAtStation: false } }, 100.5), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 101), contentPack), /publicly accessible destination/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, mediocreTravelAgentDestinationName: 'Old Town garden', mediocreTravelAgentLatitude: 50.001, mediocreTravelAgentLongitude: 14, mediocreTravelAgentPublicAccessAttested: true } }, 102), contentPack).aggregate;
+  assert.equal(aggregate.mediocreTravelAgentChallenge?.destinationName, 'Old Town garden');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'begin_question_prompt', payload: {} }, 103), contentPack), /ready/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'update_location', payload: { playerId: 'seeker-1', latitude: 50.001, longitude: 14, accuracyMeters: 8, source: 'device', onTransit: false } }, 103.5), contentPack).aggregate;
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'upload_attachment', payload: { attachmentId: 'trip:photo-1', kind: 'photo_evidence', label: 'Vacation 1', visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera' } } }, 105), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'upload_attachment', payload: { attachmentId: 'trip:photo-2', kind: 'photo_evidence', label: 'Vacation 2', visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera' } } }, 106), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'upload_attachment', payload: { attachmentId: 'trip:photo-3', kind: 'photo_evidence', label: 'Vacation 3', visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera' } } }, 107), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_mediocre_travel_souvenir', payload: { sourceCardInstanceId: cardInstanceId, status: 'acquired' } }, 108), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'set_seeker_transit_context', payload: { sourceCardInstanceId: cardInstanceId, onTransitOrAtStation: true } }, 109), contentPack).aggregate;
+  assert.equal(aggregate.mediocreTravelAgentChallenge?.stayStartedAtByPlayerId['seeker-1'], undefined);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'set_seeker_transit_context', payload: { sourceCardInstanceId: cardInstanceId, onTransitOrAtStation: false } }, 110), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'complete_mediocre_travel_agent', payload: { sourceCardInstanceId: cardInstanceId } }, 109), contentPack), /stay.*5 minutes/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'update_location', payload: { playerId: 'seeker-1', latitude: 50.001, longitude: 14, accuracyMeters: 8, source: 'device', onTransit: false } }, 111), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'complete_mediocre_travel_agent', payload: { sourceCardInstanceId: cardInstanceId } }, 410), contentPack), /stay.*5 minutes/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'update_location', payload: { playerId: 'seeker-1', latitude: 50.001, longitude: 14, accuracyMeters: 8, source: 'device' } }, 412), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'complete_mediocre_travel_agent', payload: { sourceCardInstanceId: cardInstanceId } }, 413), contentPack).aggregate;
+  assert.ok(aggregate.mediocreTravelAgentChallenge?.completedAt);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_mediocre_travel_souvenir', payload: { sourceCardInstanceId: cardInstanceId, status: 'lost' } }, 414), contentPack).aggregate;
+  assert.equal(aggregate.awardedCurseBonusMinutes, 30);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_mediocre_travel_souvenir', payload: { sourceCardInstanceId: cardInstanceId, status: 'lost' } }, 415), contentPack), /already reported/i);
+});
+
 test('Labyrinth blocks questions until a seeker solution is approved by the hider', () => {
   const contentPack = loadEngineTestContentPack();
   const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('labyrinth'));

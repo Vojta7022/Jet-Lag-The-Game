@@ -54,6 +54,7 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'labyrinth_challenge',
   'unguided_tourist_challenge',
   'bird_guide_challenge',
+  'mediocre_travel_agent_challenge',
   'bridge_troll_challenge',
   'seeker_off_transit_challenge',
   'u_turn_challenge',
@@ -82,6 +83,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.luxuryCarChallenge ||
     aggregate.unguidedTouristChallenge ||
     aggregate.birdGuideChallenge ||
+    (aggregate.mediocreTravelAgentChallenge && !aggregate.mediocreTravelAgentChallenge.completedAt) ||
     (aggregate.activeCardResolution?.resolutionKind &&
       QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
   );
@@ -553,6 +555,10 @@ export function validateCommandEnvelope(
 
   if (envelope.command.type === 'begin_question_prompt' && aggregate.birdGuideChallenge) {
     return [error(envelope.command.type, 'QUESTION_BLOCKED_BY_CURSE', 'Seekers are not ready to ask questions until the active Bird Guide video is approved.')];
+  }
+
+  if (envelope.command.type === 'begin_question_prompt' && aggregate.mediocreTravelAgentChallenge && !aggregate.mediocreTravelAgentChallenge.completedAt) {
+    return [error(envelope.command.type, 'QUESTION_BLOCKED_BY_CURSE', 'Seekers are not ready to ask questions until they finish the trip, wait, send three photos, and obtain the souvenir.')];
   }
 
   switch (envelope.command.type) {
@@ -1381,6 +1387,21 @@ export function validateCommandEnvelope(
         }
       }
 
+      if (envelope.command.payload.kind === 'photo_evidence' && envelope.command.payload.cardInstanceId &&
+        aggregate.mediocreTravelAgentChallenge?.sourceCardInstanceId === envelope.command.payload.cardInstanceId) {
+        const challenge = aggregate.mediocreTravelAgentChallenge;
+        const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+        const seekerIds = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.memberPlayerIds ?? [];
+        const occurredAt = Date.parse(envelope.occurredAt);
+        if (challenge.completedAt || (actorRole !== 'host' && (actorRole !== 'seeker' || !envelope.actor.playerId || !seekerIds.includes(envelope.actor.playerId)))) {
+          return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_PHOTO_FORBIDDEN', 'Only the seeker team may add its trip photos while the challenge is active.')];
+        }
+        if (envelope.command.payload.visibilityScope !== 'public_match' || envelope.command.payload.captureMetadata?.pickerSource !== 'camera' ||
+          occurredAt <= Date.parse(challenge.startedAt)) {
+          return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_PHOTO_REQUIRED', 'Add new public camera photos taken during the trip so the hider can see them.')];
+        }
+      }
+
       if (label.length === 0 && note.length === 0) {
         return [
           error(
@@ -1671,6 +1692,34 @@ export function validateCommandEnvelope(
         }
       }
 
+      if (activeResolution.resolutionKind === 'mediocre_travel_agent_challenge') {
+        const payload = envelope.command.payload;
+        const name = payload.mediocreTravelAgentDestinationName?.trim();
+        const latitude = payload.mediocreTravelAgentLatitude;
+        const longitude = payload.mediocreTravelAgentLongitude;
+        if (!name || name.length > 100 || payload.mediocreTravelAgentPublicAccessAttested !== true ||
+          !Number.isFinite(latitude) || Math.abs(latitude!) > 90 || !Number.isFinite(longitude) || Math.abs(longitude!) > 180) {
+          return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_DESTINATION_REQUIRED', 'Name a publicly accessible destination, mark its map point, and confirm seekers are not on transit.')];
+        }
+        const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+        const maximumDistanceMeters = activeResolution.mediocreTravelAgentMaximumDistanceMeters;
+        if (!seekerTeam || !Number.isFinite(maximumDistanceMeters) || !maximumDistanceMeters) {
+          return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_SEEKERS_REQUIRED', 'A current seeker location and scale limit are required to set the trip.')];
+        }
+        for (const playerId of seekerTeam.memberPlayerIds) {
+          const transitStatus = activeResolution.mediocreTravelAgentTransitStatusByPlayerId?.[playerId];
+          const sample = [...aggregate.locationSamples].reverse().find((candidate) => candidate.playerId === playerId);
+          const ageMs = sample ? Date.parse(envelope.occurredAt) - Date.parse(sample.recordedAt) : Infinity;
+          if (!transitStatus || transitStatus.onTransitOrAtStation || !sample || sample.source !== 'device' ||
+            typeof sample.accuracyMeters !== 'number' || sample.accuracyMeters > 50 || ageMs < 0 || ageMs > 30_000) {
+            return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_SEEKER_FIX_REQUIRED', 'Every seeker must share a fresh accurate phone location and confirm they are off transit before the hider chooses the trip.')];
+          }
+          if (distanceMeters([longitude!, latitude!], [sample.longitude, sample.latitude]) > maximumDistanceMeters) {
+            return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_DESTINATION_TOO_FAR', `The destination must be within ${Math.round(maximumDistanceMeters)} m of every seeker’s current location.`)];
+          }
+        }
+      }
+
       if (activeResolution.resolutionKind === 'zoologist_challenge') {
         const category = envelope.command.payload.zoologistCategory;
         const attachment = envelope.command.payload.zoologistHiderAttachmentId
@@ -1857,6 +1906,72 @@ export function validateCommandEnvelope(
       }
       return [];
     }
+    case 'report_mediocre_travel_souvenir': {
+      const challenge = aggregate.mediocreTravelAgentChallenge;
+      const payload = envelope.command.payload;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_NOT_ACTIVE', 'There is no active Mediocre Travel Agent trip.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const seekerIds = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.memberPlayerIds ?? [];
+      if (actorRole !== 'host' && (!envelope.actor.playerId || actorRole !== 'seeker' || !seekerIds.includes(envelope.actor.playerId))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may report acquiring or losing the souvenir.')];
+      }
+      if (payload.status === 'acquired') {
+        if (challenge.souvenirAcquiredAt || challenge.souvenirLostAt) {
+          return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_SOUVENIR_ALREADY_REPORTED', 'The seeker team has already reported its souvenir status.')];
+        }
+      } else if (!challenge.souvenirAcquiredAt) {
+        return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_SOUVENIR_NOT_ACQUIRED', 'Acquire a physical souvenir before reporting that it was lost.')];
+      } else if (challenge.souvenirLostAt) {
+        return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_SOUVENIR_ALREADY_REPORTED', 'The souvenir loss was already reported and its time bonus recorded.')];
+      } else if (aggregate.lifecycleState === 'game_complete' || aggregate.lifecycleState === 'archived') {
+        return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_SOUVENIR_TOO_LATE', 'The souvenir bonus only applies before the hider is found.')];
+      }
+      return [];
+    }
+    case 'complete_mediocre_travel_agent': {
+      const challenge = aggregate.mediocreTravelAgentChallenge;
+      const payload = envelope.command.payload;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId || challenge.completedAt) {
+        return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_NOT_ACTIVE', 'There is no unfinished Mediocre Travel Agent trip.')];
+      }
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const seekerIds = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.memberPlayerIds ?? [];
+      if (actorRole !== 'host' && (!envelope.actor.playerId || actorRole !== 'seeker' || !seekerIds.includes(envelope.actor.playerId))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may complete the team trip.')];
+      }
+      const now = Date.parse(envelope.occurredAt);
+      for (const playerId of challenge.requiredSeekerPlayerIds) {
+        const stayStartedAt = challenge.stayStartedAtByPlayerId[playerId];
+        const sample = [...aggregate.locationSamples].reverse().find((candidate) => candidate.playerId === playerId);
+        if (!stayStartedAt || now - Date.parse(stayStartedAt) < challenge.stayMinutes * 60_000) {
+          return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_STAY_INCOMPLETE', `Every seeker must stay at the destination for at least ${challenge.stayMinutes} minutes.`)];
+        }
+        if (!sample || sample.source !== 'device' ||
+          typeof sample.accuracyMeters !== 'number' || sample.accuracyMeters > challenge.arrivalRadiusMeters ||
+          now - Date.parse(sample.recordedAt) < 0 || now - Date.parse(sample.recordedAt) > 30_000 ||
+          distanceMeters([sample.longitude, sample.latitude], [challenge.destinationLongitude, challenge.destinationLatitude]) > challenge.arrivalRadiusMeters) {
+          return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_STAY_NOT_CONFIRMED', 'Each seeker must still be at the destination off transit with a fresh phone location.')];
+        }
+        const transitStatus = challenge.transitStatusByPlayerId[playerId];
+        if (!transitStatus || transitStatus.onTransitOrAtStation) {
+          return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_TRANSIT_STATUS_REQUIRED', 'Each seeker must confirm they are off transit and clear of the station before completing the trip.')];
+        }
+      }
+      const tripPhotos = Object.values(aggregate.attachments).filter((attachment) =>
+        attachment.linkedCardInstanceId === challenge.sourceCardInstanceId && attachment.kind === 'photo_evidence' &&
+        attachment.visibilityScope === 'public_match' && attachment.captureMetadata.pickerSource === 'camera' &&
+        Date.parse(attachment.createdAt) > Date.parse(challenge.startedAt)
+      );
+      if (tripPhotos.length < challenge.requiredPhotoCount) {
+        return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_PHOTOS_REQUIRED', `Send at least ${challenge.requiredPhotoCount} new public camera photos from the trip before asking another question.`)];
+      }
+      if (!challenge.souvenirAcquiredAt) {
+        return [error(envelope.command.type, 'MEDIOCRE_TRAVEL_AGENT_SOUVENIR_REQUIRED', 'The seekers must acquire a physical souvenir before finishing the trip.')];
+      }
+      return [];
+    }
     case 'set_hangman_word': {
       const resolution = aggregate.activeCardResolution;
       if (resolution?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || resolution.resolutionKind !== 'hangman_challenge') {
@@ -1968,7 +2083,13 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'UNGUIDED_TOURIST_NO_TRANSIT', 'Seekers cannot use transportation until the hider approves a found-location photo.')];
       }
       const restriction = aggregate.seekerOffTransitRestriction;
-      if (restriction?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
+      const sourceCardInstanceId = envelope.command.payload.sourceCardInstanceId;
+      const isUrbanExplorer = restriction?.sourceCardInstanceId === sourceCardInstanceId;
+      const resolution = aggregate.activeCardResolution;
+      const travelChallenge = aggregate.mediocreTravelAgentChallenge;
+      const isTravelAgent = (resolution?.resolutionKind === 'mediocre_travel_agent_challenge' && resolution.sourceCardInstanceId === sourceCardInstanceId) ||
+        travelChallenge?.sourceCardInstanceId === sourceCardInstanceId;
+      if (!isUrbanExplorer && !isTravelAgent) {
         return [error(envelope.command.type, 'URBAN_EXPLORER_NOT_ACTIVE', 'The Urban Explorer restriction is not active.')];
       }
       if (typeof envelope.command.payload.onTransitOrAtStation !== 'boolean') {

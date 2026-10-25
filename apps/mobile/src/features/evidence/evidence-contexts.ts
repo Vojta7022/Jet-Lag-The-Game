@@ -113,7 +113,8 @@ function resolveCardEvidenceContext(args: {
     args.projection.zoologistChallenge?.sourceCardInstanceId ??
     args.projection.luxuryCarChallenge?.sourceCardInstanceId ??
     args.projection.unguidedTouristChallenge?.sourceCardInstanceId;
-  const challengeCardInstanceId = args.projection.birdGuideChallenge?.sourceCardInstanceId;
+  const challengeCardInstanceId = args.projection.birdGuideChallenge?.sourceCardInstanceId ??
+    args.projection.mediocreTravelAgentChallenge?.sourceCardInstanceId;
   const resolvedCardInstanceId = cardInstanceId ?? challengeCardInstanceId;
   if (!resolvedCardInstanceId) {
     return undefined;
@@ -128,10 +129,14 @@ function resolveCardEvidenceContext(args: {
         ? 'unguided_tourist_challenge'
       : args.projection.birdGuideChallenge
         ? 'bird_guide_challenge'
+      : args.projection.mediocreTravelAgentChallenge
+        ? 'mediocre_travel_agent_challenge'
       : args.projection.activeCardResolution?.resolutionKind === 'unguided_tourist_challenge'
         ? 'unguided_tourist_challenge'
       : args.projection.activeCardResolution?.resolutionKind === 'bird_guide_challenge'
         ? 'bird_guide_challenge'
+      : args.projection.activeCardResolution?.resolutionKind === 'mediocre_travel_agent_challenge'
+        ? 'mediocre_travel_agent_challenge'
       : args.projection.activeCardResolution?.resolutionKind === 'labyrinth_challenge'
         ? 'labyrinth_challenge'
       : undefined;
@@ -145,7 +150,7 @@ function resolveCardEvidenceContext(args: {
   }
 
   const isPublicPhotoChallenge = definition.effects.some((effect) =>
-    effect.effectType === 'labyrinth_challenge' || effect.effectType === 'zoologist_challenge' || effect.effectType === 'luxury_car_challenge' || effect.effectType === 'unguided_tourist_challenge' || effect.effectType === 'bird_guide_challenge'
+    effect.effectType === 'labyrinth_challenge' || effect.effectType === 'zoologist_challenge' || effect.effectType === 'luxury_car_challenge' || effect.effectType === 'unguided_tourist_challenge' || effect.effectType === 'bird_guide_challenge' || effect.effectType === 'mediocre_travel_agent_challenge'
   );
   const detail = definition.effects.some((effect) => effect.effectType === 'labyrinth_challenge')
     ? 'Take a camera photo of the hand-drawn maze and record it publicly so the seekers can solve it.'
@@ -159,6 +164,8 @@ function resolveCardEvidenceContext(args: {
             : 'The hider shares a public Street View screenshot from their photo library. Keep the image unzoomed, level with the horizon, and show a human-built structure other than any part of a road, curb, or sidewalk.')
       : definition.effects.some((effect) => effect.effectType === 'bird_guide_challenge')
         ? 'Record a new bird video with the bird already in frame. The hider has one recording; seekers may retry until the hider approves a video at least as long.'
+      : definition.effects.some((effect) => effect.effectType === 'mediocre_travel_agent_challenge')
+        ? 'The seekers visit the named destination, stay there for the scale time, share at least three public camera photos, and acquire a physical souvenir. Phone locations time the visit; the hider chooses and attests the public place.'
       : 'Pick or capture supporting media, then record the attachment metadata honestly before the referee closes the card window.';
 
   const attachments = args.projection.visibleAttachments.filter(

@@ -236,6 +236,17 @@ test('the workbook importer creates a normalized draft content pack', () => {
     requireHiderBirdInFrameAttestation: true,
     requireSeekerHiderApproval: true
   });
+  const mediocreTravelAgent = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-mediocre-travel-agent');
+  assert.equal(mediocreTravelAgent?.automationLevel, 'assisted');
+  assert.equal(mediocreTravelAgent?.effects[0]?.effectType, 'mediocre_travel_agent_challenge');
+  assert.equal(mediocreTravelAgent?.requirements?.requiresPhotoUpload, true);
+  assert.deepEqual(mediocreTravelAgent?.effects[0]?.payload, {
+    maximumDistanceMetersByScale: { small: 402, medium: 402, large: 805 },
+    stayMinutesByScale: { small: 5, medium: 5, large: 10 },
+    hiderBonusMinutesByScale: { small: 30, medium: 45, large: 60 },
+    requiredPhotoCount: 3,
+    arrivalRadiusMeters: 50
+  });
   const uTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-u-turn');
   assert.match(String(uTurn?.rulebookGuidanceText), /ignore skipped stops/i);
   assert.equal(uTurn?.automationLevel, 'assisted');
@@ -363,6 +374,16 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
     maximumFilmingMinutesByScale: { small: 5, medium: 10, large: 15 },
     requireHiderBirdInFrameAttestation: true,
     requireSeekerHiderApproval: true
+  });
+  const mediocreTravelAgent = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-mediocre-travel-agent');
+  assert.equal(mediocreTravelAgent?.automationLevel, 'assisted');
+  assert.equal(mediocreTravelAgent?.effects[0]?.effectType, 'mediocre_travel_agent_challenge');
+  assert.deepEqual(mediocreTravelAgent?.effects[0]?.payload, {
+    maximumDistanceMetersByScale: { small: 402, medium: 402, large: 805 },
+    stayMinutesByScale: { small: 5, medium: 5, large: 10 },
+    hiderBonusMinutesByScale: { small: 30, medium: 45, large: 60 },
+    requiredPhotoCount: 3,
+    arrivalRadiusMeters: 50
   });
   const uTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-u-turn');
   assert.equal(uTurn?.automationLevel, 'assisted');

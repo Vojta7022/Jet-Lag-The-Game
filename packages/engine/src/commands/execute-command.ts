@@ -1398,6 +1398,10 @@ function eventsForCommand(
               rightTurnDeadEndDistanceMeters: resolutionPlan.kind === 'right_turn_challenge' ? resolutionPlan.deadEndDistanceMeters : undefined,
               unguidedTouristOutdoorsConfirmedByPlayerIds: resolutionPlan.kind === 'unguided_tourist_challenge' ? [] : undefined,
               birdGuideMaximumDurationMinutes: resolutionPlan.kind === 'bird_guide_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
+              mediocreTravelAgentMaximumDistanceMeters: resolutionPlan.kind === 'mediocre_travel_agent_challenge' ? resolutionPlan.maximumDistanceMeters : undefined,
+              mediocreTravelAgentStayMinutes: resolutionPlan.kind === 'mediocre_travel_agent_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
+              mediocreTravelAgentHiderBonusMinutes: resolutionPlan.kind === 'mediocre_travel_agent_challenge' ? resolutionPlan.timeBonusMinutes : undefined,
+              mediocreTravelAgentRequiredPhotoCount: resolutionPlan.kind === 'mediocre_travel_agent_challenge' ? resolutionPlan.requiredPhotoCount : undefined,
               uTurnAlternateTransitWindowMinutes: resolutionPlan.kind === 'u_turn_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorDurationMinutes: resolutionPlan.kind === 'jammed_door_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorRetryCooldownMinutes: resolutionPlan.doorwayRetryCooldownMinutes,
@@ -1598,6 +1602,26 @@ function eventsForCommand(
             hiderBirdInFrameAttested: envelope.command.payload.birdGuideBirdPresentAttested === true,
             hiderDurationMs: durationMs,
             maximumDurationMs
+          }
+        }));
+      }
+
+      if (activeResolution?.resolutionKind === 'mediocre_travel_agent_challenge') {
+        const seekerTeam = Object.values(aggregate!.teams).find((team) => team.side === 'seeker');
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'mediocre_travel_agent_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            destinationName: envelope.command.payload.mediocreTravelAgentDestinationName!.trim(),
+            destinationLatitude: envelope.command.payload.mediocreTravelAgentLatitude!,
+            destinationLongitude: envelope.command.payload.mediocreTravelAgentLongitude!,
+            arrivalRadiusMeters: 50,
+            maximumDistanceMeters: activeResolution.mediocreTravelAgentMaximumDistanceMeters!,
+            stayMinutes: activeResolution.mediocreTravelAgentStayMinutes!,
+            hiderBonusMinutes: activeResolution.mediocreTravelAgentHiderBonusMinutes!,
+            requiredPhotoCount: activeResolution.mediocreTravelAgentRequiredPhotoCount ?? 3,
+            requiredSeekerPlayerIds: seekerTeam?.memberPlayerIds ?? [],
+            transitStatusByPlayerId: activeResolution.mediocreTravelAgentTransitStatusByPlayerId ?? {}
           }
         }));
       }
@@ -1998,6 +2022,22 @@ function eventsForCommand(
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
         type: 'bird_guide_video_reviewed',
         payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId, approved: envelope.command.payload.approved }
+      })];
+    case 'report_mediocre_travel_souvenir':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'mediocre_travel_souvenir_reported',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          status: envelope.command.payload.status,
+          playerId: envelope.actor.playerId!,
+          bonusMinutesAwarded: envelope.command.payload.status === 'lost' && !aggregate!.mediocreTravelAgentChallenge?.bonusAwardedAt
+            ? aggregate!.mediocreTravelAgentChallenge?.hiderBonusMinutes ?? 0
+            : 0
+        }
+      })];
+    case 'complete_mediocre_travel_agent':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'mediocre_travel_agent_completed', payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId }
       })];
     case 'confirm_egg_partner_acquired':
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {

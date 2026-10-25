@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T20:56:35.260Z",
+    "importedAt": "2026-10-25T21:06:40.206Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2309,24 +2309,40 @@
       "name": "Curse Of The Mediocre Travel Agent",
       "shortName": "Curse Of The Mediocre Travel Agent",
       "description": "Choose any publicly-accessible place within [S0.25, M0.25, L0.50]mi [S0.40, M0.40, 0.50]km of the seeker(s) current location. They cannot currently be on transit. They must go there, and spend at least [S5, M5, L10] minutes there, before asking another question. They must send you at least three photos of them enjoying their vacation, and procure an object to bring you as souvenir. If this souvenir is lost before they can get to you, you are awarded and extra [S30, M45, L60] minutes.",
-      "rulebookGuidanceText": "“Publicly accessible” follows the hiding-spot rule. The destination may be an area rather than a point. The souvenir may be any physical object and need not stay with the seekers throughout the trip, but it must be with them when they are caught.",
-      "automationLevel": "manual",
+      "rulebookGuidanceText": "The printed mile limits are canonical: 0.25 miles for Small and Medium and 0.50 miles for Large (approximately 402 m, 402 m, and 805 m). The destination may be an area rather than a point. Public accessibility follows the hiding-spot rule. The souvenir may be any physical object and need not stay with the seekers throughout the trip, but it must be with them when they are caught.",
+      "automationLevel": "assisted",
       "castingCost": [],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "mediocre_travel_agent_challenge",
           "description": "Choose any publicly-accessible place within [S0.25, M0.25, L0.50]mi [S0.40, M0.40, 0.50]km of the seeker(s) current location. They cannot currently be on transit. They must go there, and spend at least [S5, M5, L10] minutes there, before asking another question. They must send you at least three photos of them enjoying their vacation, and procure an object to bring you as souvenir. If this souvenir is lost before they can get to you, you are awarded and extra [S30, M45, L60] minutes.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Choose any publicly-accessible place within [S0.25, M0.25, L0.50]mi [S0.40, M0.40, 0.50]km of the seeker(s) current location. They cannot currently be on transit. They must go there, and spend at least [S5, M5, L10] minutes there, before asking another question. They must send you at least three photos of them enjoying their vacation, and procure an object to bring you as souvenir. If this souvenir is lost before they can get to you, you are awarded and extra [S30, M45, L60] minutes.",
           "payload": {
-            "workbookName": "Curse Of The Mediocre Travel Agent"
+            "maximumDistanceMetersByScale": {
+              "small": 402,
+              "medium": 402,
+              "large": 805
+            },
+            "stayMinutesByScale": {
+              "small": 5,
+              "medium": 5,
+              "large": 10
+            },
+            "hiderBonusMinutesByScale": {
+              "small": 30,
+              "medium": 45,
+              "large": 60
+            },
+            "requiredPhotoCount": 3,
+            "arrivalRadiusMeters": 50
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true,
-        "requiresPhotoUpload": false,
+        "requiresManualApproval": false,
+        "requiresPhotoUpload": true,
         "requiresVideoUpload": false
       },
       "visibilityPolicy": {
@@ -2338,7 +2354,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

@@ -114,8 +114,14 @@ export function CardsScreen() {
   } = useAppShell();
   const [showPiles, setShowPiles] = useState(false);
   const [touristNoInternetConfirmed, setTouristNoInternetConfirmed] = useState(false);
+  const [challengeClockNow, setChallengeClockNow] = useState(Date.now());
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
+  useEffect(() => {
+    if (!projection?.mediocreTravelAgentChallenge) return;
+    const timer = setInterval(() => setChallengeClockNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [projection?.mediocreTravelAgentChallenge?.sourceCardInstanceId]);
   const contentPack = getContentPackByReference(projection?.contentPackId, projection?.contentPackVersion);
   const hiderHandLimit = projection?.hiderHandLimit ?? HIDER_HAND_TARGET;
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
@@ -596,6 +602,40 @@ export function CardsScreen() {
           <Text style={styles.copy}>Players verify bird identity and continuous framing by watching the videos. The app checks recorded duration and the hider’s frame-start attestation; it cannot inspect the video content.</Text>
         </Panel>
       ) : null}
+
+      {projection?.mediocreTravelAgentChallenge ? (() => {
+        const challenge = projection.mediocreTravelAgentChallenge;
+        const travelPhotos = projection.visibleAttachments.filter((attachment) =>
+          attachment.linkedCardInstanceId === challenge.sourceCardInstanceId &&
+          attachment.kind === 'photo_evidence' && attachment.visibilityScope === 'public_match'
+        );
+        const elapsedMinutesByPlayer = challenge.requiredSeekerPlayerIds.map((playerId) => {
+          const startedAt = challenge.stayStartedAtByPlayerId[playerId];
+          return startedAt ? Math.floor((challengeClockNow - Date.parse(startedAt)) / 60_000) : undefined;
+        });
+        const visitComplete = elapsedMinutesByPlayer.length > 0 && elapsedMinutesByPlayer.every((minutes) => minutes !== undefined && minutes >= challenge.stayMinutes);
+        const souvenirAcquired = Boolean(challenge.souvenirAcquiredAt);
+        const souvenirLost = Boolean(challenge.souvenirLostAt);
+        return (
+          <Panel title="Curse of the Mediocre Travel Agent" subtitle={`${challenge.destinationName} · ${Math.round(challenge.maximumDistanceMeters)} m radius`} tone="accent">
+            <Text style={styles.copy}>Visit the public destination and stay within {challenge.arrivalRadiusMeters} m for {challenge.stayMinutes} minutes. Everyone must submit at least {challenge.requiredPhotoCount} new camera photos. The hider must receive a souvenir; losing it before being caught adds {challenge.hiderBonusMinutes} minutes to the hider’s final score.</Text>
+            {challenge.requiredSeekerPlayerIds.map((playerId, index) => {
+              const player = projection.players.find((item) => item.playerId === playerId);
+              const minutes = elapsedMinutesByPlayer[index];
+              const transitStatus = challenge.transitStatusByPlayerId[playerId];
+              return <Text key={playerId} style={styles.copy}>{player?.displayName ?? 'Seeker'}: {transitStatus ? transitStatus.onTransitOrAtStation ? 'on transit / station' : 'off transit confirmed' : 'transit check needed'} · {minutes === undefined ? 'not currently checked in at the destination' : `${Math.min(minutes, challenge.stayMinutes)} / ${challenge.stayMinutes} minutes checked in`}</Text>;
+            })}
+            {viewerRole === 'seeker' && activeMatch?.recipient.playerId ? <AppButton label={challenge.transitStatusByPlayerId[activeMatch.recipient.playerId]?.onTransitOrAtStation === false ? 'Report transit / station' : 'Confirm I am off transit'} tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'set_seeker_transit_context', payload: { sourceCardInstanceId: challenge.sourceCardInstanceId, onTransitOrAtStation: challenge.transitStatusByPlayerId[activeMatch.recipient.playerId!]?.onTransitOrAtStation === false } })} /> : null}
+            <Text style={styles.copy}>Public photos: {travelPhotos.length} / {challenge.requiredPhotoCount}</Text>
+            <Text style={styles.copy}>Souvenir: {souvenirLost ? 'reported lost' : souvenirAcquired ? 'acquired and must be kept until you are caught' : 'not acquired yet'}</Text>
+            {viewerRole === 'seeker' && !souvenirAcquired ? <AppButton label="We got the souvenir" tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'report_mediocre_travel_souvenir', payload: { sourceCardInstanceId: challenge.sourceCardInstanceId, status: 'acquired' } })} /> : null}
+            {viewerRole === 'seeker' && souvenirAcquired && !souvenirLost ? <AppButton label="Souvenir lost" tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'report_mediocre_travel_souvenir', payload: { sourceCardInstanceId: challenge.sourceCardInstanceId, status: 'lost' } })} /> : null}
+            {!challenge.completedAt && (viewerRole === 'seeker' || viewerRole === 'host') ? <AppButton label="Finish the vacation" disabled={state.loadState === 'loading' || !visitComplete || travelPhotos.length < challenge.requiredPhotoCount || !souvenirAcquired} onPress={() => void submitCommand({ type: 'complete_mediocre_travel_agent', payload: { sourceCardInstanceId: challenge.sourceCardInstanceId } })} /> : null}
+            {challenge.completedAt ? <Text style={styles.copy}>Challenge complete. Keep the physical souvenir with the seekers until the hider catches them.</Text> : null}
+            {challenge.bonusAwardedAt ? <Text style={styles.copy}>Hider score bonus awarded: +{challenge.hiderBonusMinutes} minutes.</Text> : null}
+          </Panel>
+        );
+      })() : null}
 
       {projection?.eggPartnerChallenge ? (
         <Panel title="Curse of the Egg Partner" subtitle="Track the egg and its effect on the seeker team." tone="accent">
@@ -1208,6 +1248,12 @@ export function CardsScreen() {
               labyrinthHiderAttachmentId={labyrinthHiderAttachmentId}
               unguidedTouristHiderAttachmentId={touristHiderAttachmentId}
               birdGuideHiderAttachmentId={birdGuideHiderAttachmentId}
+              mediocreTravelAgentTransitStatusByPlayerId={projection.activeCardResolution.mediocreTravelAgentTransitStatusByPlayerId}
+              mediocreTravelAgentSeekerPlayerIds={projection.players.filter((player) => player.role === 'seeker').map((player) => player.playerId)}
+              onSetMediocreTravelAgentTransitContext={(onTransitOrAtStation) => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({ type: 'set_seeker_transit_context', payload: { sourceCardInstanceId, onTransitOrAtStation } });
+              }}
               unguidedTouristOutdoorsConfirmedByPlayerIds={projection.activeCardResolution.unguidedTouristOutdoorsConfirmedByPlayerIds}
               unguidedTouristSeekerPlayerIds={projection.players.filter((player) => player.role === 'seeker').map((player) => player.playerId)}
               viewerPlayerId={activeMatch?.recipient.playerId}
@@ -1270,7 +1316,7 @@ export function CardsScreen() {
                   type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId, dieRoll }
                 });
               }}
-              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection, ransomNoteSelection, cairnSelection, unguidedTouristSelection, birdGuideSelection) => {
+              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection, ransomNoteSelection, cairnSelection, unguidedTouristSelection, birdGuideSelection, mediocreTravelAgentSelection) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -1306,10 +1352,16 @@ export function CardsScreen() {
                     ...(unguidedTouristSelection ? {
                       unguidedTouristHiderAttachmentId: unguidedTouristSelection.hiderAttachmentId,
                       unguidedTouristRulesAttested: unguidedTouristSelection.rulesAttested
-                    } : {})
-                    ,...(birdGuideSelection ? {
+                    } : {}),
+                    ...(birdGuideSelection ? {
                       birdGuideHiderAttachmentId: birdGuideSelection.hiderAttachmentId,
                       birdGuideBirdPresentAttested: birdGuideSelection.birdPresentAttested
+                    } : {}),
+                    ...(mediocreTravelAgentSelection ? {
+                      mediocreTravelAgentDestinationName: mediocreTravelAgentSelection.destinationName,
+                      mediocreTravelAgentLatitude: mediocreTravelAgentSelection.destinationLatitude,
+                      mediocreTravelAgentLongitude: mediocreTravelAgentSelection.destinationLongitude,
+                      mediocreTravelAgentPublicAccessAttested: mediocreTravelAgentSelection.publicAccessAttested
                     } : {})
                   }
                 });
@@ -1329,7 +1381,8 @@ export function CardsScreen() {
             cameraOnly={projection?.activeCardResolution?.resolutionKind === 'zoologist_challenge' ||
               projection?.activeCardResolution?.resolutionKind === 'labyrinth_challenge' ||
               projection?.activeCardResolution?.resolutionKind === 'luxury_car_challenge' ||
-              Boolean(projection?.zoologistChallenge) || Boolean(projection?.luxuryCarChallenge) || Boolean(projection?.unguidedTouristChallenge)}
+              projection?.activeCardResolution?.resolutionKind === 'mediocre_travel_agent_challenge' ||
+              Boolean(projection?.zoologistChallenge) || Boolean(projection?.luxuryCarChallenge) || Boolean(projection?.unguidedTouristChallenge) || Boolean(projection?.mediocreTravelAgentChallenge)}
             videoOnly={cardAttachmentContext.attachmentKind === 'video_evidence'}
             videoMaxDurationSeconds={(birdGuideMaximumDurationMinutes ?? 5) * 60}
             drafts={cardEvidenceDrafts}
@@ -1338,6 +1391,7 @@ export function CardsScreen() {
               !activeMatch ||
               state.loadState === 'loading' ||
               viewerRole === 'spectator' ||
+              (Boolean(projection?.mediocreTravelAgentChallenge) && viewerRole !== 'seeker' && viewerRole !== 'host') ||
               (cardAttachmentContext.attachmentKind === 'video_evidence' && !(projection?.activeCardResolution?.resolutionKind === 'bird_guide_challenge'
                 ? viewerRole === 'hider' || viewerRole === 'host'
                 : Boolean(projection?.birdGuideChallenge) && viewerRole === 'seeker'))

@@ -608,3 +608,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Enforce one public camera video from the hider, a bird-in-frame start attestation, seeker camera attempts no shorter than the hider's video, scale duration caps, serialized hider review/retry, and question blocking until approval.
 - [x] Add camera video capture, local/remote video playback, duration metadata, and role-specific hider/seeker controls to the mobile card flow; store online evidence in the existing authenticated Supabase attachment path.
 - [x] Verify engine and media flows, both workbook mappings, full suite (430/430), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). People must still confirm the bird is recognizable and remains in frame; the app enforces duration and records attestation but does not inspect video content. Native phone camera playback and hosted/cellular storage remain unverified.
+
+### Active implementation slice: Curse of the Mediocre Travel Agent
+
+- [x] Import the scale requirements in both workbook profiles: 402/402/805 m, 5/5/10 minutes, and a 3-photo team minimum; keep printed miles canonical where the scan's metric row conflicts.
+- [x] Validate every seeker's fresh phone fix and per-player transit attestation before the hider starts the trip; continuously track destination presence and reset that seeker's timer when they leave the radius or report transit/station.
+- [x] Require new public camera photos and a physical souvenir before completion, block questions during the trip, and award the scale bonus once if the souvenir is reported lost before capture.
+- [x] Add hider destination/public-access attestation and role-specific seeker transit, photo, souvenir, and completion controls on each phone.
+- [x] Verify clean/legacy imports, engine authorization, timer reset, photo/souvenir gates, and scoring; full suite (432/432), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` pass (2026-10-25).
+- [ ] Replace manual destination latitude/longitude entry with a map pin picker. Public access and possession of the physical souvenir remain player-attested; location tracking is foreground/device dependent.
