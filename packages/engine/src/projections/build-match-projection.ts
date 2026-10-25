@@ -520,6 +520,7 @@ export function buildMatchProjection(
     visibleTimers,
     activeCardResolution,
     bridgeTrollChallenge: aggregate.bridgeTrollChallenge,
+    seekerOffTransitRestriction: aggregate.seekerOffTransitRestriction,
     disabledQuestionTemplateIds: aggregate.disabledQuestionTemplateIds ?? [],
     disabledQuestionCategoryId: aggregate.disabledQuestionCategoryId,
     questionRewardDrawBonus:

@@ -298,6 +298,7 @@ export function reduceMatchAggregate(
         ),
         teams: Object.fromEntries(eventEnvelope.event.payload.teams.map((team) => [team.teamId, team])),
         hiderRotationOrder: eventEnvelope.event.payload.hiderRotationOrder,
+        seekerOffTransitRestriction: undefined,
         cardInstances: Object.fromEntries(
           eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
         ),
@@ -328,6 +329,7 @@ export function reduceMatchAggregate(
         questionInstances: {},
         activeQuestionInstanceId: undefined,
         activeCardResolution: undefined,
+        seekerOffTransitRestriction: undefined,
         disabledQuestionTemplateIds: [],
         disabledQuestionCategoryId: undefined,
         disabledQuestionCategorySourceCardInstanceId: undefined,
@@ -490,6 +492,32 @@ export function reduceMatchAggregate(
         bridgeTrollChallenge: {
           ...challenge,
           attestedAtByPlayerId
+        }
+      };
+    }
+    case 'seeker_off_transit_restriction_started':
+      return {
+        ...base,
+        seekerOffTransitRestriction: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt,
+          statusByPlayerId: {}
+        }
+      };
+    case 'seeker_transit_context_changed': {
+      const restriction = base.seekerOffTransitRestriction;
+      if (restriction?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        seekerOffTransitRestriction: {
+          ...restriction,
+          statusByPlayerId: {
+            ...restriction.statusByPlayerId,
+            [eventEnvelope.event.payload.playerId]: {
+              onTransitOrAtStation: eventEnvelope.event.payload.onTransitOrAtStation,
+              updatedAt: eventEnvelope.occurredAt
+            }
+          }
         }
       };
     }

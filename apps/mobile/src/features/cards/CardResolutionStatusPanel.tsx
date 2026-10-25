@@ -58,6 +58,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const questionSelectionRequired = props.resolution?.resolutionKind === 'disable_question_templates';
   const hangmanChallenge = props.resolution?.resolutionKind === 'hangman_challenge';
   const bridgeTrollChallenge = props.resolution?.resolutionKind === 'bridge_troll_challenge';
+  const seekerOffTransitChallenge = props.resolution?.resolutionKind === 'seeker_off_transit_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const canSubmit = props.canResolve &&
@@ -150,6 +151,14 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             <Text style={styles.sectionTitle}>BRIDGE TROLL</Text>
             <Text style={styles.copy}>
               Close this card window to activate the curse. Before the next question, every seeker must be under the same qualifying bridge and confirm from their own phone. The app will block the question until every seeker has a recent confirmation.
+            </Text>
+          </View>
+        ) : null}
+        {seekerOffTransitChallenge ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>URBAN EXPLORER</Text>
+            <Text style={styles.copy}>
+              Close this card window to activate the restriction. Until the hider run ends, each seeker must update their own status; questions remain blocked while anyone is on transit, on a station platform, or in a station building.
             </Text>
           </View>
         ) : null}

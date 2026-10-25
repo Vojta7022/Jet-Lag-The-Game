@@ -103,6 +103,8 @@ export type DomainEvent =
   | HangmanChallengeEndedEvent
   | BridgeTrollChallengeStartedEvent
   | BridgeTrollPositionChangedEvent
+  | SeekerOffTransitRestrictionStartedEvent
+  | SeekerTransitContextChangedEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -424,7 +426,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -470,6 +472,16 @@ export interface BridgeTrollChallengeStartedEvent {
 export interface BridgeTrollPositionChangedEvent {
   type: 'bridge_troll_position_changed';
   payload: { sourceCardInstanceId: string; playerId: string; underBridge: boolean };
+}
+
+export interface SeekerOffTransitRestrictionStartedEvent {
+  type: 'seeker_off_transit_restriction_started';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface SeekerTransitContextChangedEvent {
+  type: 'seeker_transit_context_changed';
+  payload: { sourceCardInstanceId: string; playerId: string; onTransitOrAtStation: boolean };
 }
 
 export interface QuestionTemplatesDisabledEvent {

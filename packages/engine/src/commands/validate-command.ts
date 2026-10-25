@@ -831,6 +831,18 @@ export function validateCommandEnvelope(
           return [error(envelope.command.type, 'BRIDGE_TROLL_ATTESTATIONS_REQUIRED', 'Every seeker must confirm they are under a bridge before the next question.')];
         }
       }
+      if (aggregate.seekerOffTransitRestriction) {
+        const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+        const statuses = seekerTeam?.memberPlayerIds.map((playerId) =>
+          aggregate.seekerOffTransitRestriction!.statusByPlayerId[playerId]
+        ) ?? [];
+        if (!seekerTeam?.memberPlayerIds.length || statuses.some((status) => !status)) {
+          return [error(envelope.command.type, 'URBAN_EXPLORER_ATTESTATIONS_REQUIRED', 'Each seeker must confirm they are off transit and outside a train station.')];
+        }
+        if (statuses.some((status) => status?.onTransitOrAtStation)) {
+          return [error(envelope.command.type, 'URBAN_EXPLORER_TRANSIT_RESTRICTED', 'Seekers cannot ask while anyone is on transit or at a train station.')];
+        }
+      }
 
       const category = getQuestionCategory(contentPack, template.categoryId);
       if (!category) {
@@ -1575,6 +1587,22 @@ export function validateCommandEnvelope(
       const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
       if (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId)) {
         return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must confirm their own position from their seeker account.')];
+      }
+      return [];
+    }
+    case 'set_seeker_transit_context': {
+      const restriction = aggregate.seekerOffTransitRestriction;
+      if (restriction?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'URBAN_EXPLORER_NOT_ACTIVE', 'The Urban Explorer restriction is not active.')];
+      }
+      if (typeof envelope.command.payload.onTransitOrAtStation !== 'boolean') {
+        return [error(envelope.command.type, 'URBAN_EXPLORER_STATUS_INVALID', 'Choose whether you are on transit or inside a train station.')];
+      }
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      if (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must update their own transit status from their seeker account.')];
       }
       return [];
     }

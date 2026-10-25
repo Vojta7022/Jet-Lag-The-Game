@@ -82,8 +82,8 @@
 - [x] Record each seeker's current under-bridge status in public match state and let the player revoke it if they leave.
 - [x] Activate the requirement when the hider resolves Bridge Troll and clear it only when the next question is accepted.
 - [x] Add player controls and role-specific status so every seeker can attest from their own phone and the hider can see readiness.
-- [x] Verify the printed p. 50 rule with focused engine/importer tests, the 388-test suite, mobile typecheck, Edge Function check, 14-step online smoke, and web/iOS/Android bundle exports. Physical bridge presence remains a player attestation because GPS cannot verify posture/structure.
-- [ ] Honor the other p. 50 setup rule: exclude Bridge Troll from the deck when the selected map has no bridges. The current slice enforces the curse after a draw but does not yet filter it at setup.
+- [x] Verify the printed p. 50 rule with focused engine/importer tests, the 392-test suite, mobile typecheck, Edge Function check, 14-step online smoke, and web bundle export. Physical bridge presence remains a player attestation because GPS cannot verify posture/structure.
+- [x] Honor the other p. 50 setup rule: host-confirm map bridge availability; exclude Bridge Troll from the draw deck when no bridges exist and preserve exile at every round reset. Unknown availability blocks match start when the pack contains Bridge Troll; changing the selected boundary requires a fresh confirmation. Verify match/projection persistence, scenario round trip, initial/round-reset deck behavior, and map-screen build (2026-10-25).
 
 ### Completed implementation slice: authority-backed Matching/Measuring
 
@@ -215,6 +215,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Extend `npm run online:smoke` through separate host/hider/seeker sessions, custom boundary setup, role assignment, seeker track visibility, hider-coordinate privacy, automatic Radar answer and map deduction, hider card draw/choice, found/scoring, and next-hider rotation. It uses synthetic GPS and host-advances hide phase; standard timer/native GPS/cellular field validation remain open (2026-10-25).
 - [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
 - [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects.
+- [x] Implement Urban Explorer as an assisted per-seeker transit/station status gate, preserve it until hider rotation, and reset it on the next round. Physical status remains player-attested. [base rulebook scan, printed p. 56; `tests/engine/cards.test.ts`, checked 2026-10-25]
 - [x] Import the scan-backed Move procedure, reject its use after endgame begins, and source the missing scale durations (Small 10, Medium 20, Large 60 minutes) from the community card transcription; retain provenance in the generated pack.
 - [x] Implement Move's scan-backed round flow: pause seeker actions, reveal the original station, discard the rest of the hider hand, let only the hider relocate to a different in-boundary station, require arrival before closing, and exclude the Move interval from final survival scoring.
 - [x] Enforce the scale-specific Move duration as an authority-side minimum, show a live countdown, and require the hider to arrive at a different station before closing the window. The scan/workbook omit the duration values; the generated pack records the secondary transcription source.

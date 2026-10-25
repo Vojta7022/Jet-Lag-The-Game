@@ -53,6 +53,7 @@ import {
 } from '../questions/index.ts';
 import { formatCountdown, useMatchTimingModel } from '../timers/index.ts';
 import { AppButton } from '../../ui/AppButton.tsx';
+import { FactList } from '../../ui/FactList.tsx';
 import { StateBanner } from '../../ui/StateBanner.tsx';
 import { colors } from '../../ui/theme.ts';
 
@@ -79,6 +80,13 @@ export function LiveMapInlineActionPanel() {
   const activeQuestionSubstate = projection?.seekPhaseSubstate ??
     (projection?.lifecycleState === 'endgame' ? 'ready' : undefined);
   const capabilities = getQuestionFlowCapabilities(viewerRole);
+  const seekerOffTransitRestriction = projection?.seekerOffTransitRestriction;
+  const seekerPlayers = projection?.players.filter((player) => player.role === 'seeker') ?? [];
+  const seekerTransitStatuses = seekerOffTransitRestriction?.statusByPlayerId ?? {};
+  const allSeekersOffTransit = Boolean(
+    seekerOffTransitRestriction && seekerPlayers.length > 0 &&
+    seekerPlayers.every((player) => seekerTransitStatuses[player.playerId]?.onTransitOrAtStation === false)
+  );
 
   const categoryViewModels = useMemo(
     () => buildQuestionCategoryViewModels(contentPack),
@@ -232,6 +240,7 @@ export function LiveMapInlineActionPanel() {
       capabilities.canAskQuestions &&
       readyTemplate &&
       inSeekOrEndgame &&
+      (!seekerOffTransitRestriction || allSeekersOffTransit) &&
       (activeQuestionSubstate === 'ready' || activeQuestionSubstate === 'awaiting_question_selection')
   );
   const canAnswerQuestion = Boolean(
@@ -400,6 +409,48 @@ export function LiveMapInlineActionPanel() {
             Choose any question available at this scale and send it without leaving the map.
           </Text>
         </View>
+        {seekerOffTransitRestriction ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>URBAN EXPLORER · CHECK TEAM STATUS</Text>
+            <Text style={styles.copy}>Every seeker must be off transit and clear of station platforms/buildings before the next question.</Text>
+            <FactList items={seekerPlayers.map((player) => {
+              const status = seekerTransitStatuses[player.playerId];
+              return {
+                label: player.displayName,
+                value: !status
+                  ? 'Needs a status check'
+                  : status.onTransitOrAtStation
+                    ? 'On transit / at station · blocked'
+                    : 'Off transit / station · ready'
+              };
+            })} />
+            {viewerRole === 'seeker' ? (() => {
+              const playerId = activeMatch?.recipient.playerId ?? '';
+              const status = seekerTransitStatuses[playerId];
+              return (
+                <AppButton
+                  label={!status
+                    ? 'Confirm I am clear of transit and station'
+                    : status.onTransitOrAtStation
+                      ? 'Confirm I am now clear of transit and station'
+                      : 'Update: I am now on transit or at a station'}
+                  tone="secondary"
+                  disabled={state.loadState === 'loading'}
+                  onPress={() => {
+                    if (!seekerOffTransitRestriction) return;
+                    void submitCommand({
+                      type: 'set_seeker_transit_context',
+                      payload: {
+                        sourceCardInstanceId: seekerOffTransitRestriction.sourceCardInstanceId,
+                        onTransitOrAtStation: status ? !status.onTransitOrAtStation : false
+                      }
+                    });
+                  }}
+                />
+              );
+            })() : null}
+          </View>
+        ) : null}
         <LiveMapInfoChips
           items={[
             { label: 'Clue type', value: selectedCategory.name, tone: 'accent' },

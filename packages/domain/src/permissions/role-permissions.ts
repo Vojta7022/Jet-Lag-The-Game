@@ -77,7 +77,8 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'play_card',
   'discard_card',
   'guess_hangman_letter',
-  'set_bridge_troll_position'
+  'set_bridge_troll_position',
+  'set_seeker_transit_context'
 ]);
 
 const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);

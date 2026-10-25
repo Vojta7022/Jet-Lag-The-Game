@@ -123,6 +123,10 @@ export function validateStateForCommand(
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Bridge position can only be confirmed while seekers are searching.')];
+    case 'set_seeker_transit_context':
+      return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Transit status can only be updated while seekers are searching.')];
     case 'ask_question':
       return isSeekPhaseState(aggregate, 'awaiting_question_selection') ||
         (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'awaiting_question_selection')

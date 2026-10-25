@@ -449,6 +449,12 @@ export function QuestionCenterScreen() {
     bridgeTrollSeekers.length > 0 &&
     bridgeTrollSeekers.every((player) => bridgeTrollAttestedIds.has(player.playerId))
   );
+  const seekerOffTransitRestriction = projection?.seekerOffTransitRestriction;
+  const seekerTransitStatuses = seekerOffTransitRestriction?.statusByPlayerId ?? {};
+  const allSeekersOffTransit = Boolean(
+    seekerOffTransitRestriction && bridgeTrollSeekers.length > 0 &&
+    bridgeTrollSeekers.every((player) => seekerTransitStatuses[player.playerId]?.onTransitOrAtStation === false)
+  );
   const canAskQuestion = Boolean(
     activeMatch &&
       capabilities.canAskQuestions &&
@@ -456,6 +462,7 @@ export function QuestionCenterScreen() {
       (!isQuestionDistanceChoice(readyTemplate) || parseChosenDistanceMeters(chosenDistanceDraft) !== undefined) &&
       !selectedQuestionIsDisabled &&
       (!bridgeTrollChallenge || bridgeTrollReady) &&
+      (!seekerOffTransitRestriction || allSeekersOffTransit) &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
   const canAnswerQuestion = Boolean(
@@ -810,6 +817,54 @@ export function QuestionCenterScreen() {
           ) : null}
           <Text style={styles.helper}>
             If a seeker leaves the bridge, update their status here. The app enforces that everyone is marked under the bridge when the next question is asked; your group still judges whether the structure qualifies as a bridge.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {seekerOffTransitRestriction ? (
+        <Panel
+          title="Curse of the Urban Explorer"
+          subtitle="For the rest of this hider’s run, questions cannot be asked while any seeker is riding transit or on a station platform or in a station building. Each seeker updates their own status."
+          tone="accent"
+        >
+          <FactList items={bridgeTrollSeekers.map((player) => {
+            const status = seekerTransitStatuses[player.playerId];
+            return {
+              label: player.displayName,
+              value: !status
+                ? 'Needs a status check'
+                : status.onTransitOrAtStation
+                  ? 'On transit / at station · questions blocked'
+                  : 'Off transit and station · confirmed'
+            };
+          })} />
+          {viewerRole === 'seeker' ? (() => {
+            const playerId = activeMatch?.recipient.playerId ?? '';
+            const status = seekerTransitStatuses[playerId];
+            return (
+              <AppButton
+                label={!status
+                  ? 'Confirm I am off transit and away from the platform/station building'
+                  : status.onTransitOrAtStation
+                    ? 'Confirm I am now off transit and away from the platform/station building'
+                    : 'Update: I am now on transit or inside a station'}
+                tone="secondary"
+                disabled={state.loadState === 'loading'}
+                onPress={() => {
+                  if (!seekerOffTransitRestriction) return;
+                  void submitCommand({
+                    type: 'set_seeker_transit_context',
+                    payload: {
+                      sourceCardInstanceId: seekerOffTransitRestriction.sourceCardInstanceId,
+                      onTransitOrAtStation: status ? !status.onTransitOrAtStation : false
+                    }
+                  });
+                }}
+              />
+            );
+          })() : null}
+          <Text style={styles.helper}>
+            Update your status whenever your situation changes. The app requires every seeker to confirm they are off transit and clear of station platforms/buildings before allowing a question; your group remains responsible for truthful physical-world reports.
           </Text>
         </Panel>
       ) : null}

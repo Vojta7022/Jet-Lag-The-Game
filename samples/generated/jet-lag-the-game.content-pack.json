@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T14:50:23.788Z",
+    "importedAt": "2026-10-25T15:28:34.280Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -2834,7 +2834,7 @@
       "shortName": "Curse Of The Urban Explorer",
       "description": "For the rest of the run seekers cannot ask question when they are on transit or in a train station",
       "rulebookGuidanceText": "Questions already asked while seekers were on transit still need an answer. During the curse, seekers cannot ask from a platform or from a building associated with the transit station.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -2844,18 +2844,19 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "seeker_off_transit_challenge",
           "description": "For the rest of the run seekers cannot ask question when they are on transit or in a train station",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "For the rest of the run seekers cannot ask question when they are on transit or in a train station",
           "payload": {
-            "workbookName": "Curse Of The Urban Explorer"
+            "requiredAttestations": "all_seekers_off_transit_and_station",
+            "duration": "hider_run"
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2866,7 +2867,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

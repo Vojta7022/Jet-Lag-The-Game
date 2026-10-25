@@ -190,6 +190,66 @@ test('Bridge Troll blocks the next question until each seeker confirms they are 
   assert.equal(result.aggregate.bridgeTrollChallenge, undefined);
 });
 
+test('Urban Explorer blocks questions until every seeker confirms they are off transit and out of train stations', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((item) => item.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
+  assert.ok(card);
+  card.castingCost = [];
+  card.effects = card.effects.map((effect) => ({
+    ...effect,
+    effectType: 'seeker_off_transit_challenge',
+    automationLevel: 'assisted'
+  }));
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.players['seeker-2'] = {
+    playerId: 'seeker-2', displayName: 'Second Seeker', connectionState: 'connected', joinedAt: aggregate.createdAt
+  };
+  aggregate.roleAssignments['seeker-2'] = { playerId: 'seeker-2', role: 'seeker', teamId: 'team-seeker' };
+  aggregate.teams['team-seeker']!.memberPlayerIds.push('seeker-2');
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'seeker_off_transit_challenge');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 71), contentPack).aggregate;
+  assert.equal(aggregate.seekerOffTransitRestriction?.sourceCardInstanceId, cardInstanceId);
+
+  const askQuestion = (step: number) => {
+    const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'begin_question_prompt', payload: {} }, step), contentPack).aggregate;
+    return executeCommand(prompted, makeEnvelope(aggregate.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'ask_question', payload: {
+        questionInstanceId: `question:urban-explorer:${step}`,
+        templateId: 'matching-commercial-airport',
+        targetTeamId: 'team-hider'
+      } }, step + 1), contentPack).aggregate;
+  };
+
+  assert.throws(() => askQuestion(72), /each seeker must confirm they are off transit and outside a train station/i);
+  const setStatus = (playerId: string, onTransitOrAtStation: boolean, step: number) => executeCommand(aggregate,
+    makeEnvelope(aggregate.matchId,
+      { actorId: playerId, playerId, role: 'seeker' },
+      { type: 'set_seeker_transit_context', payload: { sourceCardInstanceId: cardInstanceId, onTransitOrAtStation } } as never,
+      step), contentPack);
+  aggregate = setStatus('seeker-1', false, 74).aggregate;
+  assert.throws(() => askQuestion(75), /each seeker must confirm they are off transit and outside a train station/i);
+  aggregate = setStatus('seeker-2', true, 77).aggregate;
+  assert.throws(() => askQuestion(78), /seekers cannot ask while anyone is on transit or at a train station/i);
+  aggregate = setStatus('seeker-2', false, 80).aggregate;
+
+  const hiderProjection = buildMatchProjection(aggregate, contentPack, {
+    scope: 'team_private', viewerPlayerId: 'hider-1', viewerTeamId: 'team-hider', viewerRole: 'hider'
+  });
+  assert.equal(hiderProjection.seekerOffTransitRestriction?.statusByPlayerId['seeker-1']?.onTransitOrAtStation, false);
+  assert.equal(hiderProjection.seekerOffTransitRestriction?.statusByPlayerId['seeker-2']?.onTransitOrAtStation, false);
+  assert.equal(askQuestion(82).lifecycleState, 'seek_phase');
+});
+
 test('Hidden Hangman tracks a private five-letter word and public seeker guesses until solved', () => {
   const contentPack = loadEngineTestContentPack();
   const hangmanDefinition = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-hidden-hangman');

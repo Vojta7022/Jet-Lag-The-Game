@@ -1542,6 +1542,13 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'seeker_off_transit_challenge') {
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+          type: 'seeker_off_transit_restriction_started',
+          payload: { sourceCardInstanceId: activeResolution.sourceCardInstanceId }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'move' && aggregate!.lifecycleState === 'hide_phase') {
         const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide' && timer.status === 'paused');
         if (hideTimer) {
@@ -1612,6 +1619,15 @@ function eventsForCommand(
           sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
           playerId: envelope.actor.playerId!,
           underBridge: envelope.command.payload.underBridge
+        }
+      })];
+    case 'set_seeker_transit_context':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'seeker_transit_context_changed',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          playerId: envelope.actor.playerId!,
+          onTransitOrAtStation: envelope.command.payload.onTransitOrAtStation
         }
       })];
     case 'complete_cooldown':

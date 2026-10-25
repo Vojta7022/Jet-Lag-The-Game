@@ -408,7 +408,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -444,6 +444,12 @@ export interface BridgeTrollChallengeModel {
   attestedAtByPlayerId: Record<string, string>;
 }
 
+export interface SeekerOffTransitRestrictionModel {
+  sourceCardInstanceId: string;
+  activatedAt: string;
+  statusByPlayerId: Record<string, { onTransitOrAtStation: boolean; updatedAt: string }>;
+}
+
 export interface MatchAggregate {
   matchId: string;
   mode: MatchMode;
@@ -474,6 +480,7 @@ export interface MatchAggregate {
   activeQuestionInstanceId?: string;
   activeCardResolution?: CardResolutionWindow;
   bridgeTrollChallenge?: BridgeTrollChallengeModel;
+  seekerOffTransitRestriction?: SeekerOffTransitRestrictionModel;
   hiderHandLimitBonus?: number;
   disabledQuestionTemplateIds?: string[];
   disabledQuestionCategoryId?: string;
