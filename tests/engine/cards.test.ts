@@ -14,6 +14,19 @@ import {
   setupMatchToSeekReady
 } from './helpers.ts';
 
+test('every standard card has a resolution path, with only Duplicate and Blank using the generic path', () => {
+  const contentPack = loadEngineTestContentPack();
+  const genericPlanCardNames: string[] = [];
+
+  for (const card of contentPack.cards) {
+    if (card.deckId !== 'hider-main') continue;
+    const plan = buildCardResolutionPlan(card, 'small');
+    if (plan.kind === 'manual_only') genericPlanCardNames.push(card.name);
+  }
+
+  assert.deepEqual(genericPlanCardNames.sort(), ['Blank', 'Duplicate']);
+});
+
 test('Endless Tumble has a typed roll challenge plan and the selected-scale hit bonus', () => {
   const contentPack = loadEngineTestContentPack();
   const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('endless tumble'));

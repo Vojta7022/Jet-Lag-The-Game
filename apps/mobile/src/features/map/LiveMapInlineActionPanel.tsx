@@ -34,6 +34,7 @@ import {
 import {
   appendAttachmentIdToDraft,
   buildAnswerPayload,
+  buildAskQuestionPayload,
   buildQuestionCategoryViewModels,
   buildConstraintResolutionMetadata,
   chooseConstraintIdForQuestion,
@@ -51,6 +52,8 @@ import {
   formatHiderCardReward,
   formatQuestionScaleSet,
   formatTimerPolicyLabel,
+  isQuestionDistanceChoice,
+  requiresMovingTransitConfirmation,
   getQuestionFlowCapabilities,
   getSeedRegionFeatureData,
   QuestionAnswerComposer,
@@ -112,6 +115,7 @@ export function LiveMapInlineActionPanel() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(
     categoryViewModels[0]?.templates[0]?.templateId
   );
+  const [confirmedMovingTransit, setConfirmedMovingTransit] = useState(false);
   const selectedCategory = findQuestionCategory(contentPack, selectedCategoryId);
   const availableTemplates = filterTemplatesForScale(
     categoryViewModels.find((entry) => entry.category.categoryId === selectedCategoryId)?.templates ?? [],
@@ -140,6 +144,8 @@ export function LiveMapInlineActionPanel() {
   const readyTemplate = readyTemplates.find((template) => template.templateId === selectedTemplateId)
     ?? readyTemplates[0]
     ?? selectedTemplate;
+  const needsMovingTransitConfirmation = requiresMovingTransitConfirmation(readyTemplate);
+  const needsQuestionCenterForDetails = isQuestionDistanceChoice(readyTemplate);
 
   useEffect(() => {
     if (!selectedCategoryId && categoryViewModels[0]) {
@@ -285,6 +291,16 @@ export function LiveMapInlineActionPanel() {
       return;
     }
 
+    const questionPayload = buildAskQuestionPayload({
+      questionInstanceId: `question:${createUuid()}`,
+      template: readyTemplate,
+      targetTeamId: projection.teams.find((team) => team.side === 'hider')?.teamId ?? 'team-hider',
+      chosenDistanceDraft: '',
+      confirmedMovingTransit: needsMovingTransitConfirmation ? confirmedMovingTransit : undefined,
+      ransomNoteText: projection.ransomNoteChallenge?.acceptedNoteText
+    });
+    if (!questionPayload) return;
+
     const commands = [];
     if (activeQuestionSubstate === 'ready') {
       commands.push({
@@ -295,16 +311,10 @@ export function LiveMapInlineActionPanel() {
 
     commands.push({
       type: 'ask_question' as const,
-      payload: {
-        questionInstanceId: `question:${createUuid()}`,
-        templateId: readyTemplate.templateId,
-        targetTeamId: projection.teams.find((team) => team.side === 'hider')?.teamId ?? 'team-hider',
-        ...(projection.ransomNoteChallenge?.acceptedNoteText
-          ? { ransomNoteText: projection.ransomNoteChallenge.acceptedNoteText }
-          : {})
-      }
+      payload: questionPayload
     });
 
+    setConfirmedMovingTransit(false);
     void submitCommands(commands);
   };
 
@@ -644,7 +654,10 @@ export function LiveMapInlineActionPanel() {
           categories={categoryViewModels}
           selectedCategoryId={selectedCategoryId}
           selectedScale={selectedScale}
-          onSelect={setSelectedCategoryId}
+          onSelect={(categoryId) => {
+            setConfirmedMovingTransit(false);
+            setSelectedCategoryId(categoryId);
+          }}
         />
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Investigation book questions</Text>
@@ -661,6 +674,7 @@ export function LiveMapInlineActionPanel() {
               })
             }
             onSelect={(templateId) => {
+              setConfirmedMovingTransit(false);
               setSelectedTemplateId(templateId);
             }}
           />
@@ -687,6 +701,23 @@ export function LiveMapInlineActionPanel() {
               }
             ]}
           />
+          {needsMovingTransitConfirmation ? (
+            <>
+              <StateBanner
+                tone="warning"
+                title="Only ask while riding moving transit"
+                detail="The seekers must be aboard moving transit. The hider answers Yes only if this service stops at their nearest station; passing through without stopping is No."
+              />
+              <AppButton
+                label={confirmedMovingTransit ? 'Confirmed: riding moving transit' : 'Confirm seekers are riding moving transit'}
+                tone={confirmedMovingTransit ? 'primary' : 'secondary'}
+                onPress={() => setConfirmedMovingTransit(true)}
+              />
+            </>
+          ) : null}
+          {needsQuestionCenterForDetails ? (
+            <Text style={styles.helper}>Open Full Clue Review to choose the custom Radar distance before asking.</Text>
+          ) : null}
           {previewFeatureData.length > 0 ? (
             <Text style={styles.helper}>
               This map already has matching place data for this clue, so it can do more than record evidence.
@@ -696,7 +727,7 @@ export function LiveMapInlineActionPanel() {
             <AppButton
               label="Ask This Clue"
               onPress={handleAskQuestion}
-              disabled={!canAskQuestion || state.loadState === 'loading'}
+              disabled={!canAskQuestion || state.loadState === 'loading' || (needsMovingTransitConfirmation && !confirmedMovingTransit) || needsQuestionCenterForDetails}
             />
             <AppButton
               label="Full Clue Review"

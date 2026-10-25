@@ -53,6 +53,10 @@ export function buildAskQuestionPayload(args: {
   confirmedMovingTransit?: boolean;
   ransomNoteText?: string;
 }): AskQuestionCommand['payload'] | undefined {
+  const requiresMovingTransitConfirmation = (args.template.featureClassRefs ?? [])
+    .some((feature) => feature.featureClassId === 'transit-line');
+  if (requiresMovingTransitConfirmation && args.confirmedMovingTransit !== true) return undefined;
+
   const chosenDistanceMeters = isQuestionDistanceChoice(args.template)
     ? parseChosenDistanceMeters(args.chosenDistanceDraft)
     : undefined;

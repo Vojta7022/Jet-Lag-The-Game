@@ -82,6 +82,22 @@ test('Transit Line ask payload preserves the seeker moving-transit confirmation'
   assert.equal(payload?.confirmedMovingTransit, true);
 });
 
+test('Transit Line cannot be submitted from any question entry point without moving-transit confirmation', () => {
+  const contentPack = loadContentPack();
+  const transitLine = contentPack.questionTemplates.find((template) => template.templateId === 'matching-transit-line');
+  assert.ok(transitLine);
+
+  for (const confirmedMovingTransit of [undefined, false]) {
+    assert.equal(buildAskQuestionPayload({
+      questionInstanceId: 'question:transit-needs-confirmation',
+      template: transitLine!,
+      targetTeamId: 'team-hider',
+      chosenDistanceDraft: '',
+      confirmedMovingTransit
+    }), undefined);
+  }
+});
+
 test('default referee rules match printed scale timers, radius, answer windows, and no cooldown', () => {
   const contentPack = loadContentPack();
   const ruleset = contentPack.rulesets.find((entry) => entry.rulesetId === 'jet-lag-home-game-base');
