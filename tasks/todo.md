@@ -140,6 +140,14 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Verify provider, polygon distance, automatic answer/map constraint, and mobile guidance tests; full suite passes (322), mobile typecheck passes, and `git diff --check` is clean. The first full-suite attempt lacked `openpyxl` in the shell environment; rerunning with `PYTHONPATH=temp/deps` passed (2026-10-25).
 - [ ] Verify a bounded regional water query against live Overpass; attempted Máchovo jezero query timed out (2026-10-25), so no live coverage claim is made.
 
+### Partial implementation slice: Coastline Measuring
+
+- [x] Load bounded OSM `natural=coastline` ways as line geometry; use the same nearest mapped shoreline for the automatic closer/further answer and approximate map deduction.
+- [x] Add player guidance that mapped ocean coastline is only part of the scanned definition; great-lake shores and waterway connections of at least 2 km remain outside automatic coverage.
+- [x] Verify provider clipping, line geometry, automatic answer/map update, and role guidance with fixture tests; full suite passes (325), mobile typecheck passes, and `git diff --check` is clean (2026-10-25).
+- [ ] Model and verify great-lake shorelines plus connected waterways at least 2 km wide; retain manual handling until the complete printed target can be represented.
+- [ ] Verify coastline data against a live coastal region. No live Overpass query was run for this slice (2026-10-25).
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.

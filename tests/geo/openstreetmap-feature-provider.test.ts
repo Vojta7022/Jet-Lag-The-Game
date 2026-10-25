@@ -262,6 +262,42 @@ test('OpenStreetMap water provider refuses automatic data when a named area boun
   assert.equal(dataset, undefined);
 });
 
+test('OpenStreetMap provider loads coastline ways as lines clipped to the playable region', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [
+        {
+          type: 'way', id: 501, nodes: [1, 2, 3],
+          geometry: [{ lon: 0.2, lat: 0.1 }, { lon: 0.5, lat: 0.1 }, { lon: 0.8, lat: 0.1 }],
+          tags: { natural: 'coastline' }
+        },
+        {
+          type: 'way', id: 502, nodes: [4, 5],
+          geometry: [{ lon: 2, lat: 2 }, { lon: 3, lat: 3 }],
+          tags: { natural: 'coastline' }
+        }
+      ] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-coastline'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.ok(dataset);
+  assert.equal(dataset.sourceVersion, 'overpass-question-features-v6');
+  assert.match(submittedQuery, /way\["natural"="coastline"\]/);
+  assert.equal(dataset.features.length, 1);
+  assert.equal(dataset.features[0]?.featureClassId, 'a-coastline');
+  assert.equal(dataset.features[0]?.geometrySupport, 'line');
+  assert.deepEqual(dataset.features[0]?.geometry, {
+    type: 'LineString', coordinates: [[0.2, 0.1], [0.5, 0.1], [0.8, 0.1]]
+  });
+});
+
 test('OpenStreetMap provider maps the printed Tentacles place classes and leaves metro lines unsupported', async () => {
   const submittedQueries: string[] = [];
   const provider = new OpenStreetMapQuestionFeatureProvider({

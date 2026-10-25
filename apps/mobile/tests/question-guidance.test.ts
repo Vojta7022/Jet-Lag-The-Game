@@ -346,6 +346,28 @@ test('question guidance describes named water-shape Measuring and excludes swimm
   assert.match(describeExpectedAnswerGuidance(template, category), /swimming pools/i);
 });
 
+test('question guidance limits automatic coastline Measuring to mapped ocean shoreline', () => {
+  const category = createCategory({
+    categoryId: 'measuring',
+    name: 'Measuring',
+    resolverKind: 'comparative_distance',
+    promptTemplate: 'Compared to me, are you closer to or further from _____?',
+    defaultConstraintRefs: ['comparative-distance']
+  });
+  const template = createTemplate({
+    templateId: 'measuring-a-coastline',
+    categoryId: 'measuring',
+    name: 'A Coastline',
+    featureClassRefs: [{ featureClassId: 'a-coastline', label: 'A Coastline', rawLabel: 'A Coastline' }],
+    constraintRefs: ['comparative-distance']
+  });
+
+  const guidance = describeExpectedAnswerGuidance(template, category);
+  assert.match(guidance, /mapped ocean[- ]coastline/i);
+  assert.match(guidance, /great-lake shorelines or waterways at least 2 km wide/i);
+  assert.match(guidance, /manual/i);
+});
+
 test('Tentacles guidance explains the seeker-anchored reach and automatic closest-place answer', () => {
   const category = createCategory({
     categoryId: 'tentacles',

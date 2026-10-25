@@ -41,7 +41,7 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-question-features-v5';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v6';
 const OSM_REQUEST_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   accept: 'application/json',
@@ -52,6 +52,7 @@ const ADMIN_BORDER_FEATURE_CLASS = /^a-([1-4])(?:st|nd|rd|th)-admin-border-/;
 const INTERNATIONAL_BORDER_FEATURE_CLASS = 'an-international-border';
 const STREET_PATH_FEATURE_CLASS = 'street-or-path';
 const BODY_OF_WATER_FEATURE_CLASS = 'a-body-of-water';
+const COASTLINE_FEATURE_CLASS = 'a-coastline';
 const EXCLUDED_POOL_TAGS = new Set(['pool', 'swimming_pool']);
 const NON_WALKABLE_OR_INACTIVE_HIGHWAYS = new Set([
   'abandoned', 'construction', 'corridor', 'elevator', 'planned', 'platform', 'proposed', 'razed'
@@ -103,6 +104,7 @@ export function hasOpenStreetMapFeatureClass(featureClassId: string): boolean {
   return Object.hasOwn(SELECTORS_BY_FEATURE_CLASS, featureClassId) ||
     featureClassId === STREET_PATH_FEATURE_CLASS ||
     featureClassId === BODY_OF_WATER_FEATURE_CLASS ||
+    featureClassId === COASTLINE_FEATURE_CLASS ||
     featureClassId === INTERNATIONAL_BORDER_FEATURE_CLASS ||
     ADMIN_FEATURE_CLASS_IDS.test(featureClassId) || ADMIN_BORDER_FEATURE_CLASS.test(featureClassId);
 }
@@ -143,6 +145,10 @@ function bodyOfWaterQueryFor(box: NonNullable<ReturnType<typeof geometryBounding
   const clauses = selectors.flatMap(([key, value]) => ['way', 'relation'].map((element) =>
     `${element}["${key}"="${value}"]["name"]${bbox};`));
   return `[out:json][timeout:25];(${clauses.join('')});out geom tags;`;
+}
+
+function coastlineQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
+  return `[out:json][timeout:25];way["natural"="coastline"](${box.minLat},${box.minLon},${box.maxLat},${box.maxLon});out body geom tags;`;
 }
 
 interface OverpassElement {
@@ -241,6 +247,31 @@ function bodyOfWaterFeatures(
     });
   }
   return { features, complete };
+}
+
+function coastlineFeatures(elements: unknown[], regionGeometry: GeoJsonGeometryModel): QuestionFeatureRecordModel[] {
+  const features: QuestionFeatureRecordModel[] = [];
+  for (const raw of elements) {
+    if (!raw || typeof raw !== 'object') continue;
+    const element = raw as OverpassElement;
+    if (element.type !== 'way' || typeof element.id !== 'number' || element.tags?.natural !== 'coastline') continue;
+    const coordinates = geometryCoordinates(element.geometry);
+    if (coordinates.length < 2) continue;
+    const geometry: GeoJsonGeometryModel = { type: 'LineString', coordinates };
+    if (!lineGeometryIntersectsPolygon(geometry, regionGeometry)) continue;
+    features.push({
+      featureId: `osm:way/${element.id}`,
+      featureClassId: COASTLINE_FEATURE_CLASS,
+      label: 'Mapped coastline',
+      longitude: coordinates[0]![0],
+      latitude: coordinates[0]![1],
+      geometry,
+      geometrySupport: 'line',
+      coverage: 'approximate',
+      properties: { osmType: 'way', osmId: element.id, natural: 'coastline' }
+    });
+  }
+  return features;
 }
 
 interface StreetWay {
@@ -494,6 +525,22 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
     }
 
     for (const featureClassId of featureClassIds) {
+      if (featureClassId === COASTLINE_FEATURE_CLASS) {
+        const response = await this.fetcher(this.endpoint, {
+          method: 'POST',
+          headers: OSM_REQUEST_HEADERS,
+          body: `data=${encodeURIComponent(coastlineQueryFor(box))}`,
+          signal: AbortSignal.timeout(30_000)
+        });
+        if (!response.ok) throw new Error(`OpenStreetMap coastline lookup failed with HTTP ${response.status}.`);
+        const raw = await response.text();
+        if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap coastline data exceeds the 8 MB safety limit.');
+        const parsed = JSON.parse(raw) as { elements?: unknown };
+        if (!Array.isArray(parsed.elements)) throw new Error('OpenStreetMap coastline response did not contain elements.');
+        if (parsed.elements.length > this.maxElements) throw new Error(`OpenStreetMap returned more than ${this.maxElements} coastline segments for this question.`);
+        for (const feature of coastlineFeatures(parsed.elements, request.regionGeometry)) featuresById.set(feature.featureId, feature);
+        continue;
+      }
       if (featureClassId === BODY_OF_WATER_FEATURE_CLASS) {
         const response = await this.fetcher(this.endpoint, {
           method: 'POST',
@@ -555,7 +602,8 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
     if (featureClassIds.every((featureClassId) =>
       !SELECTORS_BY_FEATURE_CLASS[featureClassId] && !ADMIN_FEATURE_CLASS_IDS.test(featureClassId) &&
       !ADMIN_BORDER_FEATURE_CLASS.test(featureClassId) && featureClassId !== STREET_PATH_FEATURE_CLASS &&
-      featureClassId !== INTERNATIONAL_BORDER_FEATURE_CLASS && featureClassId !== BODY_OF_WATER_FEATURE_CLASS)) return undefined;
+      featureClassId !== INTERNATIONAL_BORDER_FEATURE_CLASS && featureClassId !== BODY_OF_WATER_FEATURE_CLASS &&
+      featureClassId !== COASTLINE_FEATURE_CLASS)) return undefined;
     return {
       source: 'OpenStreetMap',
       sourceUrl: OSM_COPYRIGHT_URL,

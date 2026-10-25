@@ -222,6 +222,9 @@ export function describeTemplateSupport(args: {
         if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-body-of-water')) {
           return 'The app compares fresh player locations to mapped named water shapes when connected; swimming pools and incomplete shapes stay out of automatic answers';
         }
+        if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-coastline')) {
+          return 'The app compares fresh player locations to mapped ocean-coastline lines when connected; great-lake shores and qualifying wide waterways still need a manual ruling';
+        }
         if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'an-international-border')) {
           return 'The app compares fresh player locations to mapped country borders, including enclave boundaries, when connected; missing or incomplete border data stays manual';
         }
