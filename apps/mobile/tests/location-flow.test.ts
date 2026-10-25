@@ -13,6 +13,7 @@ import {
   buildLiveLocationStatusModel,
   classifyLocationFreshness,
   describeLocationSampleAge,
+  normalizeDeviceLocationSample,
   shouldAutomaticallyShareLocation,
   canSendSingleLocationUpdate,
   buildLocationUpdateCommand,
@@ -22,6 +23,46 @@ import {
 } from '../src/features/location/location-state.ts';
 import { buildMapOverlayModel } from '../src/features/map/map-overlays.ts';
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
+
+test('location update commands preserve altitude and vertical accuracy for Sea Level clues', () => {
+  const command = buildLocationUpdateCommand({
+    latitude: 50.08,
+    longitude: 14.42,
+    accuracyMeters: 8,
+    altitudeMeters: 235.4,
+    altitudeAccuracyMeters: 6.2,
+    altitudeReference: 'wgs84_ellipsoid',
+    recordedAt: '2026-01-01T00:00:00.000Z',
+    source: 'device'
+  });
+  assert.equal(command.type, 'update_location');
+  assert.equal(command.payload.altitudeMeters, 235.4);
+  assert.equal(command.payload.altitudeAccuracyMeters, 6.2);
+  assert.equal(command.payload.altitudeReference, 'wgs84_ellipsoid');
+});
+
+test('device altitude normalization retains vertical datum, accuracy, and sample time', () => {
+  const sample = normalizeDeviceLocationSample({
+    coords: {
+      latitude: 50.08,
+      longitude: 14.42,
+      accuracy: 8,
+      altitude: 235.4,
+      altitudeAccuracy: 6.2
+    },
+    timestamp: Date.parse('2026-01-01T00:00:03.000Z')
+  });
+  assert.deepEqual(sample, {
+    latitude: 50.08,
+    longitude: 14.42,
+    accuracyMeters: 8,
+    altitudeMeters: 235.4,
+    altitudeAccuracyMeters: 6.2,
+    altitudeReference: 'wgs84_ellipsoid',
+    recordedAt: '2026-01-01T00:00:03.000Z',
+    source: 'device'
+  });
+});
 
 const generatedPackPath = fileURLToPath(
   new URL('../../../samples/generated/jet-lag-the-game.content-pack.json', import.meta.url)

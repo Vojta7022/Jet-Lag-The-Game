@@ -397,6 +397,9 @@ export function reduceMatchAggregate(
             latitude: eventEnvelope.event.payload.latitude,
             longitude: eventEnvelope.event.payload.longitude,
             accuracyMeters: eventEnvelope.event.payload.accuracyMeters,
+            altitudeMeters: eventEnvelope.event.payload.altitudeMeters,
+            altitudeAccuracyMeters: eventEnvelope.event.payload.altitudeAccuracyMeters,
+            altitudeReference: eventEnvelope.event.payload.altitudeReference,
             source: eventEnvelope.event.payload.source ?? 'device',
             onTransit: eventEnvelope.event.payload.onTransit,
             recordedAt: eventEnvelope.occurredAt

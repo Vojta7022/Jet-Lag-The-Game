@@ -407,3 +407,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Require a seeker attestation before asking Transit Line and preserve it in the public question record/projection.
 - [x] Show the scan-faithful confirmation in the player UI, including the screenshot/share-stop-list recommendation. Keep the hider's answer manual because no active-service feed verifies a complete, direction-specific stop list for every region.
 - [x] Verify engine rejection/recording, question UI guidance/payload, full suite (359/359), mobile typecheck, and `git diff --check` (2026-10-25).
+
+### Active implementation slice: preserve device altitude for Sea Level
+
+- [x] Recheck the scan: Sea Level compares player altitude, and the book warns phone readings may be inaccurate (base rulebook printed p. 26).
+- [x] Capture altitude and vertical accuracy from foreground/background device fixes and carry them in authoritative location events.
+- [x] Keep altitude and its vertical datum in server-side samples without adding it to movement-track projections.
+- [x] Verify device-sample normalization, event/reducer persistence, projection privacy, full suite (363/363), mobile typecheck, and `git diff --check` (2026-10-25).
+- [ ] Implement a Sea Level resolver that fails closed when altitude uncertainty cannot distinguish the comparison; keep map deduction honest until terrain geometry is available.

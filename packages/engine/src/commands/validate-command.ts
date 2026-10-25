@@ -746,6 +746,17 @@ export function validateCommandEnvelope(
       ) {
         return [error(envelope.command.type, 'INVALID_LOCATION', 'Location updates require numeric latitude and longitude values.')];
       }
+      if (envelope.command.payload.altitudeMeters !== undefined && !Number.isFinite(envelope.command.payload.altitudeMeters)) {
+        return [error(envelope.command.type, 'INVALID_ALTITUDE', 'Altitude must be a finite number when supplied.')];
+      }
+      if (envelope.command.payload.altitudeAccuracyMeters !== undefined &&
+        (!Number.isFinite(envelope.command.payload.altitudeAccuracyMeters) || envelope.command.payload.altitudeAccuracyMeters < 0)) {
+        return [error(envelope.command.type, 'INVALID_ALTITUDE_ACCURACY', 'Altitude accuracy must be a finite, nonnegative number when supplied.')];
+      }
+      if (envelope.command.payload.altitudeReference !== undefined &&
+        !['wgs84_ellipsoid', 'mean_sea_level'].includes(envelope.command.payload.altitudeReference)) {
+        return [error(envelope.command.type, 'INVALID_ALTITUDE_REFERENCE', 'Altitude reference must identify a supported vertical datum.')];
+      }
 
       const actorRole = getPlayerRole(aggregate, envelope.actor.playerId);
       const isMoveResolution = aggregate.activeCardResolution?.resolutionKind === 'move';

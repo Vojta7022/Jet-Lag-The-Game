@@ -1,8 +1,55 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildMatchProjection } from '../../packages/engine/src/index.ts';
-import { loadEngineTestContentPack, recordLocationUpdate, setupMatchToSeekReady } from './helpers.ts';
+import { buildMatchProjection, executeCommand } from '../../packages/engine/src/index.ts';
+import { loadEngineTestContentPack, makeEnvelope, recordLocationUpdate, setupMatchToSeekReady } from './helpers.ts';
+
+test('authoritative location history preserves reported altitude and vertical accuracy', () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToSeekReady(contentPack);
+  const result = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
+  }, {
+    type: 'update_location',
+    payload: {
+      latitude: 50.081,
+      longitude: 14.424,
+      accuracyMeters: 8,
+      altitudeMeters: 235.4,
+      altitudeAccuracyMeters: 6.2,
+      altitudeReference: 'wgs84_ellipsoid',
+      source: 'device'
+    }
+  } as never, 69), contentPack);
+
+  const sample = result.aggregate.locationSamples.at(-1);
+  assert.equal(sample?.altitudeMeters, 235.4);
+  assert.equal(sample?.altitudeAccuracyMeters, 6.2);
+  assert.equal(sample?.altitudeReference, 'wgs84_ellipsoid');
+  const seekerProjection = buildMatchProjection(result.aggregate, contentPack, {
+    scope: 'team_private', viewerPlayerId: 'seeker-1', viewerTeamId: 'team-seeker', viewerRole: 'seeker'
+  });
+  const visibleSeekerSample = seekerProjection.visibleMovementTracks[0]?.latestSample;
+  assert.ok(visibleSeekerSample);
+  assert.equal('altitudeMeters' in visibleSeekerSample, false);
+});
+
+test('location updates reject nonfinite or negative altitude accuracy', () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToSeekReady(contentPack);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker'
+  }, {
+    type: 'update_location',
+    payload: {
+      latitude: 50.081,
+      longitude: 14.424,
+      altitudeMeters: 235.4,
+      altitudeAccuracyMeters: -1,
+      source: 'device'
+    }
+  } as never, 70), contentPack), /altitude accuracy/i);
+});
 
 test('movement projections include seeker breadcrumbs while keeping hider raw movement hidden', () => {
   const contentPack = loadEngineTestContentPack();

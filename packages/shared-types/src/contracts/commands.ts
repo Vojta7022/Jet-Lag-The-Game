@@ -210,6 +210,9 @@ export interface UpdateLocationCommand {
     latitude: number;
     longitude: number;
     accuracyMeters?: number;
+    altitudeMeters?: number;
+    altitudeAccuracyMeters?: number;
+    altitudeReference?: 'wgs84_ellipsoid' | 'mean_sea_level';
     source?: 'device' | 'manual' | 'system';
     onTransit?: boolean;
   };

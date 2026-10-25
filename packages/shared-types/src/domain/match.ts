@@ -280,6 +280,9 @@ export interface LocationSampleModel {
   latitude: number;
   longitude: number;
   accuracyMeters?: number;
+  altitudeMeters?: number;
+  altitudeAccuracyMeters?: number;
+  altitudeReference?: 'wgs84_ellipsoid' | 'mean_sea_level';
   source: LocationSourceKind;
   onTransit?: boolean;
   recordedAt: string;

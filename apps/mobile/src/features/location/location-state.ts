@@ -24,8 +24,34 @@ export interface DeviceLocationSample {
   latitude: number;
   longitude: number;
   accuracyMeters?: number;
+  altitudeMeters?: number;
+  altitudeAccuracyMeters?: number;
+  altitudeReference?: 'wgs84_ellipsoid' | 'mean_sea_level';
   recordedAt: string;
   source: 'device' | 'manual';
+}
+
+export function normalizeDeviceLocationSample(position: {
+  coords: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number | null;
+    altitude?: number | null;
+    altitudeAccuracy?: number | null;
+  };
+  timestamp?: number;
+}): DeviceLocationSample {
+  const altitudeMeters = position.coords.altitude ?? undefined;
+  return {
+    latitude: position.coords.latitude,
+    longitude: position.coords.longitude,
+    accuracyMeters: position.coords.accuracy ?? undefined,
+    altitudeMeters,
+    altitudeAccuracyMeters: position.coords.altitudeAccuracy ?? undefined,
+    altitudeReference: altitudeMeters === undefined ? undefined : 'wgs84_ellipsoid',
+    recordedAt: new Date(position.timestamp ?? Date.now()).toISOString(),
+    source: 'device'
+  };
 }
 
 export interface LocationShellState {
@@ -329,6 +355,9 @@ export function buildLocationUpdateCommand(sample: DeviceLocationSample): Domain
       latitude: sample.latitude,
       longitude: sample.longitude,
       accuracyMeters: sample.accuracyMeters,
+      altitudeMeters: sample.altitudeMeters,
+      altitudeAccuracyMeters: sample.altitudeAccuracyMeters,
+      altitudeReference: sample.altitudeReference,
       source: sample.source
     }
   };

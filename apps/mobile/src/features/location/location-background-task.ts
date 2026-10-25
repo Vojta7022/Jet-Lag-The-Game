@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as TaskManager from 'expo-task-manager';
 
-import type { DeviceLocationSample } from './location-state.ts';
+import { normalizeDeviceLocationSample, type DeviceLocationSample } from './location-state.ts';
 
 export const LOCATION_BACKGROUND_TASK_NAME = 'jet-lag-live-location-v1';
 
@@ -14,6 +14,8 @@ interface ExpoLocationPosition {
     latitude: number;
     longitude: number;
     accuracy?: number | null;
+    altitude?: number | null;
+    altitudeAccuracy?: number | null;
   };
   timestamp?: number;
 }
@@ -22,16 +24,6 @@ type BackgroundLocationSampleHandler = (sample: DeviceLocationSample) => void | 
 
 let backgroundSampleHandler: BackgroundLocationSampleHandler | undefined;
 let backgroundQueueScope: string | undefined;
-
-function toDeviceLocationSample(position: ExpoLocationPosition): DeviceLocationSample {
-  return {
-    latitude: position.coords.latitude,
-    longitude: position.coords.longitude,
-    accuracyMeters: position.coords.accuracy ?? undefined,
-    recordedAt: new Date(position.timestamp ?? Date.now()).toISOString(),
-    source: 'device'
-  };
-}
 
 async function enqueuePendingSample(sample: DeviceLocationSample) {
   try {
@@ -123,7 +115,7 @@ if (!TaskManager.isTaskDefined(LOCATION_BACKGROUND_TASK_NAME)) {
     async ({ data, error }) => {
       if (error || !data?.locations?.length) return;
       for (const position of data.locations) {
-        const sample = toDeviceLocationSample(position);
+        const sample = normalizeDeviceLocationSample(position);
         if (backgroundSampleHandler) {
           try {
             await backgroundSampleHandler(sample);

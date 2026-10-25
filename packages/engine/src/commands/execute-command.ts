@@ -335,6 +335,9 @@ function buildLocationSample(
     latitude: envelope.command.payload.latitude,
     longitude: envelope.command.payload.longitude,
     accuracyMeters: envelope.command.payload.accuracyMeters,
+    altitudeMeters: envelope.command.payload.altitudeMeters,
+    altitudeAccuracyMeters: envelope.command.payload.altitudeAccuracyMeters,
+    altitudeReference: envelope.command.payload.altitudeReference,
     source: envelope.command.payload.source ?? 'device',
     onTransit: envelope.command.payload.onTransit,
     recordedAt: envelope.occurredAt

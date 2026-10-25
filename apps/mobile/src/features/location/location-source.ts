@@ -1,8 +1,9 @@
-import type {
-  DeviceLocationSample,
-  LocationAvailabilityState,
-  LocationPermissionState,
-  LocationUpdateFrequencyMode
+import {
+  normalizeDeviceLocationSample,
+  type DeviceLocationSample,
+  type LocationAvailabilityState,
+  type LocationPermissionState,
+  type LocationUpdateFrequencyMode
 } from './location-state.ts';
 import {
   LOCATION_BACKGROUND_TASK_NAME,
@@ -17,6 +18,8 @@ interface ExpoLocationPosition {
     latitude: number;
     longitude: number;
     accuracy?: number | null;
+    altitude?: number | null;
+    altitudeAccuracy?: number | null;
   };
   timestamp?: number;
 }
@@ -180,13 +183,7 @@ export function createExpoLocationSource(): MobileLocationSource {
         accuracy
       });
 
-      return {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracyMeters: position.coords.accuracy ?? undefined,
-        recordedAt: new Date(position.timestamp ?? Date.now()).toISOString(),
-        source: 'device'
-      };
+      return normalizeDeviceLocationSample(position);
     },
     async watchPosition(mode, onSample) {
       const expoLocation = await loadExpoLocationModule();
@@ -202,13 +199,7 @@ export function createExpoLocationSource(): MobileLocationSource {
           distanceInterval: distanceForMode(mode) || undefined
         },
         (position: ExpoLocationPosition) => {
-          void onSample({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracyMeters: position.coords.accuracy ?? undefined,
-            recordedAt: new Date(position.timestamp ?? Date.now()).toISOString(),
-            source: 'device'
-          });
+          void onSample(normalizeDeviceLocationSample(position));
         }
       );
 
