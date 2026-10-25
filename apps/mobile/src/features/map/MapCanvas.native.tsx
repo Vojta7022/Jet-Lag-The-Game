@@ -67,7 +67,7 @@ function NativeMapSurface(props: MapCanvasProps) {
     [props.previewRegion, props.visibleMap]
   );
   const fitCoordinates = useMemo(() => {
-    const coordinates = overlayModel.overlays.flatMap((overlay) =>
+    const coordinates = overlayModel.overlays.filter((overlay) => overlay.overlayId !== 'custom:draft-drawn-mask').flatMap((overlay) =>
       collectGeometryCoordinates(overlay.geometry)
     );
 

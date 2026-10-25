@@ -20,6 +20,8 @@ import { MapScenarioWorkbench } from '../features/map/MapScenarioWorkbench.tsx';
 import { LiveEndgameControls } from '../features/map/LiveEndgameControls.tsx';
 import { ProtectedRoleHandoffPanel } from '../features/map/ProtectedRoleHandoffPanel.tsx';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
+import { buildDrawnExclusionRegion } from '../features/map/drawn-region.ts';
+import type { MapCoordinate } from '../features/map/map-geometry.ts';
 import { createMapScenario, decodeMapScenario, decodeMapScenarioJson, encodeMapScenario, encodeMapScenarioJson, type MapScenario, type MapScenarioCustomOverlay, type MapScenarioCustomStation } from '../features/map/map-scenarios.ts';
 import { loadSavedMapScenarios, saveMapScenario } from '../features/map/map-scenario-storage.ts';
 
@@ -171,6 +173,8 @@ export function MapScreen() {
   const [excludedRegions, setExcludedRegions] = useState<PlayableRegionCatalogEntry[]>(
     () => mapSetupDraft?.excludedRegions ?? []
   );
+  const [drawnMaskPoints, setDrawnMaskPoints] = useState<MapCoordinate[]>([]);
+  const [drawingMask, setDrawingMask] = useState(false);
   const [transitStations, setTransitStations] = useState<TransitStationCandidate[]>([]);
   const [customOverlays, setCustomOverlays] = useState<MapScenarioCustomOverlay[]>([]);
   const [stationSource, setStationSource] = useState<'osm' | 'custom' | 'both'>('osm');
@@ -270,6 +274,14 @@ export function MapScreen() {
     editingAppliedMapSetup
   );
   const mapCustomOverlays = mapConfiguration.customOverlays;
+  const drawingOverlay: MapScenarioCustomOverlay | undefined = drawnMaskPoints.length > 1 ? {
+    id: 'draft-drawn-mask',
+    name: 'Mask being drawn',
+    color: '#ef7b45',
+    visible: true,
+    geometry: { type: 'LineString', coordinates: drawnMaskPoints.map(({ longitude, latitude }) => [longitude, latitude]) }
+  } : undefined;
+  const displayedMapOverlays = drawingOverlay ? [...mapCustomOverlays, drawingOverlay] : mapCustomOverlays;
   const mapStationSource = mapConfiguration.stationSource;
   const mapCustomStations = mapConfiguration.customStations;
   const mapConfigSyncKey = useRef<string | undefined>(undefined);
@@ -397,9 +409,9 @@ export function MapScreen() {
       transitStations,
       selectedStation: mapSelectedStation,
       hidingRadiusMeters: mapHidingRadius,
-      customOverlays: mapCustomOverlays
+      customOverlays: displayedMapOverlays
     }),
-    [canvasPreviewRegion, displayedVisibleMap, liveGameplayState, mapCustomOverlays, mapHidingRadius, mapSelectedStation, projection?.roundStartLocation, projection?.visibleMovementTracks, transitStations]
+    [canvasPreviewRegion, displayedVisibleMap, displayedMapOverlays, liveGameplayState, mapHidingRadius, mapSelectedStation, projection?.roundStartLocation, projection?.visibleMovementTracks, transitStations]
   );
   const canPrepareMapSetup =
     isHostView &&
@@ -1465,17 +1477,58 @@ export function MapScreen() {
                       <Text style={styles.legendToggleLabel}>{showLegend ? 'Hide Legend' : 'Show Legend'}</Text>
                     </Pressable>
                   </View>
+                  {canShowSetupBuilder && selectedRegions.length > 0 ? (
+                    <View style={styles.setupSection}>
+                      <Text style={styles.supportEyebrow}>Custom boundary mask</Text>
+                      <Text style={styles.helperCopy}>
+                        {drawingMask
+                          ? `Tap at least three points inside the selected play area (${drawnMaskPoints.length} placed), then close the mask.`
+                          : 'Draw an exclusion on the map when administrative boundaries do not match the area you want to play.'}
+                      </Text>
+                      <View style={styles.scenarioActions}>
+                        {!drawingMask ? (
+                          <AppButton label="Draw Exclusion Mask" tone="secondary" onPress={() => {
+                            setDrawnMaskPoints([]);
+                            setDrawingMask(true);
+                            setScenarioNotice(undefined);
+                          }} />
+                        ) : (
+                          <>
+                            <AppButton label="Undo Point" tone="secondary" disabled={drawnMaskPoints.length === 0} onPress={() => setDrawnMaskPoints((points) => points.slice(0, -1))} />
+                            <AppButton label="Close Mask" disabled={drawnMaskPoints.length < 3} onPress={() => {
+                              try {
+                                const region = buildDrawnExclusionRegion(`Drawn exclusion ${excludedRegions.length + 1}`, drawnMaskPoints);
+                                setExcludedRegions((current) => addRegionToSelection(current, region));
+                                setDrawnMaskPoints([]);
+                                setDrawingMask(false);
+                                setScenarioNotice('Mask added to the draft. Review the cutout before applying or saving the map.');
+                              } catch (error) {
+                                setScenarioNotice(error instanceof Error ? error.message : 'Could not close this mask.');
+                              }
+                            }} />
+                            <AppButton label="Cancel" tone="secondary" onPress={() => {
+                              setDrawnMaskPoints([]);
+                              setDrawingMask(false);
+                            }} />
+                          </>
+                        )}
+                      </View>
+                      {scenarioNotice ? <Text style={styles.helperCopy}>{scenarioNotice}</Text> : null}
+                    </View>
+                  ) : null}
                   <MapCanvas
                     height={mapHeight}
                     maxWidth={dimensions.width - 32}
-                    visibleMap={projection?.visibleMap}
+                    visibleMap={drawingMask ? undefined : projection?.visibleMap}
                     visibleMovementTracks={projection?.visibleMovementTracks}
                     roundStartLocation={projection?.roundStartLocation}
-                    previewRegion={canvasPreviewRegion}
+                    previewRegion={drawingMask ? compositePreviewRegion ?? appliedRegion : canvasPreviewRegion}
                     transitStations={transitStations}
                     selectedStation={mapSelectedStation}
                     hidingRadiusMeters={mapHidingRadius}
-                    customOverlays={mapCustomOverlays}
+                    customOverlays={displayedMapOverlays}
+                    selectable={drawingMask}
+                    onCoordinateSelect={(coordinate) => setDrawnMaskPoints((points) => [...points, coordinate])}
                   />
                   {stationWorkbenchForViewer}
                   {showLegend ? (

@@ -7,6 +7,7 @@ export * from './MapLegend.tsx';
 export * from './SelectedRegionChipList.tsx';
 export * from './SearchableRegionPicker.tsx';
 export * from './composite-region-builder.ts';
+export * from './drawn-region.ts';
 export * from './live-gameplay-model.ts';
 export * from './live-map-display.ts';
 export * from './live-map-action-flow-model.ts';

@@ -39,6 +39,7 @@ import {
   RegionProviderUnavailableError
 } from '../src/features/map/osm-region-provider.ts';
 import { seedPlayableRegions } from '../src/features/map/seed-regions.ts';
+import { buildDrawnExclusionRegion } from '../src/features/map/drawn-region.ts';
 import {
   resolveRegionSearchSelection,
   shouldApplyExternalRegionSearchValue
@@ -408,6 +409,39 @@ test('composite region builder subtracts a contained region as a real playable-b
   assert.equal(composite?.compositeMetadata?.excludedRegions?.[0]?.regionId, 'test:excluded');
   assert.equal(composite?.compositeMetadata?.dissolveNotice, undefined);
   assert.deepEqual(composite?.compositeMetadata?.sourceProviderLabels, ['Test']);
+});
+
+test('drawn exclusion regions close a user-drawn ring and reject degenerate masks', () => {
+  const region = buildDrawnExclusionRegion('Central Park', [
+    { latitude: 2, longitude: 2 },
+    { latitude: 2, longitude: 4 },
+    { latitude: 4, longitude: 4 },
+    { latitude: 4, longitude: 2 }
+  ]);
+
+  assert.equal(region.geometry.type, 'Polygon');
+  assert.deepEqual(region.geometry.coordinates[0]?.[0], region.geometry.coordinates[0]?.at(-1));
+  assert.equal(pointInGeometry([3, 3], region.geometry), true);
+  assert.throws(() => buildDrawnExclusionRegion('Tiny mask', [
+    { latitude: 2, longitude: 2 },
+    { latitude: 2, longitude: 2 },
+    { latitude: 2, longitude: 2 }
+  ]), /at least three distinct map points/i);
+
+  const base: PlayableRegionCatalogEntry = {
+    regionId: 'test:draw-mask-base', displayName: 'Drawing Area', regionKind: 'custom', summary: 'Drawing area',
+    featureDatasetRefs: [], geometry: { type: 'Polygon', coordinates: [[[-10, -10], [10, -10], [10, 10], [-10, 10], [-10, -10]]] },
+    sourceKind: 'provider_catalog', sourceLabel: 'Test', searchAliases: []
+  };
+  const mask = buildDrawnExclusionRegion('Playground cutout', [
+    { latitude: -2, longitude: -2 },
+    { latitude: -2, longitude: 2 },
+    { latitude: 2, longitude: 2 },
+    { latitude: 2, longitude: -2 }
+  ]);
+  const composite = buildCompositePlayableRegion([base], [mask]);
+  assert.ok(composite);
+  assert.equal(composite.compositeMetadata?.excludedRegions?.[0]?.displayName, 'Playground cutout');
 });
 
 test('composite region builder clips a subtract region at the included boundary', () => {
