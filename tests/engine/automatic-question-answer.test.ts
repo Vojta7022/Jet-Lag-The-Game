@@ -382,6 +382,10 @@ test('Body of Water Measuring compares distance to the named water boundary and 
       geometry: { type: 'Polygon' as const, coordinates: [[
         [103.795, 1.095], [103.81, 1.095], [103.81, 1.105], [103.795, 1.105], [103.795, 1.095]
       ]] }
+    }, {
+      featureId: 'osm:way/304', featureClassId: 'a-body-of-water', label: 'Named River',
+      longitude: 103.785, latitude: 1.1, geometrySupport: 'line' as const, coverage: 'approximate' as const,
+      geometry: { type: 'LineString' as const, coordinates: [[103.785, 1.09], [103.785, 1.11]] }
     }]
   };
   const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
@@ -396,12 +400,13 @@ test('Body of Water Measuring compares distance to the named water boundary and 
 
   const question = result.aggregate.questionInstances['question:auto-body-of-water'];
   assert.equal(question?.status, 'resolved');
-  assert.equal(question?.answer?.value, 'closer');
-  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:way/301');
+  assert.equal(question?.answer?.value, 'further');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:way/304');
   const constraint = Object.values(result.aggregate.constraints).find(
     (item) => item.sourceQuestionInstanceId === 'question:auto-body-of-water'
   );
   assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.equal(constraint?.metadata.referenceFeatureId, 'osm:way/304');
   assert.equal('featureData' in (constraint?.metadata ?? {}), false);
   assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
 });

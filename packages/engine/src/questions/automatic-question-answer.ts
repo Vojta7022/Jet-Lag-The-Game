@@ -340,6 +340,7 @@ export function resolveAutomaticQuestionAnswer(args: {
       },
       constraintMetadata: {
         featureData: features,
+        referenceFeatureId: seekerNearest.feature.featureId,
         featureDatasetSource: dataset.source,
         featureDatasetVersion: dataset.sourceVersion,
         featureDatasetRetrievedAt: dataset.retrievedAt,

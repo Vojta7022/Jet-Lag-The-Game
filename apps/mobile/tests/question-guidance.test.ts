@@ -342,7 +342,7 @@ test('question guidance describes named water-shape Measuring and excludes swimm
     constraintRefs: ['comparative-distance']
   });
 
-  assert.match(describeExpectedAnswerGuidance(template, category), /named water area/i);
+  assert.match(describeExpectedAnswerGuidance(template, category), /named water area or river line/i);
   assert.match(describeExpectedAnswerGuidance(template, category), /swimming pools/i);
 });
 

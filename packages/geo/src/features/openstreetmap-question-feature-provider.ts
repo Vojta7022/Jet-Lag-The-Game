@@ -41,7 +41,7 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-question-features-v6';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v7';
 const OSM_REQUEST_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   accept: 'application/json',
@@ -144,6 +144,7 @@ function bodyOfWaterQueryFor(box: NonNullable<ReturnType<typeof geometryBounding
   const selectors = [['natural', 'water'], ['landuse', 'reservoir']];
   const clauses = selectors.flatMap(([key, value]) => ['way', 'relation'].map((element) =>
     `${element}["${key}"="${value}"]["name"]${bbox};`));
+  clauses.push(`way["waterway"="river"]["name"]${bbox};`);
   return `[out:json][timeout:25];(${clauses.join('')});out geom tags;`;
 }
 
@@ -198,17 +199,22 @@ function bodyOfWaterFeatures(
     const element = raw as OverpassElement;
     if ((element.type !== 'way' && element.type !== 'relation') || typeof element.id !== 'number') continue;
     const tags = element.tags ?? {};
-    const isWater = tags.natural === 'water' || tags.landuse === 'reservoir';
+    const isRiverCenterline = tags.waterway === 'river';
+    const isWater = tags.natural === 'water' || tags.landuse === 'reservoir' || isRiverCenterline;
     if (!isWater || tags.leisure === 'swimming_pool' || EXCLUDED_POOL_TAGS.has(String(tags.water ?? ''))) continue;
     const label = [tags.name, tags['name:en'], tags.official_name]
       .find((value) => typeof value === 'string' && value.trim());
     if (typeof label !== 'string') continue;
 
     let geometry: GeoJsonGeometryModel | undefined;
+    let lineRepresentative: [number, number] | undefined;
     if (element.type === 'way') {
       const line = geometryCoordinates(element.geometry);
       if (line.length >= 4 && line[0]![0] === line.at(-1)![0] && line[0]![1] === line.at(-1)![1]) {
         geometry = { type: 'Polygon', coordinates: [line] };
+      } else if (isRiverCenterline && line.length >= 2) {
+        geometry = { type: 'LineString', coordinates: line };
+        lineRepresentative = line[Math.floor(line.length / 2)];
       }
     } else if (Array.isArray(element.members)) {
       const outerWays: [number, number][][] = [];
@@ -229,7 +235,7 @@ function bodyOfWaterFeatures(
       continue;
     }
     if (!waterGeometryIntersectsRegion(geometry, regionGeometry)) continue;
-    const representative = representativePointFromGeometry(geometry);
+    const representative = lineRepresentative ?? representativePointFromGeometry(geometry);
     if (!representative) {
       complete = false;
       continue;

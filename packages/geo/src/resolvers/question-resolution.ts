@@ -633,8 +633,14 @@ function resolveMeasuring(
 ): ResolvedConstraintDraft {
   const features = featureData(metadata);
   const featureIds = featureClassIds(context.template);
+  const referenceFeatureId = typeof metadata.referenceFeatureId === 'string'
+    ? metadata.referenceFeatureId
+    : undefined;
+  const measuringFeatures = referenceFeatureId
+    ? features.filter((feature) => feature.featureId === referenceFeatureId)
+    : features;
   const seekerNearest = queryNearestFeature({
-    features,
+    features: measuringFeatures,
     featureClassIds: featureIds,
     point: seekerPoint
   });
@@ -663,7 +669,7 @@ function resolveMeasuring(
     stepMeters: gridResolutionMeters(metadata),
     predicate: (point) => {
       const nearestForPoint = queryNearestFeature({
-        features,
+        features: measuringFeatures,
         featureClassIds: featureIds,
         point
       });

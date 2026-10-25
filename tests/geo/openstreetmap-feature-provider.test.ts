@@ -245,6 +245,31 @@ test('OpenStreetMap provider loads named water shapes, excludes pools, and prese
     ? islandLake.geometry.coordinates[0]?.length : 0, 2);
 });
 
+test('OpenStreetMap provider loads named river ways as water-body line geometry', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [{
+        type: 'way', id: 304,
+        geometry: [{ lon: 0.1, lat: 0.5 }, { lon: 0.5, lat: 0.51 }, { lon: 0.9, lat: 0.52 }],
+        tags: { waterway: 'river', name: 'Named River' }
+      }] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-body-of-water'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.match(submittedQuery, /waterway.*river/);
+  assert.equal(dataset?.features.length, 1);
+  assert.equal(dataset?.features[0]?.label, 'Named River');
+  assert.equal(dataset?.features[0]?.geometrySupport, 'line');
+  assert.equal(dataset?.features[0]?.geometry?.type, 'LineString');
+});
+
 test('OpenStreetMap water provider refuses automatic data when a named area boundary is incomplete', async () => {
   const provider = new OpenStreetMapQuestionFeatureProvider({
     fetch: async () => new Response(JSON.stringify({ elements: [{
@@ -288,7 +313,7 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   });
 
   assert.ok(dataset);
-  assert.equal(dataset.sourceVersion, 'overpass-question-features-v6');
+  assert.equal(dataset.sourceVersion, 'overpass-question-features-v7');
   assert.match(submittedQuery, /way\["natural"="coastline"\]/);
   assert.equal(dataset.features.length, 1);
   assert.equal(dataset.features[0]?.featureClassId, 'a-coastline');

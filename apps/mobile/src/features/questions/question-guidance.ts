@@ -276,7 +276,7 @@ export function describeExpectedAnswerGuidance(
       return 'When connected, the app compares both fresh locations against OpenStreetMap administrative boundaries and narrows the map to that division. If the required level is missing or GPS overlaps a border, it asks for a manual ruling.';
     }
     if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-body-of-water')) {
-      return 'When connected, the app compares both fresh locations to the nearest mapped named water area and narrows the search map using its boundary. Swimming pools are excluded; incomplete water shapes stay manual.';
+      return 'When connected, the app compares both fresh locations to the nearest mapped named water area or river line, then narrows the map around that same feature. Swimming pools are excluded; incomplete features stay manual, and river lines are approximate.';
     }
     if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-coastline')) {
       return 'When connected, the app compares both fresh locations to mapped ocean-coastline lines and narrows the search map to that coastline. This does not cover great-lake shorelines or waterways at least 2 km wide; agree on manual handling for those map areas before asking.';

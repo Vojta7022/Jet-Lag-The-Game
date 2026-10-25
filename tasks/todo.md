@@ -136,7 +136,8 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 
 - [x] Reconcile the scanned p. 25 definition: named map water body, excluding pools.
 - [x] Load named OSM water and reservoir areas, exclude pools, preserve multipolygon holes, and calculate distance to polygon boundary (zero when a player is inside the water area).
-- [x] Keep incomplete named water geometry and unsupported linear-only water features on manual handling; update player guidance and rule/data notes.
+- [x] Add named river centerlines as approximate linear water features; resolve answers and map deductions against the same authority-selected water geometry.
+- [x] Keep incomplete named water geometry on manual handling; disclose that river lines are approximate and update player guidance and rule/data notes.
 - [x] Verify provider, polygon distance, automatic answer/map constraint, and mobile guidance tests; full suite passes (322), mobile typecheck passes, and `git diff --check` is clean. The first full-suite attempt lacked `openpyxl` in the shell environment; rerunning with `PYTHONPATH=temp/deps` passed (2026-10-25).
 - [ ] Verify a bounded regional water query against live Overpass; attempted Máchovo jezero query timed out (2026-10-25), so no live coverage claim is made.
 

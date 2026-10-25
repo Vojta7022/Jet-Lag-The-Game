@@ -220,7 +220,7 @@ export function describeTemplateSupport(args: {
           return 'The app checks fresh player locations against OpenStreetMap administrative boundaries when connected; missing or ambiguous divisions stay manual';
         }
         if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-body-of-water')) {
-          return 'The app compares fresh player locations to mapped named water shapes when connected; swimming pools and incomplete shapes stay out of automatic answers';
+          return 'When connected, the app compares fresh locations to mapped named water areas or river lines. Pool areas are excluded; incomplete features stay manual and river lines are approximate.';
         }
         if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-coastline')) {
           return 'The app compares fresh player locations to mapped ocean-coastline lines when connected; great-lake shores and qualifying wide waterways still need a manual ruling';
