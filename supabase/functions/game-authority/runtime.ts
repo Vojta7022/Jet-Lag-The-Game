@@ -12,7 +12,11 @@ import {
 } from '../../../packages/transport/src/online/supabase-repositories.ts';
 import { SupabaseRestTableClient } from '../../../packages/transport/src/online/supabase-rest-table-client.ts';
 import { SupabaseProjectionPollingFanout } from '../../../packages/transport/src/online/supabase-polling-fanout.ts';
-import { OpenStreetMapQuestionFeatureProvider } from '../../../packages/geo/src/index.ts';
+import {
+  CompositeQuestionFeatureDataProvider,
+  OpenMeteoElevationFeatureProvider,
+  OpenStreetMapQuestionFeatureProvider
+} from '../../../packages/geo/src/index.ts';
 import { createGameAuthorityHandler } from './index.ts';
 
 function requiredEnv(name: string): string {
@@ -38,7 +42,10 @@ export function createOnlineAuthorityDependencies(env: (name: string) => string 
     repositories,
     authorityRepository,
     realtimeFanout: new SupabaseProjectionPollingFanout({ projections, pollIntervalMs: 1_500 }),
-    questionFeatureDataProvider: new OpenStreetMapQuestionFeatureProvider()
+    questionFeatureDataProvider: new CompositeQuestionFeatureDataProvider([
+      new OpenMeteoElevationFeatureProvider(),
+      new OpenStreetMapQuestionFeatureProvider()
+    ])
   });
 
   return {

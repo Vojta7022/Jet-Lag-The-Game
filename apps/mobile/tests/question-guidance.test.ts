@@ -109,6 +109,23 @@ test('question guidance explains approximate map updates plainly for radar templ
   assert.equal(formatQuestionScaleSet(template.scaleSet.appliesTo), 'Small, medium, and large games');
 });
 
+test('Sea Level explains automatic elevation lookup, model limits, attribution, and manual fallback', () => {
+  const template = createTemplate({
+    name: 'Sea Level',
+    featureClassRefs: [{ featureClassId: 'sea-level', label: 'Sea Level', rawLabel: 'Sea Level' }]
+  });
+  const category = createCategory({
+    name: 'Measuring',
+    resolverKind: 'comparative_distance',
+    answerPolicy: 'automatic'
+  });
+  const guidance = describeExpectedAnswerGuidance(template, category);
+
+  assert.match(guidance, /90 m Copernicus elevation surface/i);
+  assert.match(guidance, /manual answer/i);
+  assert.match(guidance, /Open-Meteo and Copernicus DEM GLO-90/i);
+});
+
 test('question guidance prefers imported workbook prompt templates when available', () => {
   const category = createCategory({
     categoryId: 'matching',

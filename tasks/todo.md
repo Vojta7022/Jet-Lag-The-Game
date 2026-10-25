@@ -416,4 +416,8 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Keep altitude and its vertical datum in server-side samples without adding it to movement-track projections.
 - [x] Verify device-sample normalization, event/reducer persistence, projection privacy, full suite (363/363), mobile typecheck, and `git diff --check` (2026-10-25).
 - [x] Correct datum tagging by platform: Expo SDK 55's iOS bridge exposes Apple's mean-sea-level `CLLocation.altitude`, while Android and Web expose WGS84 ellipsoid height; add a regression test. Full suite (364/364), mobile typecheck, and `git diff --check` pass (2026-10-25).
-- [ ] Implement a Sea Level resolver that fails closed when altitude uncertainty cannot distinguish the comparison; keep map deduction honest until terrain geometry is available.
+- [x] Load a bounded, region-only Copernicus elevation grid in batches, so player coordinates stay local to the authority and terrain data can support both the answer and map.
+- [x] Resolve closer/further only when vertical uncertainty ranges are separable; use the same grid and seeker reference for the approximate map deduction.
+- [x] Show the DEM's resolution, limits, and source attribution in player-facing answer guidance; preserve manual handling when uncertainty is inadequate.
+- [x] Implement a Sea Level resolver that falls back to manual answering when altitude uncertainty cannot distinguish the comparison; use the same terrain samples for approximate map deduction.
+- [x] Verify provider failure and sparse-region fallback; full suite (370/370), mobile typecheck, Edge Function check, `git diff --check`, and live bounded-region smoke request pass (2026-10-25).

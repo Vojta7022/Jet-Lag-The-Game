@@ -264,6 +264,10 @@ export function describeExpectedAnswerGuidance(
   template: QuestionTemplateDefinition,
   category?: QuestionCategoryDefinition
 ): string {
+  if (category && category.answerPolicy !== 'manual' && category.resolverKind === 'comparative_distance' &&
+    (template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'sea-level')) {
+    return 'When connected, the app compares fresh seeker and hider locations with a 90 m Copernicus elevation surface and narrows the map when the height difference is clear. Buildings and vegetation can affect the model; close or uncertain readings stay available for a manual answer. Source: Open-Meteo and Copernicus DEM GLO-90.';
+  }
   if (category?.resolverKind === 'threshold_distance' && category.answerPolicy !== 'manual') {
     return 'The app calculates Yes or No from fresh GPS locations for the hider and asking seeker.';
   }

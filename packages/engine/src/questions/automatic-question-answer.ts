@@ -79,6 +79,50 @@ function datasetProvenanceFor(dataset: QuestionFeatureDatasetModel) {
   };
 }
 
+interface SeaLevelDistanceRange {
+  minimumMeters: number;
+  maximumMeters: number;
+  elevationMeters: number;
+  uncertaintyMeters: number;
+  featureId: string;
+  gridSpacingMeters: number;
+}
+
+function seaLevelDistanceRange(args: {
+  features: GeoFeatureRecord[];
+  point: [number, number];
+  horizontalAccuracyMeters: number;
+}): SeaLevelDistanceRange | undefined {
+  const samples = args.features.flatMap((feature) => {
+    const representativePoint = feature.representativePoint;
+    const elevationMeters = feature.properties?.elevationMeters;
+    const verticalError = feature.properties?.absoluteVerticalErrorMeters;
+    const gridSpacingMeters = feature.properties?.gridSpacingMeters;
+    if (feature.featureClassId !== 'sea-level' || !representativePoint || typeof elevationMeters !== 'number' ||
+      !Number.isFinite(elevationMeters) || typeof verticalError !== 'number' || !Number.isFinite(verticalError) ||
+      typeof gridSpacingMeters !== 'number' || !Number.isFinite(gridSpacingMeters) || gridSpacingMeters <= 0) return [];
+    const distance = distanceMeters(args.point, [representativePoint.longitude, representativePoint.latitude]);
+    return [{ feature, elevationMeters, verticalError, gridSpacingMeters, distance }];
+  }).sort((left, right) => left.distance - right.distance);
+  const nearest = samples[0];
+  if (!nearest || nearest.distance > nearest.gridSpacingMeters * 2 + args.horizontalAccuracyMeters) return undefined;
+
+  const localRadiusMeters = nearest.gridSpacingMeters * 1.5 + args.horizontalAccuracyMeters;
+  const nearbySamples = samples.filter((sample) => sample.distance <= localRadiusMeters);
+  const localReliefMeters = nearbySamples.reduce((maximum, sample) =>
+    Math.max(maximum, Math.abs(sample.elevationMeters - nearest.elevationMeters)), 0);
+  const uncertaintyMeters = nearest.verticalError + localReliefMeters;
+  const absoluteElevationMeters = Math.abs(nearest.elevationMeters);
+  return {
+    minimumMeters: Math.max(0, absoluteElevationMeters - uncertaintyMeters),
+    maximumMeters: absoluteElevationMeters + uncertaintyMeters,
+    elevationMeters: nearest.elevationMeters,
+    uncertaintyMeters,
+    featureId: nearest.feature.featureId,
+    gridSpacingMeters: nearest.gridSpacingMeters
+  };
+}
+
 function nearestFeatureHasConfidentMargin(args: {
   features: GeoFeatureRecord[];
   featureClassIds: string[];
@@ -157,6 +201,61 @@ export function resolveAutomaticQuestionAnswer(args: {
       kind: 'blocked',
       code: 'LOCATION_FIX_REQUIRED',
       message: `A fresh and accurate location fix is required from the seeker and hider (within ${maxAgeSeconds} seconds and ${maxAccuracyMeters} meters accuracy).`
+    };
+  }
+
+  const isSeaLevel = category.resolverKind === 'comparative_distance' &&
+    (template.featureClassRefs ?? []).some((reference) => reference.featureClassId === 'sea-level');
+  if (isSeaLevel) {
+    const dataset = args.questionFeatureDataset;
+    if (!dataset) return { kind: 'manual' };
+    const features = toGeoFeatureRecords(dataset);
+    const seekerRange = seaLevelDistanceRange({
+      features,
+      point: [seeker.longitude, seeker.latitude],
+      horizontalAccuracyMeters: seeker.accuracyMeters!
+    });
+    const hiderRange = seaLevelDistanceRange({
+      features,
+      point: [hider.longitude, hider.latitude],
+      horizontalAccuracyMeters: hider.accuracyMeters!
+    });
+    if (!seekerRange || !hiderRange) return { kind: 'manual' };
+
+    const value = hiderRange.maximumMeters < seekerRange.minimumMeters
+      ? 'closer'
+      : hiderRange.minimumMeters > seekerRange.maximumMeters
+        ? 'further'
+        : undefined;
+    if (!value) return { kind: 'manual' };
+
+    const constraintRefs = new Set([...(template.constraintRefs ?? []), ...(category.defaultConstraintRefs ?? [])]);
+    const constraint = contentPack.constraints.find((candidate) =>
+      constraintRefs.has(candidate.constraintId) && candidate.kind === 'comparative_distance');
+    if (!constraint) return { kind: 'manual' };
+    const datasetProvenance = datasetProvenanceFor(dataset);
+    return {
+      kind: 'resolved',
+      answer: { value },
+      constraintId: constraint.constraintId,
+      automaticResolution: {
+        resolverVersion: AUTOMATIC_QUESTION_RESOLVER_VERSION,
+        method: 'comparative_distance',
+        sourceSampleIds: [seeker.sampleId, hider.sampleId],
+        sourceRecordedAt: [seeker.recordedAt, hider.recordedAt],
+        sourceAccuracyMeters: [seeker.accuracyMeters!, hider.accuracyMeters!],
+        thresholdMeters: seekerRange.uncertaintyMeters + hiderRange.uncertaintyMeters,
+        referenceFeatureId: seekerRange.featureId,
+        ...datasetProvenance
+      },
+      constraintMetadata: {
+        featureData: features,
+        ...datasetProvenance,
+        featureDataCoverage: dataset.coverage,
+        gridResolutionMeters: Math.max(500, seekerRange.gridSpacingMeters * 2),
+        seaLevelReferenceElevationMeters: seekerRange.elevationMeters,
+        seaLevelReferenceUncertaintyMeters: seekerRange.uncertaintyMeters
+      }
     };
   }
 

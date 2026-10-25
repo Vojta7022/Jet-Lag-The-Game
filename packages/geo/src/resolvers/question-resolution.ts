@@ -695,6 +695,85 @@ function resolveMeasuring(
   });
 }
 
+function seaLevelRangeForPoint(features: GeoFeatureRecord[], point: LonLat): {
+  minimumMeters: number;
+  maximumMeters: number;
+} | undefined {
+  const samples = features.flatMap((feature) => {
+    const representativePoint = feature.representativePoint;
+    const elevationMeters = feature.properties?.elevationMeters;
+    const verticalErrorMeters = feature.properties?.absoluteVerticalErrorMeters;
+    const gridSpacingMeters = feature.properties?.gridSpacingMeters;
+    if (feature.featureClassId !== 'sea-level' || !representativePoint || typeof elevationMeters !== 'number' ||
+      !Number.isFinite(elevationMeters) || typeof verticalErrorMeters !== 'number' ||
+      !Number.isFinite(verticalErrorMeters) || typeof gridSpacingMeters !== 'number' ||
+      !Number.isFinite(gridSpacingMeters) || gridSpacingMeters <= 0) return [];
+    const distanceMetersFromPoint = distanceMeters(point, [representativePoint.longitude, representativePoint.latitude]);
+    return [{ feature, elevationMeters, verticalErrorMeters, gridSpacingMeters, distanceMetersFromPoint }];
+  }).sort((left, right) => left.distanceMetersFromPoint - right.distanceMetersFromPoint);
+  const nearest = samples[0];
+  if (!nearest || nearest.distanceMetersFromPoint > nearest.gridSpacingMeters * 2) return undefined;
+  const localReliefMeters = samples
+    .filter((sample) => sample.distanceMetersFromPoint <= nearest.gridSpacingMeters * 1.5)
+    .reduce((maximum, sample) => Math.max(maximum, Math.abs(sample.elevationMeters - nearest.elevationMeters)), 0);
+  const uncertainty = nearest.verticalErrorMeters + localReliefMeters;
+  const distanceFromSeaLevel = Math.abs(nearest.elevationMeters);
+  return {
+    minimumMeters: Math.max(0, distanceFromSeaLevel - uncertainty),
+    maximumMeters: distanceFromSeaLevel + uncertainty
+  };
+}
+
+function resolveSeaLevel(
+  context: QuestionConstraintResolutionContext,
+  baseGeometry: GeoJsonGeometryModel,
+  metadata: Record<string, unknown>
+): ResolvedConstraintDraft {
+  const features = featureData(metadata);
+  const relation = answerValue(context.question.answer);
+  const referenceElevation = metadata.seaLevelReferenceElevationMeters;
+  const referenceUncertainty = metadata.seaLevelReferenceUncertaintyMeters;
+  if ((relation !== 'closer' && relation !== 'further') || typeof referenceElevation !== 'number' ||
+    !Number.isFinite(referenceElevation) || typeof referenceUncertainty !== 'number' ||
+    !Number.isFinite(referenceUncertainty) || referenceUncertainty < 0) {
+    return metadataOnlyDraft({
+      summary: 'Sea Level could not narrow the map because its reference elevation is incomplete.',
+      reasoningSteps: ['No trusted seeker elevation interval was recorded with the answer.'],
+      metadata
+    });
+  }
+
+  const referenceDistance = Math.abs(referenceElevation);
+  const referenceMinimum = Math.max(0, referenceDistance - referenceUncertainty);
+  const referenceMaximum = referenceDistance + referenceUncertainty;
+  return approximateGridOutcome({
+    baseGeometry,
+    stepMeters: gridResolutionMeters(metadata),
+    predicate: (point) => {
+      const candidateRange = seaLevelRangeForPoint(features, point);
+      if (!candidateRange) return false;
+      return relation === 'closer'
+        ? candidateRange.maximumMeters < referenceMinimum
+        : candidateRange.minimumMeters > referenceMaximum;
+    },
+    summary: relation === 'closer'
+      ? 'Sea Level keeps approximate areas that are confidently closer to mean sea level than the seeker.'
+      : 'Sea Level keeps approximate areas that are confidently further from mean sea level than the seeker.',
+    detail: 'The map uses the same authority-loaded Copernicus GLO-90 grid as the answer. It is a 90 m digital surface model, may include buildings or vegetation, and leaves cells ambiguous when local relief or vertical error overlaps the comparison.',
+    reasoningSteps: [
+      'Used the seeker’s reference elevation and uncertainty interval frozen with the automatic answer.',
+      'Compared candidate cells to the same 90 m EGM2008 elevation samples.',
+      'Kept only cells whose elevation interval is clearly on the answered side of the comparison.'
+    ],
+    featureCoverage: 'approximate',
+    metadata: {
+      referenceDistanceFromSeaLevelMeters: referenceDistance,
+      referenceUncertaintyMeters: referenceUncertainty,
+      ...metadata
+    }
+  });
+}
+
 function resolveTentacles(
   context: QuestionConstraintResolutionContext,
   baseGeometry: GeoJsonGeometryModel,
@@ -853,7 +932,9 @@ export function resolveQuestionConstraint(
           });
     case 'comparative_distance':
       return seekerPoint
-        ? resolveMeasuring(context, baseGeometry, seekerPoint, metadata)
+        ? featureClassIds(context.template).includes('sea-level')
+          ? resolveSeaLevel(context, baseGeometry, metadata)
+          : resolveMeasuring(context, baseGeometry, seekerPoint, metadata)
         : metadataOnlyDraft({
             summary: 'Measuring could not resolve because the seeker has no location sample.',
             reasoningSteps: ['A current seeker location is required for Measuring.'],

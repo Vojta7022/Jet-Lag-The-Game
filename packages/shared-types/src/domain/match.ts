@@ -301,7 +301,7 @@ export interface QuestionFeatureRecordModel {
 }
 
 export interface QuestionFeatureDatasetModel {
-  source: 'OpenStreetMap';
+  source: 'OpenStreetMap' | 'Open-Meteo / Copernicus DEM GLO-90';
   sourceUrl: string;
   sourceVersion: string;
   retrievedAt: string;

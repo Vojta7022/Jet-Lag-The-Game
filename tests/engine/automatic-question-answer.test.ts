@@ -492,6 +492,86 @@ test('Coastline Measuring compares distance to the mapped shoreline and updates 
   assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
 });
 
+test('Sea Level uses the shared Copernicus grid for a confidence-bounded answer and map deduction', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.75,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.1, longitude: 103.79,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const dataset = {
+    source: 'Open-Meteo / Copernicus DEM GLO-90' as const,
+    sourceUrl: 'https://open-meteo.com/en/docs/elevation-api',
+    sourceVersion: 'copernicus-dem-glo90-egm2008',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [
+      { featureId: 'dem:seeker', featureClassId: 'sea-level', label: 'Elevation', longitude: 103.75, latitude: 1.1, geometrySupport: 'point' as const, coverage: 'approximate' as const, geometry: { type: 'Point', coordinates: [103.75, 1.1] }, properties: { elevationMeters: 100, verticalDatum: 'EGM2008', absoluteVerticalErrorMeters: 4, gridSpacingMeters: 1000 } },
+      { featureId: 'dem:hider', featureClassId: 'sea-level', label: 'Elevation', longitude: 103.79, latitude: 1.1, geometrySupport: 'point' as const, coverage: 'approximate' as const, geometry: { type: 'Point', coordinates: [103.79, 1.1] }, properties: { elevationMeters: 20, verticalDatum: 'EGM2008', absoluteVerticalErrorMeters: 4, gridSpacingMeters: 1000 } },
+      { featureId: 'dem:closer', featureClassId: 'sea-level', label: 'Elevation', longitude: 103.82, latitude: 1.1, geometrySupport: 'point' as const, coverage: 'approximate' as const, geometry: { type: 'Point', coordinates: [103.82, 1.1] }, properties: { elevationMeters: 25, verticalDatum: 'EGM2008', absoluteVerticalErrorMeters: 4, gridSpacingMeters: 1000 } },
+      { featureId: 'dem:further', featureClassId: 'sea-level', label: 'Elevation', longitude: 103.85, latitude: 1.1, geometrySupport: 'point' as const, coverage: 'approximate' as const, geometry: { type: 'Point', coordinates: [103.85, 1.1] }, properties: { elevationMeters: 130, verticalDatum: 'EGM2008', absoluteVerticalErrorMeters: 4, gridSpacingMeters: 1000 } }
+    ]
+  };
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-sea-level', templateId: 'measuring-sea-level', targetTeamId: 'team-hider' }
+    }, 16), contentPack, dataset);
+
+  const question = result.aggregate.questionInstances['question:auto-sea-level'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.value, 'closer');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'dem:seeker');
+  const constraint = Object.values(result.aggregate.constraints).find((item) => item.sourceQuestionInstanceId === 'question:auto-sea-level');
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.equal(constraint?.metadata.featureDatasetSource, 'Open-Meteo / Copernicus DEM GLO-90');
+  assert.equal('featureData' in (constraint?.metadata ?? {}), false);
+  assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
+});
+
+test('Sea Level falls back to manual answering when altitude uncertainty overlaps', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.75,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.1, longitude: 103.79,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const sample = (featureId: string, longitude: number, elevationMeters: number) => ({
+    featureId, featureClassId: 'sea-level', label: 'Elevation', longitude, latitude: 1.1,
+    geometrySupport: 'point' as const, coverage: 'approximate' as const,
+    properties: { elevationMeters, verticalDatum: 'EGM2008', absoluteVerticalErrorMeters: 4, gridSpacingMeters: 1000 }
+  });
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:ambiguous-sea-level', templateId: 'measuring-sea-level', targetTeamId: 'team-hider' }
+    }, 16), contentPack, {
+      source: 'Open-Meteo / Copernicus DEM GLO-90',
+      sourceUrl: 'https://open-meteo.com/en/docs/elevation-api',
+      sourceVersion: 'copernicus-dem-glo90-egm2008',
+      retrievedAt: new Date(16_000).toISOString(), coverage: 'approximate',
+      features: [sample('dem:seeker', 103.75, 20), sample('dem:hider', 103.79, 23)]
+    });
+
+  assert.equal(result.aggregate.questionInstances['question:ambiguous-sea-level']?.status, 'awaiting_answer');
+  assert.equal(result.aggregate.questionInstances['question:ambiguous-sea-level']?.automaticResolution, undefined);
+
+});
+
 test('Station-name-length Matching compares nearest names by character count and clips by that same rule', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
