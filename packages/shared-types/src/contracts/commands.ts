@@ -84,6 +84,9 @@ export type DomainCommand =
   | RollGamblersFeetDieCommand
   | ReportGamblersFeetStepsCommand
   | ReportRightTurnRouteChoiceCommand
+  | ConfirmUnguidedTouristOutdoorsCommand
+  | SubmitUnguidedTouristPhotoCommand
+  | ReviewUnguidedTouristPhotoCommand
   | ConfirmEggPartnerAcquiredCommand
   | ReportEggPartnerMemberLostCommand
   | ReportJammedDoorRollCommand
@@ -369,6 +372,8 @@ export interface ResolveCardWindowCommand {
     ransomNoteCastingCostConfirmed?: boolean;
     cairnTargetHeight?: number;
     cairnTargetConfirmed?: boolean;
+    unguidedTouristHiderAttachmentId?: string;
+    unguidedTouristRulesAttested?: boolean;
   };
 }
 
@@ -498,6 +503,21 @@ export interface ReportRightTurnRouteChoiceCommand {
     deadEndDistanceMeters?: number;
     targetPlayerId?: string;
   };
+}
+
+export interface ConfirmUnguidedTouristOutdoorsCommand {
+  type: 'confirm_unguided_tourist_outdoors';
+  payload: { sourceCardInstanceId: string };
+}
+
+export interface SubmitUnguidedTouristPhotoCommand {
+  type: 'submit_unguided_tourist_photo';
+  payload: { sourceCardInstanceId: string; attachmentId: string; attestedNoInternetResearch: boolean };
+}
+
+export interface ReviewUnguidedTouristPhotoCommand {
+  type: 'review_unguided_tourist_photo';
+  payload: { sourceCardInstanceId: string; approved: boolean };
 }
 
 export interface ConfirmEggPartnerAcquiredCommand {

@@ -33,6 +33,11 @@ interface CardResolutionStatusPanelProps {
   zoologistHiderAttachmentId?: string;
   luxuryCarHiderAttachmentId?: string;
   labyrinthHiderAttachmentId?: string;
+  unguidedTouristHiderAttachmentId?: string;
+  unguidedTouristOutdoorsConfirmedByPlayerIds?: string[];
+  unguidedTouristSeekerPlayerIds?: string[];
+  viewerPlayerId?: string;
+  onConfirmUnguidedTouristOutdoors?: () => void;
   labyrinthPhotoHint?: string;
   onPublishLabyrinthMaze?: (attachmentId: string) => void;
   onSubmitLabyrinthSolution?: (solutionText: string) => void;
@@ -43,7 +48,8 @@ interface CardResolutionStatusPanelProps {
     luxuryCarSelection?: { hiderAttachmentId: string; description: string; productionYear: number; msrpCents: number; currencyCode: string },
     uTurnSelection?: { nextStationName: string; preconditionsConfirmed: true },
     ransomNoteSelection?: { castingCostConfirmed: true },
-    cairnSelection?: { targetHeight: number; targetConfirmed: true }
+    cairnSelection?: { targetHeight: number; targetConfirmed: true },
+    unguidedTouristSelection?: { hiderAttachmentId: string; rulesAttested: true }
   ) => void;
 }
 
@@ -64,6 +70,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [cairnTargetHeight, setCairnTargetHeight] = useState('');
   const [cairnTargetConfirmed, setCairnTargetConfirmed] = useState(false);
   const [labyrinthSolution, setLabyrinthSolution] = useState('');
+  const [unguidedTouristRulesAttested, setUnguidedTouristRulesAttested] = useState(false);
   const [clockNow, setClockNow] = useState(Date.now());
   useEffect(() => {
     setSelectedTemplateIds([]);
@@ -82,6 +89,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     setCairnTargetHeight('');
     setCairnTargetConfirmed(false);
     setLabyrinthSolution('');
+    setUnguidedTouristRulesAttested(false);
   }, [props.resolution?.sourceCardInstanceId]);
   useEffect(() => {
     if (props.resolution?.resolutionKind !== 'labyrinth_challenge') return;
@@ -117,6 +125,10 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const cairnChallenge = props.resolution?.resolutionKind === 'cairn_challenge';
   const labyrinthChallenge = props.resolution?.resolutionKind === 'labyrinth_challenge';
   const rightTurnChallenge = props.resolution?.resolutionKind === 'right_turn_challenge';
+  const unguidedTouristChallenge = props.resolution?.resolutionKind === 'unguided_tourist_challenge';
+  const touristConfirmed = props.unguidedTouristOutdoorsConfirmedByPlayerIds ?? [];
+  const touristSeekers = props.unguidedTouristSeekerPlayerIds ?? [];
+  const touristOutdoorsComplete = touristSeekers.every((playerId) => touristConfirmed.includes(playerId));
   const labyrinth = props.resolution?.labyrinth;
   const labyrinthDrawingDeadline = props.resolution?.openedAt && props.resolution.labyrinthDrawingWindowMinutes
     ? Date.parse(props.resolution.openedAt) + props.resolution.labyrinthDrawingWindowMinutes * 60_000
@@ -144,6 +156,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     (!ransomNoteChallenge || ransomNoteCastingCostConfirmed) &&
     (!cairnChallenge || (Number.isSafeInteger(Number(cairnTargetHeight)) && Number(cairnTargetHeight) >= 1 && cairnTargetConfirmed)) &&
     (!labyrinthChallenge || labyrinth?.status === 'solved') &&
+    (!unguidedTouristChallenge || (Boolean(props.unguidedTouristHiderAttachmentId) && touristOutdoorsComplete && unguidedTouristRulesAttested)) &&
     !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
@@ -241,6 +254,19 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             <Text style={styles.copy}>
               Close this card window to activate the restriction. Until the hider run ends, each seeker must update their own status; questions remain blocked while anyone is on transit, on a station platform, or in a station building.
             </Text>
+          </View>
+        ) : null}
+        {unguidedTouristChallenge ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>UNGUIDED TOURIST · CHECK IN</Text>
+            <Text style={styles.copy}>The hider is sharing an unzoomed Street View image from within 152 m of the seekers’ current location. Find the pictured human-built structure in person; a road, curb, or sidewalk does not count.</Text>
+            {touristSeekers.map((playerId) => <Text key={playerId} style={styles.metaChip}>{playerId}: {touristConfirmed.includes(playerId) ? 'outside ✓' : 'outside check-in needed'}</Text>)}
+            {props.viewerRole === 'seeker' && props.viewerPlayerId && !touristConfirmed.includes(props.viewerPlayerId) ? (
+              <AppButton label="I’m outside" disabled={props.disabled || !props.onConfirmUnguidedTouristOutdoors} onPress={() => props.onConfirmUnguidedTouristOutdoors?.()} />
+            ) : null}
+            {props.viewerRole === 'hider' || props.viewerRole === 'host' ? (
+              <Text style={styles.copy}>{props.unguidedTouristHiderAttachmentId ? 'Clue photo recorded. Close this card after every seeker confirms they are outside.' : 'Choose the Street View screenshot in Card Evidence below.'}</Text>
+            ) : null}
           </View>
         ) : null}
         {waterWeightChallenge ? (
@@ -489,6 +515,27 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         </View>
       ) : null}
 
+      {unguidedTouristChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>UNGUIDED TOURIST · STREET VIEW CLUE</Text>
+          <Text style={styles.copy}>The hider shares an unzoomed Google Street View image from within 152 m of the seekers’ current location. Keep the horizon level and include a human-built structure. Road, curb, and sidewalk do not count as the structure. Remove this card if Street View coverage is very limited.</Text>
+          <Text style={styles.copy}>{props.unguidedTouristHiderAttachmentId ? 'Public Street View clue recorded.' : 'Hider: choose the Street View screenshot from the Card Evidence section below.'}</Text>
+          {touristSeekers.map((playerId) => (
+            <Text key={playerId} style={styles.metaChip}>{playerId}: {touristConfirmed.includes(playerId) ? 'outside ✓' : 'outside check-in needed'}</Text>
+          ))}
+          {props.viewerRole === 'seeker' && props.viewerPlayerId && !touristConfirmed.includes(props.viewerPlayerId) ? (
+            <AppButton label="I’m outside" disabled={props.disabled || !props.onConfirmUnguidedTouristOutdoors} onPress={() => props.onConfirmUnguidedTouristOutdoors?.()} />
+          ) : null}
+          {(props.viewerRole === 'hider' || props.viewerRole === 'host') ? (
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: unguidedTouristRulesAttested }} onPress={() => setUnguidedTouristRulesAttested((value) => !value)} style={styles.uTurnCheckboxRow}>
+              <View style={[styles.uTurnCheckbox, unguidedTouristRulesAttested ? styles.uTurnCheckboxOn : undefined]}><Text style={styles.uTurnCheck}>{unguidedTouristRulesAttested ? '✓' : ''}</Text></View>
+              <Text style={styles.copy}>I confirm this unzoomed Street View image is within 152 m of the seekers, level with the horizon, and shows a human-built structure other than any part of a road.</Text>
+            </Pressable>
+          ) : null}
+          <Text style={styles.copy}>When the hider closes this window, seekers must locate the structure in person without internet research or transportation, then send the hider a photo for approval.</Text>
+        </View>
+      ) : null}
+
       {uTurnChallenge ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>U-TURN TRANSIT CHECK</Text>
@@ -559,6 +606,9 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             : undefined,
           cairnChallenge && Number.isSafeInteger(Number(cairnTargetHeight)) && Number(cairnTargetHeight) >= 1 && cairnTargetConfirmed
             ? { targetHeight: Number(cairnTargetHeight), targetConfirmed: true }
+            : undefined,
+          unguidedTouristChallenge && unguidedTouristRulesAttested && props.unguidedTouristHiderAttachmentId
+            ? { hiderAttachmentId: props.unguidedTouristHiderAttachmentId, rulesAttested: true }
             : undefined
         )}
         disabled={!canSubmit || props.disabled}

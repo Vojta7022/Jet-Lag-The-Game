@@ -316,6 +316,27 @@ test('Zoologist evidence stays public and available after its card window closes
   assert.match(labyrinthContext?.detail ?? '', /hand-drawn maze/i);
 });
 
+test('Unguided Tourist evidence stays public and switches to camera guidance after activation', () => {
+  const contentPack = loadContentPack();
+  const activeCardProjection = {
+    visibleQuestions: [], visibleCards: [], visibleAttachments: [],
+    activeCardResolution: { sourceCardInstanceId: 'card:tourist', resolutionKind: 'unguided_tourist_challenge' }
+  } as unknown as MatchProjection;
+  const clueContext = buildEvidenceContexts(contentPack, activeCardProjection, 'hider').find((context) => context.kind === 'card');
+  assert.ok(clueContext);
+  assert.equal(clueContext?.suggestedVisibilityScope, 'public_match');
+  assert.match(clueContext?.detail ?? '', /Street View screenshot/i);
+  assert.match(clueContext?.detail ?? '', /curb|sidewalk/i);
+
+  const activeChallengeProjection = {
+    visibleQuestions: [], visibleCards: [], visibleAttachments: [],
+    unguidedTouristChallenge: { sourceCardInstanceId: 'card:tourist', hiderAttachmentId: 'clue:1', activatedAt: '2026-10-25T12:00:00.000Z', requiredSeekerPlayerIds: ['seeker-1'], rejectedAttemptCount: 0 }
+  } as unknown as MatchProjection;
+  const proofContext = buildEvidenceContexts(contentPack, activeChallengeProjection, 'seeker').find((context) => context.kind === 'card');
+  assert.equal(proofContext?.suggestedVisibilityScope, 'public_match');
+  assert.match(proofContext?.detail ?? '', /new public camera photo/i);
+});
+
 test('supabase attachment upload command stores durable storage metadata for online evidence', async () => {
   const originalFetch = globalThis.fetch;
   const uploadRequests: Array<{ url: string; headers: Headers }> = [];

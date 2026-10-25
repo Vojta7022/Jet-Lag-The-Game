@@ -1396,6 +1396,7 @@ function eventsForCommand(
               gamblersFeetDurationMinutes: resolutionPlan.kind === 'gamblers_feet_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               rightTurnDurationMinutes: resolutionPlan.kind === 'right_turn_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               rightTurnDeadEndDistanceMeters: resolutionPlan.kind === 'right_turn_challenge' ? resolutionPlan.deadEndDistanceMeters : undefined,
+              unguidedTouristOutdoorsConfirmedByPlayerIds: resolutionPlan.kind === 'unguided_tourist_challenge' ? [] : undefined,
               uTurnAlternateTransitWindowMinutes: resolutionPlan.kind === 'u_turn_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorDurationMinutes: resolutionPlan.kind === 'jammed_door_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorRetryCooldownMinutes: resolutionPlan.doorwayRetryCooldownMinutes,
@@ -1565,6 +1566,19 @@ function eventsForCommand(
             durationMinutes,
             deadEndDistanceMeters: activeResolution.rightTurnDeadEndDistanceMeters ?? 304,
             expiresAt: new Date(Date.parse(envelope.occurredAt) + durationMinutes * 60_000).toISOString()
+          }
+        }));
+      }
+
+      if (activeResolution?.resolutionKind === 'unguided_tourist_challenge') {
+        const seekerTeam = Object.values(aggregate!.teams).find((team) => team.side === 'seeker');
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'unguided_tourist_challenge_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            hiderAttachmentId: envelope.command.payload.unguidedTouristHiderAttachmentId!,
+            hiderRulesAttested: envelope.command.payload.unguidedTouristRulesAttested === true,
+            requiredSeekerPlayerIds: seekerTeam?.memberPlayerIds ?? []
           }
         }));
       }
@@ -1933,6 +1947,21 @@ function eventsForCommand(
         }
       })];
     }
+    case 'confirm_unguided_tourist_outdoors':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'unguided_tourist_outdoors_confirmed',
+        payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId, playerId: envelope.actor.playerId! }
+      })];
+    case 'submit_unguided_tourist_photo':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'unguided_tourist_photo_submitted',
+        payload: { ...envelope.command.payload, playerId: envelope.actor.playerId! }
+      })];
+    case 'review_unguided_tourist_photo':
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'unguided_tourist_photo_reviewed',
+        payload: { sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId, approved: envelope.command.payload.approved }
+      })];
     case 'confirm_egg_partner_acquired':
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
         type: 'egg_partner_acquired',

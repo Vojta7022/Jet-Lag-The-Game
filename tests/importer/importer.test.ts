@@ -290,6 +290,16 @@ test('the workbook importer creates a normalized draft content pack', () => {
     reportsArePlayerAttestations: true
   });
   assert.equal(rightTurn?.requirements?.requiresManualApproval, false);
+  const unguidedTourist = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-unguided-tourist');
+  assert.equal(unguidedTourist?.automationLevel, 'assisted');
+  assert.equal(unguidedTourist?.effects[0]?.effectType, 'unguided_tourist_challenge');
+  assert.deepEqual(unguidedTourist?.effects[0]?.payload, {
+    maximumDistanceMeters: 152,
+    requireSeekerOutdoors: true,
+    requirePublicReferencePhoto: true,
+    requireSeekerPhoto: true,
+    requireNoInternetResearchAttestation: true
+  });
   const eggPartner = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-egg-partner');
   assert.equal(eggPartner?.automationLevel, 'assisted');
   assert.equal(eggPartner?.effects[0]?.effectType, 'egg_partner_challenge');
@@ -374,6 +384,9 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
     deadEndDistanceMeters: 304,
     reportsArePlayerAttestations: true
   });
+  const unguidedTourist = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-unguided-tourist');
+  assert.equal(unguidedTourist?.automationLevel, 'assisted');
+  assert.equal(unguidedTourist?.effects[0]?.effectType, 'unguided_tourist_challenge');
   const eggPartner = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-egg-partner');
   assert.equal(eggPartner?.automationLevel, 'assisted');
   assert.equal(eggPartner?.effects[0]?.effectType, 'egg_partner_challenge');

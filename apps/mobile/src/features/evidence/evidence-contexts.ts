@@ -109,7 +109,8 @@ function resolveCardEvidenceContext(args: {
 }): EvidenceContextViewModel | undefined {
   const cardInstanceId = args.projection.activeCardResolution?.sourceCardInstanceId ??
     args.projection.zoologistChallenge?.sourceCardInstanceId ??
-    args.projection.luxuryCarChallenge?.sourceCardInstanceId;
+    args.projection.luxuryCarChallenge?.sourceCardInstanceId ??
+    args.projection.unguidedTouristChallenge?.sourceCardInstanceId;
   if (!cardInstanceId) {
     return undefined;
   }
@@ -119,6 +120,10 @@ function resolveCardEvidenceContext(args: {
     ? 'zoologist_challenge'
     : args.projection.luxuryCarChallenge
       ? 'luxury_car_challenge'
+      : args.projection.unguidedTouristChallenge
+        ? 'unguided_tourist_challenge'
+      : args.projection.activeCardResolution?.resolutionKind === 'unguided_tourist_challenge'
+        ? 'unguided_tourist_challenge'
       : args.projection.activeCardResolution?.resolutionKind === 'labyrinth_challenge'
         ? 'labyrinth_challenge'
       : undefined;
@@ -132,7 +137,7 @@ function resolveCardEvidenceContext(args: {
   }
 
   const isPublicPhotoChallenge = definition.effects.some((effect) =>
-    effect.effectType === 'labyrinth_challenge' || effect.effectType === 'zoologist_challenge' || effect.effectType === 'luxury_car_challenge'
+    effect.effectType === 'labyrinth_challenge' || effect.effectType === 'zoologist_challenge' || effect.effectType === 'luxury_car_challenge' || effect.effectType === 'unguided_tourist_challenge'
   );
   const detail = definition.effects.some((effect) => effect.effectType === 'labyrinth_challenge')
     ? 'Take a camera photo of the hand-drawn maze and record it publicly so the seekers can solve it.'
@@ -140,6 +145,10 @@ function resolveCardEvidenceContext(args: {
     ? 'Capture and record a public photo for the Zoologist challenge. Players compare the animal category themselves.'
     : definition.effects.some((effect) => effect.effectType === 'luxury_car_challenge')
       ? 'Capture and record a new public car photo. The hider reviews the model and production-year MSRP.'
+      : definition.effects.some((effect) => effect.effectType === 'unguided_tourist_challenge')
+        ? (args.projection.unguidedTouristChallenge
+            ? 'Seekers take a new public camera photo of the found structure. The hider reviews it; the app records the no-internet attestation.'
+            : 'The hider shares a public Street View screenshot from their photo library. Keep the image unzoomed, level with the horizon, and show a human-built structure other than any part of a road, curb, or sidewalk.')
       : 'Pick or capture supporting media, then record the attachment metadata honestly before the referee closes the card window.';
 
   const attachments = args.projection.visibleAttachments.filter(

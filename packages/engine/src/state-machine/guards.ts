@@ -165,6 +165,9 @@ export function validateStateForCommand(
     case 'roll_gamblers_feet_die':
     case 'report_gamblers_feet_steps':
     case 'report_right_turn_route_choice':
+    case 'confirm_unguided_tourist_outdoors':
+    case 'submit_unguided_tourist_photo':
+    case 'review_unguided_tourist_photo':
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Seeker movement challenge reports are only available while seekers are searching.')];
@@ -196,6 +199,7 @@ export function validateStateForCommand(
         isSeekPhaseState(aggregate, 'awaiting_card_resolution') ||
         Boolean(aggregate.zoologistChallenge) ||
         Boolean(aggregate.luxuryCarChallenge) ||
+        Boolean(aggregate.unguidedTouristChallenge) ||
         isLifecycleState(aggregate, 'endgame') ||
         isLifecycleState(aggregate, 'game_complete')
         ? []

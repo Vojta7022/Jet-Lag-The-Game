@@ -593,3 +593,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Reject reports after expiry and U-turns before the reported 304 m dead-end condition; record left turns as noncompliant reports without inventing an unprinted penalty.
 - [x] Show timer, route rules, and recent public reports in Question Center and Live Map; identify street layout and player compliance as attestations.
 - [x] Verify both workbook profiles, selected-scale timer, role permissions, route logging, hider projection, U-turn threshold, expiry, full suite (424/424), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Route path and street classification remain player-reported.
+
+### Completed implementation slice: Curse of the Unguided Tourist
+
+- [x] Import the curse as an assisted photo challenge in both workbook mappings, with the 152 m limit, all-seekers-outside requirement, and public clue/proof photo requirements.
+- [x] Require each seeker to confirm they are outdoors before the hider starts the challenge; require the hider to attach a public Street View image and attest its distance, horizon, and qualifying structure.
+- [x] Keep seeker questions and transit blocked until a seeker submits a fresh public camera photo and attests to no internet research, then the active hider approves it. Rejection clears the pending attempt and permits a retry.
+- [x] Add player-facing clue/check-in, photo submission, and hider review controls; show the scan clarification that road parts, curbs, and sidewalks do not qualify.
+- [x] Verify both workbook profiles, engine lifecycle and gates, public evidence-context guidance, full suite (427/427), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Screenshot distance/image compliance, actual outdoor presence, and internet use remain human-attested; native camera/location and cellular field play remain unverified.

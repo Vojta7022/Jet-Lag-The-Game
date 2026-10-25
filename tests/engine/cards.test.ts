@@ -118,6 +118,99 @@ test('Right Turn starts its scale timer and records only seeker route attestatio
     { type: 'report_right_turn_route_choice', payload: { sourceCardInstanceId: cardInstanceId, choice: 'right', atStreetIntersection: true } }, 2_400_102), contentPack), /expired/i);
 });
 
+test('Unguided Tourist uses an assisted photo challenge plan', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('unguided tourist'));
+  assert.ok(card);
+  card.effects = [{
+    effectType: 'unguided_tourist_challenge', description: card.description, automationLevel: 'assisted',
+    payload: { maximumDistanceMeters: 152, requireSeekerOutdoors: true, requirePublicReferencePhoto: true, requireSeekerPhoto: true }
+  } as never];
+  const plan = buildCardResolutionPlan(card, 'small');
+  assert.equal(plan.kind, 'unguided_tourist_challenge');
+});
+
+test('Unguided Tourist requires seeker outdoors confirmations and hider photo approval before travel or questions', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('unguided tourist'));
+  assert.ok(card);
+  card.effects = [{
+    effectType: 'unguided_tourist_challenge', description: card.description, automationLevel: 'assisted',
+    payload: { maximumDistanceMeters: 152, requireSeekerOutdoors: true, requirePublicReferencePhoto: true, requireSeekerPhoto: true }
+  } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 100), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'unguided_tourist_challenge');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, unguidedTouristHiderAttachmentId: 'tourist:clue' } }, 100.5), contentPack), /hider must confirm/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, unguidedTouristHiderAttachmentId: 'tourist:clue', unguidedTouristRulesAttested: true } }, 101), contentPack), /each seeker.*outside/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'confirm_unguided_tourist_outdoors', payload: { sourceCardInstanceId: cardInstanceId } }, 102), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'upload_attachment', payload: {
+      attachmentId: 'tourist:clue', kind: 'photo_evidence', label: 'Street View clue',
+      visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'library' }
+    } }, 103), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, unguidedTouristHiderAttachmentId: 'tourist:clue', unguidedTouristRulesAttested: true } }, 104), contentPack).aggregate;
+  assert.equal(aggregate.unguidedTouristChallenge?.hiderAttachmentId, 'tourist:clue');
+  assert.equal(aggregate.unguidedTouristChallenge?.hiderRulesAttested, true);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 105), contentPack), /ready/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'update_location', payload: { latitude: 1.2, longitude: 103.8, source: 'manual', onTransit: true } }, 106), contentPack), /transportation/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'set_seeker_transit_context', payload: { sourceCardInstanceId: cardInstanceId, onTransitOrAtStation: true } }, 106.5), contentPack), /transportation/i);
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'upload_attachment', payload: {
+      attachmentId: 'tourist:found-photo-1', kind: 'photo_evidence', label: 'Found location',
+      visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera' }
+    } }, 107), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'submit_unguided_tourist_photo', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: 'tourist:found-photo-1', attestedNoInternetResearch: false } }, 108), contentPack), /internet research/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'submit_unguided_tourist_photo', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: 'tourist:found-photo-1', attestedNoInternetResearch: true } }, 110), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'review_unguided_tourist_photo', payload: { sourceCardInstanceId: cardInstanceId, approved: false } }, 111), contentPack).aggregate;
+  assert.equal(aggregate.unguidedTouristChallenge?.rejectedAttemptCount, 1);
+  assert.ok(aggregate.unguidedTouristChallenge);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'upload_attachment', payload: {
+      attachmentId: 'tourist:found-photo-2', kind: 'photo_evidence', label: 'Found location retry',
+      visibilityScope: 'public_match', cardInstanceId, captureMetadata: { pickerSource: 'camera' }
+    } }, 112), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'submit_unguided_tourist_photo', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: 'tourist:found-photo-2', attestedNoInternetResearch: true } }, 113), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'review_unguided_tourist_photo', payload: { sourceCardInstanceId: cardInstanceId, approved: true } }, 114), contentPack).aggregate;
+  assert.equal(aggregate.unguidedTouristChallenge, undefined);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 115), contentPack).aggregate;
+  assert.equal(aggregate.seekPhaseSubstate, 'awaiting_question_selection');
+});
+
 test('Labyrinth blocks questions until a seeker solution is approved by the hider', () => {
   const contentPack = loadEngineTestContentPack();
   const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('labyrinth'));

@@ -52,6 +52,7 @@ function error(
 const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'hangman_challenge',
   'labyrinth_challenge',
+  'unguided_tourist_challenge',
   'bridge_troll_challenge',
   'seeker_off_transit_challenge',
   'u_turn_challenge',
@@ -78,6 +79,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     (aggregate.eggPartnerChallenge && !aggregate.eggPartnerChallenge.eggAcquiredAt) ||
     aggregate.zoologistChallenge ||
     aggregate.luxuryCarChallenge ||
+    aggregate.unguidedTouristChallenge ||
     (aggregate.activeCardResolution?.resolutionKind &&
       QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
   );
@@ -543,6 +545,10 @@ export function validateCommandEnvelope(
     return stateErrors;
   }
 
+  if (envelope.command.type === 'begin_question_prompt' && aggregate.unguidedTouristChallenge) {
+    return [error(envelope.command.type, 'QUESTION_BLOCKED_BY_CURSE', 'Seekers are not ready to ask questions until the active challenge is cleared.')];
+  }
+
   switch (envelope.command.type) {
     case 'remove_match_player': {
       const playerId = envelope.command.payload.playerId;
@@ -801,6 +807,9 @@ export function validateCommandEnvelope(
       }
 
       const actorRole = getPlayerRole(aggregate, envelope.actor.playerId);
+      if (envelope.command.payload.onTransit === true && actorRole === 'seeker' && aggregate.unguidedTouristChallenge) {
+        return [error(envelope.command.type, 'UNGUIDED_TOURIST_NO_TRANSIT', 'Seekers cannot use transportation until the hider approves a found-location photo.')];
+      }
       const isMoveResolution = aggregate.activeCardResolution?.resolutionKind === 'move';
       if (isMoveResolution && actorRole !== 'hider' && envelope.actor.role !== 'host') {
         return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider can move during a Move card.')];
@@ -1585,6 +1594,26 @@ export function validateCommandEnvelope(
         return [error(envelope.command.type, 'LABYRINTH_CHALLENGE_ACTIVE', 'Publish a maze, have the seekers submit a solution, and approve the solved route before closing this curse.')];
       }
 
+      if (activeResolution.resolutionKind === 'unguided_tourist_challenge') {
+        if (envelope.command.payload.unguidedTouristRulesAttested !== true) {
+          return [error(envelope.command.type, 'UNGUIDED_TOURIST_RULES_ATTESTATION_REQUIRED', 'The hider must confirm the Street View clue is within 152 m, unzoomed, level with the horizon, and shows a qualifying structure.')];
+        }
+        const seekers = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.memberPlayerIds ?? [];
+        const outdoors = new Set(activeResolution.unguidedTouristOutdoorsConfirmedByPlayerIds ?? []);
+        if (seekers.some((playerId) => !outdoors.has(playerId))) {
+          return [error(envelope.command.type, 'SEEKERS_MUST_BE_OUTSIDE', 'Each seeker must confirm they are outside before the Street View challenge can begin.')];
+        }
+        const attachment = envelope.command.payload.unguidedTouristHiderAttachmentId
+          ? aggregate.attachments[envelope.command.payload.unguidedTouristHiderAttachmentId]
+          : undefined;
+        if (!attachment || attachment.kind !== 'photo_evidence' ||
+          attachment.linkedCardInstanceId !== activeResolution.sourceCardInstanceId ||
+          attachment.ownerPlayerId !== envelope.actor.playerId || attachment.visibilityScope !== 'public_match' ||
+          attachment.captureMetadata.pickerSource !== 'library') {
+          return [error(envelope.command.type, 'UNGUIDED_TOURIST_REFERENCE_REQUIRED', 'The hider must share a public Street View reference image from their photo library for this card.')];
+        }
+      }
+
       if (activeResolution.resolutionKind === 'zoologist_challenge') {
         const category = envelope.command.payload.zoologistCategory;
         const attachment = envelope.command.payload.zoologistHiderAttachmentId
@@ -1684,6 +1713,55 @@ export function validateCommandEnvelope(
         contentPack,
         envelope as CommandEnvelope<Extract<CommandEnvelope['command'], { type: 'resolve_card_window' }>>
       );
+    }
+    case 'confirm_unguided_tourist_outdoors': {
+      const { sourceCardInstanceId } = envelope.command.payload;
+      const active = aggregate.activeCardResolution;
+      const seekerIds = Object.values(aggregate.teams).find((team) => team.side === 'seeker')?.memberPlayerIds ?? [];
+      if (active?.sourceCardInstanceId !== sourceCardInstanceId || active.resolutionKind !== 'unguided_tourist_challenge') {
+        return [error(envelope.command.type, 'UNGUIDED_TOURIST_NOT_ACTIVE', 'There is no active Unguided Tourist card awaiting seeker outdoor confirmations.')];
+      }
+      if (!envelope.actor.playerId || !seekerIds.includes(envelope.actor.playerId) ||
+        (getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role) !== 'seeker') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must confirm their own outdoor status.')];
+      }
+      if (active.unguidedTouristOutdoorsConfirmedByPlayerIds?.includes(envelope.actor.playerId)) {
+        return [error(envelope.command.type, 'ALREADY_CONFIRMED', 'You already confirmed that you are outside.')];
+      }
+      return [];
+    }
+    case 'submit_unguided_tourist_photo': {
+      const challenge = aggregate.unguidedTouristChallenge;
+      const payload = envelope.command.payload;
+      const attachment = aggregate.attachments[payload.attachmentId];
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'UNGUIDED_TOURIST_NOT_ACTIVE', 'There is no active Unguided Tourist photo challenge.')];
+      }
+      if (challenge.candidate) return [error(envelope.command.type, 'PHOTO_REVIEW_PENDING', 'Wait for the hider to review the current photo before submitting another.')];
+      if (payload.attestedNoInternetResearch !== true) return [error(envelope.command.type, 'NO_INTERNET_ATTESTATION_REQUIRED', 'Confirm that seekers did not use internet research to locate the pictured structure.')];
+      if (!envelope.actor.playerId || !challenge.requiredSeekerPlayerIds.includes(envelope.actor.playerId) ||
+        (getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role) !== 'seeker') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker on the active team can submit the found-location photo.')];
+      }
+      if (!attachment || attachment.kind !== 'photo_evidence' || attachment.linkedCardInstanceId !== payload.sourceCardInstanceId ||
+        attachment.ownerPlayerId !== envelope.actor.playerId || attachment.visibilityScope !== 'public_match' ||
+        attachment.captureMetadata.pickerSource !== 'camera' || Date.parse(attachment.createdAt) <= Date.parse(challenge.activatedAt ?? '')) {
+        return [error(envelope.command.type, 'SEEKER_CAMERA_PHOTO_REQUIRED', 'Take a new public photo with the camera and attach it to this card.')];
+      }
+      return [];
+    }
+    case 'review_unguided_tourist_photo': {
+      const challenge = aggregate.unguidedTouristChallenge;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || !challenge.candidate) {
+        return [error(envelope.command.type, 'PHOTO_NOT_PENDING', 'There is no seeker photo awaiting hider review.')];
+      }
+      if (!challenge.candidate.attestedNoInternetResearch) return [error(envelope.command.type, 'NO_INTERNET_ATTESTATION_REQUIRED', 'The seeker must attest that they did not use internet research.')];
+      const activeHider = Object.values(aggregate.roleAssignments).find((assignment) => assignment.role === 'hider')?.playerId;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (actorRole !== 'host' && (actorRole !== 'hider' || envelope.actor.playerId !== activeHider)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the active hider can approve or reject the seekers’ photo.')];
+      }
+      return [];
     }
     case 'set_hangman_word': {
       const resolution = aggregate.activeCardResolution;
@@ -1792,6 +1870,9 @@ export function validateCommandEnvelope(
       return [];
     }
     case 'set_seeker_transit_context': {
+      if (envelope.command.payload.onTransitOrAtStation === true && aggregate.unguidedTouristChallenge) {
+        return [error(envelope.command.type, 'UNGUIDED_TOURIST_NO_TRANSIT', 'Seekers cannot use transportation until the hider approves a found-location photo.')];
+      }
       const restriction = aggregate.seekerOffTransitRestriction;
       if (restriction?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
         return [error(envelope.command.type, 'URBAN_EXPLORER_NOT_ACTIVE', 'The Urban Explorer restriction is not active.')];

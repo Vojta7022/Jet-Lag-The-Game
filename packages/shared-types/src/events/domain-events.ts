@@ -130,6 +130,10 @@ export type DomainEvent =
   | GamblersFeetPlayerUpdatedEvent
   | RightTurnChallengeStartedEvent
   | RightTurnRouteChoiceReportedEvent
+  | UnguidedTouristOutdoorsConfirmedEvent
+  | UnguidedTouristChallengeStartedEvent
+  | UnguidedTouristPhotoSubmittedEvent
+  | UnguidedTouristPhotoReviewedEvent
   | EggPartnerChallengeStartedEvent
   | EggPartnerAcquiredEvent
   | EggPartnerMemberLostEvent
@@ -461,7 +465,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'unguided_tourist_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     labyrinthDrawingWindowMinutes?: number;
     moveOriginStationId?: string;
     moveOriginStationName?: string;
@@ -478,6 +482,7 @@ export interface CardResolutionOpenedEvent {
     gamblersFeetDurationMinutes?: number;
     rightTurnDurationMinutes?: number;
     rightTurnDeadEndDistanceMeters?: number;
+    unguidedTouristOutdoorsConfirmedByPlayerIds?: string[];
     uTurnAlternateTransitWindowMinutes?: number;
     jammedDoorRetryCooldownMinutes?: number;
     jammedDoorMinimumTotal?: number;
@@ -679,6 +684,26 @@ export interface RightTurnRouteChoiceReportedEvent {
     deadEndDistanceMeters?: number;
     compliant: boolean;
   };
+}
+
+export interface UnguidedTouristOutdoorsConfirmedEvent {
+  type: 'unguided_tourist_outdoors_confirmed';
+  payload: { sourceCardInstanceId: string; playerId: string };
+}
+
+export interface UnguidedTouristChallengeStartedEvent {
+  type: 'unguided_tourist_challenge_started';
+  payload: { sourceCardInstanceId: string; hiderAttachmentId: string; hiderRulesAttested: boolean; requiredSeekerPlayerIds: string[] };
+}
+
+export interface UnguidedTouristPhotoSubmittedEvent {
+  type: 'unguided_tourist_photo_submitted';
+  payload: { sourceCardInstanceId: string; attachmentId: string; playerId: string; attestedNoInternetResearch: boolean };
+}
+
+export interface UnguidedTouristPhotoReviewedEvent {
+  type: 'unguided_tourist_photo_reviewed';
+  payload: { sourceCardInstanceId: string; approved: boolean };
 }
 
 export interface EggPartnerChallengeStartedEvent {

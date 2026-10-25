@@ -307,6 +307,7 @@ export function reduceMatchAggregate(
         lemonPhylacteryChallenge: undefined,
         gamblersFeetChallenge: undefined,
         rightTurnChallenge: undefined,
+        unguidedTouristChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -351,6 +352,7 @@ export function reduceMatchAggregate(
         lemonPhylacteryChallenge: undefined,
         gamblersFeetChallenge: undefined,
         rightTurnChallenge: undefined,
+        unguidedTouristChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -779,6 +781,38 @@ export function reduceMatchAggregate(
         }
       };
     }
+    case 'unguided_tourist_outdoors_confirmed': {
+      if (base.activeCardResolution?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const confirmed = base.activeCardResolution.unguidedTouristOutdoorsConfirmedByPlayerIds ?? [];
+      return { ...base, activeCardResolution: {
+        ...base.activeCardResolution,
+        unguidedTouristOutdoorsConfirmedByPlayerIds: [...new Set([...confirmed, eventEnvelope.event.payload.playerId])]
+      } };
+    }
+    case 'unguided_tourist_challenge_started':
+      return { ...base, unguidedTouristChallenge: {
+        sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+        hiderAttachmentId: eventEnvelope.event.payload.hiderAttachmentId,
+        hiderRulesAttested: eventEnvelope.event.payload.hiderRulesAttested,
+        activatedAt: eventEnvelope.occurredAt,
+        requiredSeekerPlayerIds: eventEnvelope.event.payload.requiredSeekerPlayerIds,
+        rejectedAttemptCount: 0
+      } };
+    case 'unguided_tourist_photo_submitted':
+      if (base.unguidedTouristChallenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return { ...base, unguidedTouristChallenge: { ...base.unguidedTouristChallenge,
+        candidate: { attachmentId: eventEnvelope.event.payload.attachmentId,
+          submittedByPlayerId: eventEnvelope.event.payload.playerId,
+          attestedNoInternetResearch: eventEnvelope.event.payload.attestedNoInternetResearch,
+          submittedAt: eventEnvelope.occurredAt }
+      } };
+    case 'unguided_tourist_photo_reviewed': {
+      const challenge = base.unguidedTouristChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      if (eventEnvelope.event.payload.approved) return { ...base, unguidedTouristChallenge: undefined };
+      return { ...base, unguidedTouristChallenge: { ...challenge, candidate: undefined,
+        rejectedAttemptCount: challenge.rejectedAttemptCount + 1 } };
+    }
     case 'gamblers_feet_player_updated': {
       const challenge = base.gamblersFeetChallenge;
       if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
@@ -1203,6 +1237,7 @@ export function reduceMatchAggregate(
           endlessTumbleSuccessfulDieResults: eventEnvelope.event.payload.endlessTumbleSuccessfulDieResults,
           gamblersFeetDurationMinutes: eventEnvelope.event.payload.gamblersFeetDurationMinutes,
           rightTurnDurationMinutes: eventEnvelope.event.payload.rightTurnDurationMinutes,
+          unguidedTouristOutdoorsConfirmedByPlayerIds: eventEnvelope.event.payload.unguidedTouristOutdoorsConfirmedByPlayerIds ?? [],
           rightTurnDeadEndDistanceMeters: eventEnvelope.event.payload.rightTurnDeadEndDistanceMeters,
           uTurnAlternateTransitWindowMinutes: eventEnvelope.event.payload.uTurnAlternateTransitWindowMinutes,
           jammedDoorRetryCooldownMinutes: eventEnvelope.event.payload.jammedDoorRetryCooldownMinutes,

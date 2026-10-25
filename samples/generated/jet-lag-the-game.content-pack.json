@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T20:18:11.719Z",
+    "importedAt": "2026-10-25T20:38:01.590Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -1969,7 +1969,7 @@
       "shortName": "Curse Of The Unguided Tourist",
       "description": "Send the seeker(s) an unzoomed google Street View image from a street within 500ft (152m) of where they are now. The shot has to be parallel to the horizon and include at least one human-built structure other than a road. Without using the internet for research, they must find what you sent them in real life before they can use transportation or ask another question. They must send a picture the hiders for verification.",
       "rulebookGuidanceText": "The pictured human-built structure cannot be part of a road, including a curb or sidewalk. Remove this card from decks in places with very limited Street View coverage.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -1979,19 +1979,23 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "unguided_tourist_challenge",
           "description": "Send the seeker(s) an unzoomed google Street View image from a street within 500ft (152m) of where they are now. The shot has to be parallel to the horizon and include at least one human-built structure other than a road. Without using the internet for research, they must find what you sent them in real life before they can use transportation or ask another question. They must send a picture the hiders for verification.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Send the seeker(s) an unzoomed google Street View image from a street within 500ft (152m) of where they are now. The shot has to be parallel to the horizon and include at least one human-built structure other than a road. Without using the internet for research, they must find what you sent them in real life before they can use transportation or ask another question. They must send a picture the hiders for verification.",
           "payload": {
-            "workbookName": "Curse Of The Unguided Tourist"
+            "maximumDistanceMeters": 152,
+            "requireSeekerOutdoors": true,
+            "requirePublicReferencePhoto": true,
+            "requireSeekerPhoto": true,
+            "requireNoInternetResearchAttestation": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
         "requiresManualApproval": true,
-        "requiresPhotoUpload": false
+        "requiresPhotoUpload": true
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -2002,7 +2006,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

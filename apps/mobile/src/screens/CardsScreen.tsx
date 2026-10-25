@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { GameplayTabBar } from '../components/GameplayTabBar.tsx';
 import { ProductNavBar } from '../components/ProductNavBar.tsx';
@@ -113,6 +113,7 @@ export function CardsScreen() {
     getContentPackByReference
   } = useAppShell();
   const [showPiles, setShowPiles] = useState(false);
+  const [touristNoInternetConfirmed, setTouristNoInternetConfirmed] = useState(false);
   const activeMatch = state.activeMatch;
   const projection = activeMatch?.projection;
   const contentPack = getContentPackByReference(projection?.contentPackId, projection?.contentPackVersion);
@@ -143,6 +144,7 @@ export function CardsScreen() {
   const [selectedRewardCardIdsBySet, setSelectedRewardCardIdsBySet] = useState<string[][]>([]);
   const [useQuestionRewardDrawBonus, setUseQuestionRewardDrawBonus] = useState(false);
   const [drawTrayCardIds, setDrawTrayCardIds] = useState<string[]>([]);
+  useEffect(() => setTouristNoInternetConfirmed(false), [projection?.unguidedTouristChallenge?.sourceCardInstanceId, projection?.unguidedTouristChallenge?.candidate?.attachmentId]);
   const previousHandIdsRef = useRef<string[]>([]);
   const selectedCard = findResolvedVisibleCard(
     deckViewModels,
@@ -430,6 +432,20 @@ export function CardsScreen() {
         attachment.kind === 'photo_evidence'
       ).at(-1)?.attachmentId
     : undefined;
+  const touristCardInstanceId = projection?.activeCardResolution?.resolutionKind === 'unguided_tourist_challenge'
+    ? projection.activeCardResolution.sourceCardInstanceId
+    : projection?.unguidedTouristChallenge?.sourceCardInstanceId;
+  const touristOwnedPhotos = touristCardInstanceId && activeMatch?.recipient.playerId
+    ? projection?.visibleAttachments.filter((attachment) =>
+        attachment.linkedCardInstanceId === touristCardInstanceId &&
+        attachment.ownerPlayerId === activeMatch.recipient.playerId &&
+        attachment.visibilityScope === 'public_match' && attachment.kind === 'photo_evidence'
+      ) ?? []
+    : [];
+  const touristOwnPhotoId = touristOwnedPhotos.at(-1)?.attachmentId;
+  const touristHiderAttachmentId = projection?.activeCardResolution?.resolutionKind === 'unguided_tourist_challenge'
+    ? touristOwnedPhotos.at(-1)?.attachmentId
+    : undefined;
   const resolveDisabledReason =
     activeCard && !canResolve
       ? getCardResolutionBlockedReason(viewerRole, projection) ?? 'The hider holding this card or a host-admin must close the active card window after the effect is handled.'
@@ -508,6 +524,35 @@ export function CardsScreen() {
           title="Read-only spectator view"
           detail="Spectators cannot inspect private hands or perform card actions. Only card state exposed by the current projection scope is visible here."
         />
+      ) : null}
+
+      {projection?.unguidedTouristChallenge ? (
+        <Panel title="Curse of the Unguided Tourist" subtitle="Find the pictured structure in person. No internet research or transportation." tone="accent">
+          <Text style={styles.copy}>Street View clue: {projection.visibleAttachments.find((attachment) => attachment.attachmentId === projection.unguidedTouristChallenge?.hiderAttachmentId)?.label ?? 'shared by the hider'}.</Text>
+          {projection.unguidedTouristChallenge.candidate ? (
+            <>
+              <Text style={styles.copy}>Found-location photo from {projection.players.find((player) => player.playerId === projection.unguidedTouristChallenge?.candidate?.submittedByPlayerId)?.displayName ?? 'a seeker'}: {projection.visibleAttachments.find((attachment) => attachment.attachmentId === projection.unguidedTouristChallenge?.candidate?.attachmentId)?.label ?? 'photo submitted'}. The seeker attests they did not use internet research.</Text>
+              {(viewerRole === 'hider' || viewerRole === 'host') ? (
+                <View style={styles.buttonRow}>
+                  <AppButton label="Needs another try" tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'review_unguided_tourist_photo', payload: { sourceCardInstanceId: projection.unguidedTouristChallenge!.sourceCardInstanceId, approved: false } })} />
+                  <AppButton label="Found it" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'review_unguided_tourist_photo', payload: { sourceCardInstanceId: projection.unguidedTouristChallenge!.sourceCardInstanceId, approved: true } })} />
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <Text style={styles.copy}>Seekers: find the actual structure together, take a new camera photo, and submit it here for the hider to check.</Text>
+          )}
+          {viewerRole === 'seeker' && !projection.unguidedTouristChallenge.candidate ? (
+            <>
+              <Text style={styles.copy}>{touristOwnPhotoId ? 'Your public camera photo is ready to submit.' : 'Take a photo in the Card Evidence section below.'}</Text>
+              <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: touristNoInternetConfirmed }} onPress={() => setTouristNoInternetConfirmed((value) => !value)} style={styles.checkboxRow}>
+                <View style={[styles.checkbox, touristNoInternetConfirmed ? styles.checkboxChecked : undefined]}><Text style={styles.checkboxMark}>{touristNoInternetConfirmed ? '✓' : ''}</Text></View>
+                <Text style={styles.copy}>We found this without internet research.</Text>
+              </Pressable>
+              <AppButton label="Send found photo to hider" disabled={state.loadState === 'loading' || !touristOwnPhotoId || !touristNoInternetConfirmed} onPress={() => touristOwnPhotoId && void submitCommand({ type: 'submit_unguided_tourist_photo', payload: { sourceCardInstanceId: projection.unguidedTouristChallenge!.sourceCardInstanceId, attachmentId: touristOwnPhotoId, attestedNoInternetResearch: true } })} />
+            </>
+          ) : null}
+        </Panel>
       ) : null}
 
       {projection?.eggPartnerChallenge ? (
@@ -1119,6 +1164,14 @@ export function CardsScreen() {
               zoologistHiderAttachmentId={zoologistHiderAttachmentId}
               luxuryCarHiderAttachmentId={luxuryCarHiderAttachmentId}
               labyrinthHiderAttachmentId={labyrinthHiderAttachmentId}
+              unguidedTouristHiderAttachmentId={touristHiderAttachmentId}
+              unguidedTouristOutdoorsConfirmedByPlayerIds={projection.activeCardResolution.unguidedTouristOutdoorsConfirmedByPlayerIds}
+              unguidedTouristSeekerPlayerIds={projection.players.filter((player) => player.role === 'seeker').map((player) => player.playerId)}
+              viewerPlayerId={activeMatch?.recipient.playerId}
+              onConfirmUnguidedTouristOutdoors={() => {
+                const sourceCardInstanceId = projection?.activeCardResolution?.sourceCardInstanceId;
+                if (sourceCardInstanceId) void submitCommand({ type: 'confirm_unguided_tourist_outdoors', payload: { sourceCardInstanceId } });
+              }}
               canResolve={canResolve}
               resolveDisabledReason={resolveDisabledReason}
               questionCategories={contentPack.questionCategories}
@@ -1174,7 +1227,7 @@ export function CardsScreen() {
                   type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId, dieRoll }
                 });
               }}
-              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection, ransomNoteSelection, cairnSelection) => {
+              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection, ransomNoteSelection, cairnSelection, unguidedTouristSelection) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -1206,6 +1259,10 @@ export function CardsScreen() {
                     ...(cairnSelection ? {
                       cairnTargetHeight: cairnSelection.targetHeight,
                       cairnTargetConfirmed: cairnSelection.targetConfirmed
+                    } : {}),
+                    ...(unguidedTouristSelection ? {
+                      unguidedTouristHiderAttachmentId: unguidedTouristSelection.hiderAttachmentId,
+                      unguidedTouristRulesAttested: unguidedTouristSelection.rulesAttested
                     } : {})
                   }
                 });
@@ -1225,7 +1282,7 @@ export function CardsScreen() {
             cameraOnly={projection?.activeCardResolution?.resolutionKind === 'zoologist_challenge' ||
               projection?.activeCardResolution?.resolutionKind === 'labyrinth_challenge' ||
               projection?.activeCardResolution?.resolutionKind === 'luxury_car_challenge' ||
-              Boolean(projection?.zoologistChallenge) || Boolean(projection?.luxuryCarChallenge)}
+              Boolean(projection?.zoologistChallenge) || Boolean(projection?.luxuryCarChallenge) || Boolean(projection?.unguidedTouristChallenge)}
             drafts={cardEvidenceDrafts}
             visibleAttachments={activeCardEvidenceContext?.attachments ?? []}
             disabled={
@@ -1401,6 +1458,32 @@ const styles = StyleSheet.create({
   actionCell: {
     flexBasis: 220,
     flexGrow: 1
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  checkboxRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10
+  },
+  checkbox: {
+    alignItems: 'center',
+    borderColor: colors.borderStrong,
+    borderRadius: 6,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: 'center',
+    width: 24
+  },
+  checkboxChecked: {
+    backgroundColor: colors.accent
+  },
+  checkboxMark: {
+    color: colors.text,
+    fontWeight: '900'
   },
   deckSummary: {
     backgroundColor: colors.surfaceMuted,
