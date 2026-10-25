@@ -30,6 +30,47 @@ test('hider can set a hidden station-centered zone using the selected scale radi
   assert.ok(result.aggregate.hiddenState.hidingZone?.selectedAt);
 });
 
+test('hiding zone must match the authority loaded transit station', () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToHidePhase(contentPack, 'medium');
+  aggregate.mode = 'online';
+  const point = representativePointFromGeometry(aggregate.mapRegion?.boundaryGeometry);
+  assert.ok(point);
+  const station = {
+    featureId: 'osm:node/123',
+    featureClassId: 'rail-station',
+    label: 'Central Station',
+    latitude: point[1],
+    longitude: point[0],
+    geometrySupport: 'point' as const,
+    coverage: 'approximate' as const
+  };
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test',
+    retrievedAt: '2026-10-25T12:00:00.000Z',
+    coverage: 'approximate' as const,
+    features: [station]
+  };
+  const command = {
+    type: 'set_hiding_zone' as const,
+    payload: { stationId: 'node/999', stationName: 'Central Station', latitude: point[1], longitude: point[0] }
+  } as never;
+
+  const verified = executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, {
+    type: 'set_hiding_zone',
+    payload: { stationId: 'node/123', stationName: 'Central Station', latitude: point[1], longitude: point[0] }
+  } as never, 29), contentPack, dataset);
+  assert.equal(verified.aggregate.hiddenState.hidingZone?.stationId, 'node/123');
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId, {
+    actorId: 'hider-1', playerId: 'hider-1', role: 'hider'
+  }, command, 30), contentPack, dataset), /authority-verified map data/);
+});
+
 test('station-centered zone is private from seekers and visible to hider and referee', () => {
   const contentPack = loadEngineTestContentPack();
   const aggregate = setupMatchToHidePhase(contentPack, 'large');

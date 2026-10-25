@@ -642,6 +642,22 @@ export function validateCommandEnvelope(
       if (!stationId.trim() || !stationName.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
         return [error(envelope.command.type, 'INVALID_HIDING_ZONE', 'Choose a named transit station with valid coordinates.')];
       }
+      if (aggregate.mode === 'online' && !questionFeatureDataset) {
+        return [error(envelope.command.type, 'STATION_DATA_UNAVAILABLE', 'The authority could not verify this transit station. Try again when map data is available.')];
+      }
+      if (questionFeatureDataset) {
+        const trustedStation = questionFeatureDataset.features.find((feature) =>
+          feature.featureClassId === 'rail-station' && feature.featureId === `osm:${stationId}`
+        );
+        const sameName = trustedStation?.label.normalize('NFKC').trim().toLocaleLowerCase() ===
+          stationName.normalize('NFKC').trim().toLocaleLowerCase();
+        const samePoint = trustedStation && distanceMeters(
+          [longitude, latitude], [trustedStation.longitude, trustedStation.latitude]
+        ) <= 5;
+        if (!trustedStation || !sameName || !samePoint) {
+          return [error(envelope.command.type, 'UNVERIFIED_HIDING_STATION', 'Choose a transit station that matches the authority-verified map data.')];
+        }
+      }
       const geometry = aggregate.mapRegion?.boundaryGeometry;
       const radiusMeters = getHidingZoneRadiusMeters(contentPack, aggregate.selectedRulesetId, aggregate.selectedScale);
       if (radiusMeters <= 0) {

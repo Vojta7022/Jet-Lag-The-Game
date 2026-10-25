@@ -14,7 +14,23 @@ export async function loadQuestionFeatureDataset(args: {
   provider?: QuestionFeatureDataProvider;
 }): Promise<QuestionFeatureDatasetModel | undefined> {
   const command = args.envelope.command;
-  if (command.type !== 'ask_question' || !args.aggregate?.mapRegion || !args.provider) return undefined;
+  if (!args.aggregate?.mapRegion) return undefined;
+  if (command.type === 'set_hiding_zone') {
+    if (args.aggregate.mode !== 'online' || !args.provider) return undefined;
+    try {
+      return await args.provider.load({
+        featureClassIds: ['rail-station'],
+        regionGeometry: args.aggregate.mapRegion.boundaryGeometry
+      });
+    } catch {
+      throw new TransportRuntimeError(
+        'TRANSIT_STATION_DATA_UNAVAILABLE',
+        'The shared map feature service is temporarily unavailable. Try selecting the station again shortly.'
+      );
+    }
+  }
+  if (!args.provider) return undefined;
+  if (command.type !== 'ask_question') return undefined;
 
   const template = args.contentPack.questionTemplates.find((candidate) =>
     candidate.templateId === command.payload.templateId);

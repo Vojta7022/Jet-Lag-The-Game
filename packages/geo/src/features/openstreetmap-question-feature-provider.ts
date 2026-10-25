@@ -62,8 +62,14 @@ const NON_WALKABLE_OR_INACTIVE_HIGHWAYS = new Set([
 const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
   'a-commercial-airport': [{ tags: { aeroway: 'aerodrome', scheduled_service: 'yes' } }],
   'commercial-airport': [{ tags: { aeroway: 'aerodrome', scheduled_service: 'yes' } }],
-  'a-rail-station': [{ tags: { railway: 'station' } }, { tags: { railway: 'halt' } }],
-  'rail-station': [{ tags: { railway: 'station' } }, { tags: { railway: 'halt' } }],
+  'a-rail-station': [
+    { tags: { railway: 'station' } }, { tags: { railway: 'halt' } },
+    { tags: { railway: 'tram_stop' } }, { tags: { public_transport: 'station' } }
+  ],
+  'rail-station': [
+    { tags: { railway: 'station' } }, { tags: { railway: 'halt' } },
+    { tags: { railway: 'tram_stop' } }, { tags: { public_transport: 'station' } }
+  ],
   'stations-name-length': [
     { tags: { railway: 'station' } },
     { tags: { railway: 'halt' } },

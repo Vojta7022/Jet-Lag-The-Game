@@ -45,6 +45,23 @@ test('OpenStreetMap question feature provider returns undefined for feature type
   assert.equal(result, undefined);
 });
 
+test('rail station lookup includes mapped tram stops and public transport stations', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_url, init) => {
+      submittedQuery = new URLSearchParams(String(init?.body)).get('data') ?? '';
+      return new Response(JSON.stringify({ elements: [] }), { status: 200 });
+    }
+  });
+  await provider.load({
+    featureClassIds: ['rail-station'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.match(submittedQuery, /railway.*tram_stop/);
+  assert.match(submittedQuery, /public_transport.*station/);
+});
+
 test('OpenStreetMap provider joins both directions of named subway routes into metro line candidates', async () => {
   let submittedQuery = '';
   const provider = new OpenStreetMapQuestionFeatureProvider({
