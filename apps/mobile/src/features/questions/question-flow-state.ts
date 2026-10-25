@@ -247,7 +247,7 @@ export function describeTemplateSupport(args: {
           return 'When connected, mapped subway route lines can answer this automatically; incomplete route geometry stays manual.';
         }
         if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-coastline')) {
-          return 'The app compares fresh player locations to mapped ocean-coastline lines when connected; great-lake shores and qualifying wide waterways still need a manual ruling';
+          return 'The app compares fresh locations to mapped ocean and North American Great Lakes shorelines when connected; other lakes and qualifying wide waterways still need a manual ruling';
         }
         if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'an-international-border')) {
           return 'The app compares fresh player locations to mapped country borders, including enclave boundaries, when connected; missing or incomplete border data stays manual';

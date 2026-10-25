@@ -296,7 +296,7 @@ export function describeExpectedAnswerGuidance(
       return 'When connected, the app uses mapped subway routes within the seeker’s reach, finds the route line nearest to the hider, and narrows the map around that route. Incomplete route geometry stays manual.';
     }
     if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-coastline')) {
-      return 'When connected, the app compares both fresh locations to mapped ocean-coastline lines and narrows the search map to the same line. The printed rule also counts a great lake and water flowing directly into the ocean or a great lake through a waterway that is never less than 2 km wide. The app cannot verify those connections or widths from its current map data, so the referee must rule manually for those cases. OpenStreetMap coastline coverage is approximate.';
+      return 'When connected, the app compares both fresh locations to mapped ocean shorelines and mapped shorelines for the five North American Great Lakes, then narrows the search map to the same line. Other lakes and water flowing directly into the ocean or a great lake through a waterway that is never less than 2 km wide still need a referee ruling because the map data cannot establish that full rule. OpenStreetMap coastline coverage is approximate.';
     }
     if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'an-international-border')) {
       return 'When connected, the app compares both fresh locations with mapped international borders inside the playable map, including borders around enclaves, then narrows the search map. Missing or ambiguous border data stays manual.';

@@ -471,7 +471,7 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   });
 
   assert.ok(dataset);
-  assert.equal(dataset.sourceVersion, 'overpass-question-features-v11');
+  assert.equal(dataset.sourceVersion, 'overpass-question-features-v12');
   assert.match(submittedQuery, /way\["natural"="coastline"\]/);
   assert.equal(dataset.features.length, 1);
   assert.equal(dataset.features[0]?.featureClassId, 'a-coastline');
@@ -479,6 +479,83 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   assert.deepEqual(dataset.features[0]?.geometry, {
     type: 'LineString', coordinates: [[0.2, 0.1], [0.5, 0.1], [0.8, 0.1]]
   });
+});
+
+test('OpenStreetMap coastline data includes recognized Great Lakes shoreline boundaries', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [{
+        type: 'relation', id: 9001,
+        tags: { type: 'multipolygon', natural: 'water', water: 'lake', name: 'Lake Superior', wikidata: 'Q1066' },
+        members: [
+          {
+            type: 'way', ref: 9002, role: 'outer',
+            geometry: [
+              { lon: -92, lat: 46 }, { lon: -90, lat: 46 }, { lon: -90, lat: 48 },
+              { lon: -92, lat: 48 }, { lon: -92, lat: 46 }
+            ]
+          },
+          {
+            type: 'way', ref: 9003, role: 'inner',
+            geometry: [
+              { lon: -91.8, lat: 46.2 }, { lon: -91.7, lat: 46.2 }, { lon: -91.7, lat: 46.3 },
+              { lon: -91.8, lat: 46.3 }, { lon: -91.8, lat: 46.2 }
+            ]
+          }
+        ]
+      }] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-coastline'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[-93, 45], [-89, 45], [-89, 49], [-93, 49], [-93, 45]]] }
+  });
+
+  assert.match(submittedQuery, /wikidata/);
+  assert.equal(dataset?.features.length, 1);
+  assert.equal(dataset?.features[0]?.label, 'Lake Superior shoreline');
+  assert.equal(dataset?.features[0]?.geometry?.type, 'MultiLineString');
+  assert.equal(dataset?.features[0]?.properties?.greatLake, true);
+});
+
+test('OpenStreetMap coastline data leaves unnamed or unclassified lakes out of the coastline target', async () => {
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async () => new Response(JSON.stringify({ elements: [{
+      type: 'way', id: 9010,
+      geometry: [
+        { lon: 0.2, lat: 0.2 }, { lon: 0.8, lat: 0.2 }, { lon: 0.8, lat: 0.8 },
+        { lon: 0.2, lat: 0.8 }, { lon: 0.2, lat: 0.2 }
+      ],
+      tags: { natural: 'water', water: 'lake', name: 'Small Local Lake' }
+    }] }), { status: 200 })
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-coastline'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.equal(dataset?.features.length, 0);
+});
+
+test('OpenStreetMap coastline data stays manual when a recognized Great Lake boundary is incomplete', async () => {
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async () => new Response(JSON.stringify({ elements: [{
+      type: 'relation', id: 9011,
+      tags: { type: 'multipolygon', natural: 'water', water: 'lake', name: 'Lake Superior', wikidata: 'Q1066' },
+      members: [{ type: 'way', ref: 9012, role: 'outer', geometry: [{ lon: -92, lat: 46 }, { lon: -90, lat: 48 }] }]
+    }] }), { status: 200 })
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-coastline'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[-93, 45], [-89, 45], [-89, 49], [-93, 49], [-93, 45]]] }
+  });
+
+  assert.equal(dataset, undefined);
 });
 
 test('OpenStreetMap provider refuses coastline data when a shoreline way has incomplete geometry', async () => {

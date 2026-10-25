@@ -434,12 +434,12 @@ test('question guidance preserves the full Coastline rule and identifies inland 
   });
 
   const guidance = describeExpectedAnswerGuidance(template, category);
-  assert.match(guidance, /mapped ocean[- ]coastline/i);
-  assert.match(guidance, /a great lake/i);
-  assert.match(guidance, /flowing directly into the ocean or a great lake/i);
+  assert.match(guidance, /mapped ocean shorelines/i);
+  assert.match(guidance, /five North American Great Lakes/i);
+  assert.match(guidance, /water flowing directly into the ocean or a great lake/i);
   assert.match(guidance, /never less than 2 km wide/i);
-  assert.match(guidance, /the app cannot verify those connections or widths/i);
-  assert.match(guidance, /referee must rule manually/i);
+  assert.match(guidance, /map data cannot establish that full rule/i);
+  assert.match(guidance, /need a referee ruling/i);
 });
 
 test('Tentacles guidance explains the seeker-anchored reach and automatic closest-place answer', () => {

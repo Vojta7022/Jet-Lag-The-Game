@@ -516,7 +516,10 @@ test('Coastline Measuring compares distance to the mapped shoreline and updates 
     features: [{
       featureId: 'osm:way/501', featureClassId: 'a-coastline', label: 'Mapped coastline',
       longitude: 103.8, latitude: 1.1, geometrySupport: 'line' as const, coverage: 'approximate' as const,
-      geometry: { type: 'LineString' as const, coordinates: [[103.8, 1.08], [103.8, 1.12]] }
+      geometry: { type: 'MultiLineString' as const, coordinates: [
+        [[103.8, 1.08], [103.8, 1.12]],
+        [[103.79, 1.08], [103.79, 1.12]]
+      ] }
     }]
   };
   const result = executeCommand(prompted, makeEnvelope(prompted.matchId,

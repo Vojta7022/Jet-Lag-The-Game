@@ -45,7 +45,7 @@ const OVERPASS_FALLBACK_ENDPOINT = 'https://overpass.private.coffee/api/interpre
 const RETRYABLE_OVERPASS_STATUSES = new Set([429, 502, 503, 504]);
 const OVERPASS_ENDPOINT_COOLDOWN_MS = 60_000;
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-question-features-v11';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v12';
 const OSM_REQUEST_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   accept: 'application/json',
@@ -57,6 +57,8 @@ const INTERNATIONAL_BORDER_FEATURE_CLASS = 'an-international-border';
 const STREET_PATH_FEATURE_CLASS = 'street-or-path';
 const BODY_OF_WATER_FEATURE_CLASS = 'a-body-of-water';
 const COASTLINE_FEATURE_CLASS = 'a-coastline';
+const GREAT_LAKE_WIKIDATA_IDS = new Set(['Q1066', 'Q1169', 'Q1383', 'Q5492', 'Q1062']);
+const GREAT_LAKE_NAMES = new Set(['lake superior', 'lake michigan', 'lake huron', 'lake erie', 'lake ontario']);
 const HIGH_SPEED_TRAIN_LINE_FEATURE_CLASS = 'a-high-speed-train-line';
 const LANDMASS_FEATURE_CLASS = 'landmass';
 const METRO_LINES_FEATURE_CLASS = 'metro-lines';
@@ -164,7 +166,16 @@ function bodyOfWaterQueryFor(box: NonNullable<ReturnType<typeof geometryBounding
 }
 
 function coastlineQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
-  return `[out:json][timeout:25];way["natural"="coastline"](${box.minLat},${box.minLon},${box.maxLat},${box.maxLon});out body geom tags;`;
+  const bbox = `(${box.minLat},${box.minLon},${box.maxLat},${box.maxLon})`;
+  const names = '^(Lake Superior|Lake Michigan|Lake Huron|Lake Erie|Lake Ontario)$';
+  const wikidata = '^(Q1066|Q1169|Q1383|Q5492|Q1062)$';
+  const clauses = ['way', 'relation'].flatMap((element) => [
+    `${element}["natural"="coastline"]${bbox};`,
+    `${element}["natural"="water"]["water"="lake"]["wikidata"~"${wikidata}"]${bbox};`,
+    `${element}["natural"="water"]["water"="lake"]["name"~"${names}",i]${bbox};`,
+    `${element}["natural"="water"]["water"="lake"]["name:en"~"${names}",i]${bbox};`
+  ]);
+  return `[out:json][timeout:25];(${clauses.join('')});out body geom tags;`;
 }
 
 function highSpeedTrainLineQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
@@ -384,7 +395,65 @@ function coastlineFeatures(
   for (const raw of elements) {
     if (!raw || typeof raw !== 'object') continue;
     const element = raw as OverpassElement;
-    if (element.type !== 'way' || typeof element.id !== 'number' || element.tags?.natural !== 'coastline') continue;
+    if ((element.type !== 'way' && element.type !== 'relation') || typeof element.id !== 'number') continue;
+    const tags = element.tags ?? {};
+    if (tags.natural === 'water' && tags.water === 'lake') {
+      const wikidata = typeof tags.wikidata === 'string' ? tags.wikidata.trim() : '';
+      const names = [tags.name, tags['name:en'], tags.official_name]
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim().toLocaleLowerCase('en'));
+      if (!GREAT_LAKE_WIKIDATA_IDS.has(wikidata) && !names.some((name) => GREAT_LAKE_NAMES.has(name))) continue;
+
+      let waterGeometry: GeoJsonGeometryModel | undefined;
+      if (element.type === 'way') {
+        const ring = geometryCoordinates(element.geometry);
+        if (ring.length >= 4 && ring[0]![0] === ring.at(-1)![0] && ring[0]![1] === ring.at(-1)![1]) {
+          waterGeometry = { type: 'Polygon', coordinates: [ring] };
+        }
+      } else if (Array.isArray(element.members)) {
+        const outerWays: [number, number][][] = [];
+        const innerWays: [number, number][][] = [];
+        for (const memberValue of element.members) {
+          if (!memberValue || typeof memberValue !== 'object') continue;
+          const member = memberValue as { type?: unknown; role?: unknown; geometry?: unknown };
+          if (member.type !== 'way' || (member.role !== 'outer' && member.role !== 'inner')) continue;
+          const line = geometryCoordinates(member.geometry);
+          if (line.length < 2) continue;
+          if (member.role === 'outer') outerWays.push(line);
+          else innerWays.push(line);
+        }
+        waterGeometry = assembleAreaGeometry(outerWays, innerWays);
+      }
+      if (!waterGeometry) {
+        complete = false;
+        continue;
+      }
+      const shorelineRings = polygonRingsFromGeometry(waterGeometry).flatMap((polygon) => polygon);
+      const shoreline: GeoJsonGeometryModel = shorelineRings.length === 1
+        ? { type: 'LineString', coordinates: shorelineRings[0]! }
+        : { type: 'MultiLineString', coordinates: shorelineRings };
+      if (!waterGeometryIntersectsRegion(shoreline, regionGeometry)) continue;
+      const label = [tags['name:en'], tags.name, tags.official_name]
+        .find((value): value is string => typeof value === 'string' && Boolean(value.trim())) ?? 'Great Lake';
+      const first = shorelineRings[0]?.[0];
+      if (!first) {
+        complete = false;
+        continue;
+      }
+      features.push({
+        featureId: `osm:${element.type}/${element.id}`,
+        featureClassId: COASTLINE_FEATURE_CLASS,
+        label: `${label.trim()} shoreline`,
+        longitude: first[0],
+        latitude: first[1],
+        geometry: shoreline,
+        geometrySupport: 'line',
+        coverage: 'approximate',
+        properties: { osmType: element.type, osmId: element.id, natural: 'water', water: 'lake', wikidata, greatLake: true }
+      });
+      continue;
+    }
+    if (element.type !== 'way' || tags.natural !== 'coastline') continue;
     const coordinates = geometryCoordinates(element.geometry);
     if (coordinates.length < 2) {
       complete = false;

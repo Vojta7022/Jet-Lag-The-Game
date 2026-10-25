@@ -180,8 +180,9 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Reject returned coastline data when any shoreline way has incomplete geometry, preventing silent partial coverage from producing an automatic answer; add regression test and bump the OSM cache source version (2026-10-25).
 - [x] Show the exact scanned inland-water conditions in answer guidance and keep manual referee adjudication until the map data can prove great-lake identity, direct waterway connectivity, and the continuous 2 km width rule.
 - [x] Verify provider clipping, line geometry, incomplete-geometry manual fallback, automatic answer/map update, and role guidance with fixture tests; full suite passes (419), mobile typecheck and Deno Edge Function check pass, Expo web export succeeds, and `git diff --check` is clean (2026-10-25).
-- [ ] Model and verify great-lake shorelines plus connected waterways at least 2 km wide; retain manual handling until the complete printed target can be represented.
-- [ ] Verify coastline data against a live coastal region. A bounded New York Harbor provider query timed out against both configured Overpass endpoints in this environment; no live coverage claim is made (2026-10-25).
+- [x] Add the five North American Great Lakes as shoreline lines to Coastline Measuring when OSM marks their water polygons by the verified Wikidata IDs or exact lake names; use the same nearest shoreline for the answer and map deduction. Unclassified lakes are not promoted to coastline targets. The full suite (456), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` pass (2026-10-25).
+- [ ] Verify the printed wide-waterway condition: prove continuous direct connection to the ocean/Great Lake and width never below 2 km; keep those cases manual until the whole path is represented.
+- [ ] Verify coastline geometry against a live coastal region. The bounded Overpass Great Lakes request returned HTTP 502; direct OSM relation records confirm the five expected lake tags/identities, but regional geometry loading remains unverified (2026-10-25).
 
 ### Completed implementation slice: exact Coastline answer guidance
 
@@ -414,6 +415,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 
 ### Findings for this pass
 
+- OSM encodes the five North American Great Lakes as multipolygon relations with `natural=water`, `water=lake`, and stable Wikidata IDs Q1066, Q1169, Q1383, Q5492, and Q1062. The provider can use those polygons as shoreline linework without inferring that arbitrary lakes or river paths meet the scanned Coastline rule. Direct OSM API tag checks succeeded for all five; the regional Overpass geometry request returned 502. [OpenStreetMap relation API; OpenStreetMap Wiki `natural=water`; checked 2026-10-25]
 - The map workbench now works without an active match: searchable administrative regions can be combined/subtracted, edited custom overlays and stations can be added, and Save Map & Create Match persists the selected geometry locally for the later match setup flow. [MapScreen, scenario persistence tests; checked 2026-10-25]
 - Pregame map setup and the standalone map studio support hand-drawn exclusion masks on the same native/web map canvas. Draft points are restricted to the selected boundary, invalid/degenerate rings are rejected, and closed masks flow through existing subtraction, scenario serialization, and authoritative map application paths. [map builder, `apps/mobile/tests/map-region-selection.test.ts`, checked 2026-10-25]
 - The Investigation Book's “Draw N, Pick M” is the hider's card reward after an answer. A prior build incorrectly used those numbers to deal a random subset of available questions; the current flow shows all scale-allowed printed questions and repeats their reward separately.
