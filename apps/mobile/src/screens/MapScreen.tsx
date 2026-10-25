@@ -16,10 +16,11 @@ import {
   resolveCurrentRole
 } from '../features/cards/index.ts';
 import { MapCanvas } from '../features/map/MapCanvas';
+import { MapScenarioWorkbench } from '../features/map/MapScenarioWorkbench.tsx';
 import { LiveEndgameControls } from '../features/map/LiveEndgameControls.tsx';
 import { ProtectedRoleHandoffPanel } from '../features/map/ProtectedRoleHandoffPanel.tsx';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
-import { createMapScenario, decodeMapScenario, decodeMapScenarioJson, encodeMapScenario, encodeMapScenarioJson, type MapScenario } from '../features/map/map-scenarios.ts';
+import { createMapScenario, decodeMapScenario, decodeMapScenarioJson, encodeMapScenario, encodeMapScenarioJson, type MapScenario, type MapScenarioCustomOverlay, type MapScenarioCustomStation } from '../features/map/map-scenarios.ts';
 import { loadSavedMapScenarios, saveMapScenario } from '../features/map/map-scenario-storage.ts';
 
 import {
@@ -69,6 +70,7 @@ import { isSameMapSetupDraft } from '../state/app-shell-state.ts';
 import { hasRequiredRoleAssignments } from '../features/roles/role-assignment.ts';
 import { findTransitStationsInGeometry, getHidingRadiusMeters } from '../features/map/station-layer.ts';
 import type { TransitStationCandidate } from '../features/map/station-layer.ts';
+import { combineStationSources } from '../features/map/map-workbench.ts';
 import { AppButton } from '../ui/AppButton.tsx';
 import { Panel } from '../ui/Panel.tsx';
 import { ScreenContainer } from '../ui/ScreenContainer.tsx';
@@ -161,6 +163,9 @@ export function MapScreen() {
     () => mapSetupDraft?.excludedRegions ?? []
   );
   const [transitStations, setTransitStations] = useState<TransitStationCandidate[]>([]);
+  const [customOverlays, setCustomOverlays] = useState<MapScenarioCustomOverlay[]>([]);
+  const [stationSource, setStationSource] = useState<'osm' | 'custom' | 'both'>('osm');
+  const [customStations, setCustomStations] = useState<MapScenarioCustomStation[]>([]);
   const [selectedStationId, setSelectedStationId] = useState<string>();
   const [scenarioStation, setScenarioStation] = useState<TransitStationCandidate>();
   const [scenarioHidingRadius, setScenarioHidingRadius] = useState<number>();
@@ -239,6 +244,15 @@ export function MapScreen() {
   const stationGeometry = liveGameplayState
     ? projection?.visibleMap?.playableBoundary.geometry
     : previewRegion?.geometry;
+  useEffect(() => {
+    if (!stationGeometry) return;
+    setTransitStations((current) => combineStationSources(
+      stationSource,
+      stationGeometry,
+      current.filter((station) => !station.stationId.startsWith('custom:')),
+      customStations
+    ));
+  }, [customStations, stationGeometry, stationSource]);
   const savedHidingZone = projection?.hiddenState?.hidingZone;
   const isMoveResolution = projection?.activeCardResolution?.resolutionKind === 'move';
   const canSetRoundZone = projection?.lifecycleState === 'hide_phase' ||
@@ -343,9 +357,10 @@ export function MapScreen() {
       previewRegion: canvasPreviewRegion,
       transitStations,
       selectedStation: mapSelectedStation,
-      hidingRadiusMeters: mapHidingRadius
+      hidingRadiusMeters: mapHidingRadius,
+      customOverlays: liveGameplayState ? undefined : customOverlays
     }),
-    [canvasPreviewRegion, displayedVisibleMap, mapHidingRadius, mapSelectedStation, projection?.roundStartLocation, projection?.visibleMovementTracks, transitStations]
+    [canvasPreviewRegion, customOverlays, displayedVisibleMap, liveGameplayState, mapHidingRadius, mapSelectedStation, projection?.roundStartLocation, projection?.visibleMovementTracks, transitStations]
   );
   const canPrepareMapSetup =
     isHostView &&
@@ -552,6 +567,9 @@ export function MapScreen() {
         kind: 'transit'
       } : undefined);
       setScenarioHidingRadius(scenario.hidingRadiusMeters);
+      setCustomOverlays(scenario.customOverlays ?? []);
+      setStationSource(scenario.stationSource ?? 'osm');
+      setCustomStations(scenario.customStations ?? []);
       setSelectedStationId(scenario.selectedStation?.stationId);
       setScenarioNotice(`Loaded shared map: ${scenario.name}`);
     } catch (error) {
@@ -651,7 +669,10 @@ export function MapScreen() {
     selectedRegions: selectedRegions.length ? selectedRegions : loadedScenario?.selectedRegions ?? (appliedRegion ? [appliedRegion] : []),
     excludedRegions,
     selectedStation: selectedStation ?? scenarioStation ?? savedZoneStation ?? loadedScenario?.selectedStation,
-    hidingRadiusMeters: savedHidingZone?.radiusMeters ?? scenarioHidingRadius ?? loadedScenario?.hidingRadiusMeters ?? (selectedScale ? getHidingRadiusMeters(selectedScale) : undefined)
+    hidingRadiusMeters: savedHidingZone?.radiusMeters ?? scenarioHidingRadius ?? loadedScenario?.hidingRadiusMeters ?? (selectedScale ? getHidingRadiusMeters(selectedScale) : undefined),
+    customOverlays,
+    stationSource,
+    customStations
   });
 
   const handleSaveScenario = async () => {
@@ -765,6 +786,9 @@ export function MapScreen() {
     if (scenario.selectedPreviewRegionId) void regionSearch.selectRegion(scenario.selectedPreviewRegionId);
     setScenarioStation(scenario.selectedStation ? { ...scenario.selectedStation, kind: 'transit' } : undefined);
     setScenarioHidingRadius(scenario.hidingRadiusMeters);
+    setCustomOverlays(scenario.customOverlays ?? []);
+    setStationSource(scenario.stationSource ?? 'osm');
+    setCustomStations(scenario.customStations ?? []);
     setSelectedStationId(scenario.selectedStation?.stationId);
     setScenarioNotice(`Loaded ${scenario.name}`);
   };
@@ -809,13 +833,16 @@ export function MapScreen() {
     if (!stationGeometry || stationSearchLoading) return;
     setStationSearchLoading(true);
     setStationSearchError(undefined);
-    void findTransitStationsInGeometry(stationGeometry)
-      .then((stations) => {
-        setTransitStations(stations);
+    const request = stationSource === 'custom'
+      ? Promise.resolve([] as TransitStationCandidate[])
+      : findTransitStationsInGeometry(stationGeometry);
+    void request
+      .then((osmStations) => {
+        setTransitStations(combineStationSources(stationSource, stationGeometry, osmStations, customStations));
         setSelectedStationId(undefined);
       })
       .catch((error: unknown) => {
-        setTransitStations([]);
+        setTransitStations(combineStationSources(stationSource, stationGeometry, [], customStations));
         setStationSearchError(error instanceof Error ? error.message : 'Station search failed. Try again later.');
       })
       .finally(() => setStationSearchLoading(false));
@@ -931,7 +958,9 @@ export function MapScreen() {
           </Text>
         ) : null}
       {!stationSearchLoading && !stationSearchError && transitStations.length === 0 ? (
-        <Text style={styles.helperCopy}>Station candidates are loaded on demand from OpenStreetMap.</Text>
+        <Text style={styles.helperCopy}>{stationSource === 'custom'
+          ? 'No custom stations are inside this play area. Add or import stops in Map Scenarios.'
+          : 'OpenStreetMap candidates load on demand; choose OSM or both to include them.'}</Text>
       ) : null}
     </View>
   ) : null;
@@ -974,6 +1003,14 @@ export function MapScreen() {
             )}
             <AppButton label="Save Map On This Device" tone="secondary" onPress={() => void handleSaveScenario()} />
             <AppButton label="Share This Map" tone="secondary" onPress={() => void handleShareScenario()} />
+            <MapScenarioWorkbench
+              customOverlays={customOverlays}
+              onCustomOverlaysChange={setCustomOverlays}
+              stationSource={stationSource}
+              onStationSourceChange={setStationSource}
+              customStations={customStations}
+              onCustomStationsChange={setCustomStations}
+            />
             {!activeMatch ? (
               <View style={styles.scenarioActions}>
                 <AppButton label={exportingScenario ? 'Exporting…' : 'Export Map File'} tone="secondary" disabled={importingScenario || exportingScenario} onPress={() => void handleExportScenario()} />
@@ -1094,6 +1131,14 @@ export function MapScreen() {
                 <AppButton label={importingScenario ? 'Importing…' : 'Import Map File'} tone="secondary" disabled={importingScenario || exportingScenario} onPress={() => void handleImportScenario()} />
               </View>
               {scenarioNotice ? <Text style={styles.helperCopy}>{scenarioNotice}</Text> : null}
+              {!loadedScenario ? <MapScenarioWorkbench
+                customOverlays={customOverlays}
+                onCustomOverlaysChange={setCustomOverlays}
+                stationSource={stationSource}
+                onStationSourceChange={setStationSource}
+                customStations={customStations}
+                onCustomStationsChange={setCustomStations}
+              /> : null}
               {savedScenarios.length ? (
                 <View style={styles.scenarioList}>
                   <Text style={styles.supportEyebrow}>Saved maps · tap to load</Text>
@@ -1336,6 +1381,7 @@ export function MapScreen() {
                     transitStations={transitStations}
                     selectedStation={mapSelectedStation}
                     hidingRadiusMeters={mapHidingRadius}
+                    customOverlays={customOverlays}
                   />
                   {stationWorkbenchForViewer}
                   {showLegend ? (
@@ -1371,6 +1417,7 @@ export function MapScreen() {
                   visibleMovementTracks={projection?.visibleMovementTracks}
                   roundStartLocation={projection?.roundStartLocation}
                   previewRegion={undefined}
+                  customOverlays={customOverlays}
                 />
               </Panel>
             ) : null}

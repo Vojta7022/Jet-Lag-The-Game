@@ -73,7 +73,7 @@ function isRing(value: unknown): boolean {
     (value[0] as unknown[])[1] === (value[value.length - 1] as unknown[])[1];
 }
 
-function isCustomGeometry(value: unknown, depth = 0): value is GeoJsonGeometryModel {
+export function isValidScenarioCustomGeometry(value: unknown, depth = 0): value is GeoJsonGeometryModel {
   if (!value || typeof value !== 'object' || depth > 8) return false;
   const geometry = value as GeoJsonGeometryModel;
   const coordinates = geometry.coordinates;
@@ -87,7 +87,7 @@ function isCustomGeometry(value: unknown, depth = 0): value is GeoJsonGeometryMo
       Array.isArray(polygon) && polygon.length > 0 && polygon.every(isRing)
     );
     case 'GeometryCollection': return Array.isArray(geometry.geometries) && geometry.geometries.length > 0 &&
-      geometry.geometries.every((child) => isCustomGeometry(child, depth + 1));
+      geometry.geometries.every((child) => isValidScenarioCustomGeometry(child, depth + 1));
     default: return false;
   }
 }
@@ -100,7 +100,7 @@ function hasValidCustomData(parsed: Partial<MapScenario>): boolean {
       typeof overlay.id === 'string' && overlay.id.length > 0 && overlay.id.length <= 100 &&
       typeof overlay.name === 'string' && overlay.name.trim().length > 0 && overlay.name.length <= 100 &&
       typeof overlay.color === 'string' && /^#[0-9a-f]{6}$/i.test(overlay.color) &&
-      typeof overlay.visible === 'boolean' && isCustomGeometry(overlay.geometry))
+      typeof overlay.visible === 'boolean' && isValidScenarioCustomGeometry(overlay.geometry))
   )) return false;
   if (parsed.customStations !== undefined && (
     !Array.isArray(parsed.customStations) || parsed.customStations.length > 2000 ||
