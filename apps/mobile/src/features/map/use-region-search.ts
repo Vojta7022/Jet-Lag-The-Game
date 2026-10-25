@@ -47,6 +47,22 @@ export function resolveRegionSearchSelection(args: {
   return args.regions[0];
 }
 
+export async function resolveRegionSearchSelectionById(args: {
+  regionId: string;
+  regions: PlayableRegionCatalogEntry[];
+  source: RegionDataSource;
+}): Promise<PlayableRegionCatalogEntry | undefined> {
+  return args.regions.find((region) => region.regionId === args.regionId) ??
+    args.source.getRegionById(args.regionId);
+}
+
+export function shouldApplyResolvedRegionSearchSelection(
+  requestedRegionId: string,
+  currentSelectedRegionId: string | undefined
+): boolean {
+  return requestedRegionId === currentSelectedRegionId;
+}
+
 export function useRegionSearch(args: UseRegionSearchArgs) {
   const [searchState, setSearchState] = useState(() => createRegionSearchRequestState(args.initialQuery ?? ''));
   const [regions, setRegions] = useState<PlayableRegionCatalogEntry[]>([]);
@@ -59,7 +75,7 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const selectedRegionIdRef = useRef(args.initialRegionId);
   const lastAppliedExternalQueryRef = useRef(normalizeExternalSearchQuery(args.initialQuery));
-  const lastAppliedExternalRegionIdRef = useRef(args.initialRegionId);
+  const lastAppliedExternalRegionIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const nextQuery = normalizeExternalSearchQuery(args.initialQuery);
@@ -85,15 +101,29 @@ export function useRegionSearch(args: UseRegionSearchArgs) {
       return;
     }
 
-    setSelectedRegion((currentRegion) => {
-      if (currentRegion?.regionId === args.initialRegionId) {
-        return currentRegion;
-      }
-
-      const localMatch = regions.find((region) => region.regionId === args.initialRegionId);
-      return localMatch ?? currentRegion;
+    let cancelled = false;
+    void resolveRegionSearchSelectionById({
+      regionId: args.initialRegionId,
+      regions,
+      source: args.source
+    }).then((region) => {
+      if (
+        !region ||
+        cancelled ||
+        !shouldApplyResolvedRegionSearchSelection(region.regionId, selectedRegionIdRef.current)
+      ) return;
+      setSelectedRegion((currentRegion) => (
+        currentRegion?.regionId === region.regionId ? currentRegion : region
+      ));
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      setErrorMessage(error instanceof Error ? error.message : 'The selected region boundary could not be loaded.');
     });
-  }, [args.initialRegionId, regions]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [args.initialRegionId, args.source, regions]);
 
   useEffect(() => {
     let cancelled = false;

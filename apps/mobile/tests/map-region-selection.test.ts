@@ -47,6 +47,8 @@ import {
 } from '../src/features/map/region-search-model.ts';
 import {
   resolveRegionSearchSelection,
+  resolveRegionSearchSelectionById,
+  shouldApplyResolvedRegionSearchSelection,
   shouldApplyExternalRegionSearchValue
 } from '../src/features/map/use-region-search.ts';
 import type {
@@ -230,6 +232,32 @@ test('region search restore guards ignore echoed Praha draft updates and replace
 
   assert.equal(staleSelection?.regionId, centralBohemia.regionId);
   assert.equal(preservedSelection?.regionId, prague.regionId);
+});
+
+test('restoring a saved preview region loads its boundary by id when no search results are in memory', async () => {
+  const selected = asProviderRegion(seedPlayableRegions[0]!);
+  let requestedRegionId: string | undefined;
+  const source = {
+    async searchRegions() { return { regions: [], sourceLabel: '', usingFallback: false }; },
+    async getRegionById(regionId: string) {
+      requestedRegionId = regionId;
+      return regionId === selected.regionId ? selected : undefined;
+    }
+  };
+
+  const restored = await resolveRegionSearchSelectionById({
+    regionId: selected.regionId,
+    regions: [],
+    source
+  });
+
+  assert.equal(requestedRegionId, selected.regionId);
+  assert.equal(restored?.regionId, selected.regionId);
+});
+
+test('a late restored boundary cannot replace a region the player selected afterward', () => {
+  assert.equal(shouldApplyResolvedRegionSearchSelection('saved-region', 'new-region'), false);
+  assert.equal(shouldApplyResolvedRegionSearchSelection('saved-region', 'saved-region'), true);
 });
 
 test('region typing does not call the provider until the player submits the query', () => {
