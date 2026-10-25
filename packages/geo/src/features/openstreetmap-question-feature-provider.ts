@@ -41,7 +41,7 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-question-features-v7';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v8';
 const OSM_REQUEST_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   accept: 'application/json',
@@ -53,6 +53,7 @@ const INTERNATIONAL_BORDER_FEATURE_CLASS = 'an-international-border';
 const STREET_PATH_FEATURE_CLASS = 'street-or-path';
 const BODY_OF_WATER_FEATURE_CLASS = 'a-body-of-water';
 const COASTLINE_FEATURE_CLASS = 'a-coastline';
+const METRO_LINES_FEATURE_CLASS = 'metro-lines';
 const EXCLUDED_POOL_TAGS = new Set(['pool', 'swimming_pool']);
 const NON_WALKABLE_OR_INACTIVE_HIGHWAYS = new Set([
   'abandoned', 'construction', 'corridor', 'elevator', 'planned', 'platform', 'proposed', 'razed'
@@ -106,6 +107,7 @@ export function hasOpenStreetMapFeatureClass(featureClassId: string): boolean {
     featureClassId === BODY_OF_WATER_FEATURE_CLASS ||
     featureClassId === COASTLINE_FEATURE_CLASS ||
     featureClassId === INTERNATIONAL_BORDER_FEATURE_CLASS ||
+    featureClassId === METRO_LINES_FEATURE_CLASS ||
     ADMIN_FEATURE_CLASS_IDS.test(featureClassId) || ADMIN_BORDER_FEATURE_CLASS.test(featureClassId);
 }
 
@@ -152,6 +154,10 @@ function coastlineQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBo
   return `[out:json][timeout:25];way["natural"="coastline"](${box.minLat},${box.minLon},${box.maxLat},${box.maxLon});out body geom tags;`;
 }
 
+function metroLinesQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
+  return `[out:json][timeout:25];relation["type"="route"]["route"="subway"](${box.minLat},${box.minLon},${box.maxLat},${box.maxLon});out body geom;`;
+}
+
 interface OverpassElement {
   type?: unknown;
   id?: unknown;
@@ -174,6 +180,97 @@ function geometryCoordinates(raw: unknown): [number, number][] {
       ? [[coordinate.lon, coordinate.lat] as [number, number]]
       : [];
   });
+}
+
+function metroLineFeatures(
+  elements: unknown[],
+  regionGeometry: GeoJsonGeometryModel
+): { features: QuestionFeatureRecordModel[]; complete: boolean } {
+  const groups = new Map<string, {
+    featureId: string;
+    label: string;
+    network: string;
+    ref?: string;
+    relationIds: Set<number>;
+    lines: Map<string, [number, number][]>;
+  }>();
+  let complete = true;
+
+  for (const raw of elements) {
+    if (!raw || typeof raw !== 'object') continue;
+    const relation = raw as OverpassElement;
+    const tags = relation.tags ?? {};
+    if (relation.type !== 'relation' || typeof relation.id !== 'number' ||
+      tags.type !== 'route' || tags.route !== 'subway') continue;
+    const ref = typeof tags.ref === 'string' && tags.ref.trim() ? tags.ref.trim() : undefined;
+    const name = typeof tags.name === 'string' && tags.name.trim() ? tags.name.trim() : undefined;
+    const identity = ref ?? name;
+    if (!identity || !Array.isArray(relation.members)) {
+      complete = false;
+      continue;
+    }
+    const network = [tags.network, tags.operator].find((value) => typeof value === 'string' && value.trim()) as string | undefined;
+    const networkLabel = network?.trim() ?? 'Unspecified network';
+    const groupKey = `${networkLabel.normalize('NFC').toLowerCase()}\u0000${identity.normalize('NFC').toLowerCase()}`;
+    const group = groups.get(groupKey) ?? {
+      featureId: `osm:metro-line/${encodeURIComponent(networkLabel)}:${encodeURIComponent(identity)}`,
+      label: ref ? (network ? `${ref} (${network.trim()})` : ref) : name!,
+      network: networkLabel,
+      ref,
+      relationIds: new Set<number>(),
+      lines: new Map<string, [number, number][]>()
+    };
+    group.relationIds.add(relation.id);
+
+    for (const memberValue of relation.members) {
+      if (!memberValue || typeof memberValue !== 'object') continue;
+      const member = memberValue as { type?: unknown; ref?: unknown; role?: unknown; geometry?: unknown };
+      if (member.type !== 'way' || (member.role && !['forward', 'backward', 'route'].includes(String(member.role)))) continue;
+      const line = geometryCoordinates(member.geometry);
+      if (line.length < 2 || typeof member.ref !== 'number') {
+        complete = false;
+        continue;
+      }
+      const geometry: GeoJsonGeometryModel = { type: 'LineString', coordinates: line };
+      if (!lineGeometryIntersectsPolygon(geometry, regionGeometry)) continue;
+      const forwardKey = JSON.stringify(line);
+      const reverseKey = JSON.stringify([...line].reverse());
+      group.lines.set(forwardKey < reverseKey ? forwardKey : reverseKey, line);
+    }
+    groups.set(groupKey, group);
+  }
+
+  const features: QuestionFeatureRecordModel[] = [];
+  for (const group of groups.values()) {
+    const lines = [...group.lines.values()];
+    if (lines.length === 0) continue;
+    const coordinates = lines.length === 1 ? lines[0]! : lines;
+    const geometry: GeoJsonGeometryModel = lines.length === 1
+      ? { type: 'LineString', coordinates }
+      : { type: 'MultiLineString', coordinates };
+    const representative = lines[Math.floor(lines.length / 2)]?.[Math.floor((lines[Math.floor(lines.length / 2)]?.length ?? 1) / 2)];
+    if (!representative) {
+      complete = false;
+      continue;
+    }
+    features.push({
+      featureId: group.featureId,
+      featureClassId: METRO_LINES_FEATURE_CLASS,
+      label: group.label,
+      longitude: representative[0],
+      latitude: representative[1],
+      geometry,
+      geometrySupport: 'line',
+      coverage: 'approximate',
+      properties: {
+        network: group.network,
+        ref: group.ref,
+        relationIds: [...group.relationIds].sort((left, right) => left - right)
+      }
+    });
+  }
+
+  return { features, complete };
 }
 
 function waterGeometryIntersectsRegion(geometry: GeoJsonGeometryModel, region: GeoJsonGeometryModel): boolean {
@@ -531,6 +628,24 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
     }
 
     for (const featureClassId of featureClassIds) {
+      if (featureClassId === METRO_LINES_FEATURE_CLASS) {
+        const response = await this.fetcher(this.endpoint, {
+          method: 'POST',
+          headers: OSM_REQUEST_HEADERS,
+          body: `data=${encodeURIComponent(metroLinesQueryFor(box))}`,
+          signal: AbortSignal.timeout(30_000)
+        });
+        if (!response.ok) throw new Error(`OpenStreetMap metro-line lookup failed with HTTP ${response.status}.`);
+        const raw = await response.text();
+        if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap metro-line data exceeds the 8 MB safety limit.');
+        const parsed = JSON.parse(raw) as { elements?: unknown };
+        if (!Array.isArray(parsed.elements)) throw new Error('OpenStreetMap metro-line response did not contain elements.');
+        if (parsed.elements.length > this.maxElements) throw new Error(`OpenStreetMap returned more than ${this.maxElements} metro-line relations for this question.`);
+        const metroLines = metroLineFeatures(parsed.elements, request.regionGeometry);
+        if (!metroLines.complete) return undefined;
+        for (const feature of metroLines.features) featuresById.set(feature.featureId, feature);
+        continue;
+      }
       if (featureClassId === COASTLINE_FEATURE_CLASS) {
         const response = await this.fetcher(this.endpoint, {
           method: 'POST',
@@ -609,7 +724,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
       !SELECTORS_BY_FEATURE_CLASS[featureClassId] && !ADMIN_FEATURE_CLASS_IDS.test(featureClassId) &&
       !ADMIN_BORDER_FEATURE_CLASS.test(featureClassId) && featureClassId !== STREET_PATH_FEATURE_CLASS &&
       featureClassId !== INTERNATIONAL_BORDER_FEATURE_CLASS && featureClassId !== BODY_OF_WATER_FEATURE_CLASS &&
-      featureClassId !== COASTLINE_FEATURE_CLASS)) return undefined;
+      featureClassId !== COASTLINE_FEATURE_CLASS && featureClassId !== METRO_LINES_FEATURE_CLASS)) return undefined;
     return {
       source: 'OpenStreetMap',
       sourceUrl: OSM_COPYRIGHT_URL,

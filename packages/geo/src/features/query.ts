@@ -148,11 +148,12 @@ export function queryClosestAmongCandidates(args: {
   }
 
   const rankedCandidates = args.candidates
-    .map((feature) => {
-      const point = representativePoint(feature)!;
+    .flatMap((feature) => {
+      const featureDistance = distanceToFeatureMeters(args.point, feature);
+      if (typeof featureDistance !== 'number' || !Number.isFinite(featureDistance)) return [];
       return {
         feature,
-        distanceMeters: distanceMeters(point, args.point)
+        distanceMeters: featureDistance
       };
     })
     .sort((left, right) => left.distanceMeters - right.distanceMeters);

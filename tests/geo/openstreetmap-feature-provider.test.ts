@@ -39,10 +39,74 @@ test('OpenStreetMap question feature provider bounds its query and drops feature
 test('OpenStreetMap question feature provider returns undefined for feature types without a mapping', async () => {
   const provider = new OpenStreetMapQuestionFeatureProvider({ fetch: async () => { throw new Error('must not query'); } });
   const result = await provider.load({
-    featureClassIds: ['metro-lines'],
+    featureClassIds: ['unmapped-type'],
     regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
   });
   assert.equal(result, undefined);
+});
+
+test('OpenStreetMap provider joins both directions of named subway routes into metro line candidates', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [
+        {
+          type: 'relation', id: 601,
+          tags: { type: 'route', route: 'subway', network: 'Metro City', ref: 'A', name: 'Line A' },
+          members: [{ type: 'way', ref: 1, role: '', geometry: [
+            { lon: 0.1, lat: 0.5 }, { lon: 0.5, lat: 0.5 }
+          ] }]
+        },
+        {
+          type: 'relation', id: 602,
+          tags: { type: 'route', route: 'subway', network: 'Metro City', ref: 'A', name: 'Line A' },
+          members: [{ type: 'way', ref: 2, role: '', geometry: [
+            { lon: 0.5, lat: 0.5 }, { lon: 0.9, lat: 0.5 }
+          ] }]
+        },
+        {
+          type: 'relation', id: 603,
+          tags: { type: 'route', route: 'subway', network: 'Metro City', ref: 'B', name: 'Line B' },
+          members: [{ type: 'way', ref: 3, role: '', geometry: [
+            { lon: 0.1, lat: 0.7 }, { lon: 0.9, lat: 0.7 }
+          ] }]
+        }
+      ] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['metro-lines'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.ok(dataset);
+  assert.match(submittedQuery, /relation.*route.*subway/);
+  assert.match(submittedQuery, /out body geom/);
+  assert.equal(dataset.features.length, 2);
+  const lineA = dataset.features.find((feature) => feature.label === 'A (Metro City)');
+  assert.equal(lineA?.featureClassId, 'metro-lines');
+  assert.equal(lineA?.geometrySupport, 'line');
+  assert.deepEqual(lineA?.properties?.relationIds, [601, 602]);
+  assert.equal(lineA?.geometry?.type, 'MultiLineString');
+});
+
+test('OpenStreetMap provider keeps incomplete subway route geometry out of automatic answers', async () => {
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async () => new Response(JSON.stringify({ elements: [{
+      type: 'relation', id: 604,
+      tags: { type: 'route', route: 'subway', ref: 'C' },
+      members: [{ type: 'way', ref: 4, role: '' }]
+    }] }), { status: 200 })
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['metro-lines'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.equal(dataset, undefined);
 });
 
 test('OpenStreetMap provider groups connected named streets and splits unnamed paths at intersections', async () => {
@@ -313,7 +377,7 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   });
 
   assert.ok(dataset);
-  assert.equal(dataset.sourceVersion, 'overpass-question-features-v7');
+  assert.equal(dataset.sourceVersion, 'overpass-question-features-v8');
   assert.match(submittedQuery, /way\["natural"="coastline"\]/);
   assert.equal(dataset.features.length, 1);
   assert.equal(dataset.features[0]?.featureClassId, 'a-coastline');
@@ -323,7 +387,7 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   });
 });
 
-test('OpenStreetMap provider maps the printed Tentacles place classes and leaves metro lines unsupported', async () => {
+test('OpenStreetMap provider supports metro routes while leaving unknown classes manual', async () => {
   const submittedQueries: string[] = [];
   const provider = new OpenStreetMapQuestionFeatureProvider({
     fetch: async (_input, init) => {
@@ -337,12 +401,15 @@ test('OpenStreetMap provider maps the printed Tentacles place classes and leaves
   };
 
   const dataset = await provider.load({ featureClassIds: ['museums', 'libraries'], regionGeometry });
-  const unsupported = await provider.load({ featureClassIds: ['metro-lines'], regionGeometry });
+  const metro = await provider.load({ featureClassIds: ['metro-lines'], regionGeometry });
+  const unsupported = await provider.load({ featureClassIds: ['unknown-class'], regionGeometry });
 
   assert.ok(dataset);
-  assert.equal(submittedQueries.length, 2);
+  assert.ok(metro);
+  assert.equal(submittedQueries.length, 3);
   assert.match(submittedQueries[0]!, /tourism.*museum/);
   assert.match(submittedQueries[1]!, /amenity.*library/);
+  assert.match(submittedQueries[2]!, /route.*subway/);
   assert.equal(unsupported, undefined);
 });
 

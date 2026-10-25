@@ -395,9 +395,11 @@ export function resolveAutomaticQuestionAnswer(args: {
       };
     }
 
-    const candidateFeatures = features.filter((feature) =>
-      featureClassIds.includes(feature.featureClassId) && feature.representativePoint &&
-      distanceMeters(seekerPoint, [feature.representativePoint.longitude, feature.representativePoint.latitude]) <= threshold);
+    const candidateFeatures = features.filter((feature) => {
+      if (!featureClassIds.includes(feature.featureClassId)) return false;
+      const distance = distanceToFeatureMeters(seekerPoint, feature);
+      return typeof distance === 'number' && distance <= threshold;
+    });
     if (candidateFeatures.length === 0) return { kind: 'manual' };
     const closest = queryClosestAmongCandidates({ candidates: candidateFeatures, point: hiderPoint });
     if (!closest.feature) return { kind: 'manual' };

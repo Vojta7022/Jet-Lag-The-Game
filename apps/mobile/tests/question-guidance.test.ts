@@ -386,4 +386,9 @@ test('Tentacles guidance explains the seeker-anchored reach and automatic closes
 
   assert.match(describeExpectedAnswerGuidance(template, category), /checks the seeker reach radius/i);
   assert.match(describeExpectedAnswerGuidance(template, category), /closest to the hider/i);
+  const metroTemplate = { ...template,
+    featureClassRefs: [{ featureClassId: 'metro-lines', label: 'Metro Lines', rawLabel: 'Metro Lines' }]
+  };
+  assert.match(describeExpectedAnswerGuidance(metroTemplate, category), /mapped subway routes/i);
+  assert.match(describeExpectedAnswerGuidance(metroTemplate, category), /incomplete route geometry stays manual/i);
 });

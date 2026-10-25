@@ -79,7 +79,9 @@
 - [x] Add failing authority and geometry tests for the printed seeker's reach, candidate set, automatic answer, out-of-reach null answer, and map deduction.
 - [x] Load mapped candidate classes on the authority and resolve Tentacles from the seeker's feature radius plus fresh hider/seeker fixes.
 - [x] Correct Tentacles map geometry to use the same seeker-anchored candidate set as the answer, clipped to the printed reach radius.
+- [x] Add subway route relations as metro-line candidates; group opposite directions by network/reference and use line distance consistently for reach, answer, and map narrowing.
 - [x] Keep unsupported or incomplete place data manual, update player guidance, and verify the full suite and mobile typecheck.
+- [ ] Verify route coverage against a live metro region; bounded Prague attempts received HTTP 502 from Overpass, timed out at Kumi, and could not resolve the NCHC endpoint (2026-10-25).
 
 Ruling: Tentacles candidate places are the mapped features inside the seeker's printed reach radius; the hider must also be inside that radius and answers with the nearest of those places. The scan's diagram and wording on printed pp. 36–37 show the radius centered on the seekers, and state an out-of-reach hider may say so. Using a hider-centered candidate set would answer a different question and produce a mismatched map deduction.
 
@@ -90,7 +92,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Remove the mobile-only synthetic fallback ruleset so referee and online runtimes consume the same pack data.
 - [x] Verify importer/reporting, map setup, full suite (280 tests), mobile typecheck, generated pack, and `git diff --check` (2026-10-24).
 
-- [x] Test OpenStreetMap selector coverage for the mapped Tentacles place classes and preserve manual handling for metro lines.
+- [x] Test mapped Tentacles place classes and subway route coverage; incomplete route geometries remain manual.
 - [x] Verify end-to-end through the online authority with a malicious client feature payload ignored: 260 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
 ### Current implementation slice: type the scanned discard-and-draw power-ups

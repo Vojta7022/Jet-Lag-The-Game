@@ -222,6 +222,9 @@ export function describeTemplateSupport(args: {
         if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-body-of-water')) {
           return 'When connected, the app compares fresh locations to mapped named water areas or river lines. Pool areas are excluded; incomplete features stay manual and river lines are approximate.';
         }
+        if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'metro-lines')) {
+          return 'When connected, mapped subway route lines can answer this automatically; incomplete route geometry stays manual.';
+        }
         if ((args.template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-coastline')) {
           return 'The app compares fresh player locations to mapped ocean-coastline lines when connected; great-lake shores and qualifying wide waterways still need a manual ruling';
         }

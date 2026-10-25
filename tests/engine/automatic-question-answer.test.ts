@@ -615,6 +615,58 @@ test('Tentacles automatically picks the closest reachable mapped place and narro
   assert.notDeepEqual(result.aggregate.searchArea?.remainingArea.geometry, before);
 });
 
+test('Metro Lines Tentacles uses the same route geometries for reach, answer, and map deduction', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack, 'large');
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 50.21, longitude: 14.3,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 50.2, longitude: 14.2,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test-metro-routes-v1',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [
+      {
+        featureId: 'osm:metro-line/Metro%20City:A', featureClassId: 'metro-lines', label: 'A',
+        longitude: 14.205, latitude: 50.2, geometrySupport: 'line' as const, coverage: 'approximate' as const,
+        geometry: { type: 'LineString' as const, coordinates: [[14.205, 50.0], [14.205, 50.4]] }
+      },
+      {
+        featureId: 'osm:metro-line/Metro%20City:B', featureClassId: 'metro-lines', label: 'B',
+        longitude: 14.3, latitude: 50.21, geometrySupport: 'line' as const, coverage: 'approximate' as const,
+        geometry: { type: 'LineString' as const, coordinates: [[14.2, 50.21], [14.4, 50.21]] }
+      }
+    ]
+  };
+  const before = prompted.searchArea?.remainingArea.geometry;
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-metro-tentacles', templateId: 'tentacles-metro-lines-24140', targetTeamId: 'team-hider' }
+    }, 16), contentPack, dataset);
+
+  const question = result.aggregate.questionInstances['question:auto-metro-tentacles'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.selectedFeatureId, 'osm:metro-line/Metro%20City:B');
+  assert.equal(question?.answer?.value, 'B');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:metro-line/Metro%20City:B');
+  const constraint = Object.values(result.aggregate.constraints).find(
+    (item) => item.sourceQuestionInstanceId === 'question:auto-metro-tentacles'
+  );
+  assert.equal(constraint?.metadata.selectedFeatureId, 'osm:metro-line/Metro%20City:B');
+  assert.notDeepEqual(result.aggregate.searchArea?.remainingArea.geometry, before);
+});
+
 test('Tentacles records the valid out-of-reach response without drawing a map constraint', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack, 'medium');

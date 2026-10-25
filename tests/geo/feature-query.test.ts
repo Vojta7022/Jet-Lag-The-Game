@@ -78,3 +78,25 @@ test('closest-among-candidates workflow returns a ranked candidate list', () => 
   assert.equal(result.rankedCandidates[0]?.featureId, 'airport-east');
   assert.equal(result.rankedCandidates[1]?.featureId, 'airport-west');
 });
+
+test('closest-among-candidates measures line geometry instead of its representative point', () => {
+  const result = queryClosestAmongCandidates({
+    candidates: [
+      {
+        featureId: 'metro-line', featureClassId: 'metro-lines', label: 'Line A',
+        representativePoint: { latitude: 50.2, longitude: 14.1 },
+        geometrySupport: 'line', coverage: 'approximate',
+        geometry: { type: 'LineString', coordinates: [[14.1, 50.0], [14.1, 50.4]] }
+      },
+      {
+        featureId: 'point', featureClassId: 'metro-lines', label: 'Other line',
+        representativePoint: { latitude: 50.05, longitude: 14.1 },
+        geometrySupport: 'point', coverage: 'approximate'
+      }
+    ],
+    point: [14.1, 50.01]
+  });
+
+  assert.equal(result.feature?.featureId, 'metro-line');
+  assert.equal(result.rankedCandidates[0]?.distanceMeters, 0);
+});

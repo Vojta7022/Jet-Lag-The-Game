@@ -278,6 +278,9 @@ export function describeExpectedAnswerGuidance(
     if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-body-of-water')) {
       return 'When connected, the app compares both fresh locations to the nearest mapped named water area or river line, then narrows the map around that same feature. Swimming pools are excluded; incomplete features stay manual, and river lines are approximate.';
     }
+    if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'metro-lines')) {
+      return 'When connected, the app uses mapped subway routes within the seeker’s reach, finds the route line nearest to the hider, and narrows the map around that route. Incomplete route geometry stays manual.';
+    }
     if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-coastline')) {
       return 'When connected, the app compares both fresh locations to mapped ocean-coastline lines and narrows the search map to that coastline. This does not cover great-lake shorelines or waterways at least 2 km wide; agree on manual handling for those map areas before asking.';
     }
