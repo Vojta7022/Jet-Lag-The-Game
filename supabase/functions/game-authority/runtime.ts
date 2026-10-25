@@ -14,6 +14,7 @@ import { SupabaseRestTableClient } from '../../../packages/transport/src/online/
 import { SupabaseProjectionPollingFanout } from '../../../packages/transport/src/online/supabase-polling-fanout.ts';
 import {
   CompositeQuestionFeatureDataProvider,
+  OpenStreetMapCountryBoundaryProvider,
   OpenMeteoElevationFeatureProvider,
   OpenStreetMapQuestionFeatureProvider
 } from '../../../packages/geo/src/index.ts';
@@ -42,6 +43,9 @@ export function createOnlineAuthorityDependencies(env: (name: string) => string 
     repositories,
     authorityRepository,
     realtimeFanout: new SupabaseProjectionPollingFanout({ projections, pollIntervalMs: 1_500 }),
+    countryBoundaryDataProvider: new OpenStreetMapCountryBoundaryProvider({
+      endpoint: Deno.env.get('NOMINATIM_LOOKUP_URL')
+    }),
     questionFeatureDataProvider: new CompositeQuestionFeatureDataProvider([
       new OpenMeteoElevationFeatureProvider(),
       new OpenStreetMapQuestionFeatureProvider()

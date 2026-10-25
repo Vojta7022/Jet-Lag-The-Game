@@ -21,6 +21,7 @@ import {
   resolveQuestionConstraint,
   distanceMeters
 } from '../../../geo/src/index.ts';
+import { computeDistantCuisineDistances } from '../helpers/distant-cuisine-distance.ts';
 
 import { buildCardResolutionPlan, getPlayerRole, getPlayerTeam } from '../../../domain/src/index.ts';
 import { getChatChannel } from '../../../domain/src/index.ts';
@@ -2082,10 +2083,15 @@ function eventsForCommand(
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
         type: 'distant_cuisine_target_submitted', payload: { ...envelope.command.payload, submittedByPlayerId: envelope.actor.playerId! }
       })];
-    case 'report_distant_cuisine_distance':
+    case 'report_distant_cuisine_distance': {
+      const playerId = envelope.actor.playerId!;
+      const location = [...aggregate!.locationSamples].reverse().find((sample) => sample.playerId === playerId)!;
+      const distances = computeDistantCuisineDistances({ challenge: aggregate!.distantCuisineChallenge!, location, dataset: questionFeatureDataset });
+      if (!distances) throw new Error('Validated Distant Cuisine country boundaries were not available during event creation.');
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
-        type: 'distant_cuisine_distance_reported', payload: { ...envelope.command.payload, playerId: envelope.actor.playerId! }
+        type: 'distant_cuisine_distance_reported', payload: { ...envelope.command.payload, ...distances, playerId }
       })];
+    }
     case 'review_distant_cuisine_target':
       return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
         type: 'distant_cuisine_target_reviewed', payload: envelope.command.payload

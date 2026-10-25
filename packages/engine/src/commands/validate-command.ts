@@ -9,6 +9,7 @@ import type {
   QuestionFeatureDatasetModel
 } from '../../../shared-types/src/index.ts';
 import { circleWithinGeometry, distanceMeters, isPolygonBoundaryGeometry, pointInGeometry } from '../../../geo/src/index.ts';
+import { computeDistantCuisineDistances } from '../helpers/distant-cuisine-distance.ts';
 
 import {
   buildCardResolutionPlan,
@@ -2115,14 +2116,16 @@ export function validateCommandEnvelope(
       if (!playerId || actorRole !== 'seeker' || !challenge.requiredSeekerPlayerIds.includes(playerId)) {
         return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must report country distance from their own seeker account.')];
       }
-      if (!Number.isFinite(payload.sourceCountryDistanceMeters) || payload.sourceCountryDistanceMeters < 0 || payload.sourceCountryDistanceMeters > 20_100_000 || !Number.isFinite(payload.targetCountryDistanceMeters) || payload.targetCountryDistanceMeters < payload.sourceCountryDistanceMeters || payload.targetCountryDistanceMeters > 20_100_000) {
-        return [error(envelope.command.type, 'DISTANT_CUISINE_TARGET_COUNTRY_TOO_NEAR', 'The target cuisine country must be at least as far from your exact location as the original cuisine country.')];
-      }
       if (challenge.distanceByPlayerId[playerId]) {
         return [error(envelope.command.type, 'DISTANT_CUISINE_DISTANCE_ALREADY_REPORTED', 'Your distance check has already been recorded for this restaurant.')];
       }
-      if (!freshDeviceLocation(aggregate, playerId, envelope.occurredAt)) {
+      const location = freshDeviceLocation(aggregate, playerId, envelope.occurredAt);
+      if (!location) {
         return [error(envelope.command.type, 'DISTANT_CUISINE_LOCATION_NOT_FRESH', 'Refresh your phone location immediately before measuring the two country boundaries.')];
+      }
+      const distances = computeDistantCuisineDistances({ challenge, location, dataset: questionFeatureDataset });
+      if (!distances) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_COUNTRY_BOUNDARY_UNAVAILABLE', 'The authority could not load complete OSM country boundaries for both cuisine countries. Try again when map data is available.')];
       }
       return [];
     }
@@ -2137,6 +2140,12 @@ export function validateCommandEnvelope(
       }
       if (envelope.command.payload.approved && !challenge.requiredSeekerPlayerIds.every((playerId) => challenge.distanceByPlayerId[playerId])) {
         return [error(envelope.command.type, 'DISTANT_CUISINE_DISTANCES_REQUIRED', 'Every seeker must confirm the target cuisine country is at least as far away before the hider can approve it.')];
+      }
+      if (envelope.command.payload.approved && challenge.requiredSeekerPlayerIds.some((playerId) => {
+        const distances = challenge.distanceByPlayerId[playerId];
+        return distances && distances.targetCountryDistanceMeters < distances.sourceCountryDistanceMeters;
+      })) {
+        return [error(envelope.command.type, 'DISTANT_CUISINE_TARGET_COUNTRY_TOO_NEAR', 'Every seeker must be at least as far from the target cuisine country as from the original country.')];
       }
       return [];
     }

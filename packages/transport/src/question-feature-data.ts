@@ -4,7 +4,7 @@ import type {
   MatchAggregate,
   QuestionFeatureDatasetModel
 } from '../../shared-types/src/index.ts';
-import type { QuestionFeatureDataProvider } from '../../geo/src/index.ts';
+import type { CountryBoundaryDataProvider, QuestionFeatureDataProvider } from '../../geo/src/index.ts';
 import { TransportRuntimeError } from './errors.ts';
 
 export async function loadQuestionFeatureDataset(args: {
@@ -12,9 +12,30 @@ export async function loadQuestionFeatureDataset(args: {
   contentPack: ContentPack;
   envelope: CommandEnvelope;
   provider?: QuestionFeatureDataProvider;
+  countryBoundaryDataProvider?: CountryBoundaryDataProvider;
 }): Promise<QuestionFeatureDatasetModel | undefined> {
   const command = args.envelope.command;
   if (!args.aggregate?.mapRegion) return undefined;
+  if (command.type === 'report_distant_cuisine_distance') {
+    const challenge = args.aggregate.distantCuisineChallenge;
+    if (!challenge?.origin || !challenge.target) return undefined;
+    if (!args.countryBoundaryDataProvider) {
+      throw new TransportRuntimeError('COUNTRY_BOUNDARY_DATA_UNAVAILABLE', 'The shared country-boundary service is not available. Try again when map data is available.');
+    }
+    try {
+      const dataset = await args.countryBoundaryDataProvider.loadCountryBoundaries([
+        challenge.origin.cuisineCountryRegionId,
+        challenge.target.cuisineCountryRegionId
+      ]);
+      if (!dataset) throw new Error('One or both selected OSM objects are not complete country boundaries.');
+      return dataset;
+    } catch {
+      throw new TransportRuntimeError(
+        'COUNTRY_BOUNDARY_DATA_UNAVAILABLE',
+        'The authority could not load complete OSM country boundaries for both cuisine countries. Try again when map data is available.'
+      );
+    }
+  }
   if (command.type === 'set_hiding_zone') {
     const stationSource = args.aggregate.mapRegion.stationSource ?? 'osm';
     if (args.aggregate.mode !== 'online' || !args.provider || stationSource === 'custom' || command.payload.stationId.startsWith('custom:')) {

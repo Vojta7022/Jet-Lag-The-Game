@@ -20,7 +20,7 @@ import type {
   SyncEnvelope,
   TransportSubscription
 } from '../../shared-types/src/index.ts';
-import type { QuestionFeatureDataProvider } from '../../geo/src/index.ts';
+import type { CountryBoundaryDataProvider, QuestionFeatureDataProvider } from '../../geo/src/index.ts';
 import { reduceMatchAggregate } from '../../engine/src/index.ts';
 
 import { TransportRuntimeError } from './errors.ts';
@@ -42,6 +42,7 @@ export interface InMemoryAuthorityRuntimeOptions {
   persistence: LocalRuntimePersistence;
   gateway?: CommandGateway;
   questionFeatureDataProvider?: QuestionFeatureDataProvider;
+  countryBoundaryDataProvider?: CountryBoundaryDataProvider;
 }
 
 export class InMemoryAuthorityRuntime implements AuthorityRuntime {
@@ -51,6 +52,7 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
   private readonly contentPacksByIdAndVersion: Map<string, ContentPack>;
   private readonly persistence: LocalRuntimePersistence;
   private readonly questionFeatureDataProvider?: QuestionFeatureDataProvider;
+  private readonly countryBoundaryDataProvider?: CountryBoundaryDataProvider;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
   private readonly subscriptionsByMatchId = new Map<string, Map<string, RuntimeSubscriptionRecord>>();
 
@@ -59,6 +61,7 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
     this.gateway = options.gateway ?? new EngineCommandGateway();
     this.persistence = options.persistence;
     this.questionFeatureDataProvider = options.questionFeatureDataProvider;
+    this.countryBoundaryDataProvider = options.countryBoundaryDataProvider;
     this.contentPacksByIdAndVersion = new Map(
       options.contentPacks.map((contentPack) => [`${contentPack.packId}@${contentPack.packVersion}`, contentPack])
     );
@@ -72,7 +75,8 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
       aggregate,
       contentPack,
       envelope,
-      provider: this.questionFeatureDataProvider
+      provider: this.questionFeatureDataProvider,
+      countryBoundaryDataProvider: this.countryBoundaryDataProvider
     });
     const result = await this.gateway.submit({
       aggregate,

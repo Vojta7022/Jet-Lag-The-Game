@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { representativePointFromGeometry } from '../../packages/geo/src/index.ts';
 import { buildCardResolutionPlan } from '../../packages/domain/src/index.ts';
+import type { QuestionFeatureDatasetModel } from '../../packages/shared-types/src/index.ts';
 import { buildMatchProjection, executeCommand } from '../../packages/engine/src/index.ts';
 import {
   loadEngineTestContentPack,
@@ -436,7 +437,7 @@ test('Distant Cuisine blocks questions until every seeker visits an approved far
   aggregate = recordLocationUpdate(aggregate, contentPack, { playerId: 'seeker-1', role: 'seeker', latitude: 50.2, longitude: 14.2, accuracyMeters: 8, source: 'device', step: 106 });
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
-    { type: 'report_distant_cuisine_distance', payload: { sourceCardInstanceId: cardInstanceId, sourceCountryDistanceMeters: 400_000, targetCountryDistanceMeters: 500_000 } }, 107), contentPack).aggregate;
+    { type: 'report_distant_cuisine_distance', payload: { sourceCardInstanceId: cardInstanceId } }, 107), contentPack, makeDistantCuisineBoundaryDataset()).aggregate;
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
     { type: 'review_distant_cuisine_target', payload: { sourceCardInstanceId: cardInstanceId, approved: true } }, 108), contentPack).aggregate;
@@ -448,6 +449,55 @@ test('Distant Cuisine blocks questions until every seeker visits an approved far
   assert.ok(aggregate.distantCuisineChallenge?.completedAt);
   assert.ok(aggregate.distantCuisineChallenge?.completedAtByPlayerId['seeker-1']);
 });
+
+test('Distant Cuisine stores authority-computed boundary distances instead of client numbers', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.distantCuisineChallenge = {
+    sourceCardInstanceId: 'distant-card', requiredSeekerPlayerIds: ['seeker-1'], startedAt: '2026-01-01T00:01:00.000Z',
+    origin: { restaurantName: 'Origin', restaurantLatitude: 50.2, restaurantLongitude: 14.2, cuisineCountryName: 'Source Country', cuisineCountryRegionId: 'osm:relation:1', submittedByPlayerId: 'hider-1', submittedAt: '2026-01-01T00:01:00.000Z' },
+    target: { restaurantName: 'Target', restaurantLatitude: 50.25, restaurantLongitude: 14.25, cuisineCountryName: 'Target Country', cuisineCountryRegionId: 'osm:relation:2', submittedByPlayerId: 'seeker-1', submittedAt: '2026-01-01T00:01:00.000Z', rejectedAttemptCount: 0 },
+    distanceByPlayerId: {}, completedAtByPlayerId: {}
+  };
+  aggregate = recordLocationUpdate(aggregate, contentPack, { playerId: 'seeker-1', role: 'seeker', latitude: 50.2, longitude: 14.2, accuracyMeters: 8, source: 'device', step: 102 });
+  const boundaries = makeDistantCuisineBoundaryDataset();
+
+  const result = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_distant_cuisine_distance', payload: { sourceCardInstanceId: 'distant-card', sourceCountryDistanceMeters: 0, targetCountryDistanceMeters: 1 } as never }, 103), contentPack, boundaries);
+  aggregate = result.aggregate;
+
+  assert.equal(aggregate.distantCuisineChallenge?.distanceByPlayerId['seeker-1']?.sourceCountryDistanceMeters, 0);
+  assert.ok((aggregate.distantCuisineChallenge?.distanceByPlayerId['seeker-1']?.targetCountryDistanceMeters ?? 0) > 50_000);
+  assert.deepEqual(Object.keys(result.events[0]?.event.payload ?? {}).sort(), [
+    'playerId', 'sourceCardInstanceId', 'sourceCountryDistanceMeters', 'targetCountryDistanceMeters'
+  ]);
+});
+
+test('Distant Cuisine prevents hider approval when any seeker is nearer to the target country', () => {
+  const contentPack = loadEngineTestContentPack();
+  const aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.distantCuisineChallenge = {
+    sourceCardInstanceId: 'distant-card', requiredSeekerPlayerIds: ['seeker-1'], startedAt: '2026-01-01T00:01:00.000Z',
+    origin: { restaurantName: 'Origin', restaurantLatitude: 50.2, restaurantLongitude: 14.2, cuisineCountryName: 'Source Country', cuisineCountryRegionId: 'osm:relation:1', submittedByPlayerId: 'hider-1', submittedAt: '2026-01-01T00:01:00.000Z' },
+    target: { restaurantName: 'Target', restaurantLatitude: 50.25, restaurantLongitude: 14.25, cuisineCountryName: 'Target Country', cuisineCountryRegionId: 'osm:relation:2', submittedByPlayerId: 'seeker-1', submittedAt: '2026-01-01T00:01:00.000Z', rejectedAttemptCount: 0 },
+    distanceByPlayerId: { 'seeker-1': { sourceCountryDistanceMeters: 20_000, targetCountryDistanceMeters: 10_000, updatedAt: '2026-01-01T00:01:42.000Z' } }, completedAtByPlayerId: {}
+  };
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'review_distant_cuisine_target', payload: { sourceCardInstanceId: 'distant-card', approved: true } }, 103), contentPack), /at least as far/i);
+});
+
+function makeDistantCuisineBoundaryDataset(): QuestionFeatureDatasetModel {
+  return {
+    source: 'OpenStreetMap', sourceUrl: 'https://www.openstreetmap.org/copyright', sourceVersion: 'test', retrievedAt: '2026-01-01T00:01:42.000Z', coverage: 'exact',
+    features: [
+      { featureId: 'osm:relation:1', featureClassId: 'country-boundary', label: 'Source Country', latitude: 50.2, longitude: 14.2, geometrySupport: 'polygon', coverage: 'exact', geometry: { type: 'Polygon', coordinates: [[[14.1, 50.1], [14.3, 50.1], [14.3, 50.3], [14.1, 50.3], [14.1, 50.1]]] }, properties: { osmType: 'relation', osmId: 1, addressType: 'country' } },
+      { featureId: 'osm:relation:2', featureClassId: 'country-boundary', label: 'Target Country', latitude: 50.2, longitude: 15.1, geometrySupport: 'polygon', coverage: 'exact', geometry: { type: 'Polygon', coordinates: [[[15, 50.1], [15.2, 50.1], [15.2, 50.3], [15, 50.3], [15, 50.1]]] }, properties: { osmType: 'relation', osmId: 2, addressType: 'country' } }
+    ]
+  };
+}
 
 test('Impressionable Consumer gates questions until hider-approved advertisement, target visit, and purchase/entry attestations', () => {
   const contentPack = loadEngineTestContentPack();

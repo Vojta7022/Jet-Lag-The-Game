@@ -29,7 +29,7 @@ import { validateContentPack } from '../../../content-import/src/validation.ts';
 import { TransportRuntimeError } from '../errors.ts';
 import { EngineCommandGateway } from '../engine-command-gateway.ts';
 import { loadQuestionFeatureDataset } from '../question-feature-data.ts';
-import type { QuestionFeatureDataProvider } from '../../../geo/src/index.ts';
+import type { CountryBoundaryDataProvider, QuestionFeatureDataProvider } from '../../../geo/src/index.ts';
 import { reconcileRuntimeState } from '../reconcile-runtime-state.ts';
 import { buildSyncEnvelope, createMatchSnapshot } from '../sync.ts';
 
@@ -63,6 +63,7 @@ export interface OnlineAuthorityRuntimeOptions {
   gateway?: CommandGateway;
   sessionBinder?: OnlineSessionBinder;
   questionFeatureDataProvider?: QuestionFeatureDataProvider;
+  countryBoundaryDataProvider?: CountryBoundaryDataProvider;
 }
 
 function toMatchRecord(aggregate: MatchAggregate) {
@@ -93,6 +94,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   private readonly realtimeFanout: OnlineRealtimeFanout;
   private readonly authorityRepository?: OnlineAuthorityRepository;
   private readonly questionFeatureDataProvider?: QuestionFeatureDataProvider;
+  private readonly countryBoundaryDataProvider?: CountryBoundaryDataProvider;
   private readonly sessionBinder: OnlineSessionBinder;
   private readonly contentPacksByIdAndVersion: Map<string, ContentPack>;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
@@ -105,6 +107,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     this.realtimeFanout = options.realtimeFanout;
     this.authorityRepository = options.authorityRepository;
     this.questionFeatureDataProvider = options.questionFeatureDataProvider;
+    this.countryBoundaryDataProvider = options.countryBoundaryDataProvider;
     this.sessionBinder = options.sessionBinder ?? new DefaultOnlineSessionBinder();
     this.contentPacksByIdAndVersion = new Map(
       options.contentPacks.map((contentPack) => [`${contentPack.packId}@${contentPack.packVersion}`, contentPack])
@@ -326,7 +329,8 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       aggregate,
       contentPack,
       envelope,
-      provider: this.questionFeatureDataProvider
+      provider: this.questionFeatureDataProvider,
+      countryBoundaryDataProvider: this.countryBoundaryDataProvider
     });
     const result = await this.gateway.submit({
       aggregate,

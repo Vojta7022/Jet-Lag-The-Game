@@ -22,6 +22,7 @@ import type {
   TransportSubscription
 } from '../../../shared-types/src/index.ts';
 import { getPlayerRole, getPlayerTeam } from '../../../domain/src/index.ts';
+import type { CountryBoundaryDataProvider, QuestionFeatureDataProvider } from '../../../geo/src/index.ts';
 
 import { InMemoryAuthorityRuntime } from '../in-memory-authority-runtime.ts';
 import { TransportRuntimeError } from '../errors.ts';
@@ -52,6 +53,8 @@ export interface NearbyHostAuthorityRuntimeOptions {
   heartbeatIntervalMs?: number;
   heartbeatTimeoutMs?: number;
   now?: () => Date;
+  questionFeatureDataProvider?: QuestionFeatureDataProvider;
+  countryBoundaryDataProvider?: CountryBoundaryDataProvider;
 }
 
 export class NearbyHostAuthorityRuntime
@@ -75,7 +78,9 @@ export class NearbyHostAuthorityRuntime
     this.innerRuntime = new InMemoryAuthorityRuntime({
       mode: 'lan_host_authority',
       contentPacks: options.contentPacks,
-      persistence: options.persistence
+      persistence: options.persistence,
+      questionFeatureDataProvider: options.questionFeatureDataProvider,
+      countryBoundaryDataProvider: options.countryBoundaryDataProvider
     });
     this.gateway = this.innerRuntime.gateway;
   }

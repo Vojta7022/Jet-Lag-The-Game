@@ -10,7 +10,6 @@ import type {
   SubmitDistantCuisineTargetCommand,
   VisibleMapProjection
 } from '../../../../../packages/shared-types/src/index.ts';
-import { distanceToGeometryMeters } from '../../../../../packages/geo/src/index.ts';
 import { MapCanvas } from '../map/MapCanvas';
 import type { MapCoordinate } from '../map/map-geometry.ts';
 import { mobileRegionDataSource } from '../map/region-data-source.ts';
@@ -55,6 +54,10 @@ export function DistantCuisinePanel(props: Props) {
   const ownDistance = props.viewerPlayerId ? challenge.distanceByPlayerId[props.viewerPlayerId] : undefined;
   const ownVisit = props.viewerPlayerId ? challenge.completedAtByPlayerId[props.viewerPlayerId] : undefined;
   const hasAllDistances = challenge.requiredSeekerPlayerIds.every((playerId) => challenge.distanceByPlayerId[playerId]);
+  const anySeekerTooNear = challenge.requiredSeekerPlayerIds.some((playerId) => {
+    const distance = challenge.distanceByPlayerId[playerId];
+    return distance && distance.targetCountryDistanceMeters < distance.sourceCountryDistanceMeters;
+  });
   const pendingTarget = Boolean(target && target.reviewApproved === undefined);
 
   return (
@@ -125,7 +128,7 @@ export function DistantCuisinePanel(props: Props) {
 
           {props.viewerRole === 'seeker' && pendingTarget && !ownDistance ? (
             <>
-              <Text style={styles.copy}>Your phone will compare both country boundaries from your current exact location before you head to the restaurant.</Text>
+              <Text style={styles.copy}>The game authority compares both country boundaries using your fresh phone location. It saves only the verified distances, not the country polygons.</Text>
               {measureError ? <StateBanner tone="error" title="Country distance unavailable" detail={measureError} /> : null}
               {location.state.permissionState !== 'granted' ? <AppButton label="Allow location access" tone="secondary" onPress={() => void location.requestForegroundPermission()} /> : null}
               <AppButton label={measureBusy ? 'Loading country boundaries…' : 'Measure both countries from my location'} disabled={props.disabled || measureBusy || location.state.permissionState !== 'granted'} onPress={() => void measureDistances()} />
@@ -140,9 +143,10 @@ export function DistantCuisinePanel(props: Props) {
                 const distance = challenge.distanceByPlayerId[playerId];
                 return <Text key={playerId} style={styles.copy}>{player?.displayName ?? 'Seeker'}: {distance ? `${formatDistance(distance.targetCountryDistanceMeters)} vs ${formatDistance(distance.sourceCountryDistanceMeters)} from their exact location` : 'country distance not measured yet'}</Text>;
               })}
+              {anySeekerTooNear ? <StateBanner tone="warning" title="Choose a farther cuisine country" detail="At least one seeker is closer to this country than to the original cuisine country. This restaurant cannot be approved." /> : null}
               <View style={styles.actions}>
                 <AppButton label="Find a farther country" tone="secondary" disabled={props.disabled} onPress={() => void props.onReview({ sourceCardInstanceId: challenge.sourceCardInstanceId, approved: false })} />
-                <AppButton label="Approve restaurant and country" disabled={props.disabled || !hasAllDistances} onPress={() => void props.onReview({ sourceCardInstanceId: challenge.sourceCardInstanceId, approved: true })} />
+                <AppButton label="Approve restaurant and country" disabled={props.disabled || !hasAllDistances || anySeekerTooNear} onPress={() => void props.onReview({ sourceCardInstanceId: challenge.sourceCardInstanceId, approved: true })} />
               </View>
             </>
           ) : null}
@@ -175,23 +179,10 @@ export function DistantCuisinePanel(props: Props) {
     setMeasureBusy(true);
     setMeasureError(undefined);
     try {
-      const [sourceRegion, targetRegion] = await Promise.all([
-        mobileRegionDataSource.getRegionById(origin.cuisineCountryRegionId),
-        mobileRegionDataSource.getRegionById(target.cuisineCountryRegionId)
-      ]);
-      if (!isCountryBoundaryRegion(sourceRegion) || !isCountryBoundaryRegion(targetRegion)) {
-        throw new Error('Nominatim could not load a complete country outline for one of these countries. Check the country names and retry.');
-      }
       const sample = await location.captureCurrentPosition();
       if (!sample) throw new Error('Allow foreground location access and try again.');
-      const point: [number, number] = [sample.longitude, sample.latitude];
-      const sourceDistance = distanceToGeometryMeters(point, sourceRegion.geometry);
-      const targetDistance = distanceToGeometryMeters(point, targetRegion.geometry);
-      if (sourceDistance === undefined || targetDistance === undefined) throw new Error('The selected country outline does not contain polygon boundary data.');
       const accepted = await props.onReportDistance(sample, {
-        sourceCardInstanceId: challenge.sourceCardInstanceId,
-        sourceCountryDistanceMeters: sourceDistance,
-        targetCountryDistanceMeters: targetDistance
+        sourceCardInstanceId: challenge.sourceCardInstanceId
       });
       if (!accepted) setMeasureError('The distance report was rejected. Refresh the map and location, then try again.');
     } catch (error) {

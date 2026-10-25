@@ -597,7 +597,7 @@ export interface SubmitDistantCuisineTargetCommand {
 
 export interface ReportDistantCuisineDistanceCommand {
   type: 'report_distant_cuisine_distance';
-  payload: { sourceCardInstanceId: string; sourceCountryDistanceMeters: number; targetCountryDistanceMeters: number };
+  payload: { sourceCardInstanceId: string };
 }
 
 export interface ReviewDistantCuisineTargetCommand {

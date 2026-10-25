@@ -634,6 +634,14 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Add a spherical nearest-boundary distance operation with coverage for polygons, holes, island multipolygons, antimeridian crossings, and invalid geometry.
 - [x] Source Nominatim results classified as countries and retain full OSM polygon geometry; exclude subregions and reject results without a country boundary.
 - [x] Import the card as an assisted effect in both workbook mappings and regenerate the draft pack.
-- [x] Add the hider origin, seeker target and nearest-boundary reports, hider review, fresh-device restaurant arrival, and question gate for all required seekers. The game engine validates report bounds/order and location freshness; the mobile client computes the country-boundary distances, so the numeric comparison is assisted and is not server-recomputed.
+- [x] Add the hider origin, seeker target and nearest-boundary reports, hider review, fresh-device restaurant arrival, and question gate for all required seekers. The authority now computes both distances from its trusted country outlines and the seeker's fresh device fix; a closer target is recorded for review but cannot be approved.
 - [x] Add role-specific setup, review, and per-seeker visit controls to the mobile game UI, including explicit public-reference attestations.
 - [x] Verify importer mappings, generated content, full suite (445/445), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). Physical restaurant identity/cuisine proof is hider-reviewed; GPS and client distance calculations are not spoof-resistant. A real-device walkthrough remains open.
+
+### Active correctness slice: authority-verified Distant Cuisine distances
+
+- [x] Add a regression test proving that client-supplied distances cannot determine the challenge result; the authority computes both nearest country-boundary distances from the seeker's fresh fix.
+- [x] Load country outlines by OSM object ID through an authority-side Nominatim lookup; accept only the exact requested country object with complete polygon geometry, cache for 24 hours, and serialize requests at one per second.
+- [x] Remove distance values from the player command; validate the computed geometry and persist only authority-computed distances.
+- [x] Wire the trusted provider into online, LAN, local in-memory, and single-device referee runtimes without persisting bulky country polygons in match events.
+- [x] Verify provider parsing/rejection, a 125k-vertex live Czechia outline and real distance calculation, engine spoofing/review cases, full suite (452 tests), mobile typecheck, Edge Function typecheck, web export, and `git diff --check` (2026-10-25). GPS authenticity and restaurant cuisine proof remain device/hider-reviewed.

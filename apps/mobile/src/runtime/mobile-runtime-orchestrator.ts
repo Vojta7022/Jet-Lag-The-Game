@@ -43,6 +43,7 @@ import {
 import type { OnlineRepositoryBundle, OnlineTransportService } from '../../../../packages/transport/src/index.ts';
 import {
   CompositeQuestionFeatureDataProvider,
+  OpenStreetMapCountryBoundaryProvider,
   OpenMeteoElevationFeatureProvider,
   OpenStreetMapQuestionFeatureProvider
 } from '../../../../packages/geo/src/index.ts';
@@ -891,7 +892,12 @@ export class MobileRuntimeOrchestrator {
     const runtime = new InMemoryAuthorityRuntime({
       mode: runtimeMode,
       contentPacks: this.contentPacks,
-      persistence: new InMemoryPersistence()
+      persistence: new InMemoryPersistence(),
+      countryBoundaryDataProvider: new OpenStreetMapCountryBoundaryProvider(),
+      questionFeatureDataProvider: new CompositeQuestionFeatureDataProvider([
+        new OpenMeteoElevationFeatureProvider(),
+        new OpenStreetMapQuestionFeatureProvider()
+      ])
     });
     this.inMemoryRuntimes.set(matchId, runtime);
     return runtime;
@@ -905,7 +911,12 @@ export class MobileRuntimeOrchestrator {
 
     const runtime = new NearbyAuthorityRuntime({
       contentPacks: this.contentPacks,
-      persistence: new InMemoryDurableLocalHostPersistence()
+      persistence: new InMemoryDurableLocalHostPersistence(),
+      countryBoundaryDataProvider: new OpenStreetMapCountryBoundaryProvider(),
+      questionFeatureDataProvider: new CompositeQuestionFeatureDataProvider([
+        new OpenMeteoElevationFeatureProvider(),
+        new OpenStreetMapQuestionFeatureProvider()
+      ])
     });
     this.nearbyRuntimes.set(matchId, runtime);
     return runtime;
@@ -920,6 +931,7 @@ export class MobileRuntimeOrchestrator {
     const runtime = new SingleDeviceRefereeRuntime({
       contentPacks: this.contentPacks,
       persistence: this.singleDevicePersistence,
+      countryBoundaryDataProvider: new OpenStreetMapCountryBoundaryProvider(),
       questionFeatureDataProvider: new CompositeQuestionFeatureDataProvider([
         new OpenMeteoElevationFeatureProvider(),
         new OpenStreetMapQuestionFeatureProvider()
@@ -948,6 +960,7 @@ export class MobileRuntimeOrchestrator {
       contentPacks: this.contentPacks,
       repositories,
       realtimeFanout: realtime,
+      countryBoundaryDataProvider: new OpenStreetMapCountryBoundaryProvider(),
       questionFeatureDataProvider: new CompositeQuestionFeatureDataProvider([
         new OpenMeteoElevationFeatureProvider(),
         new OpenStreetMapQuestionFeatureProvider()
