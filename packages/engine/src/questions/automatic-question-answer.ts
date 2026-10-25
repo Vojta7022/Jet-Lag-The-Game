@@ -8,8 +8,10 @@ import type {
 } from '../../../shared-types/src/index.ts';
 import {
   distanceMeters,
+  pointInGeometry,
   queryClosestAmongCandidates,
   queryNearestFeature,
+  polygonRingsFromGeometry,
   distanceToAdministrativeBoundaryMeters,
   distanceToFeatureMeters,
   selectAdministrativeDivisionAtPoint,
@@ -144,6 +146,34 @@ function nearestFeatureHasConfidentMargin(args: {
     feature: nearest?.feature,
     ambiguous: Boolean(nearest && second && second.distance - nearest.distance <= args.accuracyMeters * 2)
   };
+}
+
+function landmassFeatureAtPoint(args: {
+  features: GeoFeatureRecord[];
+  point: [number, number];
+}): GeoFeatureRecord | undefined {
+  return args.features.flatMap((feature) => {
+    if (feature.featureClassId !== 'landmass' || !feature.geometry ||
+      !pointInGeometry(args.point, feature.geometry)) return [];
+    const boundaryDistance = distanceToAdministrativeBoundaryMeters(args.point, feature);
+    return boundaryDistance === undefined ? [] : [{ feature, boundaryDistance }];
+  }).sort((left, right) => left.boundaryDistance - right.boundaryDistance)[0]?.feature;
+}
+
+function landmassContainedBy(container: GeoFeatureRecord, candidate: GeoFeatureRecord): boolean {
+  const containerOuterRings = polygonRingsFromGeometry(container.geometry).map((polygon) => polygon[0]).filter(Boolean);
+  const candidateOuterRings = polygonRingsFromGeometry(candidate.geometry).map((polygon) => polygon[0]).filter(Boolean);
+  return containerOuterRings.some((containerRing) => candidateOuterRings.some((candidateRing) => {
+    if (!containerRing || !candidateRing || candidateRing.length < 4) return false;
+    const containerOuter = { type: 'Polygon' as const, coordinates: [containerRing] };
+    return candidateRing.every((point, index) => {
+      const next = candidateRing[(index + 1) % candidateRing.length];
+      if (!pointInGeometry(point, containerOuter)) return false;
+      if (!next) return false;
+      const midpoint: [number, number] = [(point[0] + next[0]) / 2, (point[1] + next[1]) / 2];
+      return pointInGeometry(midpoint, containerOuter);
+    });
+  }));
 }
 
 export function resolveAutomaticQuestionAnswer(args: {
@@ -332,6 +362,56 @@ export function resolveAutomaticQuestionAnswer(args: {
     };
 
     if (category.resolverKind === 'nearest_feature_match') {
+      if (featureClassIds.includes('landmass')) {
+        const seekerPoint: [number, number] = [seeker.longitude, seeker.latitude];
+        const hiderPoint: [number, number] = [hider.longitude, hider.latitude];
+        const seekerLandmass = landmassFeatureAtPoint({ features, point: seekerPoint });
+        const hiderLandmass = landmassFeatureAtPoint({ features, point: hiderPoint });
+        if (!seekerLandmass || !hiderLandmass || !seekerLandmass.geometry || !hiderLandmass.geometry) {
+          return { kind: 'manual' };
+        }
+        const seekerBoundaryDistance = distanceToAdministrativeBoundaryMeters(seekerPoint, seekerLandmass);
+        const hiderBoundaryDistance = distanceToAdministrativeBoundaryMeters(hiderPoint, hiderLandmass);
+        if (seekerBoundaryDistance === undefined || hiderBoundaryDistance === undefined ||
+          seekerBoundaryDistance <= seeker.accuracyMeters! || hiderBoundaryDistance <= hider.accuracyMeters!) {
+          return {
+            kind: 'blocked',
+            code: 'LOCATION_ANSWER_AMBIGUOUS',
+            message: 'GPS uncertainty overlaps a mapped landmass boundary. Refresh both locations or answer this question manually.'
+          };
+        }
+        const nestedLandmassFeatureIds = features.filter((feature) =>
+          feature.featureClassId === 'landmass' && landmassContainedBy(seekerLandmass, feature))
+          .map((feature) => feature.featureId);
+        if (!nestedLandmassFeatureIds.includes(seekerLandmass.featureId)) {
+          nestedLandmassFeatureIds.push(seekerLandmass.featureId);
+        }
+        const sameLandmass = seekerLandmass.featureId === hiderLandmass.featureId ||
+          landmassContainedBy(seekerLandmass, hiderLandmass);
+        return {
+          kind: 'resolved',
+          answer: { value: sameLandmass ? 'yes' : 'no' },
+          constraintId: constraint.constraintId,
+          automaticResolution: {
+            resolverVersion: AUTOMATIC_QUESTION_RESOLVER_VERSION,
+            method: 'nearest_feature_match',
+            sourceSampleIds: [seeker.sampleId, hider.sampleId],
+            sourceRecordedAt: [seeker.recordedAt, hider.recordedAt],
+            sourceAccuracyMeters: [seeker.accuracyMeters!, hider.accuracyMeters!],
+            thresholdMeters: 0,
+            referenceFeatureId: seekerLandmass.featureId,
+            ...datasetProvenance
+          },
+          constraintMetadata: {
+            featureData: features,
+            ...datasetProvenance,
+            featureDataCoverage: dataset.coverage,
+            gridResolutionMeters: 250,
+            landmassReferenceFeatureId: seekerLandmass.featureId,
+            nestedLandmassFeatureIds
+          }
+        };
+      }
       const seekerNearest = nearestFeatureHasConfidentMargin({
         features,
         featureClassIds,

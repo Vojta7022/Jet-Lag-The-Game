@@ -355,6 +355,26 @@ test('High-Speed Train Line guidance explains mapped-track coverage and manual f
   assert.match(guidance, /OpenStreetMap tagging/i);
 });
 
+test('Landmass Matching guidance describes polygon limits and the enclosed-island rule', () => {
+  const category = createCategory({
+    categoryId: 'matching',
+    name: 'Matching',
+    resolverKind: 'nearest_feature_match',
+    promptTemplate: 'Is the nearest _____ the same for both of us?'
+  });
+  const template = createTemplate({
+    templateId: 'matching-landmass',
+    categoryId: 'matching',
+    name: 'A Landmass',
+    featureClassRefs: [{ featureClassId: 'landmass', label: 'Landmass', rawLabel: 'Landmass' }]
+  });
+
+  const guidance = describeExpectedAnswerGuidance(template, category);
+  assert.match(guidance, /complete mapped island polygons/i);
+  assert.match(guidance, /fully surrounded/i);
+  assert.match(guidance, /answers manually/i);
+});
+
 test('question guidance describes mapped international-border Measuring and enclave coverage', () => {
   const category = createCategory({
     categoryId: 'measuring',

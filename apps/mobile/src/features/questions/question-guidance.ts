@@ -277,6 +277,9 @@ export function describeExpectedAnswerGuidance(
     (template.featureClassRefs ?? []).length > 0 &&
     (template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
   ) {
+    if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'landmass')) {
+      return 'When connected, the app compares both fresh locations with complete mapped island polygons. If a player is on a continent, the geometry is incomplete, or GPS overlaps a shoreline, the hider answers manually. The scanned rule counts an island fully surrounded by the seekers’ landmass as a match.';
+    }
     if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-high-speed-train-line')) {
       return 'When connected, the app compares fresh player locations with mapped high-speed railway track and narrows the map using the same line. If the region has no mapped high-speed track, the hider answers manually. Coverage depends on OpenStreetMap tagging.';
     }

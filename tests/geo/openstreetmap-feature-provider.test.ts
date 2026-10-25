@@ -394,7 +394,7 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   });
 
   assert.ok(dataset);
-  assert.equal(dataset.sourceVersion, 'overpass-question-features-v9');
+  assert.equal(dataset.sourceVersion, 'overpass-question-features-v10');
   assert.match(submittedQuery, /way\["natural"="coastline"\]/);
   assert.equal(dataset.features.length, 1);
   assert.equal(dataset.features[0]?.featureClassId, 'a-coastline');
@@ -481,6 +481,64 @@ test('OpenStreetMap provider leaves High-Speed Train Line manual when the region
 
   assert.equal(await provider.load({
     featureClassIds: ['a-high-speed-train-line'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  }), undefined);
+});
+
+test('OpenStreetMap provider loads island and islet polygons for scan-faithful Landmass Matching', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [
+        {
+          type: 'way', id: 901,
+          tags: { place: 'island', name: 'Main Island' },
+          geometry: [
+            { lon: 0.1, lat: 0.1 }, { lon: 0.9, lat: 0.1 }, { lon: 0.9, lat: 0.9 },
+            { lon: 0.1, lat: 0.9 }, { lon: 0.1, lat: 0.1 }
+          ]
+        },
+        {
+          type: 'relation', id: 902,
+          tags: { place: 'islet', name: 'Inland Island' },
+          members: [
+            { type: 'way', ref: 92, role: 'outer', geometry: [
+              { lon: 0.4, lat: 0.4 }, { lon: 0.6, lat: 0.4 }, { lon: 0.6, lat: 0.6 },
+              { lon: 0.4, lat: 0.6 }, { lon: 0.4, lat: 0.4 }
+            ] },
+            { type: 'way', ref: 93, role: 'inner', geometry: [
+              { lon: 0.45, lat: 0.45 }, { lon: 0.55, lat: 0.45 }, { lon: 0.55, lat: 0.55 },
+              { lon: 0.45, lat: 0.55 }, { lon: 0.45, lat: 0.45 }
+            ] }
+          ]
+        }
+      ] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['landmass'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.match(submittedQuery, /way\["place"~"\^\(island\|islet\)\$"\]/);
+  assert.ok(dataset);
+  assert.equal(dataset.features.length, 2);
+  assert.equal(dataset.features[0]?.geometrySupport, 'polygon');
+  assert.equal(dataset.features.find((feature) => feature.featureId === 'osm:relation/902')?.geometry?.type, 'MultiPolygon');
+  assert.equal(dataset.features.find((feature) => feature.featureId === 'osm:relation/902')?.label, 'Inland Island');
+});
+
+test('OpenStreetMap provider leaves Landmass manual when only point or incomplete island geometry exists', async () => {
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async () => new Response(JSON.stringify({ elements: [
+      { type: 'node', id: 903, lon: 0.5, lat: 0.5, tags: { place: 'island', name: 'Unbounded Island' } }
+    ] }), { status: 200 })
+  });
+
+  assert.equal(await provider.load({
+    featureClassIds: ['landmass'],
     regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
   }), undefined);
 });

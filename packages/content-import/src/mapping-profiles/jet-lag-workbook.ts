@@ -1504,6 +1504,10 @@ function buildCategory(
 }
 
 const MATCHING_RULEBOOK_GUIDANCE: Record<string, { text: string; source: string }> = {
+  landmass: {
+    text: 'Treat a landmass as one connected area of land not broken by a waterway. If the hider’s landmass is wholly surrounded by the seekers’ landmass, answer Yes. Seekers should clarify ambiguous geography before asking.',
+    source: 'Scanned base rulebook, printed p. 20'
+  },
   'transit-line': {
     text: 'Ask only while the seekers are riding moving transit. Answer Yes only if that service would stop at the hider’s station; passing through without stopping counts as No. Sharing the service’s stop list helps the hider verify the answer.',
     source: 'Scanned base rulebook, printed p. 18'

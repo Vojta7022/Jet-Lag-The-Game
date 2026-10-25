@@ -147,6 +147,55 @@ test('Radar Choose requires a positive distance and fixed Radar prompts reject c
     }, 16), contentPack), /cannot accept a custom radius/i);
 });
 
+test('Landmass Matching compares complete island polygons and applies the same map deduction', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.8,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.101, longitude: 103.801,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const outer = {
+    type: 'Polygon' as const,
+    coordinates: [[[103.79, 1.09], [103.81, 1.09], [103.81, 1.11], [103.79, 1.11], [103.79, 1.09]]]
+  };
+  const enclosed = {
+    type: 'Polygon' as const,
+    coordinates: [[[103.8005, 1.1005], [103.8015, 1.1005], [103.8015, 1.1015], [103.8005, 1.1015], [103.8005, 1.1005]]]
+  };
+  const dataset = {
+    source: 'OpenStreetMap', sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'landmass-test', fetchedAt: '2026-10-25T12:00:00.000Z', coverage: 'approximate' as const,
+    features: [
+      { featureId: 'osm:way/1', featureClassId: 'landmass', label: 'Island', longitude: 103.8, latitude: 1.1, geometry: outer, geometrySupport: 'polygon' as const, coverage: 'approximate' as const },
+      { featureId: 'osm:relation/2', featureClassId: 'landmass', label: 'Islet', longitude: 103.801, latitude: 1.101, geometry: enclosed, geometrySupport: 'polygon' as const, coverage: 'approximate' as const }
+    ]
+  };
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question', payload: {
+        questionInstanceId: 'question:auto-landmass', templateId: 'matching-landmass', targetTeamId: 'team-hider'
+      }
+    }, 16), contentPack, dataset);
+
+  const question = result.aggregate.questionInstances['question:auto-landmass'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.value, 'yes');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:way/1');
+  const constraint = Object.values(result.aggregate.constraints).find(
+    (item) => item.sourceQuestionInstanceId === 'question:auto-landmass'
+  );
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.equal('featureData' in (constraint?.metadata ?? {}), false);
+  assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
+});
+
 test('Matching automatically compares the nearest same-class features and narrows from the trusted feature snapshot', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);

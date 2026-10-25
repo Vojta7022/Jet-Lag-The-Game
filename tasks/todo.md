@@ -158,6 +158,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [ ] Model and verify great-lake shorelines plus connected waterways at least 2 km wide; retain manual handling until the complete printed target can be represented.
 - [ ] Verify coastline data against a live coastal region. No live Overpass query was run for this slice (2026-10-25).
 
+### Completed implementation slice: scan-faithful Landmass Matching
+
+- [x] Resolve Landmass only from complete mapped island/islet polygons; point-only, incomplete, mainland, and shoreline-ambiguous cases stay manual.
+- [x] Apply the scanned surrounded-landmass exception and use the same polygon set for the approximate map deduction.
+- [x] Add provider, engine, and player-guidance regression coverage; regenerate the base pack with the scan-derived clarification.
+- [x] Verify the full suite (379 passing), mobile typecheck, and `git diff --check` (2026-10-25).
+
 ## Active: online multiplayer for one phone per player
 
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.

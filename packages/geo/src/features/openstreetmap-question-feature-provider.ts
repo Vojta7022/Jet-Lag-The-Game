@@ -41,7 +41,7 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-question-features-v9';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v10';
 const OSM_REQUEST_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   accept: 'application/json',
@@ -54,6 +54,7 @@ const STREET_PATH_FEATURE_CLASS = 'street-or-path';
 const BODY_OF_WATER_FEATURE_CLASS = 'a-body-of-water';
 const COASTLINE_FEATURE_CLASS = 'a-coastline';
 const HIGH_SPEED_TRAIN_LINE_FEATURE_CLASS = 'a-high-speed-train-line';
+const LANDMASS_FEATURE_CLASS = 'landmass';
 const METRO_LINES_FEATURE_CLASS = 'metro-lines';
 const EXCLUDED_POOL_TAGS = new Set(['pool', 'swimming_pool']);
 const NON_WALKABLE_OR_INACTIVE_HIGHWAYS = new Set([
@@ -165,6 +166,11 @@ function coastlineQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBo
 function highSpeedTrainLineQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
   const bbox = `(${box.minLat},${box.minLon},${box.maxLat},${box.maxLon})`;
   return `[out:json][timeout:25];(way["railway"="rail"]["highspeed"="yes"]${bbox};relation["type"="route"]["route"="tracks"]["highspeed"="yes"]${bbox};);out body geom;`;
+}
+
+function landmassQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
+  const bbox = `(${box.minLat},${box.minLon},${box.maxLat},${box.maxLon})`;
+  return `[out:json][timeout:25];(node["place"~"^(island|islet)$"]${bbox};way["place"~"^(island|islet)$"]${bbox};relation["place"~"^(island|islet)$"]${bbox};);out body geom;`;
 }
 
 function metroLinesQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
@@ -450,6 +456,68 @@ function highSpeedTrainLineFeatures(
       geometrySupport: 'line',
       coverage: 'approximate',
       properties: { osmType: element.type, osmId: element.id, railway: tags.railway, route: tags.route, highspeed: tags.highspeed }
+    });
+  }
+  return { features, complete };
+}
+
+function landmassFeatures(
+  elements: unknown[],
+  regionGeometry: GeoJsonGeometryModel
+): { features: QuestionFeatureRecordModel[]; complete: boolean } {
+  const features: QuestionFeatureRecordModel[] = [];
+  let complete = true;
+  for (const raw of elements) {
+    if (!raw || typeof raw !== 'object') continue;
+    const element = raw as OverpassElement;
+    const tags = element.tags ?? {};
+    if (tags.place !== 'island' && tags.place !== 'islet') continue;
+    if (element.type === 'node') {
+      if (typeof element.lon === 'number' && typeof element.lat === 'number' &&
+        pointInGeometry([element.lon, element.lat], regionGeometry)) complete = false;
+      continue;
+    }
+    if (typeof element.id !== 'number') continue;
+    let geometry: GeoJsonGeometryModel | undefined;
+    if (element.type === 'way') {
+      const coordinates = geometryCoordinates(element.geometry);
+      if (coordinates.length >= 4 && coordinates[0]![0] === coordinates.at(-1)![0] &&
+        coordinates[0]![1] === coordinates.at(-1)![1]) {
+        geometry = { type: 'Polygon', coordinates: [coordinates] };
+      }
+    } else if (element.type === 'relation' && Array.isArray(element.members)) {
+      const outerWays: [number, number][][] = [];
+      const innerWays: [number, number][][] = [];
+      for (const memberValue of element.members) {
+        if (!memberValue || typeof memberValue !== 'object') continue;
+        const member = memberValue as { type?: unknown; role?: unknown; geometry?: unknown };
+        if (member.type !== 'way' || (member.role !== 'outer' && member.role !== 'inner')) continue;
+        const line = geometryCoordinates(member.geometry);
+        if (line.length < 2) continue;
+        (member.role === 'outer' ? outerWays : innerWays).push(line);
+      }
+      geometry = assembleAreaGeometry(outerWays, innerWays);
+    }
+    if (!geometry) {
+      complete = false;
+      continue;
+    }
+    if (!waterGeometryIntersectsRegion(geometry, regionGeometry)) continue;
+    const representative = representativePointFromGeometry(geometry);
+    if (!representative) {
+      complete = false;
+      continue;
+    }
+    features.push({
+      featureId: `osm:${element.type}/${element.id}`,
+      featureClassId: LANDMASS_FEATURE_CLASS,
+      label: typeof tags.name === 'string' && tags.name.trim() ? tags.name.trim() : `Mapped ${tags.place} ${element.id}`,
+      longitude: representative[0],
+      latitude: representative[1],
+      geometry,
+      geometrySupport: 'polygon',
+      coverage: 'approximate',
+      properties: { osmType: element.type, osmId: element.id, place: tags.place }
     });
   }
   return { features, complete };
@@ -792,6 +860,24 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         for (const feature of streetPathFeatures(parsed.elements, request.regionGeometry)) {
           featuresById.set(feature.featureId, feature);
         }
+        continue;
+      }
+      if (featureClassId === LANDMASS_FEATURE_CLASS) {
+        const response = await this.fetcher(this.endpoint, {
+          method: 'POST',
+          headers: OSM_REQUEST_HEADERS,
+          body: `data=${encodeURIComponent(landmassQueryFor(box))}`,
+          signal: AbortSignal.timeout(30_000)
+        });
+        if (!response.ok) throw new Error(`OpenStreetMap landmass lookup failed with HTTP ${response.status}.`);
+        const raw = await response.text();
+        if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap landmass data exceeds the 8 MB safety limit.');
+        const parsed = JSON.parse(raw) as { elements?: unknown };
+        if (!Array.isArray(parsed.elements)) throw new Error('OpenStreetMap landmass response did not contain elements.');
+        if (parsed.elements.length > this.maxElements) throw new Error(`OpenStreetMap returned more than ${this.maxElements} landmasses for this question.`);
+        const landmasses = landmassFeatures(parsed.elements, request.regionGeometry);
+        if (!landmasses.complete || landmasses.features.length === 0) return undefined;
+        for (const feature of landmasses.features) featuresById.set(feature.featureId, feature);
         continue;
       }
       const selectors = SELECTORS_BY_FEATURE_CLASS[featureClassId];

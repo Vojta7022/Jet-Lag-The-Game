@@ -482,6 +482,51 @@ function resolveMatching(
     });
   }
 
+  if (featureClassIds(context.template).includes('landmass')) {
+    const features = featureData(metadata);
+    const referenceFeatureId = metadata.landmassReferenceFeatureId;
+    const reference = typeof referenceFeatureId === 'string'
+      ? features.find((feature) => feature.featureId === referenceFeatureId && feature.featureClassId === 'landmass')
+      : undefined;
+    const answer = answerValue(context.question.answer);
+    if (!reference?.geometry || (answer !== 'yes' && answer !== 'no')) {
+      return metadataOnlyDraft({
+        summary: 'Landmass matching could not narrow the map because a complete island boundary was unavailable.',
+        detail: 'Continental landmasses and incomplete island geometry require a manual ruling.',
+        reasoningSteps: ['No complete seeker landmass polygon was recorded with the answer.'],
+        metadata
+      });
+    }
+    const nestedIds = Array.isArray(metadata.nestedLandmassFeatureIds)
+      ? metadata.nestedLandmassFeatureIds.filter((id): id is string => typeof id === 'string')
+      : [];
+    const matchingLandmasses = features.filter((feature) =>
+      feature.featureClassId === 'landmass' &&
+      (feature.featureId === reference.featureId || nestedIds.includes(feature.featureId)) &&
+      Boolean(feature.geometry));
+    return approximateGridOutcome({
+      baseGeometry,
+      stepMeters: gridResolutionMeters(metadata),
+      predicate: (point) => {
+        const insideMatchingLandmass = matchingLandmasses.some((feature) => pointInGeometry(point, feature.geometry));
+        return answer === 'yes' ? insideMatchingLandmass : !insideMatchingLandmass;
+      },
+      summary: answer === 'yes'
+        ? 'Landmass matching keeps the seeker’s mapped landmass and enclosed island landmasses.'
+        : 'Landmass matching removes the seeker’s mapped landmass and enclosed island landmasses.',
+      detail: 'The scanned rule counts a hider landmass fully surrounded by the seeker’s landmass as a match. This polygon deduction is approximate and only runs when both player fixes fall inside complete mapped island polygons.',
+      reasoningSteps: [
+        'Used the seeker’s mapped island polygon as the reference landmass.',
+        'Included mapped landmass polygons enclosed by the seeker’s outer boundary.',
+        answer === 'yes'
+          ? 'Kept candidate cells within the matched landmass set.'
+          : 'Kept candidate cells outside the matched landmass set.'
+      ],
+      featureCoverage: 'approximate',
+      metadata: { landmassReferenceFeatureId: reference.featureId, nestedLandmassFeatureIds: matchingLandmasses.map((feature) => feature.featureId), ...metadata }
+    });
+  }
+
   const features = featureData(metadata);
   const featureIds = featureClassIds(context.template);
   const nearest = queryNearestFeature({

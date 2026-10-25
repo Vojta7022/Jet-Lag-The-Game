@@ -285,7 +285,7 @@ export function selectAdministrativeDivisionAtPoint(
   return selected;
 }
 
-export function distanceToAdministrativeBoundaryMeters(point: [number, number], feature: QuestionFeatureRecordModel): number | undefined {
+export function distanceToAdministrativeBoundaryMeters(point: [number, number], feature: { geometry?: GeoJsonGeometryModel }): number | undefined {
   if (!feature.geometry) return undefined;
   const rings = polygonRingsFromGeometry(feature.geometry).flat();
   if (rings.length === 0) return undefined;

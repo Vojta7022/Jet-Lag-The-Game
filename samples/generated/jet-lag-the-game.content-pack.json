@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T11:09:01.553Z",
+    "importedAt": "2026-10-25T13:10:01.585Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -4932,6 +4932,7 @@
       ],
       "parameters": {
         "subjectLabel": "Landmass",
+        "rulebookGuidanceText": "Treat a landmass as one connected area of land not broken by a waterway. If the hider’s landmass is wholly surrounded by the seekers’ landmass, answer Yes. Seekers should clarify ambiguous geography before asking.",
         "workbookQuestionText": "Is your nearest _____ the same as my nearest _____?",
         "workbookCostText": "Draw 3, Pick 1",
         "workbookTimeText": "5 Minutes"
@@ -4982,6 +4983,11 @@
           "columnName": "question",
           "rawLabel": "Landmass",
           "rawValue": "Is your nearest _____ the same as my nearest _____?"
+        },
+        {
+          "sourceType": "generated",
+          "sourceFileName": "Scanned base rulebook, printed p. 20",
+          "notes": "Question clarification paraphrased from the scanned base rulebook."
         }
       ]
     },
