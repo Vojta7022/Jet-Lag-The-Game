@@ -110,16 +110,18 @@ test('the workbook importer creates a normalized draft content pack', () => {
 
   const duplicate = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-duplicate');
   assert.ok(duplicate);
-  assert.equal(duplicate.automationLevel, 'manual');
+  assert.equal(duplicate.automationLevel, 'assisted');
   assert.equal(duplicate.effects[0]?.effectType, 'duplicate_card');
+  assert.equal(duplicate.effects[0]?.automationLevel, 'assisted');
   assert.deepEqual(duplicate.effects[0]?.payload, { preservesOriginal: true, copiesHeldTimeBonusAtCapture: true });
   assert.match(duplicate.description, /exact copy of any other card currently in your hand/i);
   assert.match(duplicate.description, /remains in your hand at the end of the round/i);
 
   const move = result.pack.cards.find((card) => card.cardDefinitionId === 'power-up-move');
   assert.ok(move);
-  assert.equal(move.automationLevel, 'manual');
+  assert.equal(move.automationLevel, 'assisted');
   assert.equal(move.effects[0]?.effectType, 'move_power_up');
+  assert.equal(move.effects[0]?.automationLevel, 'assisted');
   assert.deepEqual(move.effects[0]?.payload, { durationMinutesByScale: { small: 10, medium: 20, large: 60 } });
   assert.deepEqual(move.timingWindow?.allowedPhases, ['hide_phase', 'seek_phase']);
   assert.match(move.description, /hiding timer pauses/i);

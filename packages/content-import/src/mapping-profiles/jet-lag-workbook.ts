@@ -736,11 +736,11 @@ function buildPowerUpCards(
       const description = 'When played, establish a new hiding zone within 10 minutes in a Small game, 20 minutes in a Medium game, or 60 minutes in a Large game. Choose a new transit station as the center and use only valid transit. While you move, your hiding timer pauses and seekers must stay where they are and refrain from asking questions. When the move timer ends, play resumes and your hiding timer continues. Immediately discard your entire hand and tell the seekers your original transit station. Move cannot be played during the end game.';
       return {
         description,
-        automationLevel: 'manual',
+        automationLevel: 'assisted',
         effect: {
           effectType: 'move_power_up',
           description,
-          automationLevel: 'manual',
+          automationLevel: 'assisted',
           rawText: label,
           payload: { durationMinutesByScale: { small: 10, medium: 20, large: 60 } }
         },
@@ -763,11 +763,11 @@ function buildPowerUpCards(
       const description = 'Play as an exact copy of any other card currently in your hand, including curses, power-ups, and time bonuses; the original card stays in your hand and can be played later. If Duplicate remains in your hand at the end of the round, it copies a time bonus you still hold and doubles that bonus.';
       return {
         description,
-        automationLevel: 'manual',
+        automationLevel: 'assisted',
         effect: {
           effectType: 'duplicate_card',
           description,
-          automationLevel: 'manual',
+          automationLevel: 'assisted',
           rawText: label,
           payload: { preservesOriginal: true, copiesHeldTimeBonusAtCapture: true }
         }

@@ -89,6 +89,7 @@ function createResolvedVisibleCard(overrides: Partial<ResolvedVisibleCardModel> 
 
 test('card guidance stays honest about manual and authoritative behavior', () => {
   const manual = buildCardBehaviorModel(createCardDefinition({ automationLevel: 'manual' }));
+  const assisted = buildCardBehaviorModel(createCardDefinition({ automationLevel: 'assisted' }));
   const authoritative = buildCardBehaviorModel(
     createCardDefinition({
       cardDefinitionId: 'time-bonus',
@@ -99,6 +100,8 @@ test('card guidance stays honest about manual and authoritative behavior', () =>
 
   assert.equal(manual.label, 'Manual');
   assert.match(manual.detail, /does not invent/i);
+  assert.equal(assisted.label, 'Assisted');
+  assert.match(assisted.detail, /resolution window/i);
   assert.equal(authoritative.label, 'Authoritative');
   assert.match(authoritative.detail, /engine applies this card directly/i);
 });
@@ -107,7 +110,7 @@ test('Move guidance identifies the enforced scale-specific timer', () => {
   const move = buildCardBehaviorModel(createCardDefinition({
     cardDefinitionId: 'power-up-move',
     name: 'Move',
-    effects: [{ effectType: 'move_power_up', description: 'Move to a new station.', automationLevel: 'manual' }]
+    effects: [{ effectType: 'move_power_up', description: 'Move to a new station.', automationLevel: 'assisted' }]
   }));
 
   assert.equal(move.label, 'Assisted');

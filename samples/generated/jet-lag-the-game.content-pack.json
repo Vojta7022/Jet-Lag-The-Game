@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T13:10:01.585Z",
+    "importedAt": "2026-10-25T13:19:25.343Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -1608,12 +1608,12 @@
       "name": "Duplicate",
       "shortName": "Duplicate",
       "description": "Play as an exact copy of any other card currently in your hand, including curses, power-ups, and time bonuses; the original card stays in your hand and can be played later. If Duplicate remains in your hand at the end of the round, it copies a time bonus you still hold and doubles that bonus.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "effects": [
         {
           "effectType": "duplicate_card",
           "description": "Play as an exact copy of any other card currently in your hand, including curses, power-ups, and time bonuses; the original card stays in your hand and can be played later. If Duplicate remains in your hand at the end of the round, it copies a time bonus you still hold and doubles that bonus.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Duplicate",
           "payload": {
             "preservesOriginal": true,
@@ -1660,7 +1660,7 @@
       "name": "Move",
       "shortName": "Move",
       "description": "When played, establish a new hiding zone within 10 minutes in a Small game, 20 minutes in a Medium game, or 60 minutes in a Large game. Choose a new transit station as the center and use only valid transit. While you move, your hiding timer pauses and seekers must stay where they are and refrain from asking questions. When the move timer ends, play resumes and your hiding timer continues. Immediately discard your entire hand and tell the seekers your original transit station. Move cannot be played during the end game.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "timingWindow": {
         "allowedPhases": [
           "hide_phase",
@@ -1671,7 +1671,7 @@
         {
           "effectType": "move_power_up",
           "description": "When played, establish a new hiding zone within 10 minutes in a Small game, 20 minutes in a Medium game, or 60 minutes in a Large game. Choose a new transit station as the center and use only valid transit. While you move, your hiding timer pauses and seekers must stay where they are and refrain from asking questions. When the move timer ends, play resumes and your hiding timer continues. Immediately discard your entire hand and tell the seekers your original transit station. Move cannot be played during the end game.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Move",
           "payload": {
             "durationMinutesByScale": {

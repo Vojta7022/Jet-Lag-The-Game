@@ -114,6 +114,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Resolve supported copied power-up effects through the same authoritative engine path; keep manual challenges explicit and show the copied card in the resolution window.
 - [x] Verify command validation, UI selection, effect execution, original-card preservation, and seeker projection redaction. Full verification: 263 tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 
+### Completed implementation slice: accurate assisted-card metadata
+
+- [x] Mark Move and Duplicate as assisted in the imported content pack because their supported effects are enforced in the engine and guided in the mobile flow.
+- [x] Add importer/UI regression coverage and regenerate the pack/report. Focused suite passes (25 tests), mobile typecheck passes, and `git diff --check` is clean (2026-10-25).
+
 ### Current implementation slice: station-name-length Matching
 
 - [x] Load named transit stations from trusted OpenStreetMap feature data and exclude stations without an actual name from this question.
