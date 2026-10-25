@@ -77,6 +77,7 @@ export type DomainCommand =
   | ConfirmEggPartnerAcquiredCommand
   | ReportEggPartnerMemberLostCommand
   | ReportJammedDoorRollCommand
+  | ReportZoologistEvidenceCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -343,6 +344,8 @@ export interface ResolveCardWindowCommand {
   payload: {
     sourceCardInstanceId: string;
     questionTemplateIds?: string[];
+    zoologistCategory?: import('../domain/match.ts').ZoologistAnimalCategory;
+    zoologistHiderAttachmentId?: string;
   };
 }
 
@@ -431,6 +434,11 @@ export interface ReportEggPartnerMemberLostCommand {
 export interface ReportJammedDoorRollCommand {
   type: 'report_jammed_door_roll';
   payload: { sourceCardInstanceId: string; doorwayId: string; doorwayLabel: string; dieOne: number; dieTwo: number; doorwayVisible: boolean; targetPlayerId?: string };
+}
+
+export interface ReportZoologistEvidenceCommand {
+  type: 'report_zoologist_evidence';
+  payload: { sourceCardInstanceId: string; attachmentId: string };
 }
 
 export interface CompleteCooldownCommand {

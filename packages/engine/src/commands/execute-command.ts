@@ -1596,6 +1596,19 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'zoologist_challenge') {
+        const seekerTeam = Object.values(aggregate!.teams).find((team) => team.side === 'seeker');
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'zoologist_challenge_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            category: envelope.command.payload.zoologistCategory!,
+            hiderAttachmentId: envelope.command.payload.zoologistHiderAttachmentId!,
+            requiredSeekerPlayerIds: [...(seekerTeam?.memberPlayerIds ?? [])]
+          }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'move' && aggregate!.lifecycleState === 'hide_phase') {
         const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide' && timer.status === 'paused');
         if (hideTimer) {
@@ -1853,6 +1866,15 @@ function eventsForCommand(
         }
       })];
     }
+    case 'report_zoologist_evidence':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'zoologist_evidence_reported',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          playerId: envelope.actor.playerId!,
+          attachmentId: envelope.command.payload.attachmentId
+        }
+      })];
     case 'complete_cooldown':
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'public_match', {

@@ -195,8 +195,15 @@ test('the workbook importer creates a normalized draft content pack', () => {
   const firstCurse = result.pack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-zoologist');
   assert.ok(firstCurse);
   assert.equal(firstCurse.castingCost?.[0]?.description, 'A photo of an animal');
+  assert.equal(firstCurse.automationLevel, 'assisted');
+  assert.equal(firstCurse.effects[0]?.effectType, 'zoologist_challenge');
+  assert.equal(firstCurse.requirements?.requiresPhotoUpload, true);
   const curses = result.pack.cards.filter((card) => card.kind === 'curse');
   assert.equal(curses.length, 24);
+  const zoologist = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-zoologist');
+  assert.equal(zoologist?.automationLevel, 'assisted');
+  assert.equal(zoologist?.effects[0]?.effectType, 'zoologist_challenge');
+  assert.equal(zoologist?.requirements?.requiresPhotoUpload, true);
   assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));
   assert.ok(curses.every((card) => card.sourceProvenance.some((source) =>
     source.sourceFileName.startsWith('Scanned base rulebook, printed p.')
@@ -276,6 +283,10 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   assert.equal(result.pack.questionTemplates.length, 80);
   const curses = result.pack.cards.filter((card) => card.kind === 'curse');
   assert.equal(curses.length, 24);
+  const zoologist = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-zoologist');
+  assert.equal(zoologist?.automationLevel, 'assisted');
+  assert.equal(zoologist?.effects[0]?.effectType, 'zoologist_challenge');
+  assert.equal(zoologist?.requirements?.requiresPhotoUpload, true);
   assert.ok(curses.every((card) => typeof card.rulebookGuidanceText === 'string'));
   const bridgeTroll = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-bridge-troll');
   assert.equal(bridgeTroll?.automationLevel, 'assisted');

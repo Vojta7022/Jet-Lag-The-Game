@@ -531,6 +531,7 @@ export function buildMatchProjection(
     gamblersFeetChallenge: aggregate.gamblersFeetChallenge,
     eggPartnerChallenge: aggregate.eggPartnerChallenge,
     jammedDoorChallenge: aggregate.jammedDoorChallenge,
+    zoologistChallenge: aggregate.zoologistChallenge,
     awardedCurseBonusMinutes: aggregate.awardedCurseBonusMinutes ?? 0,
     disabledQuestionTemplateIds: aggregate.disabledQuestionTemplateIds ?? [],
     disabledQuestionCategoryId: aggregate.disabledQuestionCategoryId,

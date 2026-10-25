@@ -93,6 +93,14 @@ test('starting the next round rotates the hider, resets round state and deck, an
     activatedAt: found.createdAt,
     statusByPlayerId: {}
   };
+  found.zoologistChallenge = {
+    sourceCardInstanceId: 'zoologist-instance',
+    category: 'bird',
+    hiderAttachmentId: 'attachment:hider-bird',
+    requiredSeekerPlayerIds: ['hider-1'],
+    attachmentIdBySeekerPlayerId: {},
+    activatedAt: found.createdAt
+  };
   const started = executeCommand(found, makeEnvelope(found.matchId,
     { actorId: 'host-1', playerId: 'host-1', role: 'host' },
     { type: 'start_next_round', payload: { nextHiderPlayerId: 'seeker-1' } },
@@ -108,6 +116,7 @@ test('starting the next round rotates the hider, resets round state and deck, an
   assert.equal(next.disabledQuestionCategoryId, undefined);
   assert.equal(next.disabledQuestionCategorySourceCardInstanceId, undefined);
   assert.equal(next.seekerOffTransitRestriction, undefined);
+  assert.equal(next.zoologistChallenge, undefined);
   assert.equal(next.roleAssignments['seeker-1']?.role, 'hider');
   assert.equal(next.roleAssignments['hider-1']?.role, 'seeker');
   assert.deepEqual(next.teams['team-hider']?.memberPlayerIds, ['seeker-1']);

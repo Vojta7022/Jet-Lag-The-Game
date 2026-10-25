@@ -536,3 +536,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Persist doorway attempts and enforce failed-door cooldowns until the scale timer expires.
 - [x] Add a role-aware reporting panel to Cards, Question Center, and the live map.
 - [x] Verify the two-card casting cost, engine/importer/mobile flows, full suite (410/410), typecheck, Expo web export, and `git diff --check` (2026-10-25). Doorway visibility and dice remain player/referee attestations.
+
+### Completed implementation slice: Curse of the Zoologist evidence challenge
+
+- [x] Verify the imported card wording and scanned clarification (base rulebook p. 50); real-world animal identity and “wild” classification remain human judgments.
+- [x] Add typed challenge state for the hider's selected category and a camera photo from every seeker.
+- [x] Require public card-linked camera attachments, reject seeker evidence captured before challenge activation, and block the next question until every active seeker submits.
+- [x] Add hider category/photo setup, seeker photo reporting, public evidence review, and camera-only capture guidance in the card flow.
+- [x] Verify both workbook mappings, engine gates/permissions/round reset, public evidence contexts, full suite (413/413), mobile typecheck, Expo web export, and `git diff --check` (2026-10-25). Binary persistence depends on the active attachment-storage mode.

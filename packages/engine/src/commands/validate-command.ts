@@ -56,7 +56,8 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'water_weight_challenge',
   'endless_tumble_challenge',
   'lemon_phylactery_challenge',
-  'egg_partner_challenge'
+  'egg_partner_challenge',
+  'zoologist_challenge'
 ]);
 
 function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boolean {
@@ -67,6 +68,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.endlessTumbleChallenge ||
     aggregate.lemonPhylacteryChallenge ||
     (aggregate.eggPartnerChallenge && !aggregate.eggPartnerChallenge.eggAcquiredAt) ||
+    aggregate.zoologistChallenge ||
     (aggregate.activeCardResolution?.resolutionKind &&
       QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
   );
@@ -854,6 +856,15 @@ export function validateCommandEnvelope(
           return [error(envelope.command.type, 'BRIDGE_TROLL_ATTESTATIONS_REQUIRED', 'Every seeker must confirm they are under a bridge before the next question.')];
         }
       }
+
+      if (aggregate.zoologistChallenge) {
+        const missingSeekerIds = aggregate.zoologistChallenge.requiredSeekerPlayerIds.filter(
+          (playerId) => !aggregate.zoologistChallenge!.attachmentIdBySeekerPlayerId[playerId]
+        );
+        if (missingSeekerIds.length > 0) {
+          return [error(envelope.command.type, 'ZOOLOGIST_EVIDENCE_REQUIRED', 'Every seeker must submit a photo of a wild animal in the hider’s chosen category before the next question.')];
+        }
+      }
       if (aggregate.seekerOffTransitRestriction) {
         const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
         const statuses = seekerTeam?.memberPlayerIds.map((playerId) =>
@@ -1537,6 +1548,21 @@ export function validateCommandEnvelope(
           : 'Finish the Hangman challenge before closing this card.')];
       }
 
+      if (activeResolution.resolutionKind === 'zoologist_challenge') {
+        const category = envelope.command.payload.zoologistCategory;
+        const attachment = envelope.command.payload.zoologistHiderAttachmentId
+          ? aggregate.attachments[envelope.command.payload.zoologistHiderAttachmentId]
+          : undefined;
+        if (!['fish', 'bird', 'mammal', 'reptile', 'amphibian', 'bug'].includes(category ?? '') ||
+          !attachment || attachment.kind !== 'photo_evidence' ||
+          attachment.linkedCardInstanceId !== activeResolution.sourceCardInstanceId ||
+          attachment.ownerPlayerId !== envelope.actor.playerId ||
+          attachment.visibilityScope !== 'public_match' ||
+          attachment.captureMetadata.pickerSource !== 'camera') {
+          return [error(envelope.command.type, 'ZOOLOGIST_HIDER_PHOTO_REQUIRED', 'Take a new photo with the camera, choose its animal category, and record it publicly for this card before closing it.')];
+        }
+      }
+
       if (activeResolution.resolutionKind === 'move') {
         if (
           typeof activeResolution.moveDurationSeconds === 'number' &&
@@ -1891,6 +1917,29 @@ export function validateCommandEnvelope(
       }
       if (prior?.retryAt && Date.parse(envelope.occurredAt) < Date.parse(prior.retryAt)) {
         return [error(envelope.command.type, 'JAMMED_DOOR_COOLDOWN', 'This doorway cannot be retried yet; wait for its displayed cooldown.')];
+      }
+      return [];
+    }
+    case 'report_zoologist_evidence': {
+      const challenge = aggregate.zoologistChallenge;
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      const attachment = aggregate.attachments[envelope.command.payload.attachmentId];
+      if (!challenge || challenge.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'ZOOLOGIST_NOT_ACTIVE', 'There is no active Zoologist evidence challenge.')];
+      }
+      if (!playerId || actorRole !== 'seeker' || !challenge.requiredSeekerPlayerIds.includes(playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker must submit matching photo evidence from their own player account.')];
+      }
+      if (challenge.attachmentIdBySeekerPlayerId[playerId]) {
+        return [error(envelope.command.type, 'ZOOLOGIST_EVIDENCE_ALREADY_REPORTED', 'You have already submitted your photo for this Zoologist challenge.')];
+      }
+      if (!attachment || attachment.kind !== 'photo_evidence' ||
+        attachment.linkedCardInstanceId !== challenge.sourceCardInstanceId ||
+        attachment.ownerPlayerId !== playerId || attachment.visibilityScope !== 'public_match' ||
+        attachment.captureMetadata.pickerSource !== 'camera' ||
+        Date.parse(attachment.createdAt) < Date.parse(challenge.activatedAt)) {
+        return [error(envelope.command.type, 'ZOOLOGIST_PHOTO_REQUIRED', 'Take a new photo after the challenge starts, then record your public camera evidence for this card.')];
       }
       return [];
     }

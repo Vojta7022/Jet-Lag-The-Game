@@ -107,33 +107,39 @@ function resolveCardEvidenceContext(args: {
   projection: MatchProjection;
   role: MatchRole;
 }): EvidenceContextViewModel | undefined {
-  const activeCard = findVisibleCard(args.projection, args.projection.activeCardResolution?.sourceCardInstanceId);
-  if (!activeCard) {
+  const cardInstanceId = args.projection.activeCardResolution?.sourceCardInstanceId ??
+    args.projection.zoologistChallenge?.sourceCardInstanceId;
+  if (!cardInstanceId) {
     return undefined;
   }
 
-  const definition = args.contentPack.cards.find(
-    (card) => card.cardDefinitionId === activeCard.cardDefinitionId
-  );
+  const activeCard = findVisibleCard(args.projection, cardInstanceId);
+  const definition = activeCard
+    ? args.contentPack.cards.find((card) => card.cardDefinitionId === activeCard.cardDefinitionId)
+    : args.contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === 'zoologist_challenge'));
   if (!definition || !cardRequiresPhotoEvidence(definition)) {
     return undefined;
   }
 
+  const isZoologist = definition.effects.some((effect) => effect.effectType === 'zoologist_challenge');
+
   const attachments = args.projection.visibleAttachments.filter(
-    (attachment) => attachment.linkedCardInstanceId === activeCard.cardInstanceId
+    (attachment) => attachment.linkedCardInstanceId === cardInstanceId
   );
 
   return {
-    contextId: `card:${activeCard.cardInstanceId}`,
+    contextId: `card:${cardInstanceId}`,
     kind: 'card',
     title: `Card Evidence: ${definition.name}`,
-    detail: 'Pick or capture supporting media, then record the attachment metadata honestly before the referee closes the card window.',
-    cardInstanceId: activeCard.cardInstanceId,
-    suggestedVisibilityScope: resolveSuggestedEvidenceScope({
+    detail: isZoologist
+      ? 'Capture and record a public photo for the Zoologist challenge. Players compare the animal category themselves.'
+      : 'Pick or capture supporting media, then record the attachment metadata honestly before the referee closes the card window.',
+    cardInstanceId,
+    suggestedVisibilityScope: isZoologist ? 'public_match' : resolveSuggestedEvidenceScope({
       role: args.role,
-      teamId: activeCard.holderType === 'team' ? activeCard.holderId : undefined
+      teamId: activeCard?.holderType === 'team' ? activeCard?.holderId : undefined
     }),
-    teamId: activeCard.holderType === 'team' ? activeCard.holderId : undefined,
+    teamId: isZoologist ? undefined : activeCard?.holderType === 'team' ? activeCard?.holderId : undefined,
     attachments
   };
 }

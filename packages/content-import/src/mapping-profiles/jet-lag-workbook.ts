@@ -1214,6 +1214,7 @@ function buildCurseCards(
       const startsGamblersFeetChallenge = normalizedName.slug === 'curse-of-the-gamblers-feet';
       const startsEggPartnerChallenge = normalizedName.slug === 'curse-of-the-egg-partner';
       const startsJammedDoorChallenge = normalizedName.slug === 'curse-of-the-jammed-door';
+      const startsZoologistChallenge = normalizedName.slug === 'curse-of-the-zoologist';
       const rulebookGuidance = curseRulebookGuidance(normalizedName.slug);
       buildNormalizationIssue(
         issues,
@@ -1238,7 +1239,7 @@ function buildCurseCards(
         shortName: normalizedName.displayText,
         description: applyWorkbookCorrections(descriptionRaw),
         ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
-        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge ? 'assisted' : 'manual',
+        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge ? 'assisted' : 'manual',
         castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
         effects: [
           {
@@ -1258,6 +1259,8 @@ function buildCurseCards(
               ? 'egg_partner_challenge'
               : startsJammedDoorChallenge
               ? 'jammed_door_challenge'
+              : startsZoologistChallenge
+              ? 'zoologist_challenge'
               : startsHangmanChallenge
               ? 'hangman_challenge'
               : locksQuestionTemplates
@@ -1265,7 +1268,7 @@ function buildCurseCards(
               : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
                 : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
             description: applyWorkbookCorrections(descriptionRaw),
-            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge ? 'assisted' : 'manual',
+            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge ? 'assisted' : 'manual',
             rawText: descriptionRaw,
             payload: {
               ...(startsSeekerOffTransitChallenge
@@ -1298,10 +1301,11 @@ function buildCurseCards(
         ],
         rewardsOrPenalties: [],
         requirements: {
-          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge && !startsLemonPhylacteryChallenge && !startsGamblersFeetChallenge && !startsEggPartnerChallenge && !startsJammedDoorChallenge
+          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge && !startsLemonPhylacteryChallenge && !startsGamblersFeetChallenge && !startsEggPartnerChallenge && !startsJammedDoorChallenge && !startsZoologistChallenge,
+          requiresPhotoUpload: startsZoologistChallenge
         },
         visibilityPolicy: HIDER_DECK_VISIBILITY,
-        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
+        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'name', nameRaw, nameRaw),
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'description', descriptionRaw, nameRaw),
@@ -1383,6 +1387,7 @@ function buildCurseCards(
     const startsGamblersFeetChallenge = normalizedName.slug === 'curse-of-the-gamblers-feet';
     const startsEggPartnerChallenge = normalizedName.slug === 'curse-of-the-egg-partner';
     const startsJammedDoorChallenge = normalizedName.slug === 'curse-of-the-jammed-door';
+    const startsZoologistChallenge = normalizedName.slug === 'curse-of-the-zoologist';
     const rulebookGuidance = curseRulebookGuidance(normalizedName.slug);
     buildNormalizationIssue(
       issues,
@@ -1408,7 +1413,7 @@ function buildCurseCards(
       shortName: normalizedName.displayText,
       description: applyWorkbookCorrections(descriptionRaw),
       ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
-      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge ? 'assisted' : 'manual',
+      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge ? 'assisted' : 'manual',
       castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
       effects: [
         {
@@ -1428,6 +1433,8 @@ function buildCurseCards(
             ? 'egg_partner_challenge'
             : startsJammedDoorChallenge
             ? 'jammed_door_challenge'
+            : startsZoologistChallenge
+            ? 'zoologist_challenge'
             : startsHangmanChallenge
             ? 'hangman_challenge'
             : locksQuestionTemplates
@@ -1435,7 +1442,7 @@ function buildCurseCards(
             : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
               : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
           description: applyWorkbookCorrections(descriptionRaw),
-          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge ? 'assisted' : 'manual',
+          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge ? 'assisted' : 'manual',
           rawText: descriptionRaw,
           payload: {
             ...(startsSeekerOffTransitChallenge
@@ -1468,10 +1475,11 @@ function buildCurseCards(
       ],
       rewardsOrPenalties: [],
       requirements: {
-        requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge && !startsLemonPhylacteryChallenge && !startsGamblersFeetChallenge && !startsEggPartnerChallenge && !startsJammedDoorChallenge
+        requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge && !startsLemonPhylacteryChallenge && !startsGamblersFeetChallenge && !startsEggPartnerChallenge && !startsJammedDoorChallenge && !startsZoologistChallenge,
+        requiresPhotoUpload: startsZoologistChallenge
       },
       visibilityPolicy: HIDER_DECK_VISIBILITY,
-      tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
+      tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
       sourceProvenance: [
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'B', nameRaw, orderRaw),
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'C', descriptionRaw, nameRaw),

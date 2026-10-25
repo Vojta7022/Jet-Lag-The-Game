@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import type {
   ContentPack,
+  MatchProjection,
   VisibleChatChannelProjection
 } from '../../../packages/shared-types/src/index.ts';
 
@@ -250,6 +251,32 @@ test('question photo evidence can be recorded through the runtime and referenced
   assert.equal(answeredQuestion?.answer?.note, 'Tree evidence recorded from the device camera.');
 
   await orchestrator.disconnect(created.connection);
+});
+
+test('Zoologist evidence stays public and available after its card window closes', () => {
+  const contentPack = loadContentPack();
+  const projection = {
+    visibleQuestions: [],
+    visibleCards: [],
+    visibleAttachments: [],
+    zoologistChallenge: {
+      sourceCardInstanceId: 'card:zoologist',
+      category: 'bird',
+      hiderAttachmentId: 'attachment:hider',
+      requiredSeekerPlayerIds: ['seeker-1'],
+      attachmentIdBySeekerPlayerId: {},
+      activatedAt: '2026-10-25T12:00:00.000Z'
+    }
+  } as unknown as MatchProjection;
+
+  const seekerContext = buildEvidenceContexts(contentPack, projection, 'seeker').find((context) => context.kind === 'card');
+  const hostContext = buildEvidenceContexts(contentPack, projection, 'host').find((context) => context.kind === 'card');
+
+  assert.ok(seekerContext);
+  assert.equal(seekerContext?.cardInstanceId, 'card:zoologist');
+  assert.equal(seekerContext?.suggestedVisibilityScope, 'public_match');
+  assert.equal(hostContext?.suggestedVisibilityScope, 'public_match');
+  assert.match(seekerContext?.detail ?? '', /players compare the animal category/i);
 });
 
 test('supabase attachment upload command stores durable storage metadata for online evidence', async () => {

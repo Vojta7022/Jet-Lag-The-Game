@@ -410,7 +410,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -523,6 +523,17 @@ export interface JammedDoorChallengeModel {
   statusByDoorwayId: Record<string, JammedDoorAttemptModel>;
 }
 
+export type ZoologistAnimalCategory = 'fish' | 'bird' | 'mammal' | 'reptile' | 'amphibian' | 'bug';
+
+export interface ZoologistChallengeModel {
+  sourceCardInstanceId: string;
+  category: ZoologistAnimalCategory;
+  hiderAttachmentId: string;
+  requiredSeekerPlayerIds: string[];
+  attachmentIdBySeekerPlayerId: Record<string, string>;
+  activatedAt: string;
+}
+
 export interface MatchAggregate {
   matchId: string;
   mode: MatchMode;
@@ -560,6 +571,7 @@ export interface MatchAggregate {
   gamblersFeetChallenge?: GamblersFeetChallengeModel;
   eggPartnerChallenge?: EggPartnerChallengeModel;
   jammedDoorChallenge?: JammedDoorChallengeModel;
+  zoologistChallenge?: ZoologistChallengeModel;
   awardedCurseBonusMinutes?: number;
   hiderHandLimitBonus?: number;
   disabledQuestionTemplateIds?: string[];

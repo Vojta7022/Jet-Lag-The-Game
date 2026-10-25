@@ -381,6 +381,22 @@ export function CardsScreen() {
   const cardEvidenceDrafts = cardAttachmentContext
     ? localMedia.getContextDrafts(cardAttachmentContext.contextId)
     : [];
+  const zoologistHiderAttachmentId = projection?.activeCardResolution?.sourceCardInstanceId
+    ? projection.visibleAttachments.filter((attachment) =>
+        attachment.linkedCardInstanceId === projection.activeCardResolution?.sourceCardInstanceId &&
+        attachment.ownerPlayerId === activeMatch?.recipient.playerId &&
+        attachment.visibilityScope === 'public_match' &&
+        attachment.kind === 'photo_evidence'
+      ).at(-1)?.attachmentId
+    : undefined;
+  const zoologistSeekerAttachmentId = projection?.zoologistChallenge && activeMatch?.recipient.playerId
+    ? projection.visibleAttachments.filter((attachment) =>
+        attachment.linkedCardInstanceId === projection.zoologistChallenge?.sourceCardInstanceId &&
+        attachment.ownerPlayerId === activeMatch.recipient.playerId &&
+        attachment.visibilityScope === 'public_match' &&
+        attachment.kind === 'photo_evidence'
+      ).at(-1)?.attachmentId
+    : undefined;
   const resolveDisabledReason =
     activeCard && !canResolve
       ? getCardResolutionBlockedReason(viewerRole, projection) ?? 'The hider holding this card or a host-admin must close the active card window after the effect is handled.'
@@ -485,6 +501,27 @@ export function CardsScreen() {
             disabled={state.loadState === 'loading'}
             onRoll={(playerId, doorwayId, doorwayLabel, dieOne, dieTwo) => void submitCommand({ type: 'report_jammed_door_roll', payload: { sourceCardInstanceId: projection.jammedDoorChallenge!.sourceCardInstanceId, doorwayId, doorwayLabel, dieOne, dieTwo, doorwayVisible: true, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
           />
+        </Panel>
+      ) : null}
+
+      {projection?.zoologistChallenge ? (
+        <Panel title="Curse of the Zoologist" subtitle="Photograph a wild animal in the hider’s chosen category." tone="accent">
+          <Text style={styles.copy}>Category: {projection.zoologistChallenge.category}. Players compare the photos and decide whether each animal is wild and belongs to this category.</Text>
+          {projection.players.filter((player) => projection.zoologistChallenge?.requiredSeekerPlayerIds.includes(player.playerId)).map((player) => (
+            <Text key={player.playerId} style={styles.copy}>
+              {player.displayName}: {projection.zoologistChallenge?.attachmentIdBySeekerPlayerId[player.playerId] ? 'photo recorded' : 'photo needed'}
+            </Text>
+          ))}
+          {viewerRole === 'seeker' && !projection.zoologistChallenge.attachmentIdBySeekerPlayerId[activeMatch?.recipient.playerId ?? ''] ? (
+            <AppButton
+              label="Submit my matching photo"
+              disabled={state.loadState === 'loading' || !zoologistSeekerAttachmentId}
+              onPress={() => zoologistSeekerAttachmentId && void submitCommand({
+                type: 'report_zoologist_evidence',
+                payload: { sourceCardInstanceId: projection.zoologistChallenge!.sourceCardInstanceId, attachmentId: zoologistSeekerAttachmentId }
+              })}
+            />
+          ) : null}
         </Panel>
       ) : null}
 
@@ -980,6 +1017,7 @@ export function CardsScreen() {
               activeCard={activeCard}
               copiedCard={copiedCard}
               resolution={projection?.activeCardResolution}
+              zoologistHiderAttachmentId={zoologistHiderAttachmentId}
               canResolve={canResolve}
               resolveDisabledReason={resolveDisabledReason}
               questionCategories={contentPack.questionCategories}
@@ -1017,7 +1055,7 @@ export function CardsScreen() {
                   type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId, dieRoll }
                 });
               }}
-              onResolve={(questionTemplateIds) => {
+              onResolve={(questionTemplateIds, zoologistSelection) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -1027,7 +1065,11 @@ export function CardsScreen() {
                   payload: {
                     sourceCardInstanceId:
                       projection.activeCardResolution.sourceCardInstanceId,
-                    ...(questionTemplateIds.length > 0 ? { questionTemplateIds } : {})
+                    ...(questionTemplateIds.length > 0 ? { questionTemplateIds } : {}),
+                    ...(zoologistSelection ? {
+                      zoologistCategory: zoologistSelection.category,
+                      zoologistHiderAttachmentId: zoologistSelection.hiderAttachmentId
+                    } : {})
                   }
                 });
               }}
@@ -1043,6 +1085,7 @@ export function CardsScreen() {
         >
           <EvidenceCapturePanel
             context={cardAttachmentContext}
+            cameraOnly={projection?.activeCardResolution?.resolutionKind === 'zoologist_challenge' || Boolean(projection?.zoologistChallenge)}
             drafts={cardEvidenceDrafts}
             visibleAttachments={activeCardEvidenceContext?.attachments ?? []}
             disabled={

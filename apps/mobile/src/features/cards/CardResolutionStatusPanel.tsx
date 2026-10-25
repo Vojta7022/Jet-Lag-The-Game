@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import type { MatchProjection, MatchRole, QuestionCategoryDefinition, QuestionTemplateDefinition, ScaleKey } from '../../../../../packages/shared-types/src/index.ts';
+import type { MatchProjection, MatchRole, QuestionCategoryDefinition, QuestionTemplateDefinition, ScaleKey, ZoologistAnimalCategory } from '../../../../../packages/shared-types/src/index.ts';
 import type { ResolvedVisibleCardModel } from './card-catalog.ts';
 
 import { CardAutomationPill } from './CardAutomationPill.tsx';
@@ -30,7 +30,8 @@ interface CardResolutionStatusPanelProps {
   onEndHangmanChallenge?: () => void;
   onResolveEndlessTumbleCast?: (dieRoll: number) => void;
   onResolveGamblersFeetCast?: (dieRoll: number) => void;
-  onResolve: (questionTemplateIds: string[]) => void;
+  zoologistHiderAttachmentId?: string;
+  onResolve: (questionTemplateIds: string[], zoologistSelection?: { category: ZoologistAnimalCategory; hiderAttachmentId: string }) => void;
 }
 
 export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps) {
@@ -39,12 +40,14 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [hangmanLetter, setHangmanLetter] = useState('');
   const [endlessTumbleCastRoll, setEndlessTumbleCastRoll] = useState<number | undefined>();
   const [gamblersFeetCastRoll, setGamblersFeetCastRoll] = useState<number | undefined>();
+  const [zoologistCategory, setZoologistCategory] = useState<ZoologistAnimalCategory | undefined>();
   useEffect(() => {
     setSelectedTemplateIds([]);
     setHangmanWord('');
     setHangmanLetter('');
     setEndlessTumbleCastRoll(undefined);
     setGamblersFeetCastRoll(undefined);
+    setZoologistCategory(undefined);
   }, [props.resolution?.sourceCardInstanceId]);
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
@@ -68,11 +71,13 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const waterWeightChallenge = props.resolution?.resolutionKind === 'water_weight_challenge';
   const endlessTumbleChallenge = props.resolution?.resolutionKind === 'endless_tumble_challenge';
   const gamblersFeetChallenge = props.resolution?.resolutionKind === 'gamblers_feet_challenge';
+  const zoologistChallenge = props.resolution?.resolutionKind === 'zoologist_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const canSubmit = props.canResolve &&
     (!questionSelectionRequired || selectedTemplateIds.length === requiredQuestionCount) &&
     (!hangmanChallenge || hangman?.status === 'solved' || hangman?.status === 'ended') &&
+    (!zoologistChallenge || (Boolean(zoologistCategory) && Boolean(props.zoologistHiderAttachmentId))) &&
     !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
@@ -306,6 +311,28 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         </View>
       ) : null}
 
+      {zoologistChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>ZOOLOGIST PHOTO CHALLENGE</Text>
+          <Text style={styles.copy}>Choose the category shown in your wild-animal photo. Every seeker will need their own photo of a wild animal in the same category before questions resume.</Text>
+          <View style={styles.hangmanGuessRow}>
+            {(['fish', 'bird', 'mammal', 'reptile', 'amphibian', 'bug'] as const).map((category) => (
+              <Pressable
+                accessibilityRole="radio"
+                accessibilityState={{ checked: zoologistCategory === category }}
+                key={category}
+                onPress={() => setZoologistCategory(category)}
+                style={[styles.categoryOption, zoologistCategory === category ? styles.categoryOptionSelected : undefined]}
+              >
+                <Text style={[styles.categoryLabel, zoologistCategory === category ? styles.categoryLabelSelected : undefined]}>{category}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.metaChip}>{props.zoologistHiderAttachmentId ? 'Your public photo is recorded.' : 'Capture and record your photo below first.'}</Text>
+          <Text style={styles.copy}>Players decide whether a photo shows a wild animal in the selected category. The app does not identify species or determine whether an animal is wild.</Text>
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Next step</Text>
         <Text style={styles.copy}>{guidance.nextStep}</Text>
@@ -316,7 +343,12 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
 
       <AppButton
         label={endlessTumbleChallenge ? 'Record the casting roll above' : 'Close Card Window'}
-        onPress={() => props.onResolve(questionSelectionRequired ? selectedTemplateIds : [])}
+        onPress={() => props.onResolve(
+          questionSelectionRequired ? selectedTemplateIds : [],
+          zoologistChallenge && zoologistCategory && props.zoologistHiderAttachmentId
+            ? { category: zoologistCategory, hiderAttachmentId: props.zoologistHiderAttachmentId }
+            : undefined
+        )}
         disabled={!canSubmit || props.disabled}
       />
     </View>

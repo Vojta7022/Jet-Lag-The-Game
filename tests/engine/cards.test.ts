@@ -873,7 +873,7 @@ test('player_private projections can still see the viewer team shared hand witho
 test('resolved manual cards stay visible in the discard pile for the owning team after the card window closes', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
-  const cardInstanceId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-zoologist', 'team-hider');
+  const cardInstanceId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-u-turn', 'team-hider');
 
   aggregate = executeCommand(
     aggregate,
@@ -1041,7 +1041,7 @@ test('Duplicate identifies a copied manual effect in its private resolution wind
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack);
   const duplicateCardId = moveCardToTeamHand(aggregate, 'power-up-duplicate', 'team-hider');
-  const originalCardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-zoologist', 'team-hider');
+  const originalCardId = moveCardToTeamHand(aggregate, 'curse-curse-of-the-u-turn', 'team-hider');
 
   aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
     { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
@@ -1142,4 +1142,75 @@ test('Randomize cancels the active question and asks a different available quest
   assert.equal(aggregate.questionInstances[replacement.questionInstanceId]?.status, 'resolved');
   assert.equal(aggregate.activeQuestionInstanceId, undefined);
   assert.equal(aggregate.constraints[`${replacement.questionInstanceId}:null-answer`], undefined);
+});
+
+test('Curse of the Zoologist opens a typed evidence challenge plan', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('zoologist'));
+  assert.ok(card);
+  card.effects = [{
+    effectType: 'zoologist_challenge',
+    description: card.description,
+    automationLevel: 'assisted'
+  } as never];
+
+  assert.equal(buildCardResolutionPlan(card, 'medium').kind, 'zoologist_challenge');
+});
+
+test('Zoologist blocks questions until every seeker links their own public photo', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('zoologist'));
+  assert.ok(card);
+  card.effects = [{ effectType: 'zoologist_challenge', description: card.description, automationLevel: 'assisted' } as never];
+  const aggregate = setupMatchToSeekReady(contentPack);
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  let state = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+
+  const upload = (playerId: string, role: 'hider' | 'seeker', attachmentId: string, at: number) => executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: playerId, playerId, role },
+    { type: 'upload_attachment', payload: {
+      attachmentId,
+      kind: 'photo_evidence',
+      label: 'Wild animal photo',
+      visibilityScope: 'public_match',
+      cardInstanceId,
+      captureMetadata: { pickerSource: 'camera' }
+    } }, at), contentPack).aggregate;
+
+  state = upload('hider-1', 'hider', 'zoo:hider-photo', 71);
+  state = upload('seeker-1', 'seeker', 'zoo:old-seeker-photo', 72);
+  assert.throws(() => executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 72), contentPack), /take a new photo with the camera/i);
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: {
+      sourceCardInstanceId: cardInstanceId,
+      zoologistCategory: 'bird',
+      zoologistHiderAttachmentId: 'zoo:hider-photo'
+    } }, 73), contentPack).aggregate;
+  assert.equal(state.zoologistChallenge?.category, 'bird');
+  assert.throws(() => executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_zoologist_evidence', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: 'zoo:old-seeker-photo' } }, 73.5), contentPack), /take a new photo after the challenge starts/i);
+
+  state = executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 74), contentPack).aggregate;
+  assert.throws(() => executeCommand(state, makeEnvelope(state.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'ask_question', payload: {
+      questionInstanceId: 'question:zoologist-blocked', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider'
+    } }, 75), contentPack), /every seeker must submit a photo/i);
+
+  const seekerIds = state.zoologistChallenge!.requiredSeekerPlayerIds;
+  for (const [index, playerId] of seekerIds.entries()) {
+    state = upload(playerId, 'seeker', `zoo:seeker-photo-${index}`, 76 + index * 2);
+    state = executeCommand(state, makeEnvelope(state.matchId,
+      { actorId: playerId, playerId, role: 'seeker' },
+      { type: 'report_zoologist_evidence', payload: { sourceCardInstanceId: cardInstanceId, attachmentId: `zoo:seeker-photo-${index}` } }, 77 + index * 2), contentPack).aggregate;
+  }
+  assert.equal(state.zoologistChallenge, undefined);
 });

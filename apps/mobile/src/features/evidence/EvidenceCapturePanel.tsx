@@ -27,6 +27,7 @@ interface EvidenceCapturePanelProps {
   submitDisabled?: boolean;
   submitHint?: string;
   emptyVisibleText?: string;
+  cameraOnly?: boolean;
   onChooseFromLibrary: () => void;
   onTakePhoto: () => void;
   onUpdateDraft: (
@@ -52,12 +53,12 @@ export function EvidenceCapturePanel(props: EvidenceCapturePanelProps) {
       ) : null}
 
       <View style={styles.actions}>
-        <AppButton
+        {!props.cameraOnly ? <AppButton
           label={props.busy ? 'Opening Library...' : 'Choose Photo'}
           onPress={props.onChooseFromLibrary}
           disabled={props.disabled || props.busy}
           tone="secondary"
-        />
+        /> : null}
         <AppButton
           label={props.busy ? 'Opening Camera...' : 'Take Photo'}
           onPress={props.onTakePhoto}

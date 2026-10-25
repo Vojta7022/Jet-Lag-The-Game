@@ -305,6 +305,7 @@ export function reduceMatchAggregate(
         gamblersFeetChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
+        zoologistChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         cardInstances: Object.fromEntries(
           eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
@@ -343,6 +344,7 @@ export function reduceMatchAggregate(
         gamblersFeetChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
+        zoologistChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         disabledQuestionTemplateIds: [],
         disabledQuestionCategoryId: undefined,
@@ -714,6 +716,31 @@ export function reduceMatchAggregate(
             }
           }
         }
+      };
+    }
+    case 'zoologist_challenge_started':
+      return {
+        ...base,
+        zoologistChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          category: eventEnvelope.event.payload.category,
+          hiderAttachmentId: eventEnvelope.event.payload.hiderAttachmentId,
+          requiredSeekerPlayerIds: eventEnvelope.event.payload.requiredSeekerPlayerIds,
+          attachmentIdBySeekerPlayerId: {},
+          activatedAt: eventEnvelope.occurredAt
+        }
+      };
+    case 'zoologist_evidence_reported': {
+      const challenge = base.zoologistChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const attachmentIdBySeekerPlayerId = {
+        ...challenge.attachmentIdBySeekerPlayerId,
+        [eventEnvelope.event.payload.playerId]: eventEnvelope.event.payload.attachmentId
+      };
+      const complete = challenge.requiredSeekerPlayerIds.every((playerId) => attachmentIdBySeekerPlayerId[playerId]);
+      return {
+        ...base,
+        zoologistChallenge: complete ? undefined : { ...challenge, attachmentIdBySeekerPlayerId }
       };
     }
     case 'question_response_expired': {

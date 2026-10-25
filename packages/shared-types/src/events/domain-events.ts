@@ -121,6 +121,8 @@ export type DomainEvent =
   | EggPartnerMemberLostEvent
   | JammedDoorChallengeStartedEvent
   | JammedDoorRollReportedEvent
+  | ZoologistChallengeStartedEvent
+  | ZoologistEvidenceReportedEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -442,7 +444,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -599,6 +601,21 @@ export interface JammedDoorChallengeStartedEvent {
 export interface JammedDoorRollReportedEvent {
   type: 'jammed_door_roll_reported';
   payload: { sourceCardInstanceId: string; doorwayId: string; doorwayLabel: string; reportedByPlayerId: string; dieOne: number; dieTwo: number; total: number; passed: boolean; retryAt?: string };
+}
+
+export interface ZoologistChallengeStartedEvent {
+  type: 'zoologist_challenge_started';
+  payload: {
+    sourceCardInstanceId: string;
+    category: import('../domain/match.ts').ZoologistAnimalCategory;
+    hiderAttachmentId: string;
+    requiredSeekerPlayerIds: string[];
+  };
+}
+
+export interface ZoologistEvidenceReportedEvent {
+  type: 'zoologist_evidence_reported';
+  payload: { sourceCardInstanceId: string; playerId: string; attachmentId: string };
 }
 
 export interface QuestionTemplatesDisabledEvent {
