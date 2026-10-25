@@ -29,11 +29,26 @@ function findPlayableSmokeCard(contentPack: ContentPack, projection: { visibleCa
     return Boolean(
       definition &&
       definition.kind !== 'time_bonus' &&
-      !definition.effects.some((effect) => ['duplicate_card', 'veto_question', 'randomize_question'].includes(effect.effectType)) &&
+      !definition.effects.some((effect) => ['duplicate_card', 'veto_question', 'randomize_question', 'move_power_up'].includes(effect.effectType)) &&
       Object.keys(getCardDiscardRequirement(definition)).length === 0
     );
   });
 }
+
+test('card flow smoke selection skips Move because its timer and relocation cannot resolve immediately', () => {
+  const contentPack = loadContentPack();
+  const move = contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === 'move_power_up'));
+  const immediatelyResolvable = contentPack.cards.find((card) => card.effects.some((effect) => effect.effectType === 'draw_and_expand_hand'));
+  assert.ok(move);
+  assert.ok(immediatelyResolvable);
+  const selected = findPlayableSmokeCard(contentPack, {
+    visibleCards: [
+      { cardDefinitionId: move.cardDefinitionId, zone: 'hand' },
+      { cardDefinitionId: immediatelyResolvable.cardDefinitionId, zone: 'hand' }
+    ]
+  });
+  assert.equal(selected?.cardDefinitionId, immediatelyResolvable.cardDefinitionId);
+});
 
 test('cards flow can bootstrap gameplay, draw, play, and discard through the real mobile runtime', async () => {
   const contentPack = loadContentPack();

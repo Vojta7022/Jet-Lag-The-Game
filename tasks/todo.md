@@ -197,7 +197,15 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Resolve first through fourth administrative Matching questions from both players' fresh device locations and the same trusted boundary snapshot used by the map deduction.
 - [x] Refuse automatic answers when the needed hierarchy level is absent/ambiguous or GPS uncertainty overlaps the selected border; keep the manual path available.
 - [x] Verify relation geometry assembly, ordinal selection, provider query/normalization, automatic answer, map narrowing, full tests, and mobile typecheck.
-- [ ] Add provider-backed boundary distance for Measuring admin-border templates and validate country-specific hierarchy coverage against real regions before calling all admin questions automatic.
+- [ ] Validate country-specific hierarchy coverage against real regions before calling all administrative questions broadly supported.
+
+### Completed implementation slice: shared administrative-border Measuring
+
+- [x] Preserve OSM outer member-way IDs and identify only ways shared by multiple divisions at the requested administrative level.
+- [x] Keep only shared border lines intersecting the playable region; exclude outer country/state edges that have no same-level neighboring division.
+- [x] Compare seeker and hider distance to the same nearest shared border with GPS uncertainty handling and apply the corresponding map constraint.
+- [x] Verify line distance, relation assembly, target selection, map intersection, automatic answer/map update, full tests, and mobile typecheck.
+- [ ] Validate OSM shared-way coverage and border distance behavior against real regions across countries.
 
 ### Product-owner clarification — individual phones (2026-10-24)
 

@@ -307,6 +307,8 @@ test('question support helper stays honest about approximate and metadata-only p
   const tentaclesTemplate = findQuestionTemplate(contentPack, 'tentacles-museums-1600');
   const tentaclesCategory = findQuestionCategory(contentPack, tentaclesTemplate?.categoryId);
   const adminTemplate = findQuestionTemplate(contentPack, 'matching-1st-admin-state');
+  const adminBorderTemplate = findQuestionTemplate(contentPack, 'measuring-a-1st-admin-border-state');
+  const measuringCategory = findQuestionCategory(contentPack, adminBorderTemplate?.categoryId);
 
   assert.equal(
     describeTemplateSupport({
@@ -339,6 +341,14 @@ test('question support helper stays honest about approximate and metadata-only p
       regionId: 'unknown-region'
     }),
     'The app checks fresh player locations against OpenStreetMap administrative boundaries when connected; missing or ambiguous divisions stay manual'
+  );
+  assert.equal(
+    describeTemplateSupport({
+      template: adminBorderTemplate!,
+      category: measuringCategory!,
+      regionId: 'unknown-region'
+    }),
+    'When connected, the app compares fresh player locations to a mapped shared border at the requested administrative level; missing or ambiguous borders stay manual'
   );
   assert.equal(
     describeTemplateSupport({

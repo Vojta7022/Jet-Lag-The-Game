@@ -3,6 +3,7 @@ import type { GeometryPrecision } from '../../../shared-types/src/index.ts';
 import type { GeoFeatureRecord } from '../feature-layer.ts';
 import { representativePointFromGeometry, type LonLat } from '../geometry/geojson.ts';
 import { distanceMeters } from '../geometry/planar.ts';
+import { distanceToFeatureMeters } from './admin-boundary-hierarchy.ts';
 
 export interface FeatureQuerySupport {
   precision: GeometryPrecision;
@@ -40,7 +41,9 @@ function supportForFeatures(features: GeoFeatureRecord[]): FeatureQuerySupport {
     };
   }
 
-  if (features.some((feature) => !representativePoint(feature))) {
+  if (features.some((feature) => !representativePoint(feature) &&
+    !(feature.geometrySupport === 'line' && feature.geometry &&
+      (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString')))) {
     return {
       precision: 'metadata_only',
       confidenceScore: 0.2,
@@ -117,10 +120,9 @@ export function queryNearestFeature(args: {
 
   const ranked = candidates
     .map((feature) => {
-      const point = representativePoint(feature)!;
       return {
         feature,
-        distanceMeters: distanceMeters(point, args.point)
+        distanceMeters: distanceToFeatureMeters(args.point, feature) ?? Number.POSITIVE_INFINITY
       };
     })
     .sort((left, right) => left.distanceMeters - right.distanceMeters);

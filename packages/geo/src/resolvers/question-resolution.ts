@@ -176,6 +176,15 @@ function gridResolutionMeters(metadata: Record<string, unknown> | undefined): nu
   return typeof value === 'number' && value > 0 ? value : 1_000;
 }
 
+function measuredDistanceToleranceMeters(metadata: Record<string, unknown>): number {
+  const automaticResolution = metadata.automaticResolution;
+  if (automaticResolution && typeof automaticResolution === 'object') {
+    const threshold = (automaticResolution as Record<string, unknown>).thresholdMeters;
+    if (typeof threshold === 'number' && Number.isFinite(threshold) && threshold >= 0) return threshold;
+  }
+  return 150;
+}
+
 function featureClassIds(template: QuestionTemplateDefinition): string[] {
   return (template.featureClassRefs ?? []).map((feature) => feature.featureClassId);
 }
@@ -413,6 +422,7 @@ function resolveThermometer(
       metadata
     });
   }
+  const toleranceMeters = measuredDistanceToleranceMeters(metadata);
 
   return approximateGridOutcome({
     baseGeometry,
@@ -646,6 +656,7 @@ function resolveMeasuring(
       metadata
     });
   }
+  const toleranceMeters = measuredDistanceToleranceMeters(metadata);
 
   return approximateGridOutcome({
     baseGeometry,
@@ -660,18 +671,19 @@ function resolveMeasuring(
         return false;
       }
 
-      return pointDistanceRelation(nearestForPoint.distanceMeters, seekerNearest.distanceMeters!, relation, 150);
+      return pointDistanceRelation(nearestForPoint.distanceMeters, seekerNearest.distanceMeters!, relation, toleranceMeters);
     },
     summary: `Measuring approximately keeps areas whose distance to ${seekerNearest.feature.label} is ${relation} than the seeker's.`,
     detail: seekerNearest.reason,
     reasoningSteps: [
       `The seeker's reference distance is ${Math.round(seekerNearest.distanceMeters)} meters.`,
-      'Sampled cells were compared to the same feature class using representative-point distances.'
+      'Sampled cells were compared to the same target geometry using its recorded distance tolerance.'
     ],
     featureCoverage: seekerNearest.precision,
     metadata: {
       referenceDistanceMeters: seekerNearest.distanceMeters,
       referenceFeatureId: seekerNearest.feature.featureId,
+      distanceToleranceMeters: toleranceMeters,
       ...metadata
     }
   });

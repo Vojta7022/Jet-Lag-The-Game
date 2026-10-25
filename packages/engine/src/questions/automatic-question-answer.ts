@@ -11,6 +11,7 @@ import {
   queryClosestAmongCandidates,
   queryNearestFeature,
   distanceToAdministrativeBoundaryMeters,
+  distanceToFeatureMeters,
   selectAdministrativeDivisionAtPoint,
   type GeoFeatureRecord
 } from '../../../geo/src/index.ts';
@@ -312,12 +313,9 @@ export function resolveAutomaticQuestionAnswer(args: {
         }
       };
     }
-    const reference = seekerNearest.feature.representativePoint
-      ? [seekerNearest.feature.representativePoint.longitude, seekerNearest.feature.representativePoint.latitude] as [number, number]
-      : undefined;
-    if (!reference) return { kind: 'manual' };
-    const seekerDistance = distanceMeters([seeker.longitude, seeker.latitude], reference);
-    const hiderDistance = distanceMeters([hider.longitude, hider.latitude], reference);
+    const seekerDistance = distanceToFeatureMeters([seeker.longitude, seeker.latitude], seekerNearest.feature);
+    const hiderDistance = distanceToFeatureMeters([hider.longitude, hider.latitude], seekerNearest.feature);
+    if (seekerDistance === undefined || hiderDistance === undefined) return { kind: 'manual' };
     const distanceDelta = hiderDistance - seekerDistance;
     const uncertaintyMeters = seeker.accuracyMeters! + hider.accuracyMeters!;
     if (Math.abs(distanceDelta) <= uncertaintyMeters) {

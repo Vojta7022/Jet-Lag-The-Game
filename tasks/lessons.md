@@ -10,3 +10,4 @@
 - 2026-10-24: Treat the user's explicit correction that each player uses their own phone as the primary product requirement. A single-device referee flow is only a fallback/regression path; do not frame it as the intended finished game.
 - 2026-10-24: Read scanned card wording literally at the level it names: “choose questions in different categories” locks the selected question prompts, not every prompt in each category. Keep user choice precise in the picker, shared state, and engine validation.
 - 2026-10-24: When the user questions slow progress, own any poor prioritization plainly, give status backed by shipped code and open requirements, then keep advancing a complete player-facing slice instead of adding disconnected summaries.
+- 2026-10-25: Randomized card-flow integration tests must exclude effects that need elapsed timers or physical relocation when the test closes the window immediately. “No discard cost” does not mean “immediately resolvable.”

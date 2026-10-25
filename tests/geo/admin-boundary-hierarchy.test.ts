@@ -3,7 +3,10 @@ import test from 'node:test';
 
 import {
   assembleAdministrativeBoundary,
+  buildSharedAdministrativeBorders,
   distanceToAdministrativeBoundaryMeters,
+  distanceToFeatureMeters,
+  lineGeometryIntersectsPolygon,
   selectAdministrativeDivisionAtPoint
 } from '../../packages/geo/src/features/admin-boundary-hierarchy.ts';
 import { pointInGeometry } from '../../packages/geo/src/geometry/geojson.ts';
@@ -68,6 +71,36 @@ test('measures location uncertainty against the selected administrative border',
   assert.ok(distanceToAdministrativeBoundaryMeters([0.99999, 0], state)! < 2);
 });
 
+test('builds measuring targets only from ways shared by divisions at the requested level', () => {
+  const features = [
+    administrativeArea(40, 4, 'West State', [
+      { wayId: 100, coordinates: [[1, 0], [1, 2]] },
+      { wayId: 101, coordinates: [[0, 0], [1, 0]] }
+    ]),
+    administrativeArea(41, 4, 'East State', [
+      { wayId: 100, coordinates: [[1, 0], [1, 2]] },
+      { wayId: 102, coordinates: [[1, 0], [2, 0]] }
+    ]),
+    administrativeArea(42, 6, 'West County', [
+      { wayId: 100, coordinates: [[1, 0], [1, 2]] }
+    ])
+  ];
+
+  const borders = buildSharedAdministrativeBorders(features, 1, 'a-1st-admin-border-state', '1st Admin State Border');
+
+  assert.equal(borders.length, 1);
+  assert.equal(borders[0]?.featureId, 'osm:admin-border/4/100');
+  assert.equal(borders[0]?.featureClassId, 'a-1st-admin-border-state');
+  assert.deepEqual(borders[0]?.geometry, { type: 'MultiLineString', coordinates: [[[1, 0], [1, 2]]] });
+  assert.ok(Math.abs(distanceToFeatureMeters([0.9, 1], borders[0]!)! - 11_132) < 5);
+  assert.equal(lineGeometryIntersectsPolygon(borders[0]?.geometry, {
+    type: 'Polygon', coordinates: [[[0.95, 0.2], [1.05, 0.2], [1.05, 1.8], [0.95, 1.8], [0.95, 0.2]]]
+  }), true);
+  assert.equal(lineGeometryIntersectsPolygon(borders[0]?.geometry, {
+    type: 'Polygon', coordinates: [[[2, 0], [3, 0], [3, 2], [2, 2], [2, 0]]]
+  }), false);
+});
+
 function boundary(id: number, adminLevel: number, min: number, max: number, name: string) {
   return {
     featureId: `osm:relation/${id}`,
@@ -82,5 +115,24 @@ function boundary(id: number, adminLevel: number, min: number, max: number, name
       type: 'MultiPolygon' as const,
       coordinates: [[[[min, min], [max, min], [max, max], [min, max], [min, min]]]]
     }
+  };
+}
+
+function administrativeArea(
+  id: number,
+  adminLevel: number,
+  name: string,
+  ways: Array<{ wayId: number; coordinates: number[][] }>
+) {
+  return {
+    featureId: `osm:relation/${id}`,
+    featureClassId: 'admin-boundary',
+    label: name,
+    latitude: 0,
+    longitude: 0,
+    geometrySupport: 'polygon' as const,
+    coverage: 'approximate' as const,
+    properties: { adminLevel, adminBoundaryWays: ways },
+    geometry: { type: 'MultiPolygon', coordinates: [] }
   };
 }

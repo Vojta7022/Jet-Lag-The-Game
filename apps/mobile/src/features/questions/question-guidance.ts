@@ -269,7 +269,10 @@ export function describeExpectedAnswerGuidance(
     (template.featureClassRefs ?? []).length > 0 &&
     (template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
   ) {
-    if ((template.featureClassRefs ?? []).some((feature) => /^(?:[1-4](?:st|nd|rd|th)-admin-)/.test(feature.featureClassId))) {
+    if ((template.featureClassRefs ?? []).some((feature) => /^(?:[1-4](?:st|nd|rd|th)-admin-|a-[1-4](?:st|nd|rd|th)-admin-border-)/.test(feature.featureClassId))) {
+      if ((template.featureClassRefs ?? []).some((feature) => /^a-[1-4](?:st|nd|rd|th)-admin-border-/.test(feature.featureClassId))) {
+        return 'When connected, the app compares both fresh locations to a mapped border shared by divisions at the requested level, then narrows the map. If the border is missing or too close to distinguish, it asks for a manual ruling.';
+      }
       return 'When connected, the app compares both fresh locations against OpenStreetMap administrative boundaries and narrows the map to that division. If the required level is missing or GPS overlaps a border, it asks for a manual ruling.';
     }
     return category.resolverKind === 'nearest_candidate'

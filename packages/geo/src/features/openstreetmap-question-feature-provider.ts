@@ -5,7 +5,7 @@ import type {
 } from '../../../shared-types/src/index.ts';
 
 import { geometryBoundingBox, pointInGeometry } from '../geometry/geojson.ts';
-import { assembleAdministrativeBoundary } from './admin-boundary-hierarchy.ts';
+import { assembleAdministrativeBoundary, buildSharedAdministrativeBorders, lineGeometryIntersectsPolygon } from './admin-boundary-hierarchy.ts';
 
 interface OSMTagSelector {
   tags: Record<string, string>;
@@ -32,6 +32,7 @@ const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
 const OSM_SOURCE_VERSION = 'overpass-admin-area-v2';
 const ADMIN_FEATURE_CLASS_IDS = /^(?:[1-4](?:st|nd|rd|th)-admin-)/;
+const ADMIN_BORDER_FEATURE_CLASS = /^a-([1-4])(?:st|nd|rd|th)-admin-border-/;
 
 const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
   'a-commercial-airport': [{ tags: { aeroway: 'aerodrome', scheduled_service: 'yes' } }],
@@ -76,7 +77,8 @@ const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
 };
 
 export function hasOpenStreetMapFeatureClass(featureClassId: string): boolean {
-  return Object.hasOwn(SELECTORS_BY_FEATURE_CLASS, featureClassId) || ADMIN_FEATURE_CLASS_IDS.test(featureClassId);
+  return Object.hasOwn(SELECTORS_BY_FEATURE_CLASS, featureClassId) ||
+    ADMIN_FEATURE_CLASS_IDS.test(featureClassId) || ADMIN_BORDER_FEATURE_CLASS.test(featureClassId);
 }
 
 function escapeOverpassValue(value: string): string {
@@ -179,7 +181,8 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
 
     const featuresById = new Map<string, QuestionFeatureRecordModel>();
     const featureClassIds = [...new Set(request.featureClassIds)];
-    const needsAdminBoundaries = featureClassIds.some((id) => ADMIN_FEATURE_CLASS_IDS.test(id));
+    const needsAdminBoundaries = featureClassIds.some((id) => ADMIN_FEATURE_CLASS_IDS.test(id) || ADMIN_BORDER_FEATURE_CLASS.test(id));
+    const adminBoundaries: QuestionFeatureRecordModel[] = [];
     if (needsAdminBoundaries) {
       const response = await this.fetcher(this.endpoint, {
         method: 'POST',
@@ -195,7 +198,21 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
       if (parsed.elements.length > this.maxElements) throw new Error(`OpenStreetMap returned more than ${this.maxElements} administrative boundaries for this question.`);
       for (const element of parsed.elements) {
         const feature = assembleAdministrativeBoundary(element);
-        if (feature) featuresById.set(feature.featureId, feature);
+        if (feature) {
+          featuresById.set(feature.featureId, feature);
+          adminBoundaries.push(feature);
+        }
+      }
+      for (const featureClassId of featureClassIds) {
+        const match = featureClassId.match(ADMIN_BORDER_FEATURE_CLASS);
+        if (!match) continue;
+        const ordinal = Number(match[1]);
+        const label = featureClassId.replaceAll('-', ' ');
+        for (const border of buildSharedAdministrativeBorders(adminBoundaries, ordinal, featureClassId, label)) {
+          if (lineGeometryIntersectsPolygon(border.geometry, request.regionGeometry)) {
+            featuresById.set(border.featureId, border);
+          }
+        }
       }
     }
 
@@ -223,7 +240,8 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
     }
 
     if (featureClassIds.every((featureClassId) =>
-      !SELECTORS_BY_FEATURE_CLASS[featureClassId] && !ADMIN_FEATURE_CLASS_IDS.test(featureClassId))) return undefined;
+      !SELECTORS_BY_FEATURE_CLASS[featureClassId] && !ADMIN_FEATURE_CLASS_IDS.test(featureClassId) &&
+      !ADMIN_BORDER_FEATURE_CLASS.test(featureClassId))) return undefined;
     return {
       source: 'OpenStreetMap',
       sourceUrl: OSM_COPYRIGHT_URL,

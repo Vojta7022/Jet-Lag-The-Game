@@ -77,6 +77,43 @@ test('OpenStreetMap provider loads polygon geometry for administrative-division 
   assert.equal(dataset.features[0]?.geometry?.type, 'MultiPolygon');
 });
 
+test('OpenStreetMap provider emits only shared same-level admin ways inside the playable map for Measuring', async () => {
+  const relation = (id: number, name: string, members: Array<{ ref: number; role: string; geometry: Array<{ lon: number; lat: number }> }>) => ({
+    type: 'relation', id, tags: { boundary: 'administrative', admin_level: '4', name },
+    members: members.map((member) => ({ type: 'way', ...member }))
+  });
+  const vertical = (ref: number, role: string, reverse = false) => ({
+    ref, role, geometry: reverse
+      ? [{ lon: 14.2, lat: 50.4 }, { lon: 14.2, lat: 50 }]
+      : [{ lon: 14.2, lat: 50 }, { lon: 14.2, lat: 50.4 }]
+  });
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async () => new Response(JSON.stringify({ elements: [
+      relation(1, 'West State', [
+        vertical(10, 'outer', true),
+        { ref: 11, role: 'outer', geometry: [{ lon: 14, lat: 50 }, { lon: 14.2, lat: 50 }] },
+        { ref: 12, role: 'outer', geometry: [{ lon: 14.2, lat: 50.4 }, { lon: 14, lat: 50.4 }] },
+        { ref: 13, role: 'outer', geometry: [{ lon: 14, lat: 50.4 }, { lon: 14, lat: 50 }] }
+      ]),
+      relation(2, 'East State', [
+        vertical(10, 'outer'),
+        { ref: 21, role: 'outer', geometry: [{ lon: 14.2, lat: 50 }, { lon: 14.4, lat: 50 }] },
+        { ref: 22, role: 'outer', geometry: [{ lon: 14.4, lat: 50 }, { lon: 14.4, lat: 50.4 }] },
+        { ref: 23, role: 'outer', geometry: [{ lon: 14.4, lat: 50.4 }, { lon: 14.2, lat: 50.4 }] }
+      ])
+    ] }), { status: 200 })
+  });
+  const dataset = await provider.load({
+    featureClassIds: ['a-1st-admin-border-state'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[14.1, 50.1], [14.3, 50.1], [14.3, 50.3], [14.1, 50.3], [14.1, 50.1]]] }
+  });
+
+  assert.ok(dataset);
+  const borderFeatures = dataset.features.filter((feature) => feature.featureClassId === 'a-1st-admin-border-state');
+  assert.deepEqual(borderFeatures.map((feature) => feature.featureId), ['osm:admin-border/4/10']);
+  assert.equal(borderFeatures[0]?.geometrySupport, 'line');
+});
+
 test('OpenStreetMap provider maps the printed Tentacles place classes and leaves metro lines unsupported', async () => {
   const submittedQueries: string[] = [];
   const provider = new OpenStreetMapQuestionFeatureProvider({

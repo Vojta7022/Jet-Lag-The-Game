@@ -213,6 +213,9 @@ export function describeTemplateSupport(args: {
         (args.template.featureClassRefs ?? []).length > 0 &&
         (args.template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
       ) {
+        if ((args.template.featureClassRefs ?? []).some((feature) => /^a-[1-4](?:st|nd|rd|th)-admin-border-/.test(feature.featureClassId))) {
+          return 'When connected, the app compares fresh player locations to a mapped shared border at the requested administrative level; missing or ambiguous borders stay manual';
+        }
         if ((args.template.featureClassRefs ?? []).some((feature) => /^(?:[1-4](?:st|nd|rd|th)-admin-)/.test(feature.featureClassId))) {
           return 'The app checks fresh player locations against OpenStreetMap administrative boundaries when connected; missing or ambiguous divisions stay manual';
         }

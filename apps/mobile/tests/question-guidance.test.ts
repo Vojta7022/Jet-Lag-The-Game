@@ -260,6 +260,30 @@ test('question guidance explains automatic regional feature answers for supporte
   assert.match(describeExpectedAnswerGuidance(template, category), /OpenStreetMap places in the selected region/i);
 });
 
+test('question guidance explains when administrative-border Measuring is automatic', () => {
+  const category = createCategory({
+    categoryId: 'measuring',
+    name: 'Measuring',
+    resolverKind: 'comparative_distance',
+    promptTemplate: 'Compared to me, are you closer to or further from _____?',
+    defaultConstraintRefs: ['comparative-distance']
+  });
+  const template = createTemplate({
+    templateId: 'measuring-a-1st-admin-border-state',
+    categoryId: 'measuring',
+    name: 'A 1st Admin Border (State)',
+    featureClassRefs: [{
+      featureClassId: 'a-1st-admin-border-state',
+      label: 'A 1st Admin Border (State)',
+      rawLabel: 'A 1st Admin Border (State)'
+    }],
+    constraintRefs: ['comparative-distance']
+  });
+
+  assert.match(describeExpectedAnswerGuidance(template, category), /shared by divisions at the requested level/i);
+  assert.match(describeExpectedAnswerGuidance(template, category), /manual ruling/i);
+});
+
 test('Tentacles guidance explains the seeker-anchored reach and automatic closest-place answer', () => {
   const category = createCategory({
     categoryId: 'tentacles',
