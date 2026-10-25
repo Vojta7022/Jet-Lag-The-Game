@@ -17,6 +17,7 @@ export {
 } from './geometry/geojson.ts';
 export * from './geometry/grid.ts';
 export * from './geometry/operations.ts';
+export * from './geometry/distance-to-geometry.ts';
 export {
   distanceMeters,
   midpoint,

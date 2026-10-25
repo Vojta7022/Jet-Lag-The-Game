@@ -630,8 +630,9 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 
 ### Active implementation slice: Curse of the Distant Cuisine
 
-- [ ] Recheck printed card wording and p. 55 clarification against the local scan before choosing the resolver contract.
-- [ ] Source and validate country boundary geometry so the distance check measures from each seeker's exact location to the nearest point in the cuisine country; do not substitute a country centroid or a generic administrative level.
+- [x] Recheck the printed card wording and p. 55 clarification against the local scan; the rule compares cuisine-country distance from each seeker's exact location to that country's nearest point.
+- [x] Add a spherical nearest-boundary distance operation with coverage for polygons, holes, island multipolygons, antimeridian crossings, and invalid geometry.
+- [ ] Source and validate country boundary geometry for play; do not substitute a country centroid or a generic administrative level.
 - [ ] Import the card as an assisted effect in both workbook mappings and regenerate the draft pack.
 - [ ] Add an engine challenge that records the qualifying restaurant/country, verifies the restaurant visit from each seeker's device, and gates questions until every required seeker completes it; retain hider/player review for public-facing cuisine claims.
 - [ ] Add role-specific setup, review, and per-seeker visit controls to the mobile game UI.
