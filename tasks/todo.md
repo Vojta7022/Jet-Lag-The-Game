@@ -66,6 +66,12 @@
 - [x] Keep unsupported categories and unavailable feature providers on an explicit manual or blocked path; never guess from seed data.
 - [x] Verify provider filtering, answer precision, map geometry, role privacy, full suite, and mobile typecheck.
 
+### Completed implementation slice: resilient OSM question lookups
+
+- [x] Retry network errors and transient Overpass HTTP failures against a documented public fallback while keeping explicitly configured endpoints isolated.
+- [x] Verify fallback order and response parsing, reject invalid queries without fan-out, and pass the full suite (386), mobile typecheck, Edge Function typecheck, and `git diff --check` (2026-10-25).
+- [ ] Verify live regional feature coverage; both documented public endpoints timed out on a tiny Prague node query from this environment, so no regional coverage claim is made.
+
 ### Completed implementation slice: authority-backed Matching/Measuring
 
 - [x] Query supported OpenStreetMap feature classes inside the selected map boundary, clip representatives to the exact polygon (including holes), attach OSM attribution, and cache short-lived query results.

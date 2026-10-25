@@ -33,6 +33,7 @@ export interface QuestionFeatureDataProvider {
 
 export interface OpenStreetMapQuestionFeatureProviderOptions {
   endpoint?: string;
+  endpoints?: string[];
   fetch?: typeof fetch;
   now?: () => string;
   maxElements?: number;
@@ -40,6 +41,8 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 }
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+const OVERPASS_FALLBACK_ENDPOINT = 'https://overpass.private.coffee/api/interpreter';
+const RETRYABLE_OVERPASS_STATUSES = new Set([429, 502, 503, 504]);
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
 const OSM_SOURCE_VERSION = 'overpass-question-features-v10';
 const OSM_REQUEST_HEADERS = {
@@ -681,7 +684,7 @@ function asFeature(
 }
 
 export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureDataProvider {
-  private readonly endpoint: string;
+  private readonly endpoints: string[];
   private readonly fetcher: typeof fetch;
   private readonly now: () => string;
   private readonly maxElements: number;
@@ -690,11 +693,43 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
   private readonly inFlight = new Map<string, Promise<QuestionFeatureDatasetModel | undefined>>();
 
   constructor(options: OpenStreetMapQuestionFeatureProviderOptions = {}) {
-    this.endpoint = options.endpoint ?? OVERPASS_ENDPOINT;
+    this.endpoints = options.endpoints?.length
+      ? options.endpoints.filter((endpoint) => endpoint.trim().length > 0)
+      : options.endpoint
+        ? [options.endpoint]
+        : [OVERPASS_ENDPOINT, OVERPASS_FALLBACK_ENDPOINT];
+    if (this.endpoints.length === 0) throw new Error('At least one valid OpenStreetMap endpoint is required.');
     this.fetcher = options.fetch ?? fetch;
     this.now = options.now ?? (() => new Date().toISOString());
     this.maxElements = options.maxElements ?? 20_000;
     this.cacheMilliseconds = options.cacheMilliseconds ?? 5 * 60_000;
+  }
+
+  private async postQuery(query: string, lookupLabel: string): Promise<Response> {
+    let lastError: unknown;
+    for (const [index, endpoint] of this.endpoints.entries()) {
+      let response: Response;
+      try {
+        response = await this.fetcher(endpoint, {
+          method: 'POST',
+          headers: OSM_REQUEST_HEADERS,
+          body: `data=${encodeURIComponent(query)}`,
+          signal: AbortSignal.timeout(30_000)
+        });
+      } catch (error) {
+        lastError = error;
+        if (index === this.endpoints.length - 1) break;
+        continue;
+      }
+      if (response.ok) return response;
+      const failure = new Error(`OpenStreetMap ${lookupLabel} lookup failed with HTTP ${response.status}.`);
+      if (!RETRYABLE_OVERPASS_STATUSES.has(response.status) || index === this.endpoints.length - 1) throw failure;
+      lastError = failure;
+    }
+    if (lastError instanceof Error) {
+      throw new Error(`OpenStreetMap ${lookupLabel} lookup failed on all configured endpoints: ${lastError.message}`, { cause: lastError });
+    }
+    throw new Error(`OpenStreetMap ${lookupLabel} lookup failed on all configured endpoints.`);
   }
 
   async load(request: QuestionFeatureDataRequest): Promise<QuestionFeatureDatasetModel | undefined> {
@@ -727,13 +762,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
       ADMIN_FEATURE_CLASS_IDS.test(id) || ADMIN_BORDER_FEATURE_CLASS.test(id));
     const adminBoundaries: QuestionFeatureRecordModel[] = [];
     if (needsAdminBoundaries) {
-      const response = await this.fetcher(this.endpoint, {
-        method: 'POST',
-        headers: OSM_REQUEST_HEADERS,
-        body: `data=${encodeURIComponent(adminBoundaryQueryFor(box, needsInternationalBorders ? 2 : undefined))}`,
-        signal: AbortSignal.timeout(30_000)
-      });
-      if (!response.ok) throw new Error(`OpenStreetMap boundary lookup failed with HTTP ${response.status}.`);
+      const response = await this.postQuery(adminBoundaryQueryFor(box, needsInternationalBorders ? 2 : undefined), 'boundary');
       const raw = await response.text();
       if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap boundary data exceeds the 8 MB safety limit.');
       const parsed = JSON.parse(raw) as { elements?: unknown };
@@ -775,13 +804,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
 
     for (const featureClassId of featureClassIds) {
       if (featureClassId === METRO_LINES_FEATURE_CLASS) {
-        const response = await this.fetcher(this.endpoint, {
-          method: 'POST',
-          headers: OSM_REQUEST_HEADERS,
-          body: `data=${encodeURIComponent(metroLinesQueryFor(box))}`,
-          signal: AbortSignal.timeout(30_000)
-        });
-        if (!response.ok) throw new Error(`OpenStreetMap metro-line lookup failed with HTTP ${response.status}.`);
+        const response = await this.postQuery(metroLinesQueryFor(box), 'metro-line');
         const raw = await response.text();
         if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap metro-line data exceeds the 8 MB safety limit.');
         const parsed = JSON.parse(raw) as { elements?: unknown };
@@ -793,13 +816,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         continue;
       }
       if (featureClassId === COASTLINE_FEATURE_CLASS) {
-        const response = await this.fetcher(this.endpoint, {
-          method: 'POST',
-          headers: OSM_REQUEST_HEADERS,
-          body: `data=${encodeURIComponent(coastlineQueryFor(box))}`,
-          signal: AbortSignal.timeout(30_000)
-        });
-        if (!response.ok) throw new Error(`OpenStreetMap coastline lookup failed with HTTP ${response.status}.`);
+        const response = await this.postQuery(coastlineQueryFor(box), 'coastline');
         const raw = await response.text();
         if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap coastline data exceeds the 8 MB safety limit.');
         const parsed = JSON.parse(raw) as { elements?: unknown };
@@ -809,13 +826,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         continue;
       }
       if (featureClassId === HIGH_SPEED_TRAIN_LINE_FEATURE_CLASS) {
-        const response = await this.fetcher(this.endpoint, {
-          method: 'POST',
-          headers: OSM_REQUEST_HEADERS,
-          body: `data=${encodeURIComponent(highSpeedTrainLineQueryFor(box))}`,
-          signal: AbortSignal.timeout(30_000)
-        });
-        if (!response.ok) throw new Error(`OpenStreetMap high-speed rail lookup failed with HTTP ${response.status}.`);
+        const response = await this.postQuery(highSpeedTrainLineQueryFor(box), 'high-speed rail');
         const raw = await response.text();
         if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap high-speed rail data exceeds the 8 MB safety limit.');
         const parsed = JSON.parse(raw) as { elements?: unknown };
@@ -827,13 +838,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         continue;
       }
       if (featureClassId === BODY_OF_WATER_FEATURE_CLASS) {
-        const response = await this.fetcher(this.endpoint, {
-          method: 'POST',
-          headers: OSM_REQUEST_HEADERS,
-          body: `data=${encodeURIComponent(bodyOfWaterQueryFor(box))}`,
-          signal: AbortSignal.timeout(30_000)
-        });
-        if (!response.ok) throw new Error(`OpenStreetMap water lookup failed with HTTP ${response.status}.`);
+        const response = await this.postQuery(bodyOfWaterQueryFor(box), 'water');
         const raw = await response.text();
         if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap water data exceeds the 8 MB safety limit.');
         const parsed = JSON.parse(raw) as { elements?: unknown };
@@ -845,13 +850,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         continue;
       }
       if (featureClassId === STREET_PATH_FEATURE_CLASS) {
-        const response = await this.fetcher(this.endpoint, {
-          method: 'POST',
-          headers: OSM_REQUEST_HEADERS,
-          body: `data=${encodeURIComponent(streetPathQueryFor(box))}`,
-          signal: AbortSignal.timeout(30_000)
-        });
-        if (!response.ok) throw new Error(`OpenStreetMap street/path lookup failed with HTTP ${response.status}.`);
+        const response = await this.postQuery(streetPathQueryFor(box), 'street/path');
         const raw = await response.text();
         if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap street/path data exceeds the 8 MB safety limit.');
         const parsed = JSON.parse(raw) as { elements?: unknown };
@@ -863,13 +862,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         continue;
       }
       if (featureClassId === LANDMASS_FEATURE_CLASS) {
-        const response = await this.fetcher(this.endpoint, {
-          method: 'POST',
-          headers: OSM_REQUEST_HEADERS,
-          body: `data=${encodeURIComponent(landmassQueryFor(box))}`,
-          signal: AbortSignal.timeout(30_000)
-        });
-        if (!response.ok) throw new Error(`OpenStreetMap landmass lookup failed with HTTP ${response.status}.`);
+        const response = await this.postQuery(landmassQueryFor(box), 'landmass');
         const raw = await response.text();
         if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap landmass data exceeds the 8 MB safety limit.');
         const parsed = JSON.parse(raw) as { elements?: unknown };
@@ -883,13 +876,7 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
       const selectors = SELECTORS_BY_FEATURE_CLASS[featureClassId];
       if (!selectors) continue;
       const query = queryFor(selectors, box);
-      const response = await this.fetcher(this.endpoint, {
-        method: 'POST',
-        headers: OSM_REQUEST_HEADERS,
-        body: `data=${encodeURIComponent(query)}`,
-        signal: AbortSignal.timeout(30_000)
-      });
-      if (!response.ok) throw new Error(`OpenStreetMap feature lookup failed with HTTP ${response.status}.`);
+      const response = await this.postQuery(query, 'feature');
       const raw = await response.text();
       if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap feature data exceeds the 8 MB safety limit.');
       const parsed = JSON.parse(raw) as { elements?: unknown };

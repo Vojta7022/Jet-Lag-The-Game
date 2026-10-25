@@ -45,6 +45,46 @@ test('OpenStreetMap question feature provider returns undefined for feature type
   assert.equal(result, undefined);
 });
 
+test('Overpass question lookups retry a transient primary failure against the documented fallback', async () => {
+  const requestedUrls: string[] = [];
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (input) => {
+      requestedUrls.push(String(input));
+      if (requestedUrls.length === 1) return new Response('busy', { status: 504 });
+      return new Response(JSON.stringify({ elements: [
+        { type: 'node', id: 901, lat: 0.5, lon: 0.5, tags: { name: 'Inside Hospital', amenity: 'hospital' } }
+      ] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['hospital'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.deepEqual(requestedUrls, [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter'
+  ]);
+  assert.equal(dataset?.features[0]?.featureId, 'osm:node/901');
+});
+
+test('Overpass question lookups do not retry invalid queries on a second service', async () => {
+  let requestCount = 0;
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async () => {
+      requestCount += 1;
+      return new Response('invalid query', { status: 400 });
+    }
+  });
+
+  await assert.rejects(provider.load({
+    featureClassIds: ['hospital'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  }), /HTTP 400/);
+  assert.equal(requestCount, 1);
+});
+
 test('rail station lookup includes mapped tram stops and public transport stations', async () => {
   let submittedQuery = '';
   const provider = new OpenStreetMapQuestionFeatureProvider({
