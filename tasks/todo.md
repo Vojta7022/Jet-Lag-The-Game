@@ -134,6 +134,13 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Resolve closer/further from fresh locations to the same nearest mapped country border and apply the corresponding map deduction.
 - [x] Show connected-only player guidance and retain manual handling when coverage is incomplete; verify scanned p. 24, enclave/provider tests, engine answer/map test, focused suite, full suite, and mobile typecheck (2026-10-25).
 
+### Completed implementation slice: High-Speed Train Line Measuring
+
+- [x] Recheck the Investigation Book scan: High-Speed Train Line is a standard Measuring target (scan page 2).
+- [x] Load mapped `railway=rail` ways and `route=tracks` relations tagged `highspeed=yes` as bounded line geometry; keep empty/incomplete regional data manual.
+- [x] Compare both fresh player fixes to the same seeker-selected segment and apply that same segment to the approximate map deduction.
+- [x] Explain the OSM coverage boundary and manual fallback in player guidance; full suite (375/375), mobile typecheck, Edge Function check, and `git diff --check` pass. The bounded Paris-area Overpass lookup timed out, so live feature coverage remains unverified (2026-10-25).
+
 ### Completed implementation slice: named Body of Water Measuring
 
 - [x] Reconcile the scanned p. 25 definition: named map water body, excluding pools.

@@ -277,6 +277,9 @@ export function describeExpectedAnswerGuidance(
     (template.featureClassRefs ?? []).length > 0 &&
     (template.featureClassRefs ?? []).every((feature) => hasOpenStreetMapFeatureClass(feature.featureClassId))
   ) {
+    if ((template.featureClassRefs ?? []).some((feature) => feature.featureClassId === 'a-high-speed-train-line')) {
+      return 'When connected, the app compares fresh player locations with mapped high-speed railway track and narrows the map using the same line. If the region has no mapped high-speed track, the hider answers manually. Coverage depends on OpenStreetMap tagging.';
+    }
     if ((template.featureClassRefs ?? []).some((feature) => /^(?:[1-4](?:st|nd|rd|th)-admin-|a-[1-4](?:st|nd|rd|th)-admin-border-)/.test(feature.featureClassId))) {
       if ((template.featureClassRefs ?? []).some((feature) => /^a-[1-4](?:st|nd|rd|th)-admin-border-/.test(feature.featureClassId))) {
         return 'When connected, the app compares both fresh locations to a mapped border shared by divisions at the requested level, then narrows the map. If the border is missing or too close to distinguish, it asks for a manual ruling.';

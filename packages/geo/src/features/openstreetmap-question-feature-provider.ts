@@ -41,7 +41,7 @@ export interface OpenStreetMapQuestionFeatureProviderOptions {
 
 const OVERPASS_ENDPOINT = 'https://overpass-api.de/api/interpreter';
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-question-features-v8';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v9';
 const OSM_REQUEST_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   accept: 'application/json',
@@ -53,6 +53,7 @@ const INTERNATIONAL_BORDER_FEATURE_CLASS = 'an-international-border';
 const STREET_PATH_FEATURE_CLASS = 'street-or-path';
 const BODY_OF_WATER_FEATURE_CLASS = 'a-body-of-water';
 const COASTLINE_FEATURE_CLASS = 'a-coastline';
+const HIGH_SPEED_TRAIN_LINE_FEATURE_CLASS = 'a-high-speed-train-line';
 const METRO_LINES_FEATURE_CLASS = 'metro-lines';
 const EXCLUDED_POOL_TAGS = new Set(['pool', 'swimming_pool']);
 const NON_WALKABLE_OR_INACTIVE_HIGHWAYS = new Set([
@@ -112,6 +113,7 @@ export function hasOpenStreetMapFeatureClass(featureClassId: string): boolean {
     featureClassId === STREET_PATH_FEATURE_CLASS ||
     featureClassId === BODY_OF_WATER_FEATURE_CLASS ||
     featureClassId === COASTLINE_FEATURE_CLASS ||
+    featureClassId === HIGH_SPEED_TRAIN_LINE_FEATURE_CLASS ||
     featureClassId === INTERNATIONAL_BORDER_FEATURE_CLASS ||
     featureClassId === METRO_LINES_FEATURE_CLASS ||
     ADMIN_FEATURE_CLASS_IDS.test(featureClassId) || ADMIN_BORDER_FEATURE_CLASS.test(featureClassId);
@@ -158,6 +160,11 @@ function bodyOfWaterQueryFor(box: NonNullable<ReturnType<typeof geometryBounding
 
 function coastlineQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
   return `[out:json][timeout:25];way["natural"="coastline"](${box.minLat},${box.minLon},${box.maxLat},${box.maxLon});out body geom tags;`;
+}
+
+function highSpeedTrainLineQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
+  const bbox = `(${box.minLat},${box.minLon},${box.maxLat},${box.maxLon})`;
+  return `[out:json][timeout:25];(way["railway"="rail"]["highspeed"="yes"]${bbox};relation["type"="route"]["route"="tracks"]["highspeed"="yes"]${bbox};);out body geom;`;
 }
 
 function metroLinesQueryFor(box: NonNullable<ReturnType<typeof geometryBoundingBox>>): string {
@@ -381,6 +388,71 @@ function coastlineFeatures(elements: unknown[], regionGeometry: GeoJsonGeometryM
     });
   }
   return features;
+}
+
+function highSpeedTrainLineFeatures(
+  elements: unknown[],
+  regionGeometry: GeoJsonGeometryModel
+): { features: QuestionFeatureRecordModel[]; complete: boolean } {
+  const features: QuestionFeatureRecordModel[] = [];
+  let complete = true;
+  for (const raw of elements) {
+    if (!raw || typeof raw !== 'object') continue;
+    const element = raw as OverpassElement;
+    const tags = element.tags ?? {};
+    if (typeof element.id !== 'number') continue;
+    let lineGeometries: [number, number][][];
+    if (element.type === 'way' && tags.railway === 'rail' && tags.highspeed === 'yes') {
+      const coordinates = geometryCoordinates(element.geometry);
+      if (coordinates.length < 2) {
+        complete = false;
+        continue;
+      }
+      lineGeometries = [coordinates];
+    } else if (element.type === 'relation' && tags.type === 'route' && tags.route === 'tracks' && tags.highspeed === 'yes') {
+      if (!Array.isArray(element.members)) {
+        complete = false;
+        continue;
+      }
+      lineGeometries = [];
+      for (const memberValue of element.members) {
+        if (!memberValue || typeof memberValue !== 'object') continue;
+        const member = memberValue as { type?: unknown; geometry?: unknown };
+        if (member.type !== 'way') continue;
+        const coordinates = geometryCoordinates(member.geometry);
+        if (coordinates.length < 2) {
+          complete = false;
+          continue;
+        }
+        lineGeometries.push(coordinates);
+      }
+      if (lineGeometries.length === 0) {
+        complete = false;
+        continue;
+      }
+    } else continue;
+    const visibleLines = lineGeometries.filter((coordinates) =>
+      lineGeometryIntersectsPolygon({ type: 'LineString', coordinates }, regionGeometry));
+    if (visibleLines.length === 0) continue;
+    const geometry: GeoJsonGeometryModel = visibleLines.length === 1
+      ? { type: 'LineString', coordinates: visibleLines[0]! }
+      : { type: 'MultiLineString', coordinates: visibleLines };
+    const name = [tags.name, tags['name:en'], tags.ref, tags.official_name]
+      .find((value) => typeof value === 'string' && value.trim());
+    const representative = visibleLines[0]![Math.floor(visibleLines[0]!.length / 2)]!;
+    features.push({
+      featureId: `osm:${element.type}/${element.id}`,
+      featureClassId: HIGH_SPEED_TRAIN_LINE_FEATURE_CLASS,
+      label: typeof name === 'string' ? name.trim() : `High-speed rail line ${element.id}`,
+      longitude: representative[0],
+      latitude: representative[1],
+      geometry,
+      geometrySupport: 'line',
+      coverage: 'approximate',
+      properties: { osmType: element.type, osmId: element.id, railway: tags.railway, route: tags.route, highspeed: tags.highspeed }
+    });
+  }
+  return { features, complete };
 }
 
 interface StreetWay {
@@ -668,6 +740,24 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         for (const feature of coastlineFeatures(parsed.elements, request.regionGeometry)) featuresById.set(feature.featureId, feature);
         continue;
       }
+      if (featureClassId === HIGH_SPEED_TRAIN_LINE_FEATURE_CLASS) {
+        const response = await this.fetcher(this.endpoint, {
+          method: 'POST',
+          headers: OSM_REQUEST_HEADERS,
+          body: `data=${encodeURIComponent(highSpeedTrainLineQueryFor(box))}`,
+          signal: AbortSignal.timeout(30_000)
+        });
+        if (!response.ok) throw new Error(`OpenStreetMap high-speed rail lookup failed with HTTP ${response.status}.`);
+        const raw = await response.text();
+        if (new TextEncoder().encode(raw).byteLength > 8_000_000) throw new Error('OpenStreetMap high-speed rail data exceeds the 8 MB safety limit.');
+        const parsed = JSON.parse(raw) as { elements?: unknown };
+        if (!Array.isArray(parsed.elements)) throw new Error('OpenStreetMap high-speed rail response did not contain elements.');
+        if (parsed.elements.length > this.maxElements) throw new Error(`OpenStreetMap returned more than ${this.maxElements} high-speed rail segments for this question.`);
+        const lines = highSpeedTrainLineFeatures(parsed.elements, request.regionGeometry);
+        if (!lines.complete || lines.features.length === 0) return undefined;
+        for (const feature of lines.features) featuresById.set(feature.featureId, feature);
+        continue;
+      }
       if (featureClassId === BODY_OF_WATER_FEATURE_CLASS) {
         const response = await this.fetcher(this.endpoint, {
           method: 'POST',
@@ -730,7 +820,8 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
       !SELECTORS_BY_FEATURE_CLASS[featureClassId] && !ADMIN_FEATURE_CLASS_IDS.test(featureClassId) &&
       !ADMIN_BORDER_FEATURE_CLASS.test(featureClassId) && featureClassId !== STREET_PATH_FEATURE_CLASS &&
       featureClassId !== INTERNATIONAL_BORDER_FEATURE_CLASS && featureClassId !== BODY_OF_WATER_FEATURE_CLASS &&
-      featureClassId !== COASTLINE_FEATURE_CLASS && featureClassId !== METRO_LINES_FEATURE_CLASS)) return undefined;
+      featureClassId !== COASTLINE_FEATURE_CLASS && featureClassId !== HIGH_SPEED_TRAIN_LINE_FEATURE_CLASS &&
+      featureClassId !== METRO_LINES_FEATURE_CLASS)) return undefined;
     return {
       source: 'OpenStreetMap',
       sourceUrl: OSM_COPYRIGHT_URL,

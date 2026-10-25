@@ -394,7 +394,7 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   });
 
   assert.ok(dataset);
-  assert.equal(dataset.sourceVersion, 'overpass-question-features-v8');
+  assert.equal(dataset.sourceVersion, 'overpass-question-features-v9');
   assert.match(submittedQuery, /way\["natural"="coastline"\]/);
   assert.equal(dataset.features.length, 1);
   assert.equal(dataset.features[0]?.featureClassId, 'a-coastline');
@@ -402,6 +402,87 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   assert.deepEqual(dataset.features[0]?.geometry, {
     type: 'LineString', coordinates: [[0.2, 0.1], [0.5, 0.1], [0.8, 0.1]]
   });
+});
+
+test('OpenStreetMap provider loads only explicitly tagged high-speed rail ways as Measuring line targets', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    endpoint: 'https://overpass.example/api/interpreter',
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [
+        {
+          type: 'way', id: 801,
+          tags: { railway: 'rail', highspeed: 'yes', name: 'Fast Line' },
+          geometry: [{ lon: 0.2, lat: 0.5 }, { lon: 0.8, lat: 0.5 }]
+        },
+        {
+          type: 'way', id: 802,
+          tags: { railway: 'rail', usage: 'main', name: 'Ordinary Main Line' },
+          geometry: [{ lon: 0.2, lat: 0.7 }, { lon: 0.8, lat: 0.7 }]
+        }
+      ] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-high-speed-train-line'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.match(submittedQuery, /way\["railway"="rail"\]\["highspeed"="yes"\]/);
+  assert.ok(dataset);
+  assert.equal(dataset.features.length, 1);
+  assert.equal(dataset.features[0]?.featureId, 'osm:way/801');
+  assert.equal(dataset.features[0]?.label, 'Fast Line');
+  assert.equal(dataset.features[0]?.geometry?.type, 'LineString');
+  assert.equal(dataset.features[0]?.featureClassId, 'a-high-speed-train-line');
+});
+
+test('OpenStreetMap provider assembles high-speed track route relations from member ways', async () => {
+  let submittedQuery = '';
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async (_input, init) => {
+      submittedQuery = decodeURIComponent(String(init?.body).replace(/^data=/, ''));
+      return new Response(JSON.stringify({ elements: [{
+        type: 'relation', id: 810,
+        tags: { type: 'route', route: 'tracks', highspeed: 'yes', name: 'National High-Speed Route' },
+        members: [
+          { type: 'way', ref: 11, role: '', geometry: [{ lon: 0.1, lat: 0.5 }, { lon: 0.5, lat: 0.5 }] },
+          { type: 'way', ref: 12, role: '', geometry: [{ lon: 0.5, lat: 0.5 }, { lon: 0.9, lat: 0.5 }] }
+        ]
+      }] }), { status: 200 });
+    }
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-high-speed-train-line'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.match(submittedQuery, /relation\["type"="route"\]\["route"="tracks"\]\["highspeed"="yes"\]/);
+  assert.ok(dataset);
+  assert.equal(dataset.features.length, 1);
+  assert.equal(dataset.features[0]?.featureId, 'osm:relation/810');
+  assert.equal(dataset.features[0]?.geometry?.type, 'MultiLineString');
+  assert.equal(dataset.features[0]?.geometry?.type === 'MultiLineString' ? dataset.features[0].geometry.coordinates.length : 0, 2);
+});
+
+test('OpenStreetMap provider leaves High-Speed Train Line manual when the region has no tagged track', async () => {
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    fetch: async () => new Response(JSON.stringify({ elements: [
+      {
+        type: 'way', id: 802,
+        tags: { railway: 'rail', usage: 'main', name: 'Ordinary Main Line' },
+        geometry: [{ lon: 0.2, lat: 0.5 }, { lon: 0.8, lat: 0.5 }]
+      }
+    ] }), { status: 200 })
+  });
+
+  assert.equal(await provider.load({
+    featureClassIds: ['a-high-speed-train-line'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  }), undefined);
 });
 
 test('OpenStreetMap provider supports metro routes while leaving unknown classes manual', async () => {

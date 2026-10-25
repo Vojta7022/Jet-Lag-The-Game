@@ -684,6 +684,49 @@ test('Measuring automatically compares fresh player locations to the seeker sele
   assert.equal(result.aggregate.searchArea?.history.at(-1)?.summary.includes('Measuring'), true);
 });
 
+test('High-Speed Train Line Measuring compares both fixes to one mapped rail segment and narrows the map', () => {
+  const contentPack = loadEngineTestContentPack();
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'seeker-1', role: 'seeker', latitude: 1.1, longitude: 103.75,
+    accuracyMeters: 5, source: 'device', step: 13
+  });
+  aggregate = recordLocationUpdate(aggregate, contentPack, {
+    playerId: 'hider-1', role: 'hider', latitude: 1.1, longitude: 103.79,
+    accuracyMeters: 5, source: 'device', step: 14
+  });
+  const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'begin_question_prompt', payload: {} }, 15), contentPack).aggregate;
+  const dataset = {
+    source: 'OpenStreetMap' as const,
+    sourceUrl: 'https://www.openstreetmap.org/copyright',
+    sourceVersion: 'test-feature-snapshot-v2',
+    retrievedAt: new Date(16_000).toISOString(),
+    coverage: 'approximate' as const,
+    features: [{
+      featureId: 'osm:way/801', featureClassId: 'a-high-speed-train-line', label: 'Fast Line',
+      longitude: 103.76, latitude: 1.1, geometrySupport: 'line' as const, coverage: 'approximate' as const,
+      geometry: { type: 'LineString' as const, coordinates: [[103.76, 1.05], [103.76, 1.15]] }
+    }]
+  };
+  const result = executeCommand(prompted, makeEnvelope(prompted.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, {
+      type: 'ask_question',
+      payload: { questionInstanceId: 'question:auto-high-speed', templateId: 'measuring-a-high-speed-train-line', targetTeamId: 'team-hider' }
+    }, 16), contentPack, dataset);
+
+  const question = result.aggregate.questionInstances['question:auto-high-speed'];
+  assert.equal(question?.status, 'resolved');
+  assert.equal(question?.answer?.value, 'further');
+  assert.equal(question?.automaticResolution?.referenceFeatureId, 'osm:way/801');
+  const constraint = Object.values(result.aggregate.constraints).find((item) => item.sourceQuestionInstanceId === question?.questionInstanceId);
+  assert.equal(constraint?.resolutionMode, 'approximate');
+  assert.equal(constraint?.metadata.referenceFeatureId, 'osm:way/801');
+  assert.equal('featureData' in (constraint?.metadata ?? {}), false);
+  assert.ok(result.aggregate.searchArea?.remainingArea.geometry);
+});
+
 test('Tentacles automatically picks the closest reachable mapped place and narrows from the same seeker-anchored set', () => {
   const contentPack = loadEngineTestContentPack();
   let aggregate = setupMatchToSeekReady(contentPack, 'medium');

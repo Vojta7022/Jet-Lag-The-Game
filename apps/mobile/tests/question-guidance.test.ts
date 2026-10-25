@@ -330,6 +330,31 @@ test('question guidance explains when administrative-border Measuring is automat
   assert.match(describeExpectedAnswerGuidance(template, category), /manual ruling/i);
 });
 
+test('High-Speed Train Line guidance explains mapped-track coverage and manual fallback', () => {
+  const category = createCategory({
+    categoryId: 'measuring',
+    name: 'Measuring',
+    resolverKind: 'comparative_distance',
+    promptTemplate: 'Compared to me, are you closer to or further from _____?',
+    defaultConstraintRefs: ['comparative-distance']
+  });
+  const template = createTemplate({
+    templateId: 'measuring-a-high-speed-train-line',
+    categoryId: 'measuring',
+    name: 'A High-Speed Train Line',
+    featureClassRefs: [{
+      featureClassId: 'a-high-speed-train-line',
+      label: 'A High-Speed Train Line',
+      rawLabel: 'A High-Speed Train Line'
+    }]
+  });
+
+  const guidance = describeExpectedAnswerGuidance(template, category);
+  assert.match(guidance, /mapped high-speed railway track/i);
+  assert.match(guidance, /answers manually/i);
+  assert.match(guidance, /OpenStreetMap tagging/i);
+});
+
 test('question guidance describes mapped international-border Measuring and enclave coverage', () => {
   const category = createCategory({
     categoryId: 'measuring',
