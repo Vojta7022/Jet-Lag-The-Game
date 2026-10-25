@@ -45,7 +45,7 @@ const OVERPASS_FALLBACK_ENDPOINT = 'https://overpass.private.coffee/api/interpre
 const RETRYABLE_OVERPASS_STATUSES = new Set([429, 502, 503, 504]);
 const OVERPASS_ENDPOINT_COOLDOWN_MS = 60_000;
 const OSM_COPYRIGHT_URL = 'https://www.openstreetmap.org/copyright';
-const OSM_SOURCE_VERSION = 'overpass-question-features-v10';
+const OSM_SOURCE_VERSION = 'overpass-question-features-v11';
 const OSM_REQUEST_HEADERS = {
   'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
   accept: 'application/json',
@@ -375,14 +375,21 @@ function bodyOfWaterFeatures(
   return { features, complete };
 }
 
-function coastlineFeatures(elements: unknown[], regionGeometry: GeoJsonGeometryModel): QuestionFeatureRecordModel[] {
+function coastlineFeatures(
+  elements: unknown[],
+  regionGeometry: GeoJsonGeometryModel
+): { features: QuestionFeatureRecordModel[]; complete: boolean } {
   const features: QuestionFeatureRecordModel[] = [];
+  let complete = true;
   for (const raw of elements) {
     if (!raw || typeof raw !== 'object') continue;
     const element = raw as OverpassElement;
     if (element.type !== 'way' || typeof element.id !== 'number' || element.tags?.natural !== 'coastline') continue;
     const coordinates = geometryCoordinates(element.geometry);
-    if (coordinates.length < 2) continue;
+    if (coordinates.length < 2) {
+      complete = false;
+      continue;
+    }
     const geometry: GeoJsonGeometryModel = { type: 'LineString', coordinates };
     if (!lineGeometryIntersectsPolygon(geometry, regionGeometry)) continue;
     features.push({
@@ -397,7 +404,7 @@ function coastlineFeatures(elements: unknown[], regionGeometry: GeoJsonGeometryM
       properties: { osmType: 'way', osmId: element.id, natural: 'coastline' }
     });
   }
-  return features;
+  return { features, complete };
 }
 
 function highSpeedTrainLineFeatures(
@@ -834,7 +841,9 @@ export class OpenStreetMapQuestionFeatureProvider implements QuestionFeatureData
         const parsed = JSON.parse(raw) as { elements?: unknown };
         if (!Array.isArray(parsed.elements)) throw new Error('OpenStreetMap coastline response did not contain elements.');
         if (parsed.elements.length > this.maxElements) throw new Error(`OpenStreetMap returned more than ${this.maxElements} coastline segments for this question.`);
-        for (const feature of coastlineFeatures(parsed.elements, request.regionGeometry)) featuresById.set(feature.featureId, feature);
+        const coastline = coastlineFeatures(parsed.elements, request.regionGeometry);
+        if (!coastline.complete) return undefined;
+        for (const feature of coastline.features) featuresById.set(feature.featureId, feature);
         continue;
       }
       if (featureClassId === HIGH_SPEED_TRAIN_LINE_FEATURE_CLASS) {

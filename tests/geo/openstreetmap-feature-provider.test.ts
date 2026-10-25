@@ -471,7 +471,7 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   });
 
   assert.ok(dataset);
-  assert.equal(dataset.sourceVersion, 'overpass-question-features-v10');
+  assert.equal(dataset.sourceVersion, 'overpass-question-features-v11');
   assert.match(submittedQuery, /way\["natural"="coastline"\]/);
   assert.equal(dataset.features.length, 1);
   assert.equal(dataset.features[0]?.featureClassId, 'a-coastline');
@@ -479,6 +479,23 @@ test('OpenStreetMap provider loads coastline ways as lines clipped to the playab
   assert.deepEqual(dataset.features[0]?.geometry, {
     type: 'LineString', coordinates: [[0.2, 0.1], [0.5, 0.1], [0.8, 0.1]]
   });
+});
+
+test('OpenStreetMap provider refuses coastline data when a shoreline way has incomplete geometry', async () => {
+  const provider = new OpenStreetMapQuestionFeatureProvider({
+    endpoint: 'https://overpass.example/api/interpreter',
+    fetch: async () => new Response(JSON.stringify({ elements: [{
+      type: 'way', id: 503,
+      tags: { natural: 'coastline' }
+    }] }), { status: 200 })
+  });
+
+  const dataset = await provider.load({
+    featureClassIds: ['a-coastline'],
+    regionGeometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 1], [0, 0]]] }
+  });
+
+  assert.equal(dataset, undefined);
 });
 
 test('OpenStreetMap provider loads only explicitly tagged high-speed rail ways as Measuring line targets', async () => {
