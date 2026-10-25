@@ -83,6 +83,7 @@ export type DomainCommand =
   | ResolveGamblersFeetCastCommand
   | RollGamblersFeetDieCommand
   | ReportGamblersFeetStepsCommand
+  | ReportRightTurnRouteChoiceCommand
   | ConfirmEggPartnerAcquiredCommand
   | ReportEggPartnerMemberLostCommand
   | ReportJammedDoorRollCommand
@@ -486,6 +487,17 @@ export interface RollGamblersFeetDieCommand {
 export interface ReportGamblersFeetStepsCommand {
   type: 'report_gamblers_feet_steps';
   payload: { sourceCardInstanceId: string; stepsTaken: number; overstep?: 'accidental' | 'safety'; targetPlayerId?: string };
+}
+
+export interface ReportRightTurnRouteChoiceCommand {
+  type: 'report_right_turn_route_choice';
+  payload: {
+    sourceCardInstanceId: string;
+    choice: 'right' | 'straight' | 'left' | 'u_turn' | 'no_intersection';
+    atStreetIntersection: boolean;
+    deadEndDistanceMeters?: number;
+    targetPlayerId?: string;
+  };
 }
 
 export interface ConfirmEggPartnerAcquiredCommand {

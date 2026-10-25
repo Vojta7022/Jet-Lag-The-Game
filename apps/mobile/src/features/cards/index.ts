@@ -4,6 +4,7 @@ export * from './CardDetailPanel.tsx';
 export * from './CardResolutionStatusPanel.tsx';
 export * from './EndlessTumbleChallengePanel.tsx';
 export * from './GamblersFeetChallengePanel.tsx';
+export * from './RightTurnChallengePanel.tsx';
 export * from './EggPartnerChallengePanel.tsx';
 export * from './JammedDoorChallengePanel.tsx';
 export * from './LuxuryCarChallengePanel.tsx';

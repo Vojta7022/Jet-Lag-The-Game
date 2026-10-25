@@ -1394,6 +1394,8 @@ function eventsForCommand(
               endlessTumbleMinimumDistanceMeters: resolutionPlan.minimumDistanceMeters,
               endlessTumbleSuccessfulDieResults: resolutionPlan.successfulDieResults,
               gamblersFeetDurationMinutes: resolutionPlan.kind === 'gamblers_feet_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
+              rightTurnDurationMinutes: resolutionPlan.kind === 'right_turn_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
+              rightTurnDeadEndDistanceMeters: resolutionPlan.kind === 'right_turn_challenge' ? resolutionPlan.deadEndDistanceMeters : undefined,
               uTurnAlternateTransitWindowMinutes: resolutionPlan.kind === 'u_turn_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorDurationMinutes: resolutionPlan.kind === 'jammed_door_challenge' ? resolutionPlan.activeDurationMinutes : undefined,
               jammedDoorRetryCooldownMinutes: resolutionPlan.doorwayRetryCooldownMinutes,
@@ -1551,6 +1553,19 @@ function eventsForCommand(
         events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
           type: 'bridge_troll_challenge_started',
           payload: { sourceCardInstanceId: activeResolution.sourceCardInstanceId }
+        }));
+      }
+
+      if (activeResolution?.resolutionKind === 'right_turn_challenge') {
+        const durationMinutes = activeResolution.rightTurnDurationMinutes ?? 40;
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'right_turn_challenge_started',
+          payload: {
+            sourceCardInstanceId: activeResolution.sourceCardInstanceId,
+            durationMinutes,
+            deadEndDistanceMeters: activeResolution.rightTurnDeadEndDistanceMeters ?? 304,
+            expiresAt: new Date(Date.parse(envelope.occurredAt) + durationMinutes * 60_000).toISOString()
+          }
         }));
       }
 
@@ -1897,6 +1912,24 @@ function eventsForCommand(
           playerId,
           stepsRemaining: overage > 0 ? 0 : prior.stepsRemaining - stepsTaken,
           unaccountedSteps: prior.unaccountedSteps + (overstep === 'accidental' ? overage : 0)
+        }
+      })];
+    }
+    case 'report_right_turn_route_choice': {
+      const challenge = aggregate!.rightTurnChallenge!;
+      const payload = envelope.command.payload;
+      const playerId = payload.targetPlayerId ?? envelope.actor.playerId!;
+      const compliant = payload.choice === 'right' || payload.choice === 'straight' || payload.choice === 'no_intersection' ||
+        (payload.choice === 'u_turn' && (payload.deadEndDistanceMeters ?? 0) >= challenge.deadEndDistanceMeters);
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'right_turn_route_choice_reported',
+        payload: {
+          sourceCardInstanceId: challenge.sourceCardInstanceId,
+          playerId,
+          choice: payload.choice,
+          atStreetIntersection: payload.atStreetIntersection,
+          deadEndDistanceMeters: payload.deadEndDistanceMeters,
+          compliant
         }
       })];
     }

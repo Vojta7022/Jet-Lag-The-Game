@@ -2047,6 +2047,38 @@ export function validateCommandEnvelope(
       }
       return [];
     }
+    case 'report_right_turn_route_choice': {
+      const challenge = aggregate.rightTurnChallenge;
+      const payload = envelope.command.payload;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'RIGHT_TURN_NOT_ACTIVE', 'There is no active Right Turn challenge.')];
+      }
+      if (Date.parse(envelope.occurredAt) >= Date.parse(challenge.expiresAt)) {
+        return [error(envelope.command.type, 'RIGHT_TURN_EXPIRED', 'The Right Turn timer has expired.')];
+      }
+      if (!['right', 'straight', 'left', 'u_turn', 'no_intersection'].includes(payload.choice) || typeof payload.atStreetIntersection !== 'boolean') {
+        return [error(envelope.command.type, 'RIGHT_TURN_REPORT_INVALID', 'Record the turn taken and whether it was at a street intersection.')];
+      }
+      if ((payload.choice === 'no_intersection' && payload.atStreetIntersection) ||
+        (payload.choice !== 'no_intersection' && payload.choice !== 'u_turn' && !payload.atStreetIntersection)) {
+        return [error(envelope.command.type, 'RIGHT_TURN_CONTEXT_MISMATCH', 'Confirm a street intersection for turn reports; choose “no street intersection” only when none was encountered.')];
+      }
+      if (payload.deadEndDistanceMeters !== undefined && (!Number.isFinite(payload.deadEndDistanceMeters) || payload.deadEndDistanceMeters < 0 || payload.deadEndDistanceMeters > 100_000)) {
+        return [error(envelope.command.type, 'RIGHT_TURN_DISTANCE_INVALID', 'Enter a valid distance from 0 to 100,000 meters.')];
+      }
+      if (payload.choice === 'u_turn' && (payload.deadEndDistanceMeters ?? 0) < challenge.deadEndDistanceMeters) {
+        return [error(envelope.command.type, 'RIGHT_TURN_DEAD_END_NOT_REACHED', `A U-turn is allowed only after a dead end with no forward or right turn for ${challenge.deadEndDistanceMeters} meters.`)];
+      }
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      const targetPlayerId = payload.targetPlayerId ?? envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const refereeMaySetAnother = actorRole === 'host' || actorRole === 'system';
+      if (!targetPlayerId || !seekerTeam?.memberPlayerIds.includes(targetPlayerId) ||
+        (!refereeMaySetAnother && (actorRole !== 'seeker' || targetPlayerId !== envelope.actor.playerId))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker reports their own route choices; a host referee may record a player report.')];
+      }
+      return [];
+    }
     case 'confirm_egg_partner_acquired': {
       const challenge = aggregate.eggPartnerChallenge;
       const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;

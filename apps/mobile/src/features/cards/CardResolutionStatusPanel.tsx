@@ -116,6 +116,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const ransomNoteChallenge = props.resolution?.resolutionKind === 'ransom_note_challenge';
   const cairnChallenge = props.resolution?.resolutionKind === 'cairn_challenge';
   const labyrinthChallenge = props.resolution?.resolutionKind === 'labyrinth_challenge';
+  const rightTurnChallenge = props.resolution?.resolutionKind === 'right_turn_challenge';
   const labyrinth = props.resolution?.labyrinth;
   const labyrinthDrawingDeadline = props.resolution?.openedAt && props.resolution.labyrinthDrawingWindowMinutes
     ? Date.parse(props.resolution.openedAt) + props.resolution.labyrinthDrawingWindowMinutes * 60_000
@@ -481,6 +482,13 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         </View>
       ) : null}
 
+      {rightTurnChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Timed route challenge</Text>
+          <Text style={styles.copy}>Closing this card starts the {props.resolution?.rightTurnDurationMinutes ?? 40}-minute scale timer. Seekers may turn right or continue straight at street intersections. A U-turn is allowed only after no forward or right option exists for 304 m. The app logs player reports but cannot verify the street layout or route.</Text>
+        </View>
+      ) : null}
+
       {uTurnChallenge ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>U-TURN TRANSIT CHECK</Text>
@@ -528,7 +536,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
       </View>
 
       <AppButton
-        label={endlessTumbleChallenge ? 'Record the casting roll above' : 'Close Card Window'}
+        label={endlessTumbleChallenge ? 'Record the casting roll above' : rightTurnChallenge ? 'Start Route Timer' : 'Close Card Window'}
         onPress={() => props.onResolve(
           questionSelectionRequired ? selectedTemplateIds : [],
           zoologistChallenge && zoologistCategory && props.zoologistHiderAttachmentId

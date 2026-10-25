@@ -306,6 +306,7 @@ export function reduceMatchAggregate(
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
         gamblersFeetChallenge: undefined,
+        rightTurnChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -349,6 +350,7 @@ export function reduceMatchAggregate(
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
         gamblersFeetChallenge: undefined,
+        rightTurnChallenge: undefined,
         eggPartnerChallenge: undefined,
         jammedDoorChallenge: undefined,
         zoologistChallenge: undefined,
@@ -747,6 +749,36 @@ export function reduceMatchAggregate(
           statusByPlayerId: {}
         }
       };
+    case 'right_turn_challenge_started':
+      return {
+        ...base,
+        rightTurnChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt,
+          expiresAt: eventEnvelope.event.payload.expiresAt,
+          durationMinutes: eventEnvelope.event.payload.durationMinutes,
+          deadEndDistanceMeters: eventEnvelope.event.payload.deadEndDistanceMeters,
+          reports: []
+        }
+      };
+    case 'right_turn_route_choice_reported': {
+      const challenge = base.rightTurnChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        rightTurnChallenge: {
+          ...challenge,
+          reports: [...challenge.reports, {
+            playerId: eventEnvelope.event.payload.playerId,
+            choice: eventEnvelope.event.payload.choice,
+            atStreetIntersection: eventEnvelope.event.payload.atStreetIntersection,
+            deadEndDistanceMeters: eventEnvelope.event.payload.deadEndDistanceMeters,
+            compliant: eventEnvelope.event.payload.compliant,
+            reportedAt: eventEnvelope.occurredAt
+          }]
+        }
+      };
+    }
     case 'gamblers_feet_player_updated': {
       const challenge = base.gamblersFeetChallenge;
       if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
@@ -1170,6 +1202,8 @@ export function reduceMatchAggregate(
           endlessTumbleMinimumDistanceMeters: eventEnvelope.event.payload.endlessTumbleMinimumDistanceMeters,
           endlessTumbleSuccessfulDieResults: eventEnvelope.event.payload.endlessTumbleSuccessfulDieResults,
           gamblersFeetDurationMinutes: eventEnvelope.event.payload.gamblersFeetDurationMinutes,
+          rightTurnDurationMinutes: eventEnvelope.event.payload.rightTurnDurationMinutes,
+          rightTurnDeadEndDistanceMeters: eventEnvelope.event.payload.rightTurnDeadEndDistanceMeters,
           uTurnAlternateTransitWindowMinutes: eventEnvelope.event.payload.uTurnAlternateTransitWindowMinutes,
           jammedDoorRetryCooldownMinutes: eventEnvelope.event.payload.jammedDoorRetryCooldownMinutes,
           jammedDoorMinimumTotal: eventEnvelope.event.payload.jammedDoorMinimumTotal,

@@ -66,6 +66,7 @@ import { StateBanner } from '../ui/StateBanner.tsx';
 import { colors } from '../ui/theme.ts';
 import { EndlessTumbleChallengePanel } from '../features/cards/EndlessTumbleChallengePanel.tsx';
 import { GamblersFeetChallengePanel } from '../features/cards/GamblersFeetChallengePanel.tsx';
+import { RightTurnChallengePanel } from '../features/cards/RightTurnChallengePanel.tsx';
 import { EggPartnerChallengePanel } from '../features/cards/EggPartnerChallengePanel.tsx';
 import { JammedDoorChallengePanel } from '../features/cards/JammedDoorChallengePanel.tsx';
 import { UTurnChallengePanel } from '../features/cards/UTurnChallengePanel.tsx';
@@ -1020,6 +1021,28 @@ export function QuestionCenterScreen() {
             return <AppButton key={player.playerId} label={`${viewerRole === 'host' ? `${player.displayName}: ` : ''}${touching ? 'Report lemon no longer touching' : 'Confirm lemon attached'}`} tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'set_lemon_phylactery_contact', payload: { sourceCardInstanceId: lemonPhylacteryChallenge.sourceCardInstanceId, targetPlayerId: viewerRole === 'host' ? player.playerId : undefined, touching: !touching } })} />;
           })}
           <Text style={styles.helper}>Use a real lemon and any attachment method. A lost lemon immediately gives the hider the scale bonus; attach it again before the next question. Physical contact is player-attested.</Text>
+        </Panel>
+      ) : null}
+
+      {projection?.rightTurnChallenge ? (
+        <Panel title="Curse of the Right Turn" subtitle="Record route choices during the scale-specific restriction." tone="accent">
+          <RightTurnChallengePanel
+            challenge={projection.rightTurnChallenge}
+            players={projection.players.filter((player) => player.role === 'seeker').map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+            viewerRole={viewerRole}
+            viewerPlayerId={activeMatch?.recipient.playerId}
+            disabled={state.loadState === 'loading'}
+            onReport={(playerId, choice, atStreetIntersection, deadEndDistanceMeters) => void submitCommand({
+              type: 'report_right_turn_route_choice',
+              payload: {
+                sourceCardInstanceId: projection.rightTurnChallenge!.sourceCardInstanceId,
+                choice,
+                atStreetIntersection,
+                deadEndDistanceMeters,
+                targetPlayerId: viewerRole === 'host' ? playerId : undefined
+              }
+            })}
+          />
         </Panel>
       ) : null}
 

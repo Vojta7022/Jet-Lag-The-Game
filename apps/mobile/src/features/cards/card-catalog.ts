@@ -164,6 +164,10 @@ export function formatAutomationLevel(automationLevel: CardDefinition['automatio
 }
 
 export function describeEffectSupport(cardDefinition: CardDefinition): string {
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'right_turn_challenge')) {
+    return 'Assisted: the app tracks the scale timer and records route choices, but cannot verify the street layout or enforce travel directions.';
+  }
+
   if (cardDefinition.effects.some((effect) => effect.effectType === 'labyrinth_challenge')) {
     return 'Assisted: the hider publishes a maze photo, seekers submit a route, and the hider approves the solution before questions resume.';
   }

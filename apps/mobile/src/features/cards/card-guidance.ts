@@ -93,6 +93,14 @@ export function formatCardKindLabel(kind: CardDefinition['kind']): string {
 }
 
 export function buildCardBehaviorModel(cardDefinition: CardDefinition): CardBehaviorModel {
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'right_turn_challenge')) {
+    return {
+      label: 'Assisted',
+      tone: 'warning',
+      detail: 'The app tracks the scale timer and records seeker route choices; street layout and travel direction remain player-attested.'
+    };
+  }
+
   if (cardDefinition.effects.some((effect) => effect.effectType === 'move_power_up')) {
     return {
       label: 'Assisted',

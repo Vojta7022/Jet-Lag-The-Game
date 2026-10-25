@@ -14,6 +14,7 @@ import {
   getCardResolutionBlockedReason,
   CardResolutionStatusPanel,
   GamblersFeetChallengePanel,
+  RightTurnChallengePanel,
   EggPartnerChallengePanel,
   JammedDoorChallengePanel,
   EndlessTumbleChallengePanel,
@@ -580,6 +581,27 @@ export function LiveMapInlineActionPanel() {
               disabled={state.loadState === 'loading'}
               onRoll={(playerId, dieRoll) => void submitCommand({ type: 'roll_gamblers_feet_die', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, dieRoll, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
               onReportSteps={(playerId, stepsTaken, overstep) => void submitCommand({ type: 'report_gamblers_feet_steps', payload: { sourceCardInstanceId: projection.gamblersFeetChallenge!.sourceCardInstanceId, stepsTaken, overstep, targetPlayerId: viewerRole === 'host' ? playerId : undefined } })}
+            />
+          </View>
+        ) : null}
+        {projection?.rightTurnChallenge ? (
+          <View style={styles.section}>
+            <RightTurnChallengePanel
+              challenge={projection.rightTurnChallenge}
+              players={seekerPlayers.map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+              viewerRole={viewerRole}
+              viewerPlayerId={activeMatch?.recipient.playerId}
+              disabled={state.loadState === 'loading'}
+              onReport={(playerId, choice, atStreetIntersection, deadEndDistanceMeters) => void submitCommand({
+                type: 'report_right_turn_route_choice',
+                payload: {
+                  sourceCardInstanceId: projection.rightTurnChallenge!.sourceCardInstanceId,
+                  choice,
+                  atStreetIntersection,
+                  deadEndDistanceMeters,
+                  targetPlayerId: viewerRole === 'host' ? playerId : undefined
+                }
+              })}
             />
           </View>
         ) : null}

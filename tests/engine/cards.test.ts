@@ -48,6 +48,76 @@ test('Labyrinth has a typed puzzle challenge plan with the printed scale drawing
   assert.equal(plan.activeDurationMinutes, 20);
 });
 
+test('Right Turn has a typed timed route challenge plan for the selected scale', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('right turn'));
+  assert.ok(card);
+  card.effects = [{
+    effectType: 'right_turn_challenge',
+    description: card.description,
+    automationLevel: 'assisted',
+    payload: { minutesByScale: { small: 20, medium: 40, large: 60 }, deadEndDistanceMeters: 304 }
+  } as never];
+
+  const plan = buildCardResolutionPlan(card, 'medium');
+  assert.equal(plan.kind, 'right_turn_challenge');
+  assert.equal(plan.activeDurationMinutes, 40);
+});
+
+test('Right Turn starts its scale timer and records only seeker route attestations', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('right turn'));
+  assert.ok(card);
+  card.effects = [{
+    effectType: 'right_turn_challenge', description: card.description, automationLevel: 'assisted',
+    payload: { minutesByScale: { small: 20, medium: 40, large: 60 }, deadEndDistanceMeters: 304 }
+  } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  aggregate.selectedScale = 'medium';
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  const spareCard = contentPack.cards.find((candidate) => candidate.kind === 'time_bonus');
+  assert.ok(spareCard);
+  const spareCardInstanceId = moveCardToTeamHand(aggregate, spareCard.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 100), contentPack).aggregate;
+  assert.equal(aggregate.activeCardResolution?.resolutionKind, 'right_turn_challenge');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'discard_card', payload: { cardInstanceId: spareCardInstanceId } }, 100.5), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 101), contentPack).aggregate;
+  assert.equal(aggregate.rightTurnChallenge?.durationMinutes, 40);
+  assert.equal(aggregate.rightTurnChallenge?.expiresAt, new Date(Date.parse(aggregate.rightTurnChallenge!.activatedAt) + 40 * 60_000).toISOString());
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_right_turn_route_choice', payload: { sourceCardInstanceId: cardInstanceId, choice: 'right', atStreetIntersection: true } }, 102), contentPack).aggregate;
+  assert.equal(aggregate.rightTurnChallenge?.reports[0]?.playerId, 'seeker-1');
+  assert.equal(aggregate.rightTurnChallenge?.reports[0]?.compliant, true);
+  const hiderView = buildMatchProjection(aggregate, contentPack, {
+    scope: 'team_private', viewerPlayerId: 'hider-1', viewerTeamId: 'team-hider', viewerRole: 'hider'
+  });
+  assert.equal(hiderView.rightTurnChallenge?.reports[0]?.choice, 'right');
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_right_turn_route_choice', payload: { sourceCardInstanceId: cardInstanceId, choice: 'u_turn', atStreetIntersection: false, deadEndDistanceMeters: 200 } }, 103), contentPack), /304 meters/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'report_right_turn_route_choice', payload: { sourceCardInstanceId: cardInstanceId, choice: 'right', atStreetIntersection: true } }, 104), contentPack), /permission/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_right_turn_route_choice', payload: { sourceCardInstanceId: cardInstanceId, choice: 'u_turn', atStreetIntersection: false, deadEndDistanceMeters: 304 } }, 105), contentPack).aggregate;
+  assert.equal(aggregate.rightTurnChallenge?.reports[1]?.compliant, true);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_right_turn_route_choice', payload: { sourceCardInstanceId: cardInstanceId, choice: 'left', atStreetIntersection: true } }, 106), contentPack).aggregate;
+  assert.equal(aggregate.rightTurnChallenge?.reports[2]?.compliant, false);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_right_turn_route_choice', payload: { sourceCardInstanceId: cardInstanceId, choice: 'right', atStreetIntersection: true } }, 2_400_102), contentPack), /expired/i);
+});
+
 test('Labyrinth blocks questions until a seeker solution is approved by the hider', () => {
   const contentPack = loadEngineTestContentPack();
   const card = contentPack.cards.find((candidate) => candidate.name.toLowerCase().includes('labyrinth'));

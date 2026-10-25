@@ -585,3 +585,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Require a public camera photo of the hand-drawn maze; let seekers submit their solution and the hider approve or reject it.
 - [x] Keep questions blocked until the hider approves a solution, preserve the original drawing deadline through maze restarts, and add challenge controls to Cards and Live Map.
 - [x] Verify upload ownership/visibility, seeker projection, approval/retry, early-close rejection, both workbook profiles, full suite (421/421), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Maze design, solution correctness, and timer compliance remain human judgments.
+
+### Completed implementation slice: Curse of the Right Turn route tracker
+
+- [x] Import the scanned assisted effect in both workbook mappings with the Small/Medium/Large 20/40/60-minute duration and 304 m dead-end threshold.
+- [x] Start the authoritative timer when the card window closes; let each seeker report route choices and let the host referee record on a player's behalf.
+- [x] Reject reports after expiry and U-turns before the reported 304 m dead-end condition; record left turns as noncompliant reports without inventing an unprinted penalty.
+- [x] Show timer, route rules, and recent public reports in Question Center and Live Map; identify street layout and player compliance as attestations.
+- [x] Verify both workbook profiles, selected-scale timer, role permissions, route logging, hider projection, U-turn threshold, expiry, full suite (424/424), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Route path and street classification remain player-reported.

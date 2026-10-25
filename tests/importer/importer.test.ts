@@ -281,6 +281,15 @@ test('the workbook importer creates a normalized draft content pack', () => {
     dicePerSeeker: true
   });
   assert.equal(gamblersFeet?.requirements?.requiresManualApproval, false);
+  const rightTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-right-turn');
+  assert.equal(rightTurn?.automationLevel, 'assisted');
+  assert.equal(rightTurn?.effects[0]?.effectType, 'right_turn_challenge');
+  assert.deepEqual(rightTurn?.effects[0]?.payload, {
+    minutesByScale: { small: 20, medium: 40, large: 60 },
+    deadEndDistanceMeters: 304,
+    reportsArePlayerAttestations: true
+  });
+  assert.equal(rightTurn?.requirements?.requiresManualApproval, false);
   const eggPartner = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-egg-partner');
   assert.equal(eggPartner?.automationLevel, 'assisted');
   assert.equal(eggPartner?.effects[0]?.effectType, 'egg_partner_challenge');
@@ -357,6 +366,14 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   const gamblersFeet = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-gamblers-feet');
   assert.equal(gamblersFeet?.automationLevel, 'assisted');
   assert.equal(gamblersFeet?.effects[0]?.effectType, 'gamblers_feet_challenge');
+  const rightTurn = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-right-turn');
+  assert.equal(rightTurn?.automationLevel, 'assisted');
+  assert.equal(rightTurn?.effects[0]?.effectType, 'right_turn_challenge');
+  assert.deepEqual(rightTurn?.effects[0]?.payload, {
+    minutesByScale: { small: 20, medium: 40, large: 60 },
+    deadEndDistanceMeters: 304,
+    reportsArePlayerAttestations: true
+  });
   const eggPartner = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-egg-partner');
   assert.equal(eggPartner?.automationLevel, 'assisted');
   assert.equal(eggPartner?.effects[0]?.effectType, 'egg_partner_challenge');

@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T19:56:15.570Z",
+    "importedAt": "2026-10-25T20:18:11.719Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3204,7 +3204,7 @@
       "shortName": "Curse Of The Right Turn",
       "description": "For the next [S20, M40, L60] minutes the seekers can only turn right at any street intersection. If at any point they find themselves in dead end where they cannot continue forward or turn right for another 1,000ft (304m) they must do a full 180. A right turn is defined as a road at any angle that veers to the right of the seekers",
       "rulebookGuidanceText": "This applies only at intersections of roads intended for cars, including their pedestrian sidewalks. It has no effect indoors or where there are no streets.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3214,18 +3214,24 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "right_turn_challenge",
           "description": "For the next [S20, M40, L60] minutes the seekers can only turn right at any street intersection. If at any point they find themselves in dead end where they cannot continue forward or turn right for another 1,000ft (304m) they must do a full 180. A right turn is defined as a road at any angle that veers to the right of the seekers",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "For the next [S20, M40, L60] minutes the seekers can only turn right at any street intersection. If at any point they find themselves in dead end where they cannot continue forward or turn right for another 1,000ft (304m) they must do a full 180. A right turn is defined as a road at any angle that veers to the right of the seekers",
           "payload": {
-            "workbookName": "Curse Of The Right Turn"
+            "minutesByScale": {
+              "small": 20,
+              "medium": 40,
+              "large": 60
+            },
+            "deadEndDistanceMeters": 304,
+            "reportsArePlayerAttestations": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true,
+        "requiresManualApproval": false,
         "requiresPhotoUpload": false
       },
       "visibilityPolicy": {
@@ -3237,7 +3243,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

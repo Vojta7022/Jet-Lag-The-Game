@@ -239,7 +239,7 @@ export interface MatchProjection {
     sourceCardInstanceId: string;
     copiedCardInstanceId?: string;
     openedAt?: string;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'labyrinth_challenge' | 'right_turn_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'cairn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
     hangman?: {
       status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
       secretWord?: string;
@@ -271,6 +271,8 @@ export interface MatchProjection {
     endlessTumbleMinimumDistanceMeters?: number;
     endlessTumbleSuccessfulDieResults?: number[];
     gamblersFeetDurationMinutes?: number;
+    rightTurnDurationMinutes?: number;
+    rightTurnDeadEndDistanceMeters?: number;
     uTurnAlternateTransitWindowMinutes?: number;
     jammedDoorRetryCooldownMinutes?: number;
     jammedDoorMinimumTotal?: number;
@@ -344,6 +346,21 @@ export interface MatchProjection {
     expiresAt: string;
     durationMinutes: number;
     statusByPlayerId: Record<string, { stepsRemaining: number; unaccountedSteps: number; lastDieRoll?: number; updatedAt: string }>;
+  };
+  rightTurnChallenge?: {
+    sourceCardInstanceId: string;
+    activatedAt: string;
+    expiresAt: string;
+    durationMinutes: number;
+    deadEndDistanceMeters: number;
+    reports: Array<{
+      playerId: string;
+      choice: 'right' | 'straight' | 'left' | 'u_turn' | 'no_intersection';
+      atStreetIntersection: boolean;
+      deadEndDistanceMeters?: number;
+      compliant: boolean;
+      reportedAt: string;
+    }>;
   };
   eggPartnerChallenge?: {
     sourceCardInstanceId: string;

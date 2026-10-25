@@ -8,7 +8,7 @@ import type {
   VisibleCardProjection
 } from '../../../packages/shared-types/src/index.ts';
 
-import { getCardResolutionBlockedReason, type ResolvedVisibleCardModel } from '../src/features/cards/card-catalog.ts';
+import { describeEffectSupport, getCardResolutionBlockedReason, type ResolvedVisibleCardModel } from '../src/features/cards/card-catalog.ts';
 
 import {
   buildCardActionState,
@@ -116,6 +116,17 @@ test('Move guidance identifies the enforced scale-specific timer', () => {
   assert.equal(move.label, 'Assisted');
   assert.match(move.detail, /relocation timer/i);
   assert.match(move.detail, /scale-specific.*timer/i);
+});
+
+test('Right Turn guidance explains route logging and player-attested limits', () => {
+  const card = createCardDefinition({
+    kind: 'curse',
+    name: 'Curse of the Right Turn',
+    automationLevel: 'assisted',
+    effects: [{ effectType: 'right_turn_challenge', description: 'Only turn right.', automationLevel: 'assisted' }]
+  });
+  assert.match(buildCardBehaviorModel(card).detail, /route choices/i);
+  assert.match(describeEffectSupport(card), /cannot verify the street layout/i);
 });
 
 test('card guidance provides honest fallback descriptions when workbook text is weak', () => {
