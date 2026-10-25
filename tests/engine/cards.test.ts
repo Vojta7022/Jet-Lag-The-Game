@@ -408,6 +408,63 @@ test('U-Turn blocks questions until every seeker disembarks at the confirmed nex
   assert.equal(ask(77).aggregate.activeQuestionInstanceId, `question:u-turn:77`);
 });
 
+test('Ransom Note requires a hider-approved five-word cut-out question and consumes it once', () => {
+  const contentPack = loadEngineTestContentPack();
+  const card = contentPack.cards.find((item) => item.cardDefinitionId === 'curse-curse-of-the-ransom-note');
+  assert.ok(card);
+  card.effects = [{ effectType: 'ransom_note_challenge', description: card.description, automationLevel: 'assisted' } as never];
+  let aggregate = setupMatchToSeekReady(contentPack);
+  const cardInstanceId = moveCardToTeamHand(aggregate, card.cardDefinitionId, 'team-hider');
+  assert.equal(buildCardResolutionPlan(card, 'small').kind, 'ransom_note_challenge');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 70.5), contentPack), /spell RANSOM NOTE with printed cutouts/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId, ransomNoteCastingCostConfirmed: true } } as never, 71), contentPack).aggregate;
+  assert.equal(aggregate.ransomNoteChallenge?.sourceCardInstanceId, cardInstanceId);
+
+  const ask = (step: number, ransomNoteText?: string) => {
+    const prompted = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'begin_question_prompt', payload: {} }, step), contentPack).aggregate;
+    return executeCommand(prompted, makeEnvelope(prompted.matchId,
+      { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+      { type: 'ask_question', payload: {
+        questionInstanceId: `question:ransom:${step}`, templateId: 'matching-commercial-airport', targetTeamId: 'team-hider', ransomNoteText
+      } } as never, step + 1), contentPack);
+  };
+  assert.throws(() => ask(72), /hider must approve the cut-out question/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_ransom_note_question', payload: { sourceCardInstanceId: cardInstanceId, noteText: 'Four words only', printedCutoutsConfirmed: true } } as never, 73), contentPack), /at least five words/i);
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'report_ransom_note_question', payload: { sourceCardInstanceId: cardInstanceId, noteText: 'Where is the nearest airport now', printedCutoutsConfirmed: true } } as never, 73.5), contentPack), /does not have permission/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_ransom_note_question', payload: { sourceCardInstanceId: cardInstanceId, noteText: 'Where is the nearest airport now', printedCutoutsConfirmed: true } } as never, 74), contentPack).aggregate;
+  assert.throws(() => ask(75, 'Where is the nearest airport now'), /hider must approve the cut-out question/i);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'decide_ransom_note_question', payload: { sourceCardInstanceId: cardInstanceId, accepted: false } } as never, 76), contentPack).aggregate;
+  assert.equal(aggregate.ransomNoteChallenge?.candidate, undefined);
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' },
+    { type: 'report_ransom_note_question', payload: { sourceCardInstanceId: cardInstanceId, noteText: 'Please tell us which country this is', printedCutoutsConfirmed: true } } as never, 77), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId,
+    { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' },
+    { type: 'decide_ransom_note_question', payload: { sourceCardInstanceId: cardInstanceId, accepted: true } } as never, 78), contentPack).aggregate;
+  assert.throws(() => ask(79, 'Please tell us which country this was'), /approved ransom note wording must match/i);
+  const asked = ask(80, 'Please tell us which country this is').aggregate;
+  assert.equal(asked.questionInstances['question:ransom:80']?.ransomNoteText, 'Please tell us which country this is');
+  assert.equal(asked.ransomNoteChallenge, undefined);
+});
+
 test('Water Weight opens an assisted supply challenge with its printed scale-specific bonus', () => {
   const contentPack = loadEngineTestContentPack();
   const waterWeight = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');

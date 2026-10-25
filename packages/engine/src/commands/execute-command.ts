@@ -936,6 +936,7 @@ function eventsForCommand(
         targetTeamId: envelope.command.payload.targetTeamId,
         chosenDistanceMeters: envelope.command.payload.chosenDistanceMeters,
         confirmedMovingTransit: envelope.command.payload.confirmedMovingTransit,
+        ransomNoteText: envelope.command.payload.ransomNoteText?.trim(),
         status: 'awaiting_answer',
         askedAt: envelope.occurredAt
       };
@@ -1572,6 +1573,13 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'ransom_note_challenge') {
+        events.push(makeEventEnvelope(aggregate!, envelope, events.length, 'public_match', {
+          type: 'ransom_note_challenge_started',
+          payload: { sourceCardInstanceId: activeResolution.sourceCardInstanceId }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'water_weight_challenge') {
         events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
           type: 'water_weight_challenge_started',
@@ -1930,6 +1938,23 @@ function eventsForCommand(
           sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
           playerId: envelope.command.payload.targetPlayerId ?? envelope.actor.playerId!,
           stationName: envelope.command.payload.stationName.trim()
+        }
+      })];
+    case 'report_ransom_note_question':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'ransom_note_question_reported',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          playerId: envelope.actor.playerId!,
+          noteText: envelope.command.payload.noteText.trim()
+        }
+      })];
+    case 'decide_ransom_note_question':
+      return [makeEventEnvelope(aggregate!, envelope, 0, 'public_match', {
+        type: 'ransom_note_question_decided',
+        payload: {
+          sourceCardInstanceId: envelope.command.payload.sourceCardInstanceId,
+          accepted: envelope.command.payload.accepted
         }
       })];
     case 'complete_cooldown':

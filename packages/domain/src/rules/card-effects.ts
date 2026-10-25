@@ -12,7 +12,7 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
@@ -143,6 +143,10 @@ export function buildCardResolutionPlan(
       discardRequirement: getCardDiscardRequirement(cardDefinition),
       activeDurationMinutes: Number.isInteger(configuredMinutes) && configuredMinutes! > 0 ? configuredMinutes : undefined
     };
+  }
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'ransom_note_challenge')) {
+    return { kind: 'ransom_note_challenge', discardRequirement: getCardDiscardRequirement(cardDefinition) };
   }
 
   if (cardDefinition.effects.some((effect) => effect.effectType === 'water_weight_challenge')) {

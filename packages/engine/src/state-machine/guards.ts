@@ -147,6 +147,8 @@ export function validateStateForCommand(
     case 'report_zoologist_evidence':
     case 'report_luxury_car_candidate':
     case 'decide_luxury_car_candidate':
+    case 'report_ransom_note_question':
+    case 'decide_ransom_note_question':
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Lemon contact can only be updated while seekers are searching.')];

@@ -300,6 +300,7 @@ export function reduceMatchAggregate(
         hiderRotationOrder: eventEnvelope.event.payload.hiderRotationOrder,
         seekerOffTransitRestriction: undefined,
         uTurnChallenge: undefined,
+        ransomNoteChallenge: undefined,
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
@@ -341,6 +342,7 @@ export function reduceMatchAggregate(
         activeCardResolution: undefined,
         seekerOffTransitRestriction: undefined,
         uTurnChallenge: undefined,
+        ransomNoteChallenge: undefined,
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
         lemonPhylacteryChallenge: undefined,
@@ -482,6 +484,7 @@ export function reduceMatchAggregate(
           [eventEnvelope.event.payload.question.questionInstanceId]: eventEnvelope.event.payload.question
         },
         bridgeTrollChallenge: undefined,
+        ransomNoteChallenge: undefined,
         endlessTumbleChallenge: base.endlessTumbleChallenge?.successfulRollAt ? undefined : base.endlessTumbleChallenge,
         timers: eventEnvelope.event.payload.questionTimer
           ? {
@@ -548,6 +551,39 @@ export function reduceMatchAggregate(
       return {
         ...base,
         uTurnChallenge: complete ? undefined : { ...challenge, disembarkedAtByPlayerId }
+      };
+    }
+    case 'ransom_note_challenge_started':
+      return {
+        ...base,
+        ransomNoteChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt
+        }
+      };
+    case 'ransom_note_question_reported': {
+      const challenge = base.ransomNoteChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      return {
+        ...base,
+        ransomNoteChallenge: {
+          ...challenge,
+          candidate: {
+            noteText: eventEnvelope.event.payload.noteText,
+            submittedByPlayerId: eventEnvelope.event.payload.playerId,
+            submittedAt: eventEnvelope.occurredAt
+          }
+        }
+      };
+    }
+    case 'ransom_note_question_decided': {
+      const challenge = base.ransomNoteChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId || !challenge.candidate) return base;
+      return {
+        ...base,
+        ransomNoteChallenge: eventEnvelope.event.payload.accepted
+          ? { ...challenge, acceptedNoteText: challenge.candidate.noteText }
+          : { ...challenge, candidate: undefined }
       };
     }
     case 'seeker_transit_context_changed': {

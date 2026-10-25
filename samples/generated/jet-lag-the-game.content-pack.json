@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T18:40:04.384Z",
+    "importedAt": "2026-10-25T18:50:58.345Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3691,7 +3691,7 @@
       "shortName": "Curse Of The Ransom Note",
       "description": "The next question that the seekers ask must be composed of words and letters cut out of any printed material. The question must be coherent and include at least 5 words.",
       "rulebookGuidanceText": "Do not begin paying the casting cost if the curse could not otherwise be played; once paid, cast it immediately. Seekers cannot produce the printed material themselves. The note must communicate the question without clarification, but additional question context may be supplied normally rather than cut from print.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3701,18 +3701,20 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "ransom_note_challenge",
           "description": "The next question that the seekers ask must be composed of words and letters cut out of any printed material. The question must be coherent and include at least 5 words.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "The next question that the seekers ask must be composed of words and letters cut out of any printed material. The question must be coherent and include at least 5 words.",
           "payload": {
-            "workbookName": "Curse Of The Ransom Note"
+            "minimumWords": 5,
+            "requireHiderApproval": true,
+            "requirePrintedCutouts": true
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true,
+        "requiresManualApproval": false,
         "requiresPhotoUpload": false
       },
       "visibilityPolicy": {
@@ -3724,7 +3726,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

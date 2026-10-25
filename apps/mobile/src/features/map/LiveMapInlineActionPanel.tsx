@@ -18,6 +18,7 @@ import {
   JammedDoorChallengePanel,
   EndlessTumbleChallengePanel,
   UTurnChallengePanel,
+  RansomNoteChallengePanel,
   CardZoneSection,
   HIDER_HAND_TARGET,
   resolveCurrentRole
@@ -256,6 +257,7 @@ export function LiveMapInlineActionPanel() {
       (!endlessTumbleChallenge || endlessTumbleChallenge.successfulRollAt) &&
       (!lemonPhylacteryChallenge || allSeekersHaveLemons) &&
       (activeQuestionSubstate === 'ready' || activeQuestionSubstate === 'awaiting_question_selection')
+      && (!projection?.ransomNoteChallenge || Boolean(projection.ransomNoteChallenge.acceptedNoteText))
   );
   const canAnswerQuestion = Boolean(
     activeMatch &&
@@ -293,7 +295,10 @@ export function LiveMapInlineActionPanel() {
       payload: {
         questionInstanceId: `question:${createUuid()}`,
         templateId: readyTemplate.templateId,
-        targetTeamId: projection.teams.find((team) => team.side === 'hider')?.teamId ?? 'team-hider'
+        targetTeamId: projection.teams.find((team) => team.side === 'hider')?.teamId ?? 'team-hider',
+        ...(projection.ransomNoteChallenge?.acceptedNoteText
+          ? { ransomNoteText: projection.ransomNoteChallenge.acceptedNoteText }
+          : {})
       }
     });
 
@@ -464,6 +469,21 @@ export function LiveMapInlineActionPanel() {
               );
             })() : null}
           </View>
+        ) : null}
+        {projection?.ransomNoteChallenge ? (
+          <RansomNoteChallengePanel
+            challenge={projection.ransomNoteChallenge}
+            viewerRole={viewerRole}
+            disabled={state.loadState === 'loading'}
+            onSubmit={(noteText, printedCutoutsConfirmed) => void submitCommand({
+              type: 'report_ransom_note_question',
+              payload: { sourceCardInstanceId: projection.ransomNoteChallenge!.sourceCardInstanceId, noteText, printedCutoutsConfirmed }
+            })}
+            onDecide={(accepted) => void submitCommand({
+              type: 'decide_ransom_note_question',
+              payload: { sourceCardInstanceId: projection.ransomNoteChallenge!.sourceCardInstanceId, accepted }
+            })}
+          />
         ) : null}
         {uTurnChallenge ? (
           <UTurnChallengePanel
@@ -672,6 +692,7 @@ export function LiveMapInlineActionPanel() {
         <LiveMapInfoChips
           items={[
             { label: 'Live clue', value: activeQuestionTemplate.name, tone: 'warning' },
+            ...(activeQuestion.ransomNoteText ? [{ label: 'Approved cut-out wording', value: activeQuestion.ransomNoteText, tone: 'warning' as const }] : []),
             {
               label: 'Timer',
               value: activeQuestionTimerSeconds !== undefined ? formatCountdown(activeQuestionTimerSeconds) : 'Waiting'

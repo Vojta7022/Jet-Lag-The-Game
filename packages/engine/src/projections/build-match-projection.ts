@@ -355,6 +355,7 @@ export function buildMatchProjection(
     targetTeamId: question.targetTeamId,
     chosenDistanceMeters: question.chosenDistanceMeters,
     confirmedMovingTransit: question.confirmedMovingTransit,
+    ransomNoteText: question.ransomNoteText,
     answer: canViewQuestionAnswer(aggregate, viewer)
       ? sanitizeQuestionAnswer(viewer, question.answer)
       : undefined,
@@ -526,6 +527,7 @@ export function buildMatchProjection(
     bridgeTrollChallenge: aggregate.bridgeTrollChallenge,
     seekerOffTransitRestriction: aggregate.seekerOffTransitRestriction,
     uTurnChallenge: aggregate.uTurnChallenge,
+    ransomNoteChallenge: aggregate.ransomNoteChallenge,
     waterWeightChallenge: aggregate.waterWeightChallenge,
     endlessTumbleChallenge: aggregate.endlessTumbleChallenge,
     lemonPhylacteryChallenge: aggregate.lemonPhylacteryChallenge,

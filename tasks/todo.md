@@ -560,3 +560,12 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Keep the route, direction, and alternate-service checks explicitly player-attested; do not imply the app has authoritative live transit service data.
 - [x] Add role-aware controls in Cards, Question Center, and Live Map, plus host referee controls for the single-device fallback; persist the challenge and clear it after all reports or on round reset.
 - [x] Verify command authorization, no early completion, all-seeker completion, scale windows, both import profiles, round reset, full suite (416/416), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25).
+
+### Completed implementation slice: Curse of the Ransom Note question gate
+
+- [x] Import the card as a typed assisted effect in both workbook profiles.
+- [x] Require the hider to attest to the printed-material casting cost before the curse activates.
+- [x] Let a seeker submit a five-word-or-longer cut-out question for hider review; allow rejection and retry, and require approval before asking.
+- [x] Store the approved wording on the resulting question and clear the curse after that one question.
+- [x] Add role-aware controls to the card, question, and live-map flows, including referee approval.
+- [x] Verify minimum word count, seeker ownership, rejection/retry, exact approval/question binding, round reset, both import profiles, full suite (417/417), mobile typecheck, Edge Function check, Expo web export, and `git diff --check` (2026-10-25). Physical print origin and coherence remain player/hider judgments.

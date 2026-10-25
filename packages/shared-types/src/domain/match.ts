@@ -172,6 +172,7 @@ export interface QuestionInstanceModel {
   targetTeamId?: string;
   chosenDistanceMeters?: number;
   confirmedMovingTransit?: boolean;
+  ransomNoteText?: string;
   status: QuestionInstanceStatus;
   answer?: Record<string, unknown>;
   askedAt: string;
@@ -410,7 +411,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'u_turn_challenge' | 'ransom_note_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge' | 'gamblers_feet_challenge' | 'egg_partner_challenge' | 'jammed_door_challenge' | 'zoologist_challenge' | 'luxury_car_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -466,6 +467,13 @@ export interface UTurnChallengeModel {
   activatedAt: string;
   requiredSeekerPlayerIds: string[];
   disembarkedAtByPlayerId: Record<string, string>;
+}
+
+export interface RansomNoteChallengeModel {
+  sourceCardInstanceId: string;
+  activatedAt: string;
+  candidate?: { noteText: string; submittedByPlayerId: string; submittedAt: string };
+  acceptedNoteText?: string;
 }
 
 export interface WaterWeightChallengeModel {
@@ -595,6 +603,7 @@ export interface MatchAggregate {
   bridgeTrollChallenge?: BridgeTrollChallengeModel;
   seekerOffTransitRestriction?: SeekerOffTransitRestrictionModel;
   uTurnChallenge?: UTurnChallengeModel;
+  ransomNoteChallenge?: RansomNoteChallengeModel;
   waterWeightChallenge?: WaterWeightChallengeModel;
   endlessTumbleChallenge?: EndlessTumbleChallengeModel;
   lemonPhylacteryChallenge?: LemonPhylacteryChallengeModel;

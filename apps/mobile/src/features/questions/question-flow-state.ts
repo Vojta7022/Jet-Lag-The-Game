@@ -51,6 +51,7 @@ export function buildAskQuestionPayload(args: {
   targetTeamId?: string;
   chosenDistanceDraft: string;
   confirmedMovingTransit?: boolean;
+  ransomNoteText?: string;
 }): AskQuestionCommand['payload'] | undefined {
   const chosenDistanceMeters = isQuestionDistanceChoice(args.template)
     ? parseChosenDistanceMeters(args.chosenDistanceDraft)
@@ -64,7 +65,8 @@ export function buildAskQuestionPayload(args: {
     ...(args.confirmedMovingTransit !== undefined
       ? { confirmedMovingTransit: args.confirmedMovingTransit }
       : {}),
-    ...(chosenDistanceMeters !== undefined ? { chosenDistanceMeters } : {})
+    ...(chosenDistanceMeters !== undefined ? { chosenDistanceMeters } : {}),
+    ...(args.ransomNoteText ? { ransomNoteText: args.ransomNoteText } : {})
   };
 }
 

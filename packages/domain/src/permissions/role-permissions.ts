@@ -48,6 +48,7 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'report_jammed_door_roll',
   'report_zoologist_evidence',
   'decide_luxury_car_candidate',
+  'decide_ransom_note_question',
   'set_hangman_word',
   'end_hangman_challenge',
   'complete_cooldown',
@@ -71,6 +72,7 @@ const HIDER_COMMANDS = new Set<DomainCommand['type']>([
   'discard_card',
   'resolve_card_window',
   'decide_luxury_car_candidate',
+  'decide_ransom_note_question',
   'resolve_endless_tumble_cast',
   'resolve_gamblers_feet_cast',
   'set_hangman_word',
@@ -104,7 +106,8 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'report_egg_partner_member_lost',
   'report_jammed_door_roll',
   'report_zoologist_evidence',
-  'report_luxury_car_candidate'
+  'report_luxury_car_candidate',
+  'report_ransom_note_question'
 ]);
 
 const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);

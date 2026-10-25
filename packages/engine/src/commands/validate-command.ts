@@ -54,6 +54,7 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'bridge_troll_challenge',
   'seeker_off_transit_challenge',
   'u_turn_challenge',
+  'ransom_note_challenge',
   'water_weight_challenge',
   'endless_tumble_challenge',
   'lemon_phylactery_challenge',
@@ -67,6 +68,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.bridgeTrollChallenge ||
     aggregate.seekerOffTransitRestriction ||
     aggregate.uTurnChallenge ||
+    aggregate.ransomNoteChallenge ||
     aggregate.waterWeightChallenge ||
     aggregate.endlessTumbleChallenge ||
     aggregate.lemonPhylacteryChallenge ||
@@ -892,6 +894,16 @@ export function validateCommandEnvelope(
           return [error(envelope.command.type, 'U_TURN_DISEMBARKATION_REQUIRED', `Each seeker must confirm disembarking at ${aggregate.uTurnChallenge.nextStationName}.`)];
         }
       }
+      if (aggregate.ransomNoteChallenge) {
+        const acceptedText = aggregate.ransomNoteChallenge.acceptedNoteText;
+        const submittedText = envelope.command.payload.ransomNoteText?.trim();
+        if (!acceptedText) {
+          return [error(envelope.command.type, 'RANSOM_NOTE_APPROVAL_REQUIRED', 'The hider must approve the cut-out question before the seekers ask it.')];
+        }
+        if (submittedText !== acceptedText) {
+          return [error(envelope.command.type, 'RANSOM_NOTE_TEXT_MISMATCH', 'The approved ransom note wording must match the question being asked.')];
+        }
+      }
       if (aggregate.waterWeightChallenge && !aggregate.waterWeightChallenge.liquidAcquiredAt) {
         return [error(envelope.command.type, 'WATER_WEIGHT_LIQUID_REQUIRED', 'Seekers must confirm they acquired the required new liquid before asking another question.')];
       }
@@ -1602,6 +1614,11 @@ export function validateCommandEnvelope(
         }
       }
 
+      if (activeResolution.resolutionKind === 'ransom_note_challenge' &&
+        envelope.command.payload.ransomNoteCastingCostConfirmed !== true) {
+        return [error(envelope.command.type, 'RANSOM_NOTE_CASTING_COST_REQUIRED', 'The hider must spell RANSOM NOTE with printed cutouts before activating this curse.')];
+      }
+
       if (activeResolution.resolutionKind === 'move') {
         if (
           typeof activeResolution.moveDurationSeconds === 'number' &&
@@ -1750,6 +1767,41 @@ export function validateCommandEnvelope(
       }
       if (typeof stationName !== 'string' || stationName.trim().toLocaleLowerCase() !== challenge.nextStationName.toLocaleLowerCase()) {
         return [error(envelope.command.type, 'U_TURN_STATION_MISMATCH', `Confirm that you disembarked at ${challenge.nextStationName}.`)];
+      }
+      return [];
+    }
+    case 'report_ransom_note_question': {
+      const challenge = aggregate.ransomNoteChallenge;
+      const { sourceCardInstanceId, noteText, printedCutoutsConfirmed } = envelope.command.payload;
+      if (!challenge || challenge.sourceCardInstanceId !== sourceCardInstanceId) {
+        return [error(envelope.command.type, 'RANSOM_NOTE_NOT_ACTIVE', 'There is no active Ransom Note question challenge.')];
+      }
+      if (challenge.candidate || challenge.acceptedNoteText) {
+        return [error(envelope.command.type, 'RANSOM_NOTE_REVIEW_PENDING', 'Wait for the hider to accept or reject the current note before submitting another.')];
+      }
+      const playerId = envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, playerId) ?? envelope.actor.role;
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      if (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId)) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'A seeker must submit the cut-out question from their own player account.')];
+      }
+      const words = typeof noteText === 'string' ? noteText.trim().split(/\s+/u).filter(Boolean) : [];
+      if (words.length < 5 || noteText.trim().length > 500 || printedCutoutsConfirmed !== true) {
+        return [error(envelope.command.type, 'RANSOM_NOTE_TEXT_INVALID', 'Enter at least five words and confirm they are cut from printed material; the hider will review coherence and the physical note.')];
+      }
+      return [];
+    }
+    case 'decide_ransom_note_question': {
+      const challenge = aggregate.ransomNoteChallenge;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      if (challenge?.sourceCardInstanceId !== envelope.command.payload.sourceCardInstanceId || !challenge.candidate) {
+        return [error(envelope.command.type, 'RANSOM_NOTE_CANDIDATE_REQUIRED', 'There is no submitted cut-out question awaiting review.')];
+      }
+      if (actorRole !== 'hider' && actorRole !== 'host' && actorRole !== 'system') {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Only the hider or host referee may review the cut-out question.')];
+      }
+      if (typeof envelope.command.payload.accepted !== 'boolean') {
+        return [error(envelope.command.type, 'RANSOM_NOTE_DECISION_INVALID', 'Choose whether the question is coherent and follows the cut-out rule.')];
       }
       return [];
     }

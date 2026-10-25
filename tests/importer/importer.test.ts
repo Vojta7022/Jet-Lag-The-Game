@@ -224,6 +224,10 @@ test('the workbook importer creates a normalized draft content pack', () => {
     alternateTransitWindowMinutesByScale: { small: 30, medium: 30, large: 60 },
     requiredAttestations: 'all_seekers_disembark_at_next_station'
   });
+  const ransomNote = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-ransom-note');
+  assert.equal(ransomNote?.automationLevel, 'assisted');
+  assert.equal(ransomNote?.effects[0]?.effectType, 'ransom_note_challenge');
+  assert.deepEqual(ransomNote?.effects[0]?.payload, { minimumWords: 5, requireHiderApproval: true, requirePrintedCutouts: true });
   const urbanExplorer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
   assert.match(String(urbanExplorer?.rulebookGuidanceText), /questions already asked.*still need an answer/i);
   assert.equal(urbanExplorer?.automationLevel, 'assisted');
@@ -312,6 +316,10 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
     alternateTransitWindowMinutesByScale: { small: 30, medium: 30, large: 60 },
     requiredAttestations: 'all_seekers_disembark_at_next_station'
   });
+  const ransomNote = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-ransom-note');
+  assert.equal(ransomNote?.automationLevel, 'assisted');
+  assert.equal(ransomNote?.effects[0]?.effectType, 'ransom_note_challenge');
+  assert.deepEqual(ransomNote?.effects[0]?.payload, { minimumWords: 5, requireHiderApproval: true, requirePrintedCutouts: true });
   const urbanExplorer = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-urban-explorer');
   assert.equal(urbanExplorer?.automationLevel, 'assisted');
   assert.equal(urbanExplorer?.effects[0]?.effectType, 'seeker_off_transit_challenge');

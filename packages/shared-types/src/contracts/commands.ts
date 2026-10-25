@@ -67,6 +67,8 @@ export type DomainCommand =
   | SetBridgeTrollPositionCommand
   | SetSeekerTransitContextCommand
   | ReportUTurnDisembarkationCommand
+  | ReportRansomNoteQuestionCommand
+  | DecideRansomNoteQuestionCommand
   | ConfirmWaterWeightLiquidAcquiredCommand
   | ReportWaterWeightLiquidLostCommand
   | ResolveEndlessTumbleCastCommand
@@ -254,6 +256,7 @@ export interface AskQuestionCommand {
     targetTeamId?: string;
     chosenDistanceMeters?: number;
     confirmedMovingTransit?: boolean;
+    ransomNoteText?: string;
   };
 }
 
@@ -356,6 +359,7 @@ export interface ResolveCardWindowCommand {
     luxuryCarCurrencyCode?: string;
     uTurnNextStationName?: string;
     uTurnPreconditionsConfirmed?: boolean;
+    ransomNoteCastingCostConfirmed?: boolean;
   };
 }
 
@@ -387,6 +391,16 @@ export interface SetSeekerTransitContextCommand {
 export interface ReportUTurnDisembarkationCommand {
   type: 'report_u_turn_disembarkation';
   payload: { sourceCardInstanceId: string; stationName: string; targetPlayerId?: string };
+}
+
+export interface ReportRansomNoteQuestionCommand {
+  type: 'report_ransom_note_question';
+  payload: { sourceCardInstanceId: string; noteText: string; printedCutoutsConfirmed: boolean };
+}
+
+export interface DecideRansomNoteQuestionCommand {
+  type: 'decide_ransom_note_question';
+  payload: { sourceCardInstanceId: string; accepted: boolean };
 }
 
 export interface ConfirmWaterWeightLiquidAcquiredCommand {

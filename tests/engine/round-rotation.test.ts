@@ -127,6 +127,11 @@ test('starting the next round rotates the hider, resets round state and deck, an
       submittedAt: found.createdAt
     }
   };
+  found.ransomNoteChallenge = {
+    sourceCardInstanceId: 'ransom-note-instance',
+    activatedAt: found.createdAt,
+    acceptedNoteText: 'Where is the nearest airport now'
+  };
   const started = executeCommand(found, makeEnvelope(found.matchId,
     { actorId: 'host-1', playerId: 'host-1', role: 'host' },
     { type: 'start_next_round', payload: { nextHiderPlayerId: 'seeker-1' } },
@@ -143,6 +148,7 @@ test('starting the next round rotates the hider, resets round state and deck, an
   assert.equal(next.disabledQuestionCategorySourceCardInstanceId, undefined);
   assert.equal(next.seekerOffTransitRestriction, undefined);
   assert.equal(next.uTurnChallenge, undefined);
+  assert.equal(next.ransomNoteChallenge, undefined);
   assert.equal(next.zoologistChallenge, undefined);
   assert.equal(next.luxuryCarChallenge, undefined);
   assert.equal(next.roleAssignments['seeker-1']?.role, 'hider');

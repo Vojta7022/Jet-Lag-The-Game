@@ -78,6 +78,8 @@ Update 2026-10-25: Jammed Door is a typed 30/60/180-minute challenge. Seekers us
 - A physical iOS/Android GPS walkthrough remains outstanding because this Mac has no Xcode `simctl`, Android `adb`/emulator, or connected phone. The full round is covered by the real runtime integration path and the mobile web screen was reviewed at phone width.
 - The map workbench now saves and loads named scenarios locally, shares deflate-compressed app deep links, opens shared previews outside a match, restores boundary and hiding-zone overlays, imports custom stations, and supports web drag/pinch plus zoom/reset controls. It follows selected reference workflows inside the game UI rather than matching its Leaflet appearance or full arbitrary-layer editor.
 
+- Curse of the Ransom Note requires the hider to confirm its printed cut-out casting cost. A seeker submits at least five words, the hider inspects the physical cut-outs and approves or rejects, and only the exact approved wording can be attached to the next question; rejection allows retry, then the challenge is consumed. Separate devices share this workflow through the authority, while print origin and coherence remain human judgments. [source: workbook Curse row; base rulebook scan, printed p. 50; `tests/engine/cards.test.ts`, checked 2026-10-25]
+
 ## Sources
 
 - Local base rulebook scan: `~/Downloads/2026-10-04 10-19.pdf` (locally OCR'd into ignored `temp/rules/base-rulebook-ocr.txt`).

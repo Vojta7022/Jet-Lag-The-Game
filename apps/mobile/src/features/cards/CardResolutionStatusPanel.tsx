@@ -36,7 +36,8 @@ interface CardResolutionStatusPanelProps {
     questionTemplateIds: string[],
     zoologistSelection?: { category: ZoologistAnimalCategory; hiderAttachmentId: string },
     luxuryCarSelection?: { hiderAttachmentId: string; description: string; productionYear: number; msrpCents: number; currencyCode: string },
-    uTurnSelection?: { nextStationName: string; preconditionsConfirmed: true }
+    uTurnSelection?: { nextStationName: string; preconditionsConfirmed: true },
+    ransomNoteSelection?: { castingCostConfirmed: true }
   ) => void;
 }
 
@@ -53,6 +54,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const [luxuryCarCurrencyCode, setLuxuryCarCurrencyCode] = useState('USD');
   const [uTurnNextStationName, setUTurnNextStationName] = useState('');
   const [uTurnPreconditionsConfirmed, setUTurnPreconditionsConfirmed] = useState(false);
+  const [ransomNoteCastingCostConfirmed, setRansomNoteCastingCostConfirmed] = useState(false);
   useEffect(() => {
     setSelectedTemplateIds([]);
     setHangmanWord('');
@@ -66,6 +68,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     setLuxuryCarCurrencyCode('USD');
     setUTurnNextStationName('');
     setUTurnPreconditionsConfirmed(false);
+    setRansomNoteCastingCostConfirmed(false);
   }, [props.resolution?.sourceCardInstanceId]);
   const guidance = buildResolutionWindowGuidance(props.activeCard, props.canResolve);
   const behavior = props.activeCard ? buildCardBehaviorModel(props.activeCard.definition) : undefined;
@@ -92,6 +95,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
   const zoologistChallenge = props.resolution?.resolutionKind === 'zoologist_challenge';
   const luxuryCarChallenge = props.resolution?.resolutionKind === 'luxury_car_challenge';
   const uTurnChallenge = props.resolution?.resolutionKind === 'u_turn_challenge';
+  const ransomNoteChallenge = props.resolution?.resolutionKind === 'ransom_note_challenge';
   const hangman = props.resolution?.hangman;
   const requiredQuestionCount = props.resolution?.questionTemplateCount ?? 0;
   const normalizedLuxuryCarMsrp = luxuryCarMsrp.trim();
@@ -109,6 +113,7 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
     (!zoologistChallenge || (Boolean(zoologistCategory) && Boolean(props.zoologistHiderAttachmentId))) &&
     (!luxuryCarChallenge || luxuryCarFormValid) &&
     (!uTurnChallenge || (uTurnNextStationName.trim().length >= 2 && uTurnPreconditionsConfirmed)) &&
+    (!ransomNoteChallenge || ransomNoteCastingCostConfirmed) &&
     !endlessTumbleChallenge && !gamblersFeetChallenge;
 
   const hangmanPanel = hangmanChallenge ? (
@@ -390,6 +395,18 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
         </View>
       ) : null}
 
+      {ransomNoteChallenge ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>RANSOM NOTE CASTING COST</Text>
+          <Text style={styles.copy}>Before activating the curse, spell “Ransom Note” using printed cut-outs, without using this card. Do not pay the cost if the curse cannot be played.</Text>
+          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: ransomNoteCastingCostConfirmed }} onPress={() => setRansomNoteCastingCostConfirmed((value) => !value)} style={styles.uTurnCheckboxRow}>
+            <View style={[styles.uTurnCheckbox, ransomNoteCastingCostConfirmed ? styles.uTurnCheckboxOn : undefined]}><Text style={styles.uTurnCheck}>{ransomNoteCastingCostConfirmed ? '✓' : ''}</Text></View>
+            <Text style={styles.copy}>We completed the physical casting cost and can activate the curse.</Text>
+          </Pressable>
+          <Text style={styles.copy}>After activation, seekers submit a five-word-or-more cut-out question. The hider checks the physical note and approves it before that exact wording is asked.</Text>
+        </View>
+      ) : null}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Next step</Text>
         <Text style={styles.copy}>{guidance.nextStep}</Text>
@@ -416,6 +433,9 @@ export function CardResolutionStatusPanel(props: CardResolutionStatusPanelProps)
             : undefined,
           uTurnChallenge && uTurnNextStationName.trim().length >= 2 && uTurnPreconditionsConfirmed
             ? { nextStationName: uTurnNextStationName.trim(), preconditionsConfirmed: true }
+            : undefined,
+          ransomNoteChallenge && ransomNoteCastingCostConfirmed
+            ? { castingCostConfirmed: true }
             : undefined
         )}
         disabled={!canSubmit || props.disabled}

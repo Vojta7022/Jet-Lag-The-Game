@@ -69,6 +69,7 @@ import { GamblersFeetChallengePanel } from '../features/cards/GamblersFeetChalle
 import { EggPartnerChallengePanel } from '../features/cards/EggPartnerChallengePanel.tsx';
 import { JammedDoorChallengePanel } from '../features/cards/JammedDoorChallengePanel.tsx';
 import { UTurnChallengePanel } from '../features/cards/UTurnChallengePanel.tsx';
+import { RansomNoteChallengePanel } from '../features/cards/RansomNoteChallengePanel.tsx';
 
 function resolveCurrentRole(
   role: string | undefined,
@@ -476,6 +477,7 @@ export function QuestionCenterScreen() {
       (!waterWeightChallenge || waterWeightChallenge.liquidAcquiredAt) &&
       (!endlessTumbleChallenge || endlessTumbleChallenge.successfulRollAt) &&
       (!lemonPhylacteryChallenge || allSeekersHaveLemons) &&
+      (!projection?.ransomNoteChallenge || Boolean(projection.ransomNoteChallenge.acceptedNoteText)) &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
   const canAnswerQuestion = Boolean(
@@ -541,7 +543,8 @@ export function QuestionCenterScreen() {
       template: readyTemplate,
       targetTeamId: projection.teams.find((team) => team.side === 'hider')?.teamId ?? 'team-hider',
       chosenDistanceDraft,
-      confirmedMovingTransit: requiresTransitConfirmation ? confirmedMovingTransit : undefined
+      confirmedMovingTransit: requiresTransitConfirmation ? confirmedMovingTransit : undefined,
+      ransomNoteText: projection.ransomNoteChallenge?.acceptedNoteText
     });
     if (!questionPayload) return;
 
@@ -893,6 +896,24 @@ export function QuestionCenterScreen() {
             onReport={(stationName, targetPlayerId) => void submitCommand({
               type: 'report_u_turn_disembarkation',
               payload: { sourceCardInstanceId: projection.uTurnChallenge!.sourceCardInstanceId, stationName, targetPlayerId }
+            })}
+          />
+        </Panel>
+      ) : null}
+
+      {projection?.ransomNoteChallenge ? (
+        <Panel title="Curse of the Ransom Note" subtitle="A physical cut-out question needs hider approval before it can be asked." tone="accent">
+          <RansomNoteChallengePanel
+            challenge={projection.ransomNoteChallenge}
+            viewerRole={viewerRole}
+            disabled={state.loadState === 'loading'}
+            onSubmit={(noteText, printedCutoutsConfirmed) => void submitCommand({
+              type: 'report_ransom_note_question',
+              payload: { sourceCardInstanceId: projection.ransomNoteChallenge!.sourceCardInstanceId, noteText, printedCutoutsConfirmed }
+            })}
+            onDecide={(accepted) => void submitCommand({
+              type: 'decide_ransom_note_question',
+              payload: { sourceCardInstanceId: projection.ransomNoteChallenge!.sourceCardInstanceId, accepted }
             })}
           />
         </Panel>
@@ -1374,6 +1395,7 @@ export function QuestionCenterScreen() {
             <FactList
               items={[
                 { label: 'Asked clue', value: activeQuestionTemplate.name },
+                ...(activeQuestion.ransomNoteText ? [{ label: 'Approved cut-out wording', value: activeQuestion.ransomNoteText }] : []),
                 ...(activeQuestion?.chosenDistanceMeters
                   ? [{ label: 'Chosen distance', value: `${activeQuestion.chosenDistanceMeters} m` }]
                   : []),

@@ -18,6 +18,7 @@ import {
   JammedDoorChallengePanel,
   LuxuryCarChallengePanel,
   UTurnChallengePanel,
+  RansomNoteChallengePanel,
   CardZoneSection,
   buildQuestionResponseCardReason,
   buildCardFlowBootstrapCommands,
@@ -578,6 +579,24 @@ export function CardsScreen() {
         </Panel>
       ) : null}
 
+      {projection?.ransomNoteChallenge ? (
+        <Panel title="Curse of the Ransom Note" subtitle="Submit and approve one cut-out question before it can be asked." tone="accent">
+          <RansomNoteChallengePanel
+            challenge={projection.ransomNoteChallenge}
+            viewerRole={viewerRole}
+            disabled={state.loadState === 'loading'}
+            onSubmit={(noteText, printedCutoutsConfirmed) => void submitCommand({
+              type: 'report_ransom_note_question',
+              payload: { sourceCardInstanceId: projection.ransomNoteChallenge!.sourceCardInstanceId, noteText, printedCutoutsConfirmed }
+            })}
+            onDecide={(accepted) => void submitCommand({
+              type: 'decide_ransom_note_question',
+              payload: { sourceCardInstanceId: projection.ransomNoteChallenge!.sourceCardInstanceId, accepted }
+            })}
+          />
+        </Panel>
+      ) : null}
+
       {activeMatch && latestLateResolvedQuestion && viewerRole === 'hider' ? (
         <StateBanner
           tone="warning"
@@ -1109,7 +1128,7 @@ export function CardsScreen() {
                   type: 'resolve_gamblers_feet_cast', payload: { sourceCardInstanceId, dieRoll }
                 });
               }}
-              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection) => {
+              onResolve={(questionTemplateIds, zoologistSelection, luxuryCarSelection, uTurnSelection, ransomNoteSelection) => {
                 if (!projection?.activeCardResolution?.sourceCardInstanceId) {
                   return;
                 }
@@ -1134,6 +1153,9 @@ export function CardsScreen() {
                     ...(uTurnSelection ? {
                       uTurnNextStationName: uTurnSelection.nextStationName,
                       uTurnPreconditionsConfirmed: uTurnSelection.preconditionsConfirmed
+                    } : {}),
+                    ...(ransomNoteSelection ? {
+                      ransomNoteCastingCostConfirmed: ransomNoteSelection.castingCostConfirmed
                     } : {})
                   }
                 });

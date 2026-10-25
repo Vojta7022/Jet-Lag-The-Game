@@ -1209,6 +1209,7 @@ function buildCurseCards(
       const startsBridgeTrollChallenge = normalizedName.slug === 'curse-of-the-bridge-troll';
       const startsSeekerOffTransitChallenge = normalizedName.slug === 'curse-of-the-urban-explorer';
       const startsUTurnChallenge = normalizedName.slug === 'curse-of-the-u-turn';
+      const startsRansomNoteChallenge = normalizedName.slug === 'curse-of-the-ransom-note';
       const startsWaterWeightChallenge = normalizedName.slug === 'curse-of-water-weight';
       const startsEndlessTumbleChallenge = normalizedName.slug === 'curse-of-the-endless-tumble';
       const startsLemonPhylacteryChallenge = normalizedName.slug === 'curse-of-the-lemon-phylactery';
@@ -1241,7 +1242,7 @@ function buildCurseCards(
         shortName: normalizedName.displayText,
         description: applyWorkbookCorrections(descriptionRaw),
         ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
-        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? 'assisted' : 'manual',
+        automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsRansomNoteChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? 'assisted' : 'manual',
         castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
         effects: [
           {
@@ -1251,6 +1252,8 @@ function buildCurseCards(
               ? 'seeker_off_transit_challenge'
               : startsUTurnChallenge
               ? 'u_turn_challenge'
+              : startsRansomNoteChallenge
+              ? 'ransom_note_challenge'
               : startsWaterWeightChallenge
               ? 'water_weight_challenge'
               : startsEndlessTumbleChallenge
@@ -1274,13 +1277,15 @@ function buildCurseCards(
               : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
                 : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
             description: applyWorkbookCorrections(descriptionRaw),
-            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? 'assisted' : 'manual',
+            automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsRansomNoteChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? 'assisted' : 'manual',
             rawText: descriptionRaw,
             payload: {
               ...(startsSeekerOffTransitChallenge
                 ? { requiredAttestations: 'all_seekers_off_transit_and_station', duration: 'hider_run' }
                 : startsUTurnChallenge
                 ? { alternateTransitWindowMinutesByScale: { small: 30, medium: 30, large: 60 }, requiredAttestations: 'all_seekers_disembark_at_next_station' }
+                : startsRansomNoteChallenge
+                ? { minimumWords: 5, requireHiderApproval: true, requirePrintedCutouts: true }
                 : startsBridgeTrollChallenge
                 ? { requiredAttestations: 'all_seekers' }
                 : startsWaterWeightChallenge
@@ -1309,11 +1314,11 @@ function buildCurseCards(
         ],
         rewardsOrPenalties: [],
         requirements: {
-          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsUTurnChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge && !startsLemonPhylacteryChallenge && !startsGamblersFeetChallenge && !startsEggPartnerChallenge && !startsJammedDoorChallenge && !startsZoologistChallenge && !startsLuxuryCarChallenge,
+          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsUTurnChallenge && !startsRansomNoteChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge && !startsLemonPhylacteryChallenge && !startsGamblersFeetChallenge && !startsEggPartnerChallenge && !startsJammedDoorChallenge && !startsZoologistChallenge && !startsLuxuryCarChallenge,
           requiresPhotoUpload: startsZoologistChallenge || startsLuxuryCarChallenge
         },
         visibilityPolicy: HIDER_DECK_VISIBILITY,
-        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
+        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsRansomNoteChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
         sourceProvenance: [
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'name', nameRaw, nameRaw),
           sourceProvenance(sourceFileName, sheet.name, row.rowNumber, 'description', descriptionRaw, nameRaw),
@@ -1390,6 +1395,7 @@ function buildCurseCards(
     const startsBridgeTrollChallenge = normalizedName.slug === 'curse-of-the-bridge-troll';
     const startsSeekerOffTransitChallenge = normalizedName.slug === 'curse-of-the-urban-explorer';
     const startsUTurnChallenge = normalizedName.slug === 'curse-of-the-u-turn';
+    const startsRansomNoteChallenge = normalizedName.slug === 'curse-of-the-ransom-note';
     const startsWaterWeightChallenge = normalizedName.slug === 'curse-of-water-weight';
     const startsEndlessTumbleChallenge = normalizedName.slug === 'curse-of-the-endless-tumble';
     const startsLemonPhylacteryChallenge = normalizedName.slug === 'curse-of-the-lemon-phylactery';
@@ -1423,7 +1429,7 @@ function buildCurseCards(
       shortName: normalizedName.displayText,
       description: applyWorkbookCorrections(descriptionRaw),
       ...(rulebookGuidance ? { rulebookGuidanceText: rulebookGuidance.text } : {}),
-      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? 'assisted' : 'manual',
+      automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsRansomNoteChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? 'assisted' : 'manual',
       castingCost: costRaw ? [createGeneratedRequirement(applyWorkbookCorrections(costRaw), costRaw)] : [],
       effects: [
         {
@@ -1433,6 +1439,8 @@ function buildCurseCards(
             ? 'seeker_off_transit_challenge'
             : startsUTurnChallenge
             ? 'u_turn_challenge'
+            : startsRansomNoteChallenge
+            ? 'ransom_note_challenge'
             : startsWaterWeightChallenge
             ? 'water_weight_challenge'
             : startsEndlessTumbleChallenge
@@ -1456,13 +1464,15 @@ function buildCurseCards(
             : grantsExtraQuestionRewardDraws ? 'extra_question_reward_draws'
               : randomizesQuestionCategory ? 'random_question_category_lock' : 'curse_challenge',
           description: applyWorkbookCorrections(descriptionRaw),
-          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? 'assisted' : 'manual',
+          automationLevel: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? 'authoritative' : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsRansomNoteChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? 'assisted' : 'manual',
           rawText: descriptionRaw,
           payload: {
             ...(startsSeekerOffTransitChallenge
               ? { requiredAttestations: 'all_seekers_off_transit_and_station', duration: 'hider_run' }
               : startsUTurnChallenge
               ? { alternateTransitWindowMinutesByScale: { small: 30, medium: 30, large: 60 }, requiredAttestations: 'all_seekers_disembark_at_next_station' }
+              : startsRansomNoteChallenge
+                ? { minimumWords: 5, requireHiderApproval: true, requirePrintedCutouts: true }
               : startsBridgeTrollChallenge
               ? { requiredAttestations: 'all_seekers' }
               : startsWaterWeightChallenge
@@ -1491,11 +1501,11 @@ function buildCurseCards(
       ],
       rewardsOrPenalties: [],
       requirements: {
-          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsUTurnChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge && !startsLemonPhylacteryChallenge && !startsGamblersFeetChallenge && !startsEggPartnerChallenge && !startsJammedDoorChallenge && !startsZoologistChallenge && !startsLuxuryCarChallenge,
+          requiresManualApproval: !locksQuestionTemplates && !grantsExtraQuestionRewardDraws && !randomizesQuestionCategory && !startsHangmanChallenge && !startsBridgeTrollChallenge && !startsSeekerOffTransitChallenge && !startsUTurnChallenge && !startsRansomNoteChallenge && !startsWaterWeightChallenge && !startsEndlessTumbleChallenge && !startsLemonPhylacteryChallenge && !startsGamblersFeetChallenge && !startsEggPartnerChallenge && !startsJammedDoorChallenge && !startsZoologistChallenge && !startsLuxuryCarChallenge,
         requiresPhotoUpload: startsZoologistChallenge || startsLuxuryCarChallenge
       },
       visibilityPolicy: HIDER_DECK_VISIBILITY,
-        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
+        tags: locksQuestionTemplates || grantsExtraQuestionRewardDraws || randomizesQuestionCategory ? ['curse', 'authoritative-effect'] : startsHangmanChallenge || startsBridgeTrollChallenge || startsSeekerOffTransitChallenge || startsUTurnChallenge || startsRansomNoteChallenge || startsWaterWeightChallenge || startsEndlessTumbleChallenge || startsLemonPhylacteryChallenge || startsGamblersFeetChallenge || startsEggPartnerChallenge || startsJammedDoorChallenge || startsZoologistChallenge || startsLuxuryCarChallenge ? ['curse', 'assisted-effect'] : ['curse', 'manual-resolution'],
       sourceProvenance: [
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'B', nameRaw, orderRaw),
         sourceProvenance(sourceFileName, sheet.name, curseRow.rowNumber, 'C', descriptionRaw, nameRaw),
