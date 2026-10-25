@@ -164,6 +164,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Reconcile `Radar -> Choose` in the generated content pack and remove its false blocking import warning. Focused verification: 23 engine/importer/mobile-flow tests pass, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
 - [x] Automatically resolve Thermometer from printed minimum travel distance and fresh GPS fixes; freeze the same seeker movement endpoints for the answer and map deduction.
 - [ ] Deploy and security-audit the online authority; verify it on real devices over cellular data.
+- [x] Add explicit Supabase CLI project/function configuration with JWT verification enabled; validate the Edge Function runtime using `deno check` (2026-10-25).
 - [x] Add a follow-up migration that removes the legacy blanket database policies and scopes storage objects to an active match membership plus their public/team/player/host scope. Static policy regression test passes; applying and executing it against a Supabase database is still pending.
 - [ ] Add automatic/assisted resolvers for the remaining Investigation Book categories and verify each answer/map effect against the scanned rules.
 - [ ] Reconcile and implement all standard card effects, including the remaining physical or manually adjudicated effects.

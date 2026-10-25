@@ -24,6 +24,7 @@ For a new project, apply every migration in order, including the security follow
 4. `supabase/migrations/202610240001_server_authority.sql`
 5. `supabase/migrations/202610240003_atomic_membership_removal.sql`
 6. `supabase/migrations/202610240004_secure_online_access.sql`
+7. `supabase/migrations/202610250001_pin_match_content_pack_version.sql`
 
 The second migration is retained for migration history and creates the bucket, but it temporarily installs permissive development policies. The final migration removes those grants and policies. Do not stop after migration 2 or expose that intermediate state to players.
 
@@ -31,7 +32,7 @@ For a project that already has game data or uploaded attachments, inspect and ba
 
 ## Deploy the authority function
 
-Deploy `supabase/functions/game-authority/index.ts` as the `game-authority` Edge Function. Require a valid user JWT (do not enable unauthenticated invocation) and configure the three server secrets listed above. The service-role key belongs only in the function's secret store. Confirm that a signed-in player can create/join a match and that a player outside the match cannot read or issue commands for it.
+Deploy `supabase/functions/game-authority/index.ts` as the `game-authority` Edge Function. The checked-in `supabase/config.toml` keeps JWT verification enabled for this function; do not deploy it with `--no-verify-jwt`. Configure the three server secrets listed above. The service-role key belongs only in the function's secret store. Confirm that a signed-in player can create/join a match and that a player outside the match cannot read or issue commands for it.
 
 The client uses the anon key for Supabase Auth and authenticated Storage requests. Match commands and scoped projection reads go through the Edge Function; mobile clients must not use direct PostgREST access for authoritative match tables. The Edge Function currently uses polling for projection refresh, not a push channel.
 
@@ -55,4 +56,4 @@ The authenticated Storage policies check active membership and the viewer's scop
 - `403` for a valid user: confirm that user has an active `match_memberships` row for the match and that the player is not removed.
 - Storage upload/read denied: confirm the player is an active match member and the object path uses their permitted visibility scope.
 
-This checkout has static migration regression tests, but the migrations have not been executed against PostgreSQL and the function has not been deployed to a configured Supabase project. Before relying on online play, validate the migrations against a disposable Supabase database, test each attachment scope and removed-member denial with separate accounts, deploy the Edge Function, and complete a cellular multi-phone round.
+The Edge Function entrypoint passes `deno check`, but this checkout currently has no Supabase CLI, linked project, or project configuration values. The migrations have not been executed against PostgreSQL and the function has not been deployed to a configured Supabase project. Before relying on online play, validate the migrations against a disposable Supabase database, test each attachment scope and removed-member denial with separate accounts, deploy the Edge Function, and complete a cellular multi-phone round.

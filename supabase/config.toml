@@ -1,0 +1,4 @@
+project_id = "jetlag-hide-and-seek"
+
+[functions.game-authority]
+verify_jwt = true
