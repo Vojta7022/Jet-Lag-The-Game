@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { parseRuntimeKind } from '../src/config/env.ts';
 
 const mobileRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -39,6 +40,12 @@ test('mobile workspace keeps the minimum startup dependencies and scripts aligne
   assert.ok(packageJson.devDependencies['babel-preset-expo']);
 });
 
+test('online multiplayer is the default runtime while explicit modes remain selectable', () => {
+  assert.equal(parseRuntimeKind(undefined), 'online_foundation');
+  assert.equal(parseRuntimeKind('single_device_referee'), 'single_device_referee');
+  assert.equal(parseRuntimeKind('in_memory'), 'in_memory');
+});
+
 test('expo app config and monorepo config files keep the mobile shell startup hooks in place', () => {
   const appJson = readJsonFile<{
     expo: {
@@ -65,6 +72,7 @@ test('expo app config and monorepo config files keep the mobile shell startup ho
   assert.match(metroConfig, /node:crypto/);
   assert.match(babelConfig, /babel-preset-expo/);
   assert.match(envExample, /EXPO_PUBLIC_REGION_PROVIDER_BASE_URL/);
+  assert.match(envExample, /^EXPO_PUBLIC_DEFAULT_RUNTIME_MODE=online_foundation$/m);
   assert.match(envExample, /EXPO_PUBLIC_ONLINE_ANON_KEY/);
   assert.match(envExample, /EXPO_PUBLIC_ONLINE_ATTACHMENT_BUCKET/);
   assert.match(envExample, /EXPO_PUBLIC_ONLINE_REALTIME_POLL_MS/);

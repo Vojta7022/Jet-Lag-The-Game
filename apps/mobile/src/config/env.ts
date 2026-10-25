@@ -51,7 +51,7 @@ function parseNumber(input: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function parseRuntimeKind(input: string | undefined): MobileRuntimeKind {
+export function parseRuntimeKind(input: string | undefined): MobileRuntimeKind {
   switch (input) {
     case 'online_foundation':
     case 'nearby_host_authority':
@@ -59,7 +59,7 @@ function parseRuntimeKind(input: string | undefined): MobileRuntimeKind {
     case 'in_memory':
       return input;
     default:
-      return 'in_memory';
+      return 'online_foundation';
   }
 }
 

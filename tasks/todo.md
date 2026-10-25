@@ -167,6 +167,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 
 ## Active: online multiplayer for one phone per player
 
+- [x] Make the online cloud runtime the default for new launches while keeping referee and in-memory modes explicitly selectable; verify mode parsing and mobile typecheck (2026-10-25).
 - [x] Capture the product requirements for role-specific devices, hider-visible seeker locations, automatic location-based answers, in-app card rewards, searchable administrative regions, and future versioned content packs.
 - [x] Draft and push the approved server-authoritative design and acceptance criteria in `docs/superpowers/specs/2026-10-24-online-player-game-design.md`.
 - [x] Product owner approves the written design and implementation choices (2026-10-24).
