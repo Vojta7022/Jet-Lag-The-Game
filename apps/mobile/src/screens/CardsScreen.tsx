@@ -14,6 +14,7 @@ import {
   CardDeckList,
   CardDetailPanel,
   CardResolutionStatusPanel,
+  EggPartnerChallengePanel,
   CardZoneSection,
   buildQuestionResponseCardReason,
   buildCardFlowBootstrapCommands,
@@ -457,6 +458,20 @@ export function CardsScreen() {
           title="Read-only spectator view"
           detail="Spectators cannot inspect private hands or perform card actions. Only card state exposed by the current projection scope is visible here."
         />
+      ) : null}
+
+      {projection?.eggPartnerChallenge ? (
+        <Panel title="Curse of the Egg Partner" subtitle="Track the egg and its effect on the seeker team." tone="accent">
+          <EggPartnerChallengePanel
+            challenge={projection.eggPartnerChallenge}
+            players={projection.players.filter((player) => player.role === 'seeker').map((player) => ({ playerId: player.playerId, displayName: player.displayName }))}
+            viewerRole={viewerRole}
+            viewerPlayerId={activeMatch?.recipient.playerId}
+            disabled={state.loadState === 'loading'}
+            onAcquire={() => void submitCommand({ type: 'confirm_egg_partner_acquired', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId } })}
+            onReportLost={(memberId, lossKind) => void submitCommand({ type: 'report_egg_partner_member_lost', payload: { sourceCardInstanceId: projection.eggPartnerChallenge!.sourceCardInstanceId, memberId, lossKind } })}
+          />
+        </Panel>
       ) : null}
 
       {activeMatch && latestLateResolvedQuestion && viewerRole === 'hider' ? (
