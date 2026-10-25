@@ -410,7 +410,7 @@ export interface CardResolutionWindow {
   copiedCardInstanceId?: string;
   openedAt: string;
   openedByPlayerId: string;
-  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge';
+  resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge';
   hangman?: {
     status: 'awaiting_word' | 'playing' | 'solved' | 'ended';
     secretWord?: string;
@@ -474,6 +474,13 @@ export interface EndlessTumbleChallengeModel {
   reportedAttempts: number;
 }
 
+export interface LemonPhylacteryChallengeModel {
+  sourceCardInstanceId: string;
+  activatedAt: string;
+  hiderBonusMinutes: number;
+  statusByPlayerId: Record<string, { touching: boolean; updatedAt: string }>;
+}
+
 export interface MatchAggregate {
   matchId: string;
   mode: MatchMode;
@@ -507,6 +514,7 @@ export interface MatchAggregate {
   seekerOffTransitRestriction?: SeekerOffTransitRestrictionModel;
   waterWeightChallenge?: WaterWeightChallengeModel;
   endlessTumbleChallenge?: EndlessTumbleChallengeModel;
+  lemonPhylacteryChallenge?: LemonPhylacteryChallengeModel;
   awardedCurseBonusMinutes?: number;
   hiderHandLimitBonus?: number;
   disabledQuestionTemplateIds?: string[];

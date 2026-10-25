@@ -371,6 +371,35 @@ test('Water Weight opens an assisted supply challenge with its printed scale-spe
   assert.equal(played.activeCardResolution?.timeBonusMinutes, 30);
 });
 
+test('Lemon Phylactery gates questions per seeker and awards the scale bonus when contact is lost', () => {
+  const contentPack = loadEngineTestContentPack();
+  const lemon = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-the-lemon-phylactery');
+  assert.ok(lemon);
+  lemon.castingCost = [];
+  lemon.effects = [{ ...lemon.effects[0]!, effectType: 'lemon_phylactery_challenge', automationLevel: 'assisted', payload: { minutesByScale: { small: 30, medium: 45, large: 60 } } }];
+  let aggregate = setupMatchToSeekReady(contentPack, 'large');
+  const cardInstanceId = moveCardToTeamHand(aggregate, lemon.cardDefinitionId, 'team-hider');
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'play_card', payload: { cardInstanceId } }, 70), contentPack).aggregate;
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'hider-1', playerId: 'hider-1', role: 'hider' }, { type: 'resolve_card_window', payload: { sourceCardInstanceId: cardInstanceId } }, 71), contentPack).aggregate;
+  assert.equal(aggregate.lemonPhylacteryChallenge?.hiderBonusMinutes, 60);
+  aggregate.teams['team-seeker']!.memberPlayerIds.push('seeker-2');
+
+  aggregate = executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'begin_question_prompt', payload: {} }, 72), contentPack).aggregate;
+  const ask = () => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: 'seeker-1', playerId: 'seeker-1', role: 'seeker' }, { type: 'ask_question', payload: { questionInstanceId: 'question:lemon', templateId: 'matching-commercial-airport', targetTeamId: 'team-hider' } }, 73), contentPack);
+  assert.throws(ask, /each seeker must attach a lemon/i);
+
+  const setContact = (playerId: string, touching: boolean, at: number) => executeCommand(aggregate, makeEnvelope(aggregate.matchId, { actorId: playerId, playerId, role: 'seeker' }, { type: 'set_lemon_phylactery_contact', payload: { sourceCardInstanceId: cardInstanceId, touching } }, at), contentPack);
+  aggregate = setContact('seeker-1', true, 74).aggregate;
+  assert.throws(ask, /each seeker must attach a lemon/i);
+  aggregate = setContact('seeker-2', true, 75).aggregate;
+  assert.equal(ask().aggregate.seekPhaseSubstate, 'awaiting_question_answer');
+  aggregate = setContact('seeker-1', false, 76).aggregate;
+  assert.equal(aggregate.awardedCurseBonusMinutes, 60);
+  assert.throws(ask, /each seeker must attach a lemon/i);
+  aggregate = setContact('seeker-1', true, 77).aggregate;
+  assert.equal(ask().aggregate.seekPhaseSubstate, 'awaiting_question_answer');
+});
+
 test('Water Weight blocks questions until acquisition and awards its scale bonus on the first loss report', () => {
   const contentPack = loadEngineTestContentPack();
   const waterWeight = contentPack.cards.find((card) => card.cardDefinitionId === 'curse-curse-of-water-weight');

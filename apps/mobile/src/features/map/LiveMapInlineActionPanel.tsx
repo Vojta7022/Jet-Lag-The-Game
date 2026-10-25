@@ -90,6 +90,9 @@ export function LiveMapInlineActionPanel() {
   );
   const waterWeightChallenge = projection?.waterWeightChallenge;
   const endlessTumbleChallenge = projection?.endlessTumbleChallenge;
+  const lemonPhylacteryChallenge = projection?.lemonPhylacteryChallenge;
+  const lemonSeekers = projection?.players.filter((player) => player.role === 'seeker') ?? [];
+  const allSeekersHaveLemons = Boolean(lemonPhylacteryChallenge && lemonSeekers.length > 0 && lemonSeekers.every((player) => lemonPhylacteryChallenge.statusByPlayerId[player.playerId]?.touching));
 
   const categoryViewModels = useMemo(
     () => buildQuestionCategoryViewModels(contentPack),
@@ -246,6 +249,7 @@ export function LiveMapInlineActionPanel() {
       (!seekerOffTransitRestriction || allSeekersOffTransit) &&
       (!waterWeightChallenge || waterWeightChallenge.liquidAcquiredAt) &&
       (!endlessTumbleChallenge || endlessTumbleChallenge.successfulRollAt) &&
+      (!lemonPhylacteryChallenge || allSeekersHaveLemons) &&
       (activeQuestionSubstate === 'ready' || activeQuestionSubstate === 'awaiting_question_selection')
   );
   const canAnswerQuestion = Boolean(
@@ -499,6 +503,21 @@ export function LiveMapInlineActionPanel() {
                 }
               })}
             />
+          </View>
+        ) : null}
+        {lemonPhylacteryChallenge ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>LEMON PHYLACTERY · SEEKER CONTACT</Text>
+            <FactList items={[
+              ...lemonSeekers.map((player) => ({ label: player.displayName, value: lemonPhylacteryChallenge.statusByPlayerId[player.playerId]?.touching ? 'Lemon attached' : 'Lemon missing · questions blocked' })),
+              { label: 'Hider bonus per lost lemon', value: `${lemonPhylacteryChallenge.hiderBonusMinutes} minutes` },
+              { label: 'Curse bonus earned this round', value: `${projection?.awardedCurseBonusMinutes ?? 0} minutes` }
+            ]} />
+            {lemonSeekers.filter((player) => viewerRole === 'host' || player.playerId === activeMatch?.recipient.playerId).map((player) => {
+              const touching = lemonPhylacteryChallenge.statusByPlayerId[player.playerId]?.touching ?? false;
+              return <AppButton key={player.playerId} label={`${viewerRole === 'host' ? `${player.displayName}: ` : ''}${touching ? 'Report lemon lost' : 'Confirm lemon attached'}`} tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'set_lemon_phylactery_contact', payload: { sourceCardInstanceId: lemonPhylacteryChallenge.sourceCardInstanceId, targetPlayerId: viewerRole === 'host' ? player.playerId : undefined, touching: !touching } })} />;
+            })}
+            <Text style={styles.copy}>Use a real lemon. Any attachment method works. Report when it stops touching clothing or skin; the hider immediately earns the scale bonus. Reattach before the next question.</Text>
           </View>
         ) : null}
         <LiveMapInfoChips

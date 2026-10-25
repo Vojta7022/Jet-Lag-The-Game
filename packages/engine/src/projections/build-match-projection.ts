@@ -523,6 +523,7 @@ export function buildMatchProjection(
     seekerOffTransitRestriction: aggregate.seekerOffTransitRestriction,
     waterWeightChallenge: aggregate.waterWeightChallenge,
     endlessTumbleChallenge: aggregate.endlessTumbleChallenge,
+    lemonPhylacteryChallenge: aggregate.lemonPhylacteryChallenge,
     awardedCurseBonusMinutes: aggregate.awardedCurseBonusMinutes ?? 0,
     disabledQuestionTemplateIds: aggregate.disabledQuestionTemplateIds ?? [],
     disabledQuestionCategoryId: aggregate.disabledQuestionCategoryId,

@@ -11,7 +11,7 @@
   "provenance": {
     "sourceType": "xlsx",
     "sourceFileName": "Jet Lag The Game - cleaned for import.xlsx",
-    "importedAt": "2026-10-25T16:31:43.895Z",
+    "importedAt": "2026-10-25T17:13:35.904Z",
     "sourceSheets": [
       "Curses",
       "Matching",
@@ -3483,7 +3483,7 @@
       "shortName": "Curse Of The Lemon Phylactery",
       "description": "Before asking another question the seeker(s) must each find a lemon and affix it to their outermost layer of their clothes or skin. If at any point one of these lemons is no longer touching a seeker you are awarded [S30, M45, L60] minutes. This curse cannot be played during the endgame.",
       "rulebookGuidanceText": "Each lemon must be real and remain in constant contact with the seeker’s skin or clothes; any attachment method is allowed. Tell the hider immediately when one stops touching a seeker and award the scale bonus. This curse cannot be played during endgame.",
-      "automationLevel": "manual",
+      "automationLevel": "assisted",
       "castingCost": [
         {
           "requirementType": "raw_text",
@@ -3493,18 +3493,23 @@
       ],
       "effects": [
         {
-          "effectType": "curse_challenge",
+          "effectType": "lemon_phylactery_challenge",
           "description": "Before asking another question the seeker(s) must each find a lemon and affix it to their outermost layer of their clothes or skin. If at any point one of these lemons is no longer touching a seeker you are awarded [S30, M45, L60] minutes. This curse cannot be played during the endgame.",
-          "automationLevel": "manual",
+          "automationLevel": "assisted",
           "rawText": "Before asking another question the seeker(s) must each find a lemon and affix it to their outermost layer of their clothes or skin. If at any point one of these lemons is no longer touching a seeker you are awarded [S30, M45, L60] minutes. This curse cannot be played during the endgame.",
           "payload": {
-            "workbookName": "Curse Of The Lemon Phylactery"
+            "minutesByScale": {
+              "small": 30,
+              "medium": 45,
+              "large": 60
+            },
+            "requiredAttestations": "all_seekers"
           }
         }
       ],
       "rewardsOrPenalties": [],
       "requirements": {
-        "requiresManualApproval": true
+        "requiresManualApproval": false
       },
       "visibilityPolicy": {
         "visibleTo": [
@@ -3515,7 +3520,7 @@
       },
       "tags": [
         "curse",
-        "manual-resolution"
+        "assisted-effect"
       ],
       "sourceProvenance": [
         {

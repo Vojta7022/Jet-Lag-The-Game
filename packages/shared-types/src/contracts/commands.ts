@@ -70,6 +70,7 @@ export type DomainCommand =
   | ReportWaterWeightLiquidLostCommand
   | ResolveEndlessTumbleCastCommand
   | ReportEndlessTumbleRollCommand
+  | SetLemonPhylacteryContactCommand
   | CompleteCooldownCommand
   | PauseMatchCommand
   | ResumeMatchCommand
@@ -389,6 +390,11 @@ export interface ReportEndlessTumbleRollCommand {
     landsCleanly: boolean;
     hitPerson: boolean;
   };
+}
+
+export interface SetLemonPhylacteryContactCommand {
+  type: 'set_lemon_phylactery_contact';
+  payload: { sourceCardInstanceId: string; touching: boolean; targetPlayerId?: string };
 }
 
 export interface CompleteCooldownCommand {

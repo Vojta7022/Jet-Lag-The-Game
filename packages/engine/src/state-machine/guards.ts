@@ -140,6 +140,10 @@ export function validateStateForCommand(
       return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
         ? []
         : [error(command.type, 'INVALID_STATE', 'Endless Tumble rolls can only be reported while seekers are searching.')];
+    case 'set_lemon_phylactery_contact':
+      return isSeekPhaseState(aggregate) || isLifecycleState(aggregate, 'endgame')
+        ? []
+        : [error(command.type, 'INVALID_STATE', 'Lemon contact can only be updated while seekers are searching.')];
     case 'ask_question':
       return isSeekPhaseState(aggregate, 'awaiting_question_selection') ||
         (isLifecycleState(aggregate, 'endgame') && aggregate.seekPhaseSubstate === 'awaiting_question_selection')

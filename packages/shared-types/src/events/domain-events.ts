@@ -111,6 +111,8 @@ export type DomainEvent =
   | EndlessTumbleChallengeStartedEvent
   | EndlessTumbleCastResolvedEvent
   | EndlessTumbleRollReportedEvent
+  | LemonPhylacteryChallengeStartedEvent
+  | LemonPhylacteryContactChangedEvent
   | QuestionTemplatesDisabledEvent
   | QuestionCategoryDisabledEvent
   | HiderHandLimitExpandedEvent
@@ -432,7 +434,7 @@ export interface CardResolutionOpenedEvent {
     copiedCardInstanceId?: string;
     seekPhaseSubstate: SeekPhaseSubstate;
     lifecycleState: MatchLifecycleState;
-    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge';
+    resolutionKind?: 'manual_only' | 'move' | 'discard_then_draw' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge';
     moveOriginStationId?: string;
     moveOriginStationName?: string;
     moveDurationSeconds?: number;
@@ -535,6 +537,16 @@ export interface EndlessTumbleRollReportedEvent {
     successful: boolean;
     bonusMinutesAwarded: number;
   };
+}
+
+export interface LemonPhylacteryChallengeStartedEvent {
+  type: 'lemon_phylactery_challenge_started';
+  payload: { sourceCardInstanceId: string; hiderBonusMinutes: number };
+}
+
+export interface LemonPhylacteryContactChangedEvent {
+  type: 'lemon_phylactery_contact_changed';
+  payload: { sourceCardInstanceId: string; playerId: string; touching: boolean; bonusMinutesAwarded: number };
 }
 
 export interface QuestionTemplatesDisabledEvent {

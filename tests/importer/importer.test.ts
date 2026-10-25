@@ -228,6 +228,14 @@ test('the workbook importer creates a normalized draft content pack', () => {
     minutesByScale: { small: 10, medium: 20, large: 30 }
   });
   assert.equal(endlessTumble?.requirements?.requiresManualApproval, false);
+  const lemonPhylactery = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-lemon-phylactery');
+  assert.equal(lemonPhylactery?.automationLevel, 'assisted');
+  assert.equal(lemonPhylactery?.effects[0]?.effectType, 'lemon_phylactery_challenge');
+  assert.deepEqual(lemonPhylactery?.effects[0]?.payload, {
+    minutesByScale: { small: 30, medium: 45, large: 60 },
+    requiredAttestations: 'all_seekers'
+  });
+  assert.equal(lemonPhylactery?.requirements?.requiresManualApproval, false);
 
   const hiderDeck = result.pack.decks.find((deck) => deck.deckId === 'hider-main');
   assert.ok(hiderDeck);
@@ -251,6 +259,9 @@ test('the legacy workbook mapping also excludes the unprinted Measuring target',
   assert.equal(waterWeight?.effects[0]?.effectType, 'water_weight_challenge');
   const endlessTumble = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-endless-tumble');
   assert.equal(endlessTumble?.effects[0]?.effectType, 'endless_tumble_challenge');
+  const lemonPhylactery = curses.find((card) => card.cardDefinitionId === 'curse-curse-of-the-lemon-phylactery');
+  assert.equal(lemonPhylactery?.automationLevel, 'assisted');
+  assert.equal(lemonPhylactery?.effects[0]?.effectType, 'lemon_phylactery_challenge');
   const photoTemplates = result.pack.questionTemplates.filter((template) => template.categoryId === 'photos');
   assert.equal(photoTemplates.length, 18);
   assert.ok(photoTemplates.every((template) => typeof template.parameters?.rulebookGuidanceText === 'string'));

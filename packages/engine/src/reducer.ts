@@ -301,6 +301,7 @@ export function reduceMatchAggregate(
         seekerOffTransitRestriction: undefined,
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
+        lemonPhylacteryChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         cardInstances: Object.fromEntries(
           eventEnvelope.event.payload.cardInstances.map((card) => [card.cardInstanceId, card])
@@ -335,6 +336,7 @@ export function reduceMatchAggregate(
         seekerOffTransitRestriction: undefined,
         waterWeightChallenge: undefined,
         endlessTumbleChallenge: undefined,
+        lemonPhylacteryChallenge: undefined,
         awardedCurseBonusMinutes: 0,
         disabledQuestionTemplateIds: [],
         disabledQuestionCategoryId: undefined,
@@ -589,6 +591,32 @@ export function reduceMatchAggregate(
           reportedAttempts: challenge.reportedAttempts + 1
         },
         awardedCurseBonusMinutes: (base.awardedCurseBonusMinutes ?? 0) + eventEnvelope.event.payload.bonusMinutesAwarded
+      };
+    }
+    case 'lemon_phylactery_challenge_started':
+      return {
+        ...base,
+        lemonPhylacteryChallenge: {
+          sourceCardInstanceId: eventEnvelope.event.payload.sourceCardInstanceId,
+          activatedAt: eventEnvelope.occurredAt,
+          hiderBonusMinutes: eventEnvelope.event.payload.hiderBonusMinutes,
+          statusByPlayerId: {}
+        }
+      };
+    case 'lemon_phylactery_contact_changed': {
+      const challenge = base.lemonPhylacteryChallenge;
+      if (challenge?.sourceCardInstanceId !== eventEnvelope.event.payload.sourceCardInstanceId) return base;
+      const { playerId, touching, bonusMinutesAwarded } = eventEnvelope.event.payload;
+      return {
+        ...base,
+        lemonPhylacteryChallenge: {
+          ...challenge,
+          statusByPlayerId: {
+            ...challenge.statusByPlayerId,
+            [playerId]: { touching, updatedAt: eventEnvelope.occurredAt }
+          }
+        },
+        awardedCurseBonusMinutes: (base.awardedCurseBonusMinutes ?? 0) + bonusMinutesAwarded
       };
     }
     case 'question_response_expired': {

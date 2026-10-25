@@ -39,6 +39,7 @@ const HOST_COMMANDS = new Set<DomainCommand['type']>([
   'resolve_card_window',
   'resolve_endless_tumble_cast',
   'report_endless_tumble_roll',
+  'set_lemon_phylactery_contact',
   'set_hangman_word',
   'end_hangman_challenge',
   'complete_cooldown',
@@ -84,7 +85,8 @@ const SEEKER_COMMANDS = new Set<DomainCommand['type']>([
   'set_seeker_transit_context',
   'confirm_water_weight_liquid_acquired',
   'report_water_weight_liquid_lost',
-  'report_endless_tumble_roll'
+  'report_endless_tumble_roll',
+  'set_lemon_phylactery_contact'
 ]);
 
 const SPECTATOR_COMMANDS = new Set<DomainCommand['type']>(['join_match', 'leave_match', 'send_chat_message']);

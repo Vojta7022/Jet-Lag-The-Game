@@ -1564,6 +1564,13 @@ function eventsForCommand(
         }));
       }
 
+      if (activeResolution?.resolutionKind === 'lemon_phylactery_challenge') {
+        events.push(makeEventEnvelope(aggregate, envelope, events.length, 'public_match', {
+          type: 'lemon_phylactery_challenge_started',
+          payload: { sourceCardInstanceId: activeResolution.sourceCardInstanceId, hiderBonusMinutes: activeResolution.timeBonusMinutes ?? 0 }
+        }));
+      }
+
       if (activeResolution?.resolutionKind === 'move' && aggregate!.lifecycleState === 'hide_phase') {
         const hideTimer = Object.values(aggregate!.timers).find((timer) => timer.kind === 'hide' && timer.status === 'paused');
         if (hideTimer) {
@@ -1710,6 +1717,20 @@ function eventsForCommand(
           hitPerson,
           successful,
           bonusMinutesAwarded: hitPerson ? challenge.hiderBonusMinutes : 0
+        }
+      })];
+    }
+    case 'set_lemon_phylactery_contact': {
+      const challenge = aggregate!.lemonPhylacteryChallenge!;
+      const playerId = envelope.command.payload.targetPlayerId ?? envelope.actor.playerId!;
+      const wasTouching = challenge.statusByPlayerId[playerId]?.touching ?? false;
+      return [makeEventEnvelope(aggregate, envelope, 0, 'public_match', {
+        type: 'lemon_phylactery_contact_changed',
+        payload: {
+          sourceCardInstanceId: challenge.sourceCardInstanceId,
+          playerId,
+          touching: envelope.command.payload.touching,
+          bonusMinutesAwarded: wasTouching && !envelope.command.payload.touching ? challenge.hiderBonusMinutes : 0
         }
       })];
     }

@@ -504,3 +504,11 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Show the DEM's resolution, limits, and source attribution in player-facing answer guidance; preserve manual handling when uncertainty is inadequate.
 - [x] Implement a Sea Level resolver that falls back to manual answering when altitude uncertainty cannot distinguish the comparison; use the same terrain samples for approximate map deduction.
 - [x] Verify provider failure and sparse-region fallback; full suite (370/370), mobile typecheck, Edge Function check, `git diff --check`, and live bounded-region smoke request pass (2026-10-25).
+
+### Completed implementation slice: Curse of the Lemon Phylactery
+
+- [x] Import the scanned p. 55 rule as an assisted challenge with 30/45/60-minute scale bonuses in both workbook mappings.
+- [x] Track each seeker's lemon-contact attestation, block the next question until every seeker reports contact, and award the hider bonus immediately on every reported loss.
+- [x] Add seeker self-report controls and a host referee control in both Question Center and the live map; preserve the challenge through the hider run and reset it on round rotation.
+- [x] Reject the curse during endgame and prevent overlap with other typed question/transit blockers.
+- [x] Verify full suite (403/403), mobile typecheck, content-pack regeneration, and `git diff --check` (2026-10-25). Physical contact remains player-attested.

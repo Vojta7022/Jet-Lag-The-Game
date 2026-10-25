@@ -54,7 +54,8 @@ const QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS = new Set([
   'bridge_troll_challenge',
   'seeker_off_transit_challenge',
   'water_weight_challenge',
-  'endless_tumble_challenge'
+  'endless_tumble_challenge',
+  'lemon_phylactery_challenge'
 ]);
 
 function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boolean {
@@ -63,6 +64,7 @@ function hasActiveQuestionOrTransitBlockingCurse(aggregate: MatchAggregate): boo
     aggregate.seekerOffTransitRestriction ||
     aggregate.waterWeightChallenge ||
     aggregate.endlessTumbleChallenge ||
+    aggregate.lemonPhylacteryChallenge ||
     (aggregate.activeCardResolution?.resolutionKind &&
       QUESTION_OR_TRANSIT_BLOCKING_CARD_KINDS.has(aggregate.activeCardResolution.resolutionKind))
   );
@@ -873,6 +875,16 @@ export function validateCommandEnvelope(
         )];
       }
 
+      if (aggregate.lemonPhylacteryChallenge) {
+        const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+        const statuses = seekerTeam?.memberPlayerIds.map((playerId) =>
+          aggregate.lemonPhylacteryChallenge!.statusByPlayerId[playerId]?.touching
+        ) ?? [];
+        if (!seekerTeam?.memberPlayerIds.length || statuses.some((touching) => !touching)) {
+          return [error(envelope.command.type, 'LEMON_PHYLACTERY_CONTACT_REQUIRED', 'Each seeker must attach a lemon to their outermost clothing or skin before another question.')];
+        }
+      }
+
       const category = getQuestionCategory(contentPack, template.categoryId);
       if (!category) {
         return [error(envelope.command.type, 'QUESTION_CATEGORY_NOT_FOUND', 'The selected question category does not exist.')];
@@ -1385,7 +1397,8 @@ export function validateCommandEnvelope(
       if (
         aggregate.lifecycleState === 'endgame' &&
         cardDefinition.kind === 'curse' &&
-        /cannot be played during the endgame/i.test(cardDefinition.description)
+        (/cannot be played during the endgame/i.test(cardDefinition.description) ||
+          effectCardDefinition.effects.some((effect) => effect.effectType === 'lemon_phylactery_challenge'))
       ) {
         return [error(envelope.command.type, 'CARD_NOT_PLAYABLE_IN_ENDGAME', 'This curse cannot be played during the endgame.')];
       }
@@ -1721,6 +1734,28 @@ export function validateCommandEnvelope(
       const refereeMayReport = actorRole === 'host' || actorRole === 'system';
       if (!refereeMayReport && (!playerId || actorRole !== 'seeker' || !seekerTeam?.memberPlayerIds.includes(playerId))) {
         return [error(envelope.command.type, 'FORBIDDEN', 'Only a seeker may report the team’s die roll from a seeker account.')];
+      }
+      return [];
+    }
+    case 'set_lemon_phylactery_contact': {
+      const challenge = aggregate.lemonPhylacteryChallenge;
+      const payload = envelope.command.payload;
+      if (challenge?.sourceCardInstanceId !== payload.sourceCardInstanceId) {
+        return [error(envelope.command.type, 'LEMON_PHYLACTERY_NOT_ACTIVE', 'There is no active Lemon Phylactery challenge.')];
+      }
+      if (typeof payload.touching !== 'boolean') {
+        return [error(envelope.command.type, 'LEMON_PHYLACTERY_STATUS_INVALID', 'Choose whether your lemon is still touching your clothing or skin.')];
+      }
+      const seekerTeam = Object.values(aggregate.teams).find((team) => team.side === 'seeker');
+      const targetPlayerId = payload.targetPlayerId ?? envelope.actor.playerId;
+      const actorRole = getPlayerRole(aggregate, envelope.actor.playerId) ?? envelope.actor.role;
+      const refereeMaySetAnother = actorRole === 'host' || actorRole === 'system';
+      if (!targetPlayerId || !seekerTeam?.memberPlayerIds.includes(targetPlayerId) ||
+        (!refereeMaySetAnother && (actorRole !== 'seeker' || targetPlayerId !== envelope.actor.playerId))) {
+        return [error(envelope.command.type, 'FORBIDDEN', 'Each seeker reports their own lemon contact from their seeker account.')];
+      }
+      if ((challenge.statusByPlayerId[targetPlayerId]?.touching ?? false) === payload.touching) {
+        return [error(envelope.command.type, 'LEMON_PHYLACTERY_STATUS_UNCHANGED', 'That seeker’s lemon contact status is already recorded.')];
       }
       return [];
     }

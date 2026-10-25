@@ -12,7 +12,7 @@ export interface CardDiscardRequirement {
 }
 
 export interface CardResolutionPlan {
-  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge';
+  kind: 'manual_only' | 'move' | 'discard_then_draw' | 'draw_and_expand_hand' | 'veto_question' | 'randomize_question' | 'time_bonus' | 'disable_question_templates' | 'random_question_category_lock' | 'extra_question_reward_draws' | 'hangman_challenge' | 'bridge_troll_challenge' | 'seeker_off_transit_challenge' | 'water_weight_challenge' | 'endless_tumble_challenge' | 'lemon_phylactery_challenge';
   discardRequirement: CardDiscardRequirement;
   drawCountOnResolve?: number;
   handSizeIncreaseOnResolve?: number;
@@ -155,6 +155,14 @@ export function buildCardResolutionPlan(
       timeBonusMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale),
       minimumDistanceMeters,
       successfulDieResults
+    };
+  }
+
+  if (cardDefinition.effects.some((effect) => effect.effectType === 'lemon_phylactery_challenge')) {
+    return {
+      kind: 'lemon_phylactery_challenge',
+      discardRequirement: getCardDiscardRequirement(cardDefinition),
+      timeBonusMinutes: resolveScaleBonusMinutes(cardDefinition, selectedScale)
     };
   }
 

@@ -458,6 +458,9 @@ export function QuestionCenterScreen() {
   );
   const waterWeightChallenge = projection?.waterWeightChallenge;
   const endlessTumbleChallenge = projection?.endlessTumbleChallenge;
+  const lemonPhylacteryChallenge = projection?.lemonPhylacteryChallenge;
+  const lemonSeekers = projection?.players.filter((player) => player.role === 'seeker') ?? [];
+  const allSeekersHaveLemons = Boolean(lemonPhylacteryChallenge && lemonSeekers.length > 0 && lemonSeekers.every((player) => lemonPhylacteryChallenge.statusByPlayerId[player.playerId]?.touching));
   const canAskQuestion = Boolean(
     activeMatch &&
       capabilities.canAskQuestions &&
@@ -468,6 +471,7 @@ export function QuestionCenterScreen() {
       (!seekerOffTransitRestriction || allSeekersOffTransit) &&
       (!waterWeightChallenge || waterWeightChallenge.liquidAcquiredAt) &&
       (!endlessTumbleChallenge || endlessTumbleChallenge.successfulRollAt) &&
+      (!lemonPhylacteryChallenge || allSeekersHaveLemons) &&
       (isQuestionReadyState || isQuestionSelectionState)
   );
   const canAnswerQuestion = Boolean(
@@ -945,6 +949,21 @@ export function QuestionCenterScreen() {
               });
             }}
           />
+        </Panel>
+      ) : null}
+
+      {lemonPhylacteryChallenge ? (
+        <Panel title="Curse of the Lemon Phylactery" subtitle="Each seeker must keep a lemon touching their outermost clothing or skin." tone="accent">
+          <FactList items={[
+            ...lemonSeekers.map((player) => ({ label: player.displayName, value: lemonPhylacteryChallenge.statusByPlayerId[player.playerId]?.touching ? 'Lemon attached' : 'Lemon missing · questions blocked' })),
+            { label: 'Hider bonus per lost lemon', value: `${lemonPhylacteryChallenge.hiderBonusMinutes} minutes` },
+            { label: 'Curse bonus earned this round', value: `${projection?.awardedCurseBonusMinutes ?? 0} minutes` }
+          ]} />
+          {lemonSeekers.filter((player) => viewerRole === 'host' || player.playerId === activeMatch?.recipient.playerId).map((player) => {
+            const touching = lemonPhylacteryChallenge.statusByPlayerId[player.playerId]?.touching ?? false;
+            return <AppButton key={player.playerId} label={`${viewerRole === 'host' ? `${player.displayName}: ` : ''}${touching ? 'Report lemon no longer touching' : 'Confirm lemon attached'}`} tone="secondary" disabled={state.loadState === 'loading'} onPress={() => void submitCommand({ type: 'set_lemon_phylactery_contact', payload: { sourceCardInstanceId: lemonPhylacteryChallenge.sourceCardInstanceId, targetPlayerId: viewerRole === 'host' ? player.playerId : undefined, touching: !touching } })} />;
+          })}
+          <Text style={styles.helper}>Use a real lemon and any attachment method. A lost lemon immediately gives the hider the scale bonus; attach it again before the next question. Physical contact is player-attested.</Text>
         </Panel>
       ) : null}
 
