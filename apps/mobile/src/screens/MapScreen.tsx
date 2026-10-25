@@ -1,7 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ExpoLinking from 'expo-linking';
+import * as DocumentPicker from 'expo-document-picker';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Linking, Platform, Pressable, Share, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import type { DomainCommand } from '../../../../packages/shared-types/src/index.ts';
 import { distanceMeters } from '../../../../packages/geo/src/index.ts';
@@ -16,7 +19,7 @@ import { MapCanvas } from '../features/map/MapCanvas';
 import { LiveEndgameControls } from '../features/map/LiveEndgameControls.tsx';
 import { ProtectedRoleHandoffPanel } from '../features/map/ProtectedRoleHandoffPanel.tsx';
 import type { PlayableRegionCatalogEntry } from '../features/map/index.ts';
-import { createMapScenario, decodeMapScenario, encodeMapScenario, type MapScenario } from '../features/map/map-scenarios.ts';
+import { createMapScenario, decodeMapScenario, decodeMapScenarioJson, encodeMapScenario, encodeMapScenarioJson, type MapScenario } from '../features/map/map-scenarios.ts';
 import { loadSavedMapScenarios, saveMapScenario } from '../features/map/map-scenario-storage.ts';
 
 import {
@@ -163,6 +166,8 @@ export function MapScreen() {
   const [scenarioHidingRadius, setScenarioHidingRadius] = useState<number>();
   const [savedScenarios, setSavedScenarios] = useState<MapScenario[]>([]);
   const [loadedScenario, setLoadedScenario] = useState<MapScenario>();
+  const [importingScenario, setImportingScenario] = useState(false);
+  const [exportingScenario, setExportingScenario] = useState(false);
   const [scenarioNotice, setScenarioNotice] = useState<string>();
   const [stationSearchLoading, setStationSearchLoading] = useState(false);
   const [stationSearchError, setStationSearchError] = useState<string>();
@@ -679,6 +684,79 @@ export function MapScreen() {
     await Share.share({ message: `Open this map scenario in Transit Hide and Seek:\n${url}`, url });
   };
 
+  const handleExportScenario = async () => {
+    if (invalidExclusion) {
+      setScenarioNotice('A subtracted region must fit fully inside an included region. Adjust the selection before exporting.');
+      return;
+    }
+    if (selectedRegions.length === 0 && !appliedRegion && !loadedScenario) {
+      setScenarioNotice('Choose a playable region before exporting a map.');
+      return;
+    }
+
+    setExportingScenario(true);
+    try {
+      const scenario = makeScenario(compositePreviewRegion?.displayName ?? loadedScenario?.name ?? appliedRegion?.displayName ?? 'Map');
+      const fileName = `map-${scenario.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'scenario'}-${Date.now()}.json`;
+      const json = encodeMapScenarioJson(scenario);
+      if (Platform.OS === 'web') {
+        const fileUrl = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+        const link = document.createElement('a');
+        link.href = fileUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
+      } else {
+        const file = new File(Paths.cache, fileName);
+        await file.write(json);
+        if (!await Sharing.isAvailableAsync()) throw new Error('File sharing is unavailable on this device.');
+        await Sharing.shareAsync(file.uri, {
+          dialogTitle: 'Export map scenario',
+          mimeType: 'application/json',
+          UTI: 'public.json'
+        });
+      }
+      setScenarioNotice(`Exported ${scenario.name} as ${fileName}`);
+    } catch (error) {
+      setScenarioNotice(error instanceof Error ? error.message : 'The map scenario could not be exported.');
+    } finally {
+      setExportingScenario(false);
+    }
+  };
+
+  const handleImportScenario = async () => {
+    setImportingScenario(true);
+    setScenarioNotice(undefined);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', 'text/json', 'text/plain'],
+        multiple: false,
+        copyToCacheDirectory: true
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      if (!asset) throw new Error('The selected file did not contain readable content.');
+      if (asset.size !== undefined && asset.size > 10 * 1024 * 1024) {
+        throw new Error('Map scenario files must be smaller than 10 MB.');
+      }
+      const json = asset.file ? await asset.file.text() : await new File(asset.uri).text();
+      if (json.length > 10 * 1024 * 1024) throw new Error('Map scenario files must be smaller than 10 MB.');
+      const scenario = decodeMapScenarioJson(json);
+      if (!buildCompositePlayableRegion(scenario.selectedRegions, scenario.excludedRegions ?? [])) {
+        throw new Error('This map contains a subtracted area that crosses or falls outside its playable boundary.');
+      }
+      handleLoadScenario(scenario);
+      setSavedScenarios(await saveMapScenario(scenario));
+      setScenarioNotice(`Imported and loaded ${scenario.name}`);
+    } catch (error) {
+      setScenarioNotice(error instanceof Error ? error.message : 'The map scenario file could not be imported.');
+    } finally {
+      setImportingScenario(false);
+    }
+  };
+
   const handleLoadScenario = (scenario: MapScenario) => {
     setLoadedScenario(scenario);
     setSelectedRegions(scenario.selectedRegions);
@@ -895,7 +973,20 @@ export function MapScreen() {
             )}
             <AppButton label="Save Map On This Device" tone="secondary" onPress={() => void handleSaveScenario()} />
             <AppButton label="Share This Map" tone="secondary" onPress={() => void handleShareScenario()} />
+            {!activeMatch ? (
+              <View style={styles.scenarioActions}>
+                <AppButton label={exportingScenario ? 'Exporting…' : 'Export Map File'} tone="secondary" disabled={importingScenario || exportingScenario} onPress={() => void handleExportScenario()} />
+                <AppButton label={importingScenario ? 'Importing…' : 'Import Map File'} tone="secondary" disabled={importingScenario || exportingScenario} onPress={() => void handleImportScenario()} />
+              </View>
+            ) : null}
             {!activeMatch ? <AppButton label="Start a Game With This Map" onPress={() => router.push('/create-match')} /> : null}
+          </Panel>
+        ) : null}
+
+        {!activeMatch && !loadedScenario ? (
+          <Panel title="Load a map scenario" subtitle="Import a saved JSON map file to preview its boundary and hiding-zone station." tone="soft">
+            <AppButton label={importingScenario ? 'Importing…' : 'Import Map File'} tone="secondary" disabled={importingScenario} onPress={() => void handleImportScenario()} />
+            {scenarioNotice ? <Text style={styles.helperCopy}>{scenarioNotice}</Text> : null}
           </Panel>
         ) : null}
 
@@ -992,12 +1083,14 @@ export function MapScreen() {
 
             <Panel
               title="Map Scenarios"
-              subtitle="Save a map for later or share its boundary and station-zone overlays with your crew."
+              subtitle="Keep a map on this device, exchange a scenario file, or send a quick link to your crew."
               tone="soft"
             >
               <View style={styles.scenarioActions}>
                 <AppButton label="Save Map" tone="secondary" onPress={() => void handleSaveScenario()} />
                 <AppButton label="Share Map" tone="secondary" onPress={() => void handleShareScenario()} />
+                <AppButton label={exportingScenario ? 'Exporting…' : 'Export Map File'} tone="secondary" disabled={exportingScenario || importingScenario} onPress={() => void handleExportScenario()} />
+                <AppButton label={importingScenario ? 'Importing…' : 'Import Map File'} tone="secondary" disabled={importingScenario || exportingScenario} onPress={() => void handleImportScenario()} />
               </View>
               {scenarioNotice ? <Text style={styles.helperCopy}>{scenarioNotice}</Text> : null}
               {savedScenarios.length ? (
@@ -1012,7 +1105,7 @@ export function MapScreen() {
                     >
                       <Text style={styles.stationChoiceName}>{scenario.name}</Text>
                       <Text style={styles.stationChoiceKind}>
-                        {scenario.selectedRegions.length} region{scenario.selectedRegions.length === 1 ? '' : 's'}
+                        {scenario.selectedRegions.length} included · {scenario.excludedRegions?.length ?? 0} excluded
                         {scenario.selectedStation ? ` · ${scenario.selectedStation.name} zone` : ''}
                       </Text>
                     </Pressable>

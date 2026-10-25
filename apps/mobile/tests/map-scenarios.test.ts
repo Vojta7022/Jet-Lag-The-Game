@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   decodeMapScenario,
+  decodeMapScenarioJson,
   encodeMapScenario,
+  encodeMapScenarioJson,
   type MapScenario
 } from '../src/features/map/map-scenarios.ts';
 import { seedPlayableRegions } from '../src/features/map/seed-regions.ts';
@@ -27,10 +29,13 @@ test('map scenarios preserve region geometry and selected station across a share
   };
 
   assert.deepEqual(decodeMapScenario(encodeMapScenario(scenario)), scenario);
+  assert.deepEqual(decodeMapScenarioJson(encodeMapScenarioJson(scenario)), scenario);
 });
 
 test('map scenario decoder rejects malformed and unsupported payloads', () => {
   assert.throws(() => decodeMapScenario('not-json'), /valid map scenario/i);
+  assert.throws(() => decodeMapScenarioJson('{"version":99}'), /unsupported/i);
+  assert.throws(() => decodeMapScenarioJson('{'), /valid map scenario/i);
   assert.throws(() => decodeMapScenario(encodeMapScenario({ version: 99 } as MapScenario)), /unsupported/i);
   const invalid = {
     version: 1,

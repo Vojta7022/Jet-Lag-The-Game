@@ -17,7 +17,7 @@ Cross-platform mobile app and rules engine for running a configurable transit-ba
 - Enforce question response deadlines; an overdue response pauses scored hiding time until answered and earns no hider card reward.
 - Resolve Curse of the Drained Brain in-app: the hider selects three exact question prompts from different categories, seekers see the locks, and the engine blocks only those prompts until hider rotation.
 - Resolve Curse of the Overflowing Chalice in-app: the hider can draw one extra card for each of their next three clue rewards, without increasing the number kept.
-- Build playable map boundaries by combining searchable administrative regions and subtracting fully contained regions; unsupported crossing cuts are rejected with guidance. The map also supports OpenStreetMap street context, transit-station hiding zones, saved local scenarios, and compressed share links; the web map supports drag and pinch zoom.
+- Build playable map boundaries by combining searchable administrative regions and subtracting fully contained regions; unsupported crossing cuts are rejected with guidance. Save scenarios locally, import/export versioned JSON files, or share compressed links. Scenarios preserve the boundary, excluded areas, selected station, and hiding radius; the web map supports drag and pinch zoom.
 
 ## User workflows
 

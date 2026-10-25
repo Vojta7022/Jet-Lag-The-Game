@@ -45,6 +45,66 @@ export function encodeMapScenario(scenario: MapScenario): string {
   return `z${btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')}`;
 }
 
+export function encodeMapScenarioJson(scenario: MapScenario): string {
+  return JSON.stringify(scenario, null, 2);
+}
+
+function validateMapScenario(parsedValue: unknown): MapScenario {
+  const parsed = parsedValue as Partial<MapScenario> | null;
+  if (!parsed || typeof parsed !== 'object') throw new Error('missing scenario fields');
+  if (parsed.version !== 1) throw new Error('unsupported version');
+  if (
+    typeof parsed.name !== 'string' ||
+    parsed.name.length > 100 ||
+    typeof parsed.savedAt !== 'string' ||
+    typeof parsed.query !== 'string' ||
+    parsed.query.length > 200 ||
+    !Array.isArray(parsed.selectedRegions) ||
+    parsed.selectedRegions.length === 0 ||
+    parsed.selectedRegions.length > 50 ||
+    !parsed.selectedRegions.every((region) =>
+      region && typeof region.regionId === 'string' && typeof region.displayName === 'string' && hasPlayableBoundary(region)
+    ) ||
+    (parsed.excludedRegions !== undefined && (
+      !Array.isArray(parsed.excludedRegions) ||
+      parsed.excludedRegions.length > 50 ||
+      !parsed.excludedRegions.every((region) =>
+        region && typeof region.regionId === 'string' && typeof region.displayName === 'string' && hasPlayableBoundary(region)
+      )
+    ))
+  ) {
+    throw new Error('missing scenario fields');
+  }
+  if (parsed.selectedStation && (
+    typeof parsed.selectedStation.stationId !== 'string' ||
+    typeof parsed.selectedStation.name !== 'string' ||
+    !Number.isFinite(parsed.selectedStation.latitude) || parsed.selectedStation.latitude < -90 || parsed.selectedStation.latitude > 90 ||
+    !Number.isFinite(parsed.selectedStation.longitude) || parsed.selectedStation.longitude < -180 || parsed.selectedStation.longitude > 180
+  )) {
+    throw new Error('invalid station');
+  }
+  if (parsed.hidingRadiusMeters !== undefined &&
+    (!Number.isFinite(parsed.hidingRadiusMeters) || parsed.hidingRadiusMeters <= 0 || parsed.hidingRadiusMeters > 100_000)) {
+    throw new Error('invalid hiding radius');
+  }
+  return parsed as MapScenario;
+}
+
+function scenarioError(error: unknown): Error {
+  if (error instanceof Error && error.message === 'unsupported version') {
+    return new Error('Unsupported map scenario version. Update the app to load this map.');
+  }
+  return new Error('This is not a valid map scenario.');
+}
+
+export function decodeMapScenarioJson(value: string): MapScenario {
+  try {
+    return validateMapScenario(JSON.parse(value) as unknown);
+  } catch (error) {
+    throw scenarioError(error);
+  }
+}
+
 export function decodeMapScenario(value: string): MapScenario {
   try {
     const compressedPayload = value.startsWith('z');
@@ -55,48 +115,10 @@ export function decodeMapScenario(value: string): MapScenario {
     const json = compressedPayload
       ? strFromU8(inflateSync(bytes))
       : decodeURIComponent(Array.from(binary, (character) => `%${character.charCodeAt(0).toString(16).padStart(2, '0')}`).join(''));
-    const parsed = JSON.parse(json) as Partial<MapScenario>;
-    if (parsed.version !== 1) throw new Error('unsupported version');
-    if (
-      typeof parsed.name !== 'string' ||
-      parsed.name.length > 100 ||
-      typeof parsed.savedAt !== 'string' ||
-      typeof parsed.query !== 'string' ||
-      parsed.query.length > 200 ||
-      !Array.isArray(parsed.selectedRegions) ||
-      parsed.selectedRegions.length === 0 ||
-      parsed.selectedRegions.length > 50 ||
-      !parsed.selectedRegions.every((region) =>
-        region && typeof region.regionId === 'string' && typeof region.displayName === 'string' && hasPlayableBoundary(region)
-      ) ||
-      (parsed.excludedRegions !== undefined && (
-        !Array.isArray(parsed.excludedRegions) ||
-        parsed.excludedRegions.length > 50 ||
-        !parsed.excludedRegions.every((region) =>
-          region && typeof region.regionId === 'string' && typeof region.displayName === 'string' && hasPlayableBoundary(region)
-        )
-      ))
-    ) {
-      throw new Error('missing scenario fields');
-    }
-    if (parsed.selectedStation && (
-      typeof parsed.selectedStation.stationId !== 'string' ||
-      typeof parsed.selectedStation.name !== 'string' ||
-      !Number.isFinite(parsed.selectedStation.latitude) || parsed.selectedStation.latitude < -90 || parsed.selectedStation.latitude > 90 ||
-      !Number.isFinite(parsed.selectedStation.longitude) || parsed.selectedStation.longitude < -180 || parsed.selectedStation.longitude > 180
-    )) {
-      throw new Error('invalid station');
-    }
-    if (parsed.hidingRadiusMeters !== undefined &&
-      (!Number.isFinite(parsed.hidingRadiusMeters) || parsed.hidingRadiusMeters <= 0 || parsed.hidingRadiusMeters > 100_000)) {
-      throw new Error('invalid hiding radius');
-    }
-    return parsed as MapScenario;
+    return decodeMapScenarioJson(json);
   } catch (error) {
-    if (error instanceof Error && error.message === 'unsupported version') {
-      throw new Error('Unsupported map scenario version. Update the app to load this map.');
-    }
-    throw new Error('This is not a valid map scenario.');
+    if (error instanceof Error && error.message.startsWith('Unsupported map scenario version.')) throw error;
+    throw scenarioError(error);
   }
 }
 
