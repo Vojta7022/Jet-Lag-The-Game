@@ -20,8 +20,8 @@ Captured 2026-10-24 from the product owner's clarification in the Jet Lag Hide +
 ## Current project state
 
 - The single-device referee mode and complete simulated round remain valuable fallback and regression paths. They are not sufficient evidence of the requested separate-phone online experience.
-- An authenticated `game-authority` Edge Function and atomic revision commit now provide the intended online command boundary. The follow-up security migration removes broad direct table access and scopes attachment paths, but it is not yet applied or tested against a live database. A cellular multi-phone round and complete role-privacy audit are still outstanding.
-- Proposed architecture and acceptance criteria are in [Online Player Game Design](../docs/superpowers/specs/2026-10-24-online-player-game-design.md), pending product-owner review.
+- An authenticated `game-authority` Edge Function and atomic revision commit now provide the intended online command boundary. The security migrations were applied in order to throwaway PostgreSQL 16 with Supabase Auth/Storage stubs; local RLS checks confirmed role-scoped reads/uploads and denied anon table access. Hosted Supabase deployment and testing against real Auth/Storage services remain open, along with a cellular multi-phone round.
+- The product owner approved the architecture and acceptance criteria in [Online Player Game Design](../docs/superpowers/specs/2026-10-24-online-player-game-design.md) on 2026-10-24.
 
 ## Sources
 

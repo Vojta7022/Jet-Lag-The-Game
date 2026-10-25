@@ -222,7 +222,8 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Revoke direct anon/authenticated access to match, event, snapshot, projection, content-reference, membership, and idempotency tables; preserve service-role access for the authority Edge Function.
 - [x] Scope private attachment paths by team or player identity and add membership/role-checked Storage policies; public-match attachments remain available to current members.
 - [x] Add regression checks for migration policy changes and protected object paths. Full suite passes 277 tests, mobile typecheck passes, and `git diff --check` is clean (2026-10-24).
-- [ ] Validate the migration on local Postgres/Supabase and perform live RLS adversarial checks; this checkout has no Supabase CLI or project configuration.
+- [x] Apply all migrations in order to a throwaway PostgreSQL 16 instance with minimal Supabase Auth/Storage stubs; anon table reads were denied, service-role reads passed, and attachment read/write checks allowed only the active member's public/team/player scopes (host admin retained referee access). (2026-10-25)
+- [ ] Apply against hosted Supabase and verify with real Auth/Storage services; this checkout has no Supabase project configuration or deploy credentials.
 
 ### Completed implementation slice: administrative-division Matching
 
