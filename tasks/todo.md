@@ -322,6 +322,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Verify standalone region search, include/exclude editing, scenario persistence and handoff through team assignment, the 462-test suite, single-device referee round, mobile typecheck, Expo web export, and `git diff --check` (2026-10-26). Hand-drawn masks are available before match creation too.
 - [x] Make public Nominatim region search submit-driven rather than autocomplete; keyboard and button submissions share the same request path, while editing a query makes stale results unavailable. Verified with the 462-test suite, mobile typecheck, and Expo web export (2026-10-26). Policy: https://operations.osmfoundation.org/policies/nominatim/.
 - [x] Restore a saved map draft's selected preview region by ID even when the explicit-submit search has not loaded result rows yet; ignore a late restore if the player has already selected another region. Focused regressions, full suite (465), mobile typecheck, single-device round, Expo web export, and `git diff --check` pass (2026-10-26).
+- [x] Identify native Nominatim traffic with the app User-Agent and verify the configured provider returns the live Prague administrative polygon rather than seed fallback. Focused request-header regression, live search, full suite (466), mobile typecheck, single-device referee round, Expo web export, and `git diff --check` pass (2026-10-26).
 
 ### Current rules slice: late question answers
 

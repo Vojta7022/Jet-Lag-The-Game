@@ -244,7 +244,10 @@ export function createNominatimRegionProvider(options: NominatimProviderOptions)
     timeoutMs: options.requestTimeoutMs ?? 12000,
     fetchFn: options.fetchFn,
     defaultHeaders: {
-      'Accept-Language': 'en'
+      'Accept-Language': 'en',
+      ...(!('document' in globalThis) ? {
+        'User-Agent': 'JetLagTheGame/0.1 (+https://github.com/Vojta7022/Jet-Lag-The-Game; region boundary lookup)'
+      } : {})
     }
   });
   const searchCache = new Map<string, { expiresAt: number; value: PlayableRegionCatalogEntry[] }>();

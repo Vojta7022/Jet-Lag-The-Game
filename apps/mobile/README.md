@@ -144,6 +144,7 @@ Current provider behavior:
 
 - the app first queries an OSM-compatible Nominatim search source for real place candidates and polygon boundaries
 - provider results are cached in memory, deduplicated while requests are in flight, and spaced out with a minimum delay between request starts
+- native requests identify the app in the User-Agent required by Nominatim; web requests rely on the browser-managed Referer
 - region queries are submitted explicitly with the Search button or keyboard action; typing alone does not send autocomplete requests
 - the map search UI shows source attribution and whether the live provider or bundled fallback is active
 - the HTTP request execution layer is isolated from the screen and provider mapping code so a backend or proxy can replace direct client traffic later without changing the map screen API

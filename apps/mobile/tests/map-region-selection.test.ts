@@ -891,6 +891,36 @@ test('nominatim provider maps real polygon search results and exact preview geom
   assert.equal(cachedResults[0]?.regionId, results[0]?.regionId);
 });
 
+test('native Nominatim requests identify the Jet Lag app in the User-Agent', async () => {
+  let requestUserAgent: string | null = null;
+  const provider = createNominatimRegionProvider({
+    baseUrl: 'https://nominatim.openstreetmap.org',
+    throttleMs: 0,
+    cacheTtlMs: 60_000,
+    fetchFn: async (_input, init) => {
+      requestUserAgent = new Headers(init?.headers).get('User-Agent');
+      return new Response(JSON.stringify([{
+        place_id: 1,
+        osm_type: 'relation',
+        osm_id: 438840,
+        class: 'boundary',
+        type: 'administrative',
+        display_name: 'Prague, Czechia',
+        address: { city: 'Prague', country: 'Czechia' },
+        geojson: {
+          type: 'Polygon',
+          coordinates: [[[14.2, 50.1], [14.7, 50.1], [14.7, 50.5], [14.2, 50.5], [14.2, 50.1]]]
+        }
+      }]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+  });
+
+  await provider.searchRegions('Prague');
+
+  assert.match(requestUserAgent ?? '', /^JetLagTheGame\//);
+  assert.match(requestUserAgent ?? '', /github\.com\/Vojta7022\/Jet-Lag-The-Game/);
+});
+
 test('nominatim provider preserves the address type needed to distinguish countries from subregions', async () => {
   const boundary: GeoJsonGeometryModel = {
     type: 'Polygon',
