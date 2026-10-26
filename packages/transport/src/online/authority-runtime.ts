@@ -64,6 +64,7 @@ export interface OnlineAuthorityRuntimeOptions {
   sessionBinder?: OnlineSessionBinder;
   questionFeatureDataProvider?: QuestionFeatureDataProvider;
   countryBoundaryDataProvider?: CountryBoundaryDataProvider;
+  clock?: () => Date;
 }
 
 function toMatchRecord(aggregate: MatchAggregate) {
@@ -97,6 +98,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
   private readonly countryBoundaryDataProvider?: CountryBoundaryDataProvider;
   private readonly sessionBinder: OnlineSessionBinder;
   private readonly contentPacksByIdAndVersion: Map<string, ContentPack>;
+  private readonly clock: () => Date;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
   private readonly joinCodesByMatchId = new Map<string, string>();
   private readonly subscriptionsByMatchId = new Map<string, Map<string, OnlineRuntimeSubscriptionRecord>>();
@@ -108,6 +110,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
     this.authorityRepository = options.authorityRepository;
     this.questionFeatureDataProvider = options.questionFeatureDataProvider;
     this.countryBoundaryDataProvider = options.countryBoundaryDataProvider;
+    this.clock = options.clock ?? (() => new Date());
     this.sessionBinder = options.sessionBinder ?? new DefaultOnlineSessionBinder();
     this.contentPacksByIdAndVersion = new Map(
       options.contentPacks.map((contentPack) => [`${contentPack.packId}@${contentPack.packVersion}`, contentPack])
@@ -132,7 +135,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
       sourceFingerprint: contentPack.sourceFingerprint,
       compatibilityModes: contentPack.compatibility.supportedModes,
       contentPack,
-      registeredAt: new Date().toISOString()
+      registeredAt: this.clock().toISOString()
     });
     this.contentPacksByIdAndVersion.set(key, contentPack);
   }
@@ -485,7 +488,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
 
   private async reconcileAggregate(
     matchId: string,
-    occurredAt = new Date().toISOString()
+    occurredAt = this.clock().toISOString()
   ): Promise<{ aggregate?: MatchAggregate; didChange: boolean }> {
     const aggregate = await this.loadAggregate(matchId);
     if (!aggregate) {
@@ -606,7 +609,7 @@ export class OnlineAuthorityRuntime implements AuthorityRuntime, OnlineTransport
         sourceFingerprint: contentPack.sourceFingerprint,
         compatibilityModes: contentPack.compatibility.supportedModes,
         contentPack,
-        registeredAt: new Date().toISOString()
+        registeredAt: this.clock().toISOString()
       });
     }
 

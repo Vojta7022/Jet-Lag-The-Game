@@ -764,23 +764,36 @@ test('online runtime serves redacted public projections while keeping host-admin
 });
 
 test('online runtime automatically ends an overdue hide phase once the hider location is locked', async () => {
-  const { contentPack, runtime } = createOnlineHarness();
-  const setup = await setupOnlineMatchToHidePhase(runtime, contentPack.packId, 'online-auto-hide-phase');
+  const { contentPack, repositories, realtime } = createOnlineHarness();
+  let now = new Date('2030-01-01T00:00:00.000Z');
+  const runtime = new OnlineAuthorityRuntime({
+    contentPacks: [contentPack],
+    repositories,
+    realtimeFanout: realtime,
+    clock: () => new Date(now)
+  });
+  const timestampBase = '2030-01-01T00:00:00.000Z';
+  const setup = await setupOnlineMatchToHidePhase(runtime, contentPack.packId, 'online-auto-hide-phase', 'small', timestampBase);
+  const lockRequest = makeOnlineCommandRequest(setup.hiderSession, setup.matchId, 11, {
+    type: 'lock_hider_location',
+    payload: {
+      latitude: 50.08,
+      longitude: 14.43,
+      accuracyMeters: 10
+    }
+  });
+  lockRequest.occurredAt = new Date(Date.parse(timestampBase) + 11_000).toISOString();
 
   const locked = await runtime.submitAuthenticatedCommand(
     setup.hiderSession,
-    makeOnlineCommandRequest(setup.hiderSession, setup.matchId, 11, {
-      type: 'lock_hider_location',
-      payload: {
-        latitude: 50.08,
-        longitude: 14.43,
-        accuracyMeters: 10
-      }
-    })
+    lockRequest
   );
 
   assert.equal(locked.accepted, true);
   assert.equal(locked.snapshot?.aggregate.lifecycleState, 'hide_phase');
+  const hideTimer = Object.values(locked.snapshot?.aggregate.timers ?? {}).find((timer) => timer.kind === 'hide');
+  assert.ok(hideTimer);
+  now = new Date(Date.parse(hideTimer.startedAt) + hideTimer.durationSeconds * 1000 + 1);
 
   const hostSnapshot = await runtime.requestAuthenticatedSnapshot(setup.hostSession, {
     matchId: setup.matchId,

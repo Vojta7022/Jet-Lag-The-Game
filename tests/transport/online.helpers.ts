@@ -105,11 +105,17 @@ export async function setupOnlineMatchToHidePhase(
   runtime: OnlineAuthorityRuntime,
   contentPackId: string,
   matchId = 'online-match-1',
-  initialScale: 'small' | 'medium' | 'large' = 'small'
+  initialScale: 'small' | 'medium' | 'large' = 'small',
+  timestampBase?: string
 ) {
   const hostSession = makeOnlineSession('auth-host-1', { defaultPlayerId: 'host-1' });
   const hiderSession = makeOnlineSession('auth-hider-1', { defaultPlayerId: 'hider-1' });
   const seekerSession = makeOnlineSession('auth-seeker-1', { defaultPlayerId: 'seeker-1' });
+  const request = (session: OnlineAuthSession, step: number, command: OnlineCommandRequest['command']) => {
+    const value = makeOnlineCommandRequest(session, matchId, step, command);
+    if (timestampBase) value.occurredAt = new Date(Date.parse(timestampBase) + step * 1000).toISOString();
+    return value;
+  };
 
   const originalRandom = Math.random;
   Math.random = () => 0.999999;
@@ -117,7 +123,7 @@ export async function setupOnlineMatchToHidePhase(
     await submitOnlineSequence(runtime, [
     {
       session: hostSession,
-      request: makeOnlineCommandRequest(hostSession, matchId, 1, {
+      request: request(hostSession, 1, {
         type: 'create_match',
         payload: {
           mode: 'online',
@@ -130,7 +136,7 @@ export async function setupOnlineMatchToHidePhase(
     },
     {
       session: hiderSession,
-      request: makeOnlineCommandRequest(hiderSession, matchId, 2, {
+      request: request(hiderSession, 2, {
         type: 'join_match',
         payload: {
           playerId: 'hider-1',
@@ -140,7 +146,7 @@ export async function setupOnlineMatchToHidePhase(
     },
     {
       session: seekerSession,
-      request: makeOnlineCommandRequest(seekerSession, matchId, 3, {
+      request: request(seekerSession, 3, {
         type: 'join_match',
         payload: {
           playerId: 'seeker-1',
@@ -150,7 +156,7 @@ export async function setupOnlineMatchToHidePhase(
     },
     {
       session: hostSession,
-      request: makeOnlineCommandRequest(hostSession, matchId, 4, {
+      request: request(hostSession, 4, {
         type: 'assign_role',
         payload: {
           targetPlayerId: 'hider-1',
@@ -161,7 +167,7 @@ export async function setupOnlineMatchToHidePhase(
     },
     {
       session: hostSession,
-      request: makeOnlineCommandRequest(hostSession, matchId, 5, {
+      request: request(hostSession, 5, {
         type: 'assign_role',
         payload: {
           targetPlayerId: 'seeker-1',
@@ -172,14 +178,14 @@ export async function setupOnlineMatchToHidePhase(
     },
     {
       session: hostSession,
-      request: makeOnlineCommandRequest(hostSession, matchId, 6, {
+      request: request(hostSession, 6, {
         type: 'confirm_roles',
         payload: {}
       })
     },
     {
       session: hostSession,
-      request: makeOnlineCommandRequest(hostSession, matchId, 7, {
+      request: request(hostSession, 7, {
         type: 'set_ruleset',
         payload: {
           rulesetId: 'test-ruleset'
@@ -188,14 +194,14 @@ export async function setupOnlineMatchToHidePhase(
     },
     {
       session: hostSession,
-      request: makeOnlineCommandRequest(hostSession, matchId, 8, {
+      request: request(hostSession, 8, {
         type: 'confirm_rules',
         payload: {}
       })
     },
     {
       session: hostSession,
-      request: makeOnlineCommandRequest(hostSession, matchId, 9, {
+      request: request(hostSession, 9, {
         type: 'create_map_region',
         payload: {
           regionId: 'region-1',
@@ -209,7 +215,7 @@ export async function setupOnlineMatchToHidePhase(
     },
     {
       session: hostSession,
-      request: makeOnlineCommandRequest(hostSession, matchId, 10, {
+      request: request(hostSession, 10, {
         type: 'start_match',
         payload: {}
       })
