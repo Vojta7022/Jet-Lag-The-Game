@@ -12,7 +12,7 @@
 - [x] Make referee mode a first-class Home-screen start path and clarify its setup instructions.
 - [x] Add durable event/snapshot storage and automatic referee-session reattachment after app restart.
 - [x] Connect protected reveal handoffs to the mobile UI and persist their state across restart.
-- [x] Verify a complete referee round through the real single-device runtime with rule-timed hide, endgame, found confirmation, and scoring.
+- [x] Verify a complete referee match through the real single-device runtime, including rule-timed hide, endgame, found confirmation, scoring, role rotation, and the full hider rotation.
 - [ ] Run a physical-device/GPS walkthrough. No iOS simulator (`simctl`/Xcode) or Android emulator/ADB is installed, and no phone is connected; the browser and real-runtime integration paths are verified instead.
 
 ## UI: make the player experience feel like a game

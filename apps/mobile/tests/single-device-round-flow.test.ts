@@ -149,5 +149,63 @@ test('single-device referee can complete a rule-based round through found and sc
   assert.equal(roundResult.survivalSeconds, (Date.parse(roundResult.foundAt) - Date.parse(matchStartedAt)) / 1000);
   assert.ok(roundResult.survivalSeconds >= hideTimer.durationSeconds, 'the hider cannot be found before the hide timer expires');
   assert.equal(roundResult.finalHidingTimeSeconds, roundResult.survivalSeconds + (roundResult.timeBonusSeconds ?? 0));
+
+  const rotationOrder = found.projectionDelivery.projection.hiderRotationOrder;
+  assert.deepEqual(rotationOrder, [hider.playerId, seeker.playerId]);
+  const secondRound = await orchestrator.submitCommands(created.connection, host, [{
+    type: 'start_next_round',
+    payload: { nextHiderPlayerId: rotationOrder[1]! }
+  }]);
+  assert.equal(secondRound.projectionDelivery.projection.lifecycleState, 'hide_phase');
+  assert.equal(secondRound.projectionDelivery.projection.visibleRoundResults?.length, 1);
+  assert.deepEqual(secondRound.projectionDelivery.projection.roundStartLocation, { latitude: point[1], longitude: point[0] });
+  assert.equal(secondRound.projectionDelivery.projection.players.find((player) => player.playerId === seeker.playerId)?.role, 'hider');
+  assert.equal(secondRound.projectionDelivery.projection.players.find((player) => player.playerId === hider.playerId)?.role, 'seeker');
+  assert.ok(secondRound.projectionDelivery.projection.visibleCards.every((card) => card.zone === 'draw_pile'));
+
+  const secondHider = secondRound.projectionDelivery.projection.players.find((player) => player.role === 'hider');
+  const secondSeeker = secondRound.projectionDelivery.projection.players.find((player) => player.role === 'seeker');
+  assert.ok(secondHider && secondSeeker);
+  await orchestrator.submitCommands(created.connection,
+    { actorId: secondHider.playerId, playerId: secondHider.playerId, role: 'hider' },
+    [
+      { type: 'set_hiding_zone', payload: { stationId: 'node/round-two', stationName: 'Found Station', latitude: point[1], longitude: point[0] } },
+      { type: 'lock_hider_location', payload: { latitude: point[1], longitude: point[0], accuracyMeters: 5 } }
+    ]
+  );
+  const secondHideTimer = secondRound.projectionDelivery.projection.visibleTimers.find((timer) => timer.kind === 'hide');
+  assert.ok(secondHideTimer);
+  now = new Date(Date.parse(secondHideTimer.startedAt) + secondHideTimer.durationSeconds * 1000);
+  const secondSeek = await orchestrator.refresh(created.connection);
+  assert.equal(secondSeek.projectionDelivery.projection.lifecycleState, 'seek_phase');
+
+  await orchestrator.submitCommands(created.connection,
+    { actorId: secondSeeker.playerId, playerId: secondSeeker.playerId, role: 'seeker' },
+    [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], accuracyMeters: 5, source: 'device', onTransit: true } }]
+  );
+  await orchestrator.submitCommands(created.connection,
+    { actorId: secondHider.playerId, playerId: secondHider.playerId, role: 'hider' },
+    [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], accuracyMeters: 5, source: 'device' } }]
+  );
+  await orchestrator.submitCommands(created.connection,
+    { actorId: secondHider.playerId, playerId: secondHider.playerId, role: 'hider' },
+    [{ type: 'set_final_hiding_spot', payload: { latitude: point[1], longitude: point[0], publiclyAccessible: true, within3mOfMarkedPath: true } }]
+  );
+  const secondEndgame = await orchestrator.submitCommands(created.connection,
+    { actorId: secondSeeker.playerId, playerId: secondSeeker.playerId, role: 'seeker' },
+    [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], source: 'manual', onTransit: false } }]
+  );
+  assert.equal(secondEndgame.projectionDelivery.projection.lifecycleState, 'endgame');
+  const finalMatch = await orchestrator.submitCommands(created.connection,
+    { actorId: secondSeeker.playerId, playerId: secondSeeker.playerId, role: 'seeker' },
+    [{ type: 'confirm_hider_found', payload: { latitude: point[1], longitude: point[0], visuallyIdentified: true } }]
+  );
+  assert.equal(finalMatch.projectionDelivery.projection.lifecycleState, 'game_complete');
+  assert.equal(finalMatch.projectionDelivery.projection.visibleRoundResults?.length, 2);
+  assert.deepEqual(finalMatch.projectionDelivery.projection.visibleRoundResults?.map((result) => result.hiderPlayerId), rotationOrder);
+  await assert.rejects(
+    () => orchestrator.submitCommands(created.connection, host, [{ type: 'start_next_round', payload: { nextHiderPlayerId: hider.playerId } }]),
+    /Every player in the hider rotation has completed their round/
+  );
   await orchestrator.disconnect(created.connection);
 });
