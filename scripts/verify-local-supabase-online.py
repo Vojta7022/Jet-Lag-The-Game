@@ -7,13 +7,16 @@ import hashlib
 import json
 import shlex
 import subprocess
+import time
 import urllib.error
 import urllib.request
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SMOKE_HIDE_PHASE_SECONDS = 8
 
 
 class SmokeFailure(RuntimeError):
@@ -21,11 +24,22 @@ class SmokeFailure(RuntimeError):
 
 
 def create_smoke_pack(pack: dict[str, object]) -> dict[str, object]:
+    smoke_pack = json.loads(json.dumps(pack))
+    ruleset = next(
+        (item for item in smoke_pack.get("rulesets", []) if item.get("rulesetId") == "jet-lag-home-game-base"),
+        None,
+    )
+    phase_policies = ruleset.get("phasePolicies") if isinstance(ruleset, dict) else None
+    hide_durations = phase_policies.get("hidePhaseDurationSecondsByScale") if isinstance(phase_policies, dict) else None
+    if not isinstance(hide_durations, dict) or "small" not in hide_durations:
+        raise SmokeFailure("The standard smoke ruleset does not define a small-game hide timer.")
+    hide_durations["small"] = SMOKE_HIDE_PHASE_SECONDS
+
     fingerprint = hashlib.sha256(
-        json.dumps(pack, sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(smoke_pack, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()[:16]
     return {
-        **pack,
+        **smoke_pack,
         "packId": f"jet-lag-online-smoke-{fingerprint}",
         "packVersion": "0.2.0",
         "title": "Online Distribution Smoke Pack",
@@ -266,6 +280,9 @@ def main() -> None:
     current_seeker = next((player for player in host_projection.get("players", []) if player.get("role") == "seeker"), None)
     if not current_hider or not current_seeker:
         raise SmokeFailure("The started round does not have an assigned hider and seeker.")
+    hide_timer = next((timer for timer in host_projection.get("visibleTimers", []) if timer.get("kind") == "hide"), None)
+    if not hide_timer or hide_timer.get("durationSeconds") != SMOKE_HIDE_PHASE_SECONDS:
+        raise SmokeFailure("The online authority did not start the accelerated smoke hide timer.")
     player_sessions = {
         hider_player_id: hider_token,
         seeker_player_id: seeker_token,
@@ -286,7 +303,18 @@ def main() -> None:
     })
     command(hider_token, "update_location", {**hider_location, "source": "device"})
     command(seeker_token, "update_location", {**seeker_location, "source": "device"})
-    command(host_token, "end_hide_phase", {})
+    timer_start = datetime.fromisoformat(hide_timer["startedAt"].replace("Z", "+00:00")).timestamp()
+    timer_deadline = timer_start + hide_timer["durationSeconds"]
+    time.sleep(max(0, timer_deadline - time.time()) + 0.25)
+    timed_state = require_status("Timer-expired host snapshot", {200}, supabase.request(
+        "/functions/v1/game-authority",
+        token=host_token,
+        payload={"operation": "snapshot", "matchId": match_id, "requestedScope": "host_admin"},
+    ))
+    timed_projection = timed_state.get("sync", {}).get("projectionDelivery", {}).get("projection")
+    if not isinstance(timed_projection, dict) or timed_projection.get("lifecycleState") != "seek_phase":
+        raise SmokeFailure("Refreshing the online match after hide-timer expiry did not advance into seek phase.")
+    print("PASS: the server timer advances the online match into seek phase after the hider is ready")
     question_id = "question:smoke-radar"
     command(seeker_token, "begin_question_prompt", {})
     command(seeker_token, "ask_question", {
