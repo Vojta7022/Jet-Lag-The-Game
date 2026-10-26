@@ -931,6 +931,7 @@ export class MobileRuntimeOrchestrator {
     const runtime = new SingleDeviceRefereeRuntime({
       contentPacks: this.contentPacks,
       persistence: this.singleDevicePersistence,
+      now: this.clock,
       countryBoundaryDataProvider: new OpenStreetMapCountryBoundaryProvider(),
       questionFeatureDataProvider: new CompositeQuestionFeatureDataProvider([
         new OpenMeteoElevationFeatureProvider(),

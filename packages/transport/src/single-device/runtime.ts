@@ -57,6 +57,7 @@ export class SingleDeviceRefereeRuntime implements AuthorityRuntime, ProtectedRe
       mode: 'single_device_referee',
       contentPacks: options.contentPacks,
       persistence,
+      now: options.now,
       questionFeatureDataProvider: options.questionFeatureDataProvider,
       countryBoundaryDataProvider: options.countryBoundaryDataProvider
     });

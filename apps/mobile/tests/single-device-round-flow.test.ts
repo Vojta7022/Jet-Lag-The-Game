@@ -22,11 +22,12 @@ function loadContentPack(): ContentPack {
 
 test('single-device referee can complete a rule-based round through found and score', async () => {
   const contentPack = loadContentPack();
+  const persistence = new InMemoryRuntimePersistence();
   let now = new Date('2026-01-01T00:00:00.000Z');
-  const orchestrator = new MobileRuntimeOrchestrator({
+  let orchestrator = new MobileRuntimeOrchestrator({
     contentPack,
     environment: mobileAppEnvironment,
-    singleDevicePersistence: new InMemoryRuntimePersistence(),
+    singleDevicePersistence: persistence,
     clock: () => new Date(now)
   });
   const hostProfile = { displayName: 'Referee', playerId: 'host-round-1' };
@@ -35,10 +36,11 @@ test('single-device referee can complete a rule-based round through found and sc
     matchId: 'single-device-full-round',
     initialScale: 'small'
   });
+  let activeConnection = created.connection;
   const host = { actorId: hostProfile.playerId, playerId: hostProfile.playerId, role: 'host' as const };
 
   const mapSetup = await orchestrator.submitCommands(
-    created.connection,
+    activeConnection,
     host,
     [
       ...buildMapSetupBootstrapCommands(created.initialSync.projectionDelivery.projection),
@@ -57,13 +59,13 @@ test('single-device referee can complete a rule-based round through found and sc
   );
   assert.equal(mapSetup.projectionDelivery.projection.lifecycleState, 'map_setup');
 
-  const started = await orchestrator.submitCommands(created.connection, host, [{ type: 'start_match', payload: {} }]);
+  const started = await orchestrator.submitCommands(activeConnection, host, [{ type: 'start_match', payload: {} }]);
   const hider = started.projectionDelivery.projection.players.find((player) => player.role === 'hider');
   const seeker = started.projectionDelivery.projection.players.find((player) => player.role === 'seeker');
   const point = representativePointFromGeometry(started.projectionDelivery.projection.visibleMap?.playableBoundary.geometry);
   assert.ok(hider && seeker && point);
 
-  const hiding = await orchestrator.submitCommands(created.connection,
+  const hiding = await orchestrator.submitCommands(activeConnection,
     { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
     [
       { type: 'set_hiding_zone', payload: { stationId: 'node/round-start', stationName: 'Central Station', latitude: point[1], longitude: point[0] } },
@@ -72,24 +74,38 @@ test('single-device referee can complete a rule-based round through found and sc
   );
   assert.ok(hiding.projectionDelivery.projection.hiddenState?.hiderLocation);
 
+  await orchestrator.disconnect(activeConnection);
+  orchestrator = new MobileRuntimeOrchestrator({
+    contentPack,
+    environment: mobileAppEnvironment,
+    singleDevicePersistence: persistence,
+    clock: () => new Date(now)
+  });
+  const resumed = await orchestrator.resumeSingleDeviceMatch('single-device-full-round', hostProfile);
+  assert.ok(resumed, 'the referee can reattach after the app/runtime restarts');
+  activeConnection = resumed.connection;
+  const recoveredHide = await orchestrator.refresh(activeConnection);
+  assert.equal(recoveredHide.projectionDelivery.projection.lifecycleState, 'hide_phase');
+  assert.ok(recoveredHide.projectionDelivery.projection.hiddenState?.hiderLocation);
+
   const hideTimer = started.projectionDelivery.projection.visibleTimers.find((timer) => timer.kind === 'hide');
   assert.ok(hideTimer);
   now = new Date(Date.parse(hideTimer.startedAt) + hideTimer.durationSeconds * 1000);
-  const seekPhase = await orchestrator.refresh(created.connection);
+  const seekPhase = await orchestrator.refresh(activeConnection);
   assert.equal(seekPhase.projectionDelivery.projection.lifecycleState, 'seek_phase');
 
-  await orchestrator.submitCommands(created.connection,
+  await orchestrator.submitCommands(activeConnection,
     { actorId: seeker.playerId, playerId: seeker.playerId, role: 'seeker' },
     [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], accuracyMeters: 5, source: 'device', onTransit: true } }]
   );
-  await orchestrator.submitCommands(created.connection,
+  await orchestrator.submitCommands(activeConnection,
     { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
     [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], accuracyMeters: 5, source: 'device' } }]
   );
   const radar = contentPack.questionTemplates.find((template) => template.templateId === 'radar-402');
   assert.ok(radar, 'the small-scale Investigation Book includes the 500 m Radar question');
 
-  const asked = await orchestrator.submitCommands(created.connection,
+  const asked = await orchestrator.submitCommands(activeConnection,
     { actorId: seeker.playerId, playerId: seeker.playerId, role: 'seeker' },
     [
       { type: 'begin_question_prompt', payload: {} },
@@ -105,14 +121,14 @@ test('single-device referee can complete a rule-based round through found and sc
   assert.equal(resolved.projectionDelivery.projection.visibleMap?.history.length, 1);
   assert.equal(resolved.projectionDelivery.projection.visibleConstraints[0]?.sourceQuestionInstanceId, 'question:round-radar');
 
-  const rewardDealt = await orchestrator.submitCommands(created.connection,
+  const rewardDealt = await orchestrator.submitCommands(activeConnection,
     { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
     [{ type: 'deal_question_reward', payload: { questionInstanceId: 'question:round-radar' } }]
   );
   const rewardSet = rewardDealt.projectionDelivery.projection.pendingQuestionReward?.sets[0];
   assert.ok(rewardSet);
   assert.equal(rewardSet.cardInstanceIds.length, 2, 'Radar pays Draw 2');
-  const rewardChosen = await orchestrator.submitCommands(created.connection,
+  const rewardChosen = await orchestrator.submitCommands(activeConnection,
     { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
     [{ type: 'choose_question_reward', payload: {
       questionInstanceId: 'question:round-radar',
@@ -123,19 +139,19 @@ test('single-device referee can complete a rule-based round through found and sc
   assert.equal(rewardChosen.projectionDelivery.projection.visibleCards.filter((card) => card.zone === 'hand').length, 1);
   assert.equal(rewardChosen.projectionDelivery.projection.visibleCards.filter((card) => card.zone === 'reward_selection').length, 0);
 
-  await orchestrator.submitCommands(created.connection,
+  await orchestrator.submitCommands(activeConnection,
     { actorId: hider.playerId, playerId: hider.playerId, role: 'hider' },
     [{ type: 'set_final_hiding_spot', payload: { latitude: point[1], longitude: point[0], publiclyAccessible: true, within3mOfMarkedPath: true } }]
   );
 
-  const endgame = await orchestrator.submitCommands(created.connection,
+  const endgame = await orchestrator.submitCommands(activeConnection,
     { actorId: seeker.playerId, playerId: seeker.playerId, role: 'seeker' },
     [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], source: 'manual', onTransit: false } }]
   );
   assert.equal(endgame.projectionDelivery.projection.lifecycleState, 'endgame');
   assert.ok(endgame.projectionDelivery.projection.hiddenState?.finalHidingSpot);
 
-  const found = await orchestrator.submitCommands(created.connection,
+  const found = await orchestrator.submitCommands(activeConnection,
     { actorId: seeker.playerId, playerId: seeker.playerId, role: 'seeker' },
     [{ type: 'confirm_hider_found', payload: { latitude: point[1], longitude: point[0], visuallyIdentified: true } }]
   );
@@ -152,7 +168,7 @@ test('single-device referee can complete a rule-based round through found and sc
 
   const rotationOrder = found.projectionDelivery.projection.hiderRotationOrder;
   assert.deepEqual(rotationOrder, [hider.playerId, seeker.playerId]);
-  const secondRound = await orchestrator.submitCommands(created.connection, host, [{
+  const secondRound = await orchestrator.submitCommands(activeConnection, host, [{
     type: 'start_next_round',
     payload: { nextHiderPlayerId: rotationOrder[1]! }
   }]);
@@ -166,7 +182,7 @@ test('single-device referee can complete a rule-based round through found and sc
   const secondHider = secondRound.projectionDelivery.projection.players.find((player) => player.role === 'hider');
   const secondSeeker = secondRound.projectionDelivery.projection.players.find((player) => player.role === 'seeker');
   assert.ok(secondHider && secondSeeker);
-  await orchestrator.submitCommands(created.connection,
+  await orchestrator.submitCommands(activeConnection,
     { actorId: secondHider.playerId, playerId: secondHider.playerId, role: 'hider' },
     [
       { type: 'set_hiding_zone', payload: { stationId: 'node/round-two', stationName: 'Found Station', latitude: point[1], longitude: point[0] } },
@@ -176,27 +192,27 @@ test('single-device referee can complete a rule-based round through found and sc
   const secondHideTimer = secondRound.projectionDelivery.projection.visibleTimers.find((timer) => timer.kind === 'hide');
   assert.ok(secondHideTimer);
   now = new Date(Date.parse(secondHideTimer.startedAt) + secondHideTimer.durationSeconds * 1000);
-  const secondSeek = await orchestrator.refresh(created.connection);
+  const secondSeek = await orchestrator.refresh(activeConnection);
   assert.equal(secondSeek.projectionDelivery.projection.lifecycleState, 'seek_phase');
 
-  await orchestrator.submitCommands(created.connection,
+  await orchestrator.submitCommands(activeConnection,
     { actorId: secondSeeker.playerId, playerId: secondSeeker.playerId, role: 'seeker' },
     [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], accuracyMeters: 5, source: 'device', onTransit: true } }]
   );
-  await orchestrator.submitCommands(created.connection,
+  await orchestrator.submitCommands(activeConnection,
     { actorId: secondHider.playerId, playerId: secondHider.playerId, role: 'hider' },
     [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], accuracyMeters: 5, source: 'device' } }]
   );
-  await orchestrator.submitCommands(created.connection,
+  await orchestrator.submitCommands(activeConnection,
     { actorId: secondHider.playerId, playerId: secondHider.playerId, role: 'hider' },
     [{ type: 'set_final_hiding_spot', payload: { latitude: point[1], longitude: point[0], publiclyAccessible: true, within3mOfMarkedPath: true } }]
   );
-  const secondEndgame = await orchestrator.submitCommands(created.connection,
+  const secondEndgame = await orchestrator.submitCommands(activeConnection,
     { actorId: secondSeeker.playerId, playerId: secondSeeker.playerId, role: 'seeker' },
     [{ type: 'update_location', payload: { latitude: point[1], longitude: point[0], source: 'manual', onTransit: false } }]
   );
   assert.equal(secondEndgame.projectionDelivery.projection.lifecycleState, 'endgame');
-  const finalMatch = await orchestrator.submitCommands(created.connection,
+  const finalMatch = await orchestrator.submitCommands(activeConnection,
     { actorId: secondSeeker.playerId, playerId: secondSeeker.playerId, role: 'seeker' },
     [{ type: 'confirm_hider_found', payload: { latitude: point[1], longitude: point[0], visuallyIdentified: true } }]
   );
@@ -204,8 +220,8 @@ test('single-device referee can complete a rule-based round through found and sc
   assert.equal(finalMatch.projectionDelivery.projection.visibleRoundResults?.length, 2);
   assert.deepEqual(finalMatch.projectionDelivery.projection.visibleRoundResults?.map((result) => result.hiderPlayerId), rotationOrder);
   await assert.rejects(
-    () => orchestrator.submitCommands(created.connection, host, [{ type: 'start_next_round', payload: { nextHiderPlayerId: hider.playerId } }]),
+    () => orchestrator.submitCommands(activeConnection, host, [{ type: 'start_next_round', payload: { nextHiderPlayerId: hider.playerId } }]),
     /Every player in the hider rotation has completed their round/
   );
-  await orchestrator.disconnect(created.connection);
+  await orchestrator.disconnect(activeConnection);
 });

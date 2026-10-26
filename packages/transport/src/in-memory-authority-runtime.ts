@@ -40,6 +40,7 @@ export interface InMemoryAuthorityRuntimeOptions {
   mode: AuthorityRuntimeMode;
   contentPacks: ContentPack[];
   persistence: LocalRuntimePersistence;
+  now?: () => Date;
   gateway?: CommandGateway;
   questionFeatureDataProvider?: QuestionFeatureDataProvider;
   countryBoundaryDataProvider?: CountryBoundaryDataProvider;
@@ -51,6 +52,7 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
 
   private readonly contentPacksByIdAndVersion: Map<string, ContentPack>;
   private readonly persistence: LocalRuntimePersistence;
+  private readonly now: () => Date;
   private readonly questionFeatureDataProvider?: QuestionFeatureDataProvider;
   private readonly countryBoundaryDataProvider?: CountryBoundaryDataProvider;
   private readonly aggregateCache = new Map<string, MatchAggregate>();
@@ -60,6 +62,7 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
     this.mode = options.mode;
     this.gateway = options.gateway ?? new EngineCommandGateway();
     this.persistence = options.persistence;
+    this.now = options.now ?? (() => new Date());
     this.questionFeatureDataProvider = options.questionFeatureDataProvider;
     this.countryBoundaryDataProvider = options.countryBoundaryDataProvider;
     this.contentPacksByIdAndVersion = new Map(
@@ -260,7 +263,7 @@ export class InMemoryAuthorityRuntime implements AuthorityRuntime {
 
   private async reconcileAggregate(
     matchId: string,
-    occurredAt = new Date().toISOString()
+    occurredAt = this.now().toISOString()
   ): Promise<{ aggregate?: MatchAggregate; didChange: boolean }> {
     const aggregate = await this.loadAggregate(matchId);
     if (!aggregate) {
