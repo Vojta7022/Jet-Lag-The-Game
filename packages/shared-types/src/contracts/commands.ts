@@ -185,6 +185,7 @@ export interface CreateMapRegionCommand {
   type: 'create_map_region';
   payload: {
     regionId: string;
+    mapPresetId?: string;
     displayName?: string;
     regionKind?: PlayableRegionKind;
     featureDatasetRefs?: string[];

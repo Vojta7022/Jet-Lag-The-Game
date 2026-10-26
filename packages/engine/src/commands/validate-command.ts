@@ -2,6 +2,7 @@ import type {
   CardDefinition,
   CardInstanceModel,
   CommandEnvelope,
+  CreateMapRegionCommand,
   CommandValidationError,
   ContentPack,
   DeckDefinition,
@@ -33,6 +34,7 @@ import {
   getQuestionCategory,
   getQuestionTemplate,
   getRuleset,
+  getMapPreset,
   getHidingZoneRadiusMeters
 } from '../helpers/content-pack.ts';
 import { validateStateForCommand } from '../state-machine/guards.ts';
@@ -634,6 +636,19 @@ export function validateCommandEnvelope(
       return [];
     }
     case 'create_map_region': {
+      const mapPayload = (envelope.command as CreateMapRegionCommand).payload;
+      if (mapPayload.mapPresetId && !contentPack.mapPresets.some((preset) => preset.mapPresetId === mapPayload.mapPresetId)) {
+        return [error(envelope.command.type, 'MAP_PRESET_NOT_FOUND', 'The selected map preset is not present in this content pack.')];
+      }
+      const mapPreset = getMapPreset(contentPack, mapPayload.mapPresetId);
+      if (!mapPreset) {
+        return [error(envelope.command.type, 'MAP_PRESET_REQUIRED', 'Choose a map preset from this content pack before applying a playable area.')];
+      }
+      const allowedRegionKinds = mapPreset.geometry.allowedRegionKinds;
+      const regionKind = mapPayload.regionKind ?? 'custom';
+      if (Array.isArray(allowedRegionKinds) && !allowedRegionKinds.includes(regionKind)) {
+        return [error(envelope.command.type, 'MAP_PRESET_REGION_KIND_NOT_ALLOWED', 'This map preset does not allow the selected playable region type.')];
+      }
       if (!isPolygonBoundaryGeometry(envelope.command.payload.geometry)) {
         return [
           error(

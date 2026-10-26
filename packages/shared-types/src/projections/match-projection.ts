@@ -185,6 +185,7 @@ export interface VisibleSpatialArtifactProjection {
 
 export interface VisibleMapProjection {
   regionId: string;
+  mapPresetId?: string;
   displayName: string;
   regionKind: PlayableRegionKind;
   configuredAt: string;

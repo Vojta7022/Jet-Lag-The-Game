@@ -85,6 +85,7 @@ import { buildLiveLocationStatusModel } from '../features/location/location-stat
 function createMapRegionCommand(
   selectedRegion: PlayableRegionCatalogEntry,
   mapSetup: {
+    mapPresetId: string;
     customOverlays: MapScenarioCustomOverlay[];
     stationSource: 'osm' | 'custom' | 'both';
     customStations: MapScenarioCustomStation[];
@@ -102,6 +103,15 @@ function createMapRegionCommand(
       ...mapSetup
     }
   };
+}
+
+function mapPresetAllowsRegionKind(
+  preset: { geometry: Record<string, unknown> } | undefined,
+  regionKind: PlayableRegionCatalogEntry['regionKind'] | undefined
+): boolean {
+  if (!preset || !regionKind) return false;
+  const allowed = preset.geometry.allowedRegionKinds;
+  return !Array.isArray(allowed) || allowed.includes(regionKind);
 }
 
 function sameSelection(left: PlayableRegionCatalogEntry[], right: PlayableRegionCatalogEntry[]) {
@@ -169,6 +179,7 @@ export function MapScreen() {
   const [freshnessNow, setFreshnessNow] = useState(() => Date.now());
   const activeMatch = state.activeMatch;
   const mapSetupDraft = activeMatch ? state.uiState.mapSetupDrafts[activeMatch.matchId] : undefined;
+  const [selectedMapPresetId, setSelectedMapPresetId] = useState(mapSetupDraft?.selectedMapPresetId);
   const [selectedRegions, setSelectedRegions] = useState<PlayableRegionCatalogEntry[]>(
     () => mapSetupDraft?.selectedRegions ?? []
   );
@@ -202,6 +213,10 @@ export function MapScreen() {
   });
   const projection = activeMatch?.projection;
   const contentPack = getContentPackByReference(projection?.contentPackId, projection?.contentPackVersion);
+  const mapPresets = contentPack.mapPresets;
+  const resolvedMapPresetId = selectedMapPresetId ?? projection?.visibleMap?.mapPresetId ??
+    mapSetupDraft?.selectedMapPresetId ?? (mapPresets.length === 1 ? mapPresets[0]?.mapPresetId : undefined);
+  const selectedMapPreset = mapPresets.find((preset) => preset.mapPresetId === resolvedMapPresetId);
   const timingModel = useMatchTimingModel(projection, activeMatch?.receivedAt);
   const viewerRole = resolveCurrentRole(activeMatch?.playerRole, activeMatch?.recipient.scope);
   const selectedScale = projection?.selectedScale ?? activeMatch?.selectedScale;
@@ -423,13 +438,15 @@ export function MapScreen() {
   const canApplySelectedRegion =
     isHostView &&
     projection?.lifecycleState === 'map_setup' &&
-    Boolean(compositePreviewRegion ?? appliedRegion);
+    Boolean((compositePreviewRegion ?? appliedRegion) && selectedMapPreset &&
+      mapPresetAllowsRegionKind(selectedMapPreset, (compositePreviewRegion ?? appliedRegion)?.regionKind));
   const mapHasBeenApplied = Boolean(projection?.visibleMap);
   const bridgeTrollInPack = Boolean(contentPack?.cards.some((card) =>
     card.effects.some((effect) => effect.effectType === 'bridge_troll_challenge')
   ));
   const draftDiffersFromApplied = Boolean(projection?.visibleMap && (
     (compositePreviewRegion && compositePreviewRegion.regionId !== projection.visibleMap.regionId) ||
+    resolvedMapPresetId !== projection.visibleMap.mapPresetId ||
     JSON.stringify(customOverlays) !== JSON.stringify(projection.visibleMap.customOverlays ?? []) ||
     stationSource !== (projection.visibleMap.stationSource ?? 'osm') ||
     JSON.stringify(customStations) !== JSON.stringify(projection.visibleMap.customStations ?? []) ||
@@ -603,7 +620,13 @@ export function MapScreen() {
     const persistedExclusions = mapSetupDraft?.excludedRegions ?? [];
     setSelectedRegions((current) => (sameSelection(current, persistedSelection) ? current : persistedSelection));
     setExcludedRegions((current) => (sameSelection(current, persistedExclusions) ? current : persistedExclusions));
-  }, [activeMatch?.matchId, mapSetupDraft?.excludedRegions, mapSetupDraft?.selectedRegions]);
+    const persistedPresetId = mapSetupDraft?.selectedMapPresetId;
+    const appliedPresetId = projection?.visibleMap?.mapPresetId;
+    const fallbackPresetId = mapPresets.length === 1 ? mapPresets[0]?.mapPresetId : undefined;
+    const nextPresetId = [persistedPresetId, appliedPresetId, fallbackPresetId]
+      .find((presetId) => presetId && mapPresets.some((preset) => preset.mapPresetId === presetId));
+    setSelectedMapPresetId((current) => current === nextPresetId ? current : nextPresetId);
+  }, [activeMatch?.matchId, mapSetupDraft?.excludedRegions, mapSetupDraft?.selectedRegions, mapSetupDraft?.selectedMapPresetId, projection?.visibleMap?.mapPresetId, contentPack.packId, contentPack.packVersion]);
 
   useEffect(() => {
     void loadSavedMapScenarios().then(setSavedScenarios);
@@ -646,6 +669,7 @@ export function MapScreen() {
       matchId: activeMatch.matchId,
       selectedRegions,
       excludedRegions,
+      selectedMapPresetId: resolvedMapPresetId,
       query: regionSearch.query,
       selectedPreviewRegionId: regionSearch.selectedRegionId
     };
@@ -659,6 +683,7 @@ export function MapScreen() {
     activeMatch,
     mapSetupDraft,
     liveGameplayState,
+    resolvedMapPresetId,
     regionSearch.query,
     regionSearch.selectedRegionId,
     saveMapSetupDraft,
@@ -881,12 +906,13 @@ export function MapScreen() {
 
   const handleApplyPlayableRegion = () => {
     const regionToApply = compositePreviewRegion ?? appliedRegion;
-    if (!canApplySelectedRegion || !regionToApply) {
+    if (!canApplySelectedRegion || !regionToApply || !resolvedMapPresetId) {
       return;
     }
 
     void (async () => {
       const succeeded = await submitCommands([createMapRegionCommand(regionToApply, {
+        mapPresetId: resolvedMapPresetId,
         customOverlays,
         stationSource,
         customStations,
@@ -1368,6 +1394,40 @@ export function MapScreen() {
                 title={mapHasBeenApplied ? 'Adjust Play Area' : 'Build Play Area'}
                 subtitle="Search and add region boundaries, review the preview, then apply the final playable area."
               >
+                <View style={styles.setupSection}>
+                  <Text style={styles.supportEyebrow}>Map preset</Text>
+                  <Text style={styles.copy}>
+                    {selectedMapPreset?.description ?? selectedMapPreset?.name ?? 'Choose the map rules for this match.'}
+                  </Text>
+                  {mapPresets.length > 1 ? (
+                    <View style={styles.scenarioActions}>
+                      {mapPresets.map((preset) => (
+                        <AppButton
+                          key={preset.mapPresetId}
+                          label={preset.name}
+                          tone={preset.mapPresetId === resolvedMapPresetId ? 'primary' : 'secondary'}
+                          onPress={() => setSelectedMapPresetId(preset.mapPresetId)}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
+                  {!selectedMapPreset ? (
+                    <StateBanner
+                      tone="warning"
+                      title="Choose a map preset"
+                      detail="This content pack has multiple map rules. Select one before applying the region."
+                    />
+                  ) : null}
+                  {selectedMapPreset && (compositePreviewRegion ?? appliedRegion) &&
+                  !mapPresetAllowsRegionKind(selectedMapPreset, (compositePreviewRegion ?? appliedRegion)?.regionKind) ? (
+                    <StateBanner
+                      tone="warning"
+                      title="This region does not fit the preset"
+                      detail={`${selectedMapPreset.name} does not allow this type of playable boundary.`}
+                    />
+                  ) : null}
+                </View>
+
                 <SearchableRegionPicker
                   query={regionSearch.query}
                   minimumQueryLengthMet={regionSearch.minimumQueryLengthMet}

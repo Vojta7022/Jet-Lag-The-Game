@@ -130,6 +130,7 @@ export function buildPlayableRegionFromCommand(
 
   return {
     regionId: payload.regionId,
+    mapPresetId: payload.mapPresetId,
     displayName,
     regionKind,
     boundaryGeometry: payload.geometry,

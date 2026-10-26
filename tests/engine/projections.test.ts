@@ -61,7 +61,13 @@ test('projection builders redact hidden hider coordinates and private cards outs
   assert.ok(authorityProjection.visibleCards.length > 0);
   assert.ok(authorityProjection.visibleEventLog.length >= publicProjection.visibleEventLog.length);
   assert.equal(authorityProjection.visibleMap?.displayName, 'Prague');
-  assert.equal(authorityProjection.visibleMap?.featureDatasetRefs.length, 2);
+  assert.deepEqual(new Set(authorityProjection.visibleMap?.featureDatasetRefs), new Set([
+    'osm-core',
+    'transit-registry',
+    'osm-admin-boundaries',
+    'osm-transit-stations',
+    'osm-question-features'
+  ]));
   assert.deepEqual(
     authorityProjection.visibleMap?.remainingArea.geometry,
     authorityProjection.visibleMap?.playableBoundary.geometry

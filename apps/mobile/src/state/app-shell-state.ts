@@ -15,6 +15,7 @@ export type ShellLoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface MapSetupDraftState {
   matchId: string;
+  selectedMapPresetId?: string;
   selectedRegions: PlayableRegionCatalogEntry[];
   excludedRegions?: PlayableRegionCatalogEntry[];
   selectedPreviewRegionId?: string;
@@ -50,6 +51,7 @@ export function isSameMapSetupDraft(
   }
 
   return left.matchId === right.matchId &&
+    left.selectedMapPresetId === right.selectedMapPresetId &&
     left.query === right.query &&
     left.selectedPreviewRegionId === right.selectedPreviewRegionId &&
     sameDraftRegionSelection(left.selectedRegions, right.selectedRegions) &&

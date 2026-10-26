@@ -374,6 +374,7 @@ export interface HiddenStateModel {
 
 export interface PlayableRegionModel {
   regionId: string;
+  mapPresetId?: string;
   displayName: string;
   regionKind: PlayableRegionKind;
   boundaryGeometry: GeoJsonGeometryModel;

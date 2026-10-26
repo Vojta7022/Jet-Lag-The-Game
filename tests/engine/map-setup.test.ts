@@ -87,6 +87,99 @@ test('map setup stores custom layers and station sources in the match and shares
   assert.equal(updated.aggregate.mapRegion?.bridgeAvailability, 'none');
 });
 
+test('map setup persists the selected preset and unions its required feature datasets', () => {
+  const { contentPack, aggregate } = mapSetupAggregate();
+  contentPack.mapPresets = [{
+    ...contentPack.mapPresets[0]!,
+    mapPresetId: 'regional-transit',
+    featureDatasetRefs: ['preset-boundaries', 'preset-transit'],
+    geometry: { kind: 'host_selected_administrative_boundary', allowedRegionKinds: ['city', 'custom'] }
+  }];
+  const result = executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    {
+      type: 'create_map_region',
+      payload: {
+        regionId: 'preset-region',
+        regionKind: 'city',
+        mapPresetId: 'regional-transit',
+        featureDatasetRefs: ['region-transit', 'preset-boundaries'],
+        geometry: { type: 'Polygon', coordinates: [[[14, 50], [14.4, 50], [14.4, 50.4], [14, 50.4], [14, 50]]] }
+      }
+    },
+    70
+  ), contentPack);
+
+  assert.equal(result.aggregate.mapRegion?.mapPresetId, 'regional-transit');
+  assert.deepEqual(result.aggregate.mapRegion?.featureDatasetRefs, ['region-transit', 'preset-boundaries', 'preset-transit']);
+  const playerProjection = buildMatchProjection(result.aggregate, contentPack, { scope: 'public_match' });
+  assert.equal(playerProjection.visibleMap?.mapPresetId, 'regional-transit');
+});
+
+test('map setup rejects a region kind excluded by the selected preset', () => {
+  const { contentPack, aggregate } = mapSetupAggregate();
+  contentPack.mapPresets = [{
+    ...contentPack.mapPresets[0]!,
+    mapPresetId: 'city-only',
+    geometry: { kind: 'host_selected_administrative_boundary', allowedRegionKinds: ['city'] }
+  }];
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    {
+      type: 'create_map_region',
+      payload: {
+        regionId: 'admin-boundary',
+        regionKind: 'admin_region',
+        mapPresetId: 'city-only',
+        geometry: { type: 'Polygon', coordinates: [[[14, 50], [14.4, 50], [14.4, 50.4], [14, 50.4], [14, 50]]] }
+      }
+    },
+    70
+  ), contentPack), (error: unknown) => error instanceof EngineCommandError &&
+    error.issues.some((issue) => issue.code === 'MAP_PRESET_REGION_KIND_NOT_ALLOWED'));
+});
+
+test('map setup requires an explicit preset choice when a pack defines multiple presets', () => {
+  const { contentPack, aggregate } = mapSetupAggregate();
+  contentPack.mapPresets.push({ ...contentPack.mapPresets[0]!, mapPresetId: 'alternate' });
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    {
+      type: 'create_map_region',
+      payload: {
+        regionId: 'ambiguous-region',
+        geometry: { type: 'Polygon', coordinates: [[[14, 50], [14.4, 50], [14.4, 50.4], [14, 50.4], [14, 50]]] }
+      }
+    },
+    70
+  ), contentPack), (error: unknown) => error instanceof EngineCommandError &&
+    error.issues.some((issue) => issue.code === 'MAP_PRESET_REQUIRED'));
+});
+
+test('map setup rejects a preset id from a different content pack', () => {
+  const { contentPack, aggregate } = mapSetupAggregate();
+
+  assert.throws(() => executeCommand(aggregate, makeEnvelope(
+    aggregate.matchId,
+    { actorId: 'host-1', playerId: 'host-1', role: 'host' },
+    {
+      type: 'create_map_region',
+      payload: {
+        regionId: 'foreign-preset-region',
+        mapPresetId: 'another-pack-preset',
+        geometry: { type: 'Polygon', coordinates: [[[14, 50], [14.4, 50], [14.4, 50.4], [14, 50.4], [14, 50]]] }
+      }
+    },
+    70
+  ), contentPack), (error: unknown) => error instanceof EngineCommandError &&
+    error.issues.some((issue) => issue.code === 'MAP_PRESET_NOT_FOUND'));
+});
+
 test('map setup rejects invalid custom overlay geometry', () => {
   const { contentPack, aggregate } = mapSetupAggregate();
   assert.throws(() => executeCommand(aggregate, makeEnvelope(

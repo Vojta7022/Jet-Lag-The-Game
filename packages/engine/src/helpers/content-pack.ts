@@ -2,11 +2,17 @@ import type {
   CardDefinition,
   ConstraintDefinition,
   ContentPack,
+  MapPresetDefinition,
   QuestionCategoryDefinition,
   QuestionTemplateDefinition,
   ScaleKey,
   RulesetDefinition
 } from '../../../shared-types/src/index.ts';
+
+export function getMapPreset(contentPack: ContentPack, mapPresetId: string | undefined): MapPresetDefinition | undefined {
+  if (mapPresetId) return contentPack.mapPresets.find((preset) => preset.mapPresetId === mapPresetId);
+  return contentPack.mapPresets.length === 1 ? contentPack.mapPresets[0] : undefined;
+}
 
 export function getCardDefinition(contentPack: ContentPack, cardDefinitionId: string): CardDefinition | undefined {
   return contentPack.cards.find((card) => card.cardDefinitionId === cardDefinitionId);

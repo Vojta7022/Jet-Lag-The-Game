@@ -28,6 +28,7 @@ import { getChatChannel } from '../../../domain/src/index.ts';
 import {
   getCardDefinition,
   getConstraintDefinition,
+  getMapPreset,
   getHidePhaseDurationSeconds,
   getHidingZoneRadiusMeters,
   getQuestionCategory,
@@ -690,16 +691,23 @@ function eventsForCommand(
           }
         })
       ];
-    case 'create_map_region':
+    case 'create_map_region': {
+      const mapPreset = getMapPreset(contentPack!, envelope.command.payload.mapPresetId)!;
       return [
         makeEventEnvelope(aggregate, envelope, 0, 'authority', {
           type: 'map_region_created',
           payload: {
             ...envelope.command.payload,
+            mapPresetId: mapPreset.mapPresetId,
+            featureDatasetRefs: [...new Set([
+              ...(envelope.command.payload.featureDatasetRefs ?? []),
+              ...mapPreset.featureDatasetRefs
+            ])],
             lifecycleState: 'map_setup'
           }
         })
       ];
+    }
     case 'start_match':
       {
         const hiderRotationOrder = shuffleValues(Object.values(aggregate!.roleAssignments)

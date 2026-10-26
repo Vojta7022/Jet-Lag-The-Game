@@ -225,6 +225,7 @@ test('app shell reducer saves and clears map setup drafts per match', () => {
     type: 'map_setup_draft_saved',
     draft: {
       matchId: 'match-map-1',
+      selectedMapPresetId: 'regional-transit',
       query: 'Prague',
       selectedPreviewRegionId: 'region-prague',
       selectedRegions: [
@@ -247,6 +248,7 @@ test('app shell reducer saves and clears map setup drafts per match', () => {
   });
 
   assert.equal(state.uiState.mapSetupDrafts['match-map-1']?.query, 'Prague');
+  assert.equal(state.uiState.mapSetupDrafts['match-map-1']?.selectedMapPresetId, 'regional-transit');
   assert.equal(state.uiState.mapSetupDrafts['match-map-1']?.selectedRegions.length, 1);
 
   state = appShellReducer(state, {
@@ -308,6 +310,7 @@ test('map setup draft equality tracks excluded regions as part of the selected b
   const baseline = { matchId: 'match', selectedRegions: [included], query: '' };
 
   assert.equal(isSameMapSetupDraft(baseline, { ...baseline, excludedRegions: [excluded] }), false);
+  assert.equal(isSameMapSetupDraft(baseline, { ...baseline, selectedMapPresetId: 'regional-transit' }), false);
   assert.equal(isSameMapSetupDraft(
     { ...baseline, excludedRegions: [excluded] },
     { ...baseline, excludedRegions: [{ ...excluded }] }

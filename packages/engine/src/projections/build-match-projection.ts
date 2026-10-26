@@ -387,6 +387,7 @@ export function buildMatchProjection(
     aggregate.mapRegion && aggregate.searchArea
       ? {
           regionId: aggregate.mapRegion.regionId,
+          mapPresetId: aggregate.mapRegion.mapPresetId,
           displayName: aggregate.mapRegion.displayName,
           regionKind: aggregate.mapRegion.regionKind,
           configuredAt: aggregate.mapRegion.configuredAt,
