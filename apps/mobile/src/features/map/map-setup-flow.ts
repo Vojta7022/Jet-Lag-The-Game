@@ -1,9 +1,28 @@
 import type {
+  ContentPack,
   DomainCommand,
   MatchProjection
 } from '../../../../../packages/shared-types/src/index.ts';
 
 const defaultRulesetId = 'jet-lag-home-game-base';
+
+export function resolveMapSetupRulesetId(projection: MatchProjection, contentPack: ContentPack): string {
+  if (projection.contentPackId !== contentPack.packId || projection.contentPackVersion !== contentPack.packVersion) {
+    throw new Error('The selected ruleset must come from this match’s exact content pack version.');
+  }
+
+  const selectedRuleset = projection.selectedRulesetId
+    ? contentPack.rulesets.find((ruleset) => ruleset.rulesetId === projection.selectedRulesetId)
+    : undefined;
+  if (projection.selectedRulesetId && !selectedRuleset) {
+    throw new Error('The selected ruleset is not part of this match’s exact content pack version.');
+  }
+  const ruleset = selectedRuleset ?? contentPack.rulesets[0];
+  if (!ruleset) {
+    throw new Error('The selected content pack must define a ruleset before map setup can start.');
+  }
+  return ruleset.rulesetId;
+}
 
 export const mapSetupSeedPlayers = {
   hider: {

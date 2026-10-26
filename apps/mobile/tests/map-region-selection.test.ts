@@ -8,7 +8,7 @@ import type { ContentPack } from '../../../packages/shared-types/src/index.ts';
 
 import { MobileRuntimeOrchestrator } from '../src/runtime/mobile-runtime-orchestrator.ts';
 import { mobileAppEnvironment } from '../src/config/env.ts';
-import { buildMapSetupBootstrapCommands } from '../src/features/map/map-setup-flow.ts';
+import { buildMapSetupBootstrapCommands, resolveMapSetupRulesetId } from '../src/features/map/map-setup-flow.ts';
 import {
   buildMapCameraRegion,
   geometryToMapPolygons,
@@ -151,6 +151,32 @@ test('map bootstrap commands move a host match into map_setup and region selecti
   );
 
   await orchestrator.disconnect(created.connection);
+});
+
+test('map setup selects a ruleset from the exact installed content pack', async () => {
+  const contentPack = loadContentPack();
+  const variantPack: ContentPack = {
+    ...contentPack,
+    packId: 'community-variant',
+    packVersion: '2.0.0',
+    rulesets: contentPack.rulesets.map((ruleset) => ({ ...ruleset, rulesetId: 'community-default-rules' }))
+  };
+  const orchestrator = new MobileRuntimeOrchestrator({ contentPack: variantPack, environment: mobileAppEnvironment });
+  const created = await orchestrator.createMatch({ displayName: 'Host', playerId: 'variant-host' }, {
+    runtimeKind: 'in_memory',
+    matchId: 'variant-pack-map-setup',
+    initialScale: 'small',
+    matchMode: 'single_device_referee'
+  });
+  const projection = created.initialSync.projectionDelivery.projection;
+
+  const rulesetId = resolveMapSetupRulesetId(projection, variantPack);
+  const commands = buildMapSetupBootstrapCommands(projection, rulesetId);
+
+  assert.equal(rulesetId, 'community-default-rules');
+  assert.deepEqual(commands.find((command) => command.type === 'set_ruleset')?.payload, {
+    rulesetId: 'community-default-rules'
+  });
 });
 
 test('map overlay helpers produce preview layers and bounded svg paths from the seeded region source', () => {

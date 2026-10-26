@@ -242,6 +242,7 @@ Ruling: Tentacles candidate places are the mapped features inside the seeker's p
 - [x] Validate each installed pack once, reject invalid selections, and reject joining a match whose selected pack is not installed locally.
 - [x] Preserve and enforce the exact `packVersion` across server records and match projections; register references by ID/version, reject ambiguous creates, and reject a player device missing the match's exact version.
 - [x] Import validated content-pack JSON files up to 5 MB, persist them in the local library, restore them on startup, and include them in the match setup selector.
+- [x] Resolve map/question setup bootstrap rules from the match's exact installed pack version; reject ruleset references outside that pinned pack. Verify alternate-pack ruleset selection, full suite (468), and mobile typecheck (2026-10-26).
 - [ ] Apply the migration to the hosted database and validate a cellular multiplayer match with multiple installed versions.
 - [x] Distribute the host's immutable, versioned online content pack to each joining device; additional curated variant packs remain to be authored.
 

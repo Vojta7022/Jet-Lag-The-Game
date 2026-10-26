@@ -45,6 +45,7 @@ import {
   buildMapScaleGuidanceModel,
   buildMapSetupBootstrapCommands,
   buildPregameMapSetupFlowModel,
+  resolveMapSetupRulesetId,
   clearSelectedRegions,
   mobileRegionDataSource,
   removeRegionFromSelection,
@@ -868,7 +869,8 @@ export function MapScreen() {
       return;
     }
 
-    const commands = buildMapSetupBootstrapCommands(projection);
+    const rulesetId = resolveMapSetupRulesetId(projection, contentPack);
+    const commands = buildMapSetupBootstrapCommands(projection, rulesetId);
     if (commands.length === 0) {
       void refreshActiveMatch();
       return;

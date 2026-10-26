@@ -51,6 +51,7 @@ import {
   getSeedRegionFeatureData,
   type QuestionAnswerDraft
 } from '../features/questions/index.ts';
+import { resolveMapSetupRulesetId } from '../features/map/map-setup-flow.ts';
 import {
   MatchTimingBanner,
   MatchTimingPanel,
@@ -527,7 +528,9 @@ export function QuestionCenterScreen() {
       return;
     }
 
-    const commands = buildQuestionFlowBootstrapCommands(projection);
+    const commands = buildQuestionFlowBootstrapCommands(projection, {
+      rulesetId: resolveMapSetupRulesetId(projection, contentPack)
+    });
     if (commands.length === 0) {
       void refreshActiveMatch();
       return;

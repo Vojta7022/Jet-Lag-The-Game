@@ -45,7 +45,7 @@ function buildMovementPoints(geometry: GeoJsonGeometryModel | undefined) {
 
 export function buildQuestionFlowBootstrapCommands(
   projection: MatchProjection,
-  options: { preferredRegionId?: string; mode?: 'standard' | 'demo'; bridgeAvailability?: 'present' | 'none' } = {}
+  options: { preferredRegionId?: string; mode?: 'standard' | 'demo'; bridgeAvailability?: 'present' | 'none'; rulesetId?: string } = {}
 ): DomainCommand[] {
   if (
     projection.lifecycleState === 'seek_phase' ||
@@ -56,7 +56,7 @@ export function buildQuestionFlowBootstrapCommands(
     return [];
   }
 
-  const commands: DomainCommand[] = [...buildMapSetupBootstrapCommands(projection)];
+  const commands: DomainCommand[] = [...buildMapSetupBootstrapCommands(projection, options.rulesetId)];
   const preferredRegionId = options.preferredRegionId ?? seedPlayableRegions[0]?.regionId;
   const demoMode = options.mode === 'demo';
   const bridgeAvailability = options.bridgeAvailability ?? projection.visibleMap?.bridgeAvailability ?? (demoMode ? 'present' : 'unknown');
