@@ -125,3 +125,52 @@ test('custom scenario overlays are included in the map render model', () => {
   assert.equal(model.overlays.at(-1)?.label, 'Escape route');
   assert.equal(model.overlays.at(-1)?.stroke, '#2374ab');
 });
+
+test('map preset layer policies control standard overlays but keep the selected hiding zone visible', () => {
+  const visibleMap = {
+    regionId: 'prague',
+    mapPresetId: 'compact-map',
+    displayName: 'Prague',
+    regionKind: 'city',
+    configuredAt: '2026-10-26T12:00:00.000Z',
+    layerPolicies: {
+      showPlayableBoundary: false,
+      showTransitStations: false,
+      showQuestionConstraints: false
+    },
+    playableBoundary: {
+      artifactId: 'boundary',
+      kind: 'playable_boundary',
+      regionId: 'prague',
+      geometry: { type: 'Polygon', coordinates: [] },
+      precision: 'exact',
+      confidenceScore: 1,
+      clippedToRegion: false,
+      featureCoverage: 'exact',
+      metadata: {}
+    },
+    remainingArea: {
+      artifactId: 'remaining',
+      kind: 'candidate_remaining',
+      regionId: 'prague',
+      geometry: { type: 'Polygon', coordinates: [] },
+      precision: 'exact',
+      confidenceScore: 1,
+      clippedToRegion: true,
+      featureCoverage: 'exact',
+      metadata: {}
+    },
+    eliminatedAreas: [],
+    constraintArtifacts: [],
+    history: []
+  } as unknown as import('../../../packages/shared-types/src/index.ts').VisibleMapProjection;
+  const selectedStation = { stationId: 'node/1', name: 'Main', latitude: 50.08, longitude: 14.43 };
+  const model = buildMapOverlayModel({
+    visibleMap,
+    transitStations: [selectedStation],
+    selectedStation,
+    hidingRadiusMeters: 500
+  });
+
+  assert.deepEqual(model.overlays.map((overlay) => overlay.overlayId), ['selected-hiding-zone', 'selected-station']);
+});

@@ -14,6 +14,7 @@ import {
   getPlayerTeam,
   scopeCanView
 } from '../../../domain/src/index.ts';
+import { getMapPreset } from '../helpers/content-pack.ts';
 
 function canViewRoles(viewer: ProjectionViewer): boolean {
   return viewer.scope === 'authority' || viewer.scope === 'host_admin' || viewer.scope === 'team_private' || viewer.scope === 'player_private';
@@ -217,7 +218,7 @@ function toVisibleArtifact(artifact: SpatialArtifactModel) {
 
 export function buildMatchProjection(
   aggregate: MatchAggregate,
-  _contentPack: ContentPack,
+  contentPack: ContentPack,
   viewer: ProjectionViewer
 ): MatchProjection {
   const players = Object.values(aggregate.players).map((player) => {
@@ -388,6 +389,7 @@ export function buildMatchProjection(
       ? {
           regionId: aggregate.mapRegion.regionId,
           mapPresetId: aggregate.mapRegion.mapPresetId,
+          layerPolicies: getMapPreset(contentPack, aggregate.mapRegion.mapPresetId)?.layerPolicies,
           displayName: aggregate.mapRegion.displayName,
           regionKind: aggregate.mapRegion.regionKind,
           configuredAt: aggregate.mapRegion.configuredAt,

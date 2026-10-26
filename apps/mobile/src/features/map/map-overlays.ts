@@ -40,8 +40,13 @@ export function buildMapOverlayModel(args: {
   customOverlays?: MapScenarioCustomOverlay[];
 }): MapOverlayModel {
   const overlays: MapOverlayDescriptor[] = [];
+  const layerPolicies = args.visibleMap?.layerPolicies;
+  const isLayerEnabled = (key: string) => layerPolicies?.[key] !== false;
+  const showPlayableBoundary = isLayerEnabled('showPlayableBoundary');
+  const showTransitStations = isLayerEnabled('showTransitStations');
+  const showQuestionConstraints = isLayerEnabled('showQuestionConstraints');
 
-  if (args.visibleMap?.playableBoundary.geometry) {
+  if (showPlayableBoundary && args.visibleMap?.playableBoundary.geometry) {
     overlays.push({
       overlayId: 'playable-boundary',
       label: 'Playable Region',
@@ -52,7 +57,7 @@ export function buildMapOverlayModel(args: {
       strokeWidth: 2,
       opacity: 1
     });
-  } else if (args.previewRegion?.geometry) {
+  } else if (showPlayableBoundary && args.previewRegion?.geometry) {
     overlays.push({
       overlayId: 'preview-boundary',
       label: args.previewRegion.sourceKind === 'composite_selection' ? 'Composite Boundary' : 'Selected Boundary',
@@ -65,7 +70,7 @@ export function buildMapOverlayModel(args: {
     });
   }
 
-  if (args.visibleMap?.remainingArea?.geometry) {
+  if (showQuestionConstraints && args.visibleMap?.remainingArea?.geometry) {
     overlays.push({
       overlayId: 'candidate-region',
       label: 'Candidate Region',
@@ -76,7 +81,7 @@ export function buildMapOverlayModel(args: {
       strokeWidth: 1.5,
       opacity: 1
     });
-  } else if (args.previewRegion?.geometry) {
+  } else if (showQuestionConstraints && args.previewRegion?.geometry) {
     overlays.push({
       overlayId: 'candidate-preview',
       label: args.previewRegion.sourceKind === 'composite_selection' ? 'Composite Candidate Preview' : 'Candidate Preview',
@@ -89,7 +94,7 @@ export function buildMapOverlayModel(args: {
     });
   }
 
-  for (const artifact of args.visibleMap?.eliminatedAreas ?? []) {
+  for (const artifact of showQuestionConstraints ? args.visibleMap?.eliminatedAreas ?? [] : []) {
     overlays.push({
       overlayId: artifact.artifactId,
       label: 'Eliminated Area',
@@ -102,7 +107,7 @@ export function buildMapOverlayModel(args: {
     });
   }
 
-  for (const artifact of args.visibleMap?.constraintArtifacts ?? []) {
+  for (const artifact of showQuestionConstraints ? args.visibleMap?.constraintArtifacts ?? [] : []) {
     overlays.push({
       overlayId: artifact.artifactId,
       label: 'Constraint Layer',
@@ -187,7 +192,7 @@ export function buildMapOverlayModel(args: {
     });
   }
 
-  if (args.transitStations?.length) {
+  if (showTransitStations && args.transitStations?.length) {
     overlays.push({
       overlayId: 'transit-stations',
       label: 'Transit Stations',
@@ -256,14 +261,16 @@ export function buildMapOverlayModel(args: {
   return {
     overlays,
     legend: [
-      { label: 'Playable Region', color: '#145ea8' },
-      { label: 'Candidate Region', color: '#2d7a52' },
-      { label: 'Eliminated Area', color: '#b23a3a' },
-      { label: 'Constraint Layer', color: '#996300' },
+      ...(showPlayableBoundary ? [{ label: 'Playable Region', color: '#145ea8' }] : []),
+      ...(showQuestionConstraints ? [
+        { label: 'Candidate Region', color: '#2d7a52' },
+        { label: 'Eliminated Area', color: '#b23a3a' },
+        { label: 'Constraint Layer', color: '#996300' }
+      ] : []),
       { label: 'Movement Breadcrumb', color: '#7a4b00' },
       { label: 'Visible Position', color: '#7a4b00' },
       { label: 'Last Round Start', color: '#ef702f' },
-      { label: 'Transit Stations', color: '#f2bd43' },
+      ...(showTransitStations ? [{ label: 'Transit Stations', color: '#f2bd43' }] : []),
       { label: 'Selected Hiding Zone', color: '#e29a22' },
       ...(args.customOverlays ?? []).filter((layer) => layer.visible).map((layer) => ({ label: layer.name, color: layer.color }))
     ]

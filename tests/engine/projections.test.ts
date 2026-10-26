@@ -82,6 +82,7 @@ test('projection builders redact hidden hider coordinates and private cards outs
   assert.equal(publicProjection.players.some((player) => player.role !== undefined), false);
   assert.equal(publicProjection.visibleMap?.displayName, 'Prague');
   assert.equal(publicProjection.visibleMap?.featureDatasetRefs.length, 0);
+  assert.deepEqual(publicProjection.visibleMap?.layerPolicies, contentPack.mapPresets[0]?.layerPolicies);
 
   assert.equal(seekerTeamProjection.hiddenState, undefined);
   assert.equal(seekerTeamProjection.visibleCards.length, 0);
