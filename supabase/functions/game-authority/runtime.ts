@@ -16,7 +16,8 @@ import {
   CompositeQuestionFeatureDataProvider,
   OpenStreetMapCountryBoundaryProvider,
   OpenMeteoElevationFeatureProvider,
-  OpenStreetMapQuestionFeatureProvider
+  OpenStreetMapQuestionFeatureProvider,
+  parseOpenStreetMapQuestionFeatureEndpoints
 } from '../../../packages/geo/src/index.ts';
 import { createGameAuthorityHandler } from './index.ts';
 
@@ -48,7 +49,9 @@ export function createOnlineAuthorityDependencies(env: (name: string) => string 
     }),
     questionFeatureDataProvider: new CompositeQuestionFeatureDataProvider([
       new OpenMeteoElevationFeatureProvider(),
-      new OpenStreetMapQuestionFeatureProvider()
+      new OpenStreetMapQuestionFeatureProvider({
+        endpoints: parseOpenStreetMapQuestionFeatureEndpoints(Deno.env.get('OVERPASS_API_URLS'))
+      })
     ])
   });
 

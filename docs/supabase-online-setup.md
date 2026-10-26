@@ -14,6 +14,8 @@ Set these values in `apps/mobile/.env`:
 
 These are public client values. Never put the Supabase service-role key in the mobile app, an `EXPO_PUBLIC_*` variable, source control, or a shared client `.env` file. Configure `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` as secrets for the `game-authority` Edge Function only.
 
+The authority's OpenStreetMap feature lookups use the public Overpass endpoints by default. If you operate or trust another Overpass-compatible service, set the optional `OVERPASS_API_URLS` function environment variable to a comma-separated, ordered list of HTTPS interpreter URLs. The authority validates, trims, and deduplicates this list at startup; when it is empty or unset, the built-in primary and fallback are used. Each endpoint should permit the app's identified requests and comply with that service's usage policy. Do not point production play at an endpoint without permission or capacity for the expected query volume.
+
 The project currently depends on these tables: `matches`, `match_events`, `match_snapshots`, `match_projections`, `content_pack_references`, `match_memberships`, and `match_command_idempotency`. Storage uses one private bucket named `match-attachments`.
 
 ## Apply migrations

@@ -1,7 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { OpenStreetMapQuestionFeatureProvider } from '../../packages/geo/src/index.ts';
+import { OpenStreetMapQuestionFeatureProvider, parseOpenStreetMapQuestionFeatureEndpoints } from '../../packages/geo/src/index.ts';
+
+test('configured Overpass endpoints are trimmed, deduplicated, and restricted to HTTPS', () => {
+  assert.deepEqual(parseOpenStreetMapQuestionFeatureEndpoints(
+    ' https://maps.example/overpass ,https://backup.example/api/interpreter,https://maps.example/overpass,, '
+  ), [
+    'https://maps.example/overpass',
+    'https://backup.example/api/interpreter'
+  ]);
+  assert.equal(parseOpenStreetMapQuestionFeatureEndpoints(undefined), undefined);
+  assert.equal(parseOpenStreetMapQuestionFeatureEndpoints(' ,  '), undefined);
+  assert.throws(() => parseOpenStreetMapQuestionFeatureEndpoints('http://insecure.example/api'), /HTTPS/);
+  assert.throws(() => parseOpenStreetMapQuestionFeatureEndpoints('not a URL'), /valid HTTPS URL/);
+});
 
 test('OpenStreetMap question feature provider bounds its query and drops features outside the playable polygon', async () => {
   let submittedQuery = '';

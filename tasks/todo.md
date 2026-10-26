@@ -76,6 +76,12 @@
 - [x] Cool down transiently failed endpoints for 60 seconds across different region lookups, then restore the normal endpoint order after recovery.
 - [ ] Verify live regional feature coverage; on 2026-10-26, a bounded 0.03° × 0.02° Prague hospital lookup returned HTTP 502 from `overpass-api.de` and timed out after 30 seconds on the Private.coffee fallback. No regional coverage claim is made.
 
+### Completed implementation slice: configurable trusted Overpass endpoints
+
+- [x] Allow the deployed game authority to use an operator-configured, ordered list of HTTPS Overpass interpreter endpoints, while retaining the built-in primary/fallback when unset.
+- [x] Trim and deduplicate configured URLs and fail fast on invalid or non-HTTPS endpoints; document capacity and usage-policy expectations for deployment.
+- [x] Verify configured endpoint parsing, OSM provider regressions, full suite (467), mobile typecheck, Edge Function typecheck, and `git diff --check` (2026-10-26). Live feature coverage still needs a reliable authorized service and bounded real-region lookups.
+
 ### Current implementation slice: enforce the scanned Bridge Troll curse
 
 - [x] Add a failing engine test proving the curse blocks the next question until every active seeker attests they are under a bridge.

@@ -67,6 +67,31 @@ const NON_WALKABLE_OR_INACTIVE_HIGHWAYS = new Set([
   'abandoned', 'construction', 'corridor', 'elevator', 'planned', 'platform', 'proposed', 'razed'
 ]);
 
+export function parseOpenStreetMapQuestionFeatureEndpoints(value: string | undefined): string[] | undefined {
+  const configured = value?.split(',').map((endpoint) => endpoint.trim()).filter(Boolean) ?? [];
+  if (configured.length === 0) return undefined;
+
+  const endpoints: string[] = [];
+  const seen = new Set<string>();
+  for (const endpoint of configured) {
+    let parsed: URL;
+    try {
+      parsed = new URL(endpoint);
+    } catch {
+      throw new Error(`OpenStreetMap feature endpoint must be a valid HTTPS URL: ${endpoint}`);
+    }
+    if (parsed.protocol !== 'https:') {
+      throw new Error(`OpenStreetMap feature endpoint must use HTTPS: ${endpoint}`);
+    }
+    const normalized = parsed.toString();
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      endpoints.push(normalized);
+    }
+  }
+  return endpoints;
+}
+
 const SELECTORS_BY_FEATURE_CLASS: Record<string, OSMTagSelector[]> = {
   'a-commercial-airport': [{ tags: { aeroway: 'aerodrome', scheduled_service: 'yes' } }],
   'commercial-airport': [{ tags: { aeroway: 'aerodrome', scheduled_service: 'yes' } }],
